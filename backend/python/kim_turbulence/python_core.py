@@ -4,6 +4,7 @@ Array order is (k,j,i). REAL work arrays stay float32; explicitly DOUBLE
 PRECISION expressions use float64. No compiled Fortran is called here.
 """
 import numpy as np
+from numba import njit
 
 F = np.float32
 D = np.float64
@@ -24,8 +25,121 @@ def shift(a, axis, step):
     return out
 
 
+# regular·irregular·smooth는 거의 모든 진단이 쓰는 공통 연산이라 Numba로 컴파일한 판(_*_kernel)을 쓴다.
+# 연산 순서·float32 자료형은 아래 NumPy 판과 같게 두고, 입력이 float32가 아닌 경우 등은 NumPy 판으로 계산한다.
+# 대조 기록: KIM 확대 영역 구현 계획 "계산 가속: GKTG".
+NAN32 = np.float32(np.nan)
+
+
+@njit(cache=True, error_model='numpy')
+def _regular_kernel(a, spacing, axis):
+    nz, ny, nx = a.shape
+    out = np.empty((nz, ny, nx), dtype=np.float32)
+    two = np.float32(2)
+    for k in range(nz):
+        for j in range(ny):
+            for i in range(nx):
+                c = a[k, j, i]
+                if axis == 2:
+                    lo = a[k, j, i - 1] if i > 0 else NAN32
+                    hi = a[k, j, i + 1] if i < nx - 1 else NAN32
+                else:
+                    lo = a[k, j - 1, i] if j > 0 else NAN32
+                    hi = a[k, j + 1, i] if j < ny - 1 else NAN32
+                step = spacing[k, j, i]
+                if np.isfinite(lo) and np.isfinite(hi):
+                    out[k, j, i] = (hi - lo) / (two * step)
+                elif np.isfinite(hi) and np.isfinite(c):
+                    out[k, j, i] = (hi - c) / step
+                else:
+                    out[k, j, i] = (c - lo) / step
+    return out
+
+
+@njit(cache=True, error_model='numpy')
+def _irregular_kernel(a, x, threshold, span):
+    nz, ny, nx = a.shape
+    out = np.empty((nz, ny, nx), dtype=np.float32)
+    for k in range(nz):
+        for j in range(ny):
+            for i in range(nx):
+                c, xc = a[k, j, i], x[k, j, i]
+                if not (np.isfinite(c) and np.isfinite(xc)):
+                    out[k, j, i] = NAN32
+                    continue
+                lo = a[k - 1, j, i] if k > 0 else NAN32
+                hi = a[k + 1, j, i] if k < nz - 1 else NAN32
+                xl = x[k - 1, j, i] if k > 0 else NAN32
+                xh = x[k + 1, j, i] if k < nz - 1 else NAN32
+                d1, d2 = xc - xl, xh - xc
+                dt = xh - xl if span else d1 + d2
+                central = (hi - c) * (d1 / (d2 * dt)) + (c - lo) * (d2 / (d1 * dt))
+                if abs(d1) >= threshold and abs(d2) >= threshold and abs(dt) >= threshold and np.isfinite(central):
+                    out[k, j, i] = central
+                elif abs(d2) >= threshold and np.isfinite((hi - c) / d2):
+                    out[k, j, i] = (hi - c) / d2
+                elif abs(d1) >= threshold:
+                    out[k, j, i] = (c - lo) / d1
+                else:
+                    out[k, j, i] = NAN32
+    return out
+
+
+@njit(cache=True, error_model='numpy')
+def _smooth_kernel(a, horizontal, vertical, region):
+    nz, ny, nx = a.shape
+    out = a.copy()
+    work = np.empty_like(a)
+    quarter, two = np.float32(.25), np.float32(2)
+    for _ in range(horizontal):
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    if not region[k, j, i]:
+                        work[k, j, i] = NAN32
+                        continue
+                    c = out[k, j, i]
+                    lo = out[k, j - 1, i] if j > 0 else NAN32
+                    hi = out[k, j + 1, i] if j < ny - 1 else NAN32
+                    work[k, j, i] = quarter * (hi + two * c + lo) if np.isfinite(lo) and np.isfinite(c) and np.isfinite(hi) else c
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    c = work[k, j, i]
+                    lo = work[k, j, i - 1] if i > 0 else NAN32
+                    hi = work[k, j, i + 1] if i < nx - 1 else NAN32
+                    if region[k, j, i] and np.isfinite(lo) and np.isfinite(c) and np.isfinite(hi):
+                        out[k, j, i] = quarter * (hi + two * c + lo)
+    for _ in range(vertical):
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    work[k, j, i] = out[k, j, i] if region[k, j, i] else NAN32
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    c = work[k, j, i]
+                    lo = work[k - 1, j, i] if k > 0 else NAN32
+                    hi = work[k + 1, j, i] if k < nz - 1 else NAN32
+                    if region[k, j, i] and np.isfinite(lo) and np.isfinite(c) and np.isfinite(hi):
+                        out[k, j, i] = quarter * (hi + two * c + lo)
+    return out
+
+
+def _as3d(a):
+    return a if a.ndim == 3 else a.reshape((1,) + a.shape)
+
+
 def regular(a, spacing, axis):
     """dreg: centered (even if center missing), forward, backward."""
+    spacing = np.asarray(spacing)
+    if a.dtype == np.float32 and spacing.dtype == np.float32 and a.ndim in (2, 3) and axis in (a.ndim - 2, a.ndim - 1):
+        out = _regular_kernel(_as3d(a), _as3d(np.broadcast_to(spacing, a.shape)), axis + 3 - a.ndim)
+        return out.reshape(a.shape)
+    return _regular_numpy(a, spacing, axis)
+
+
+def _regular_numpy(a, spacing, axis):
     lo, hi = shift(a, axis, -1), shift(a, axis, 1)
     with np.errstate(all='ignore'):
         return np.where(np.isfinite(lo) & np.isfinite(hi),
@@ -37,6 +151,13 @@ def regular(a, spacing, axis):
 def irregular(a, x, axis=0, threshold=1e-5):
     """dirreg/dirregzk: signed irregular spacing and one-sided fallback."""
     x = np.broadcast_to(x, a.shape)
+    if a.dtype == np.float32 and x.dtype == np.float32 and a.ndim == 3 and axis == 0:
+        # NumPy 판은 float32 배열과 Python 실수 문턱값을 float32로 비교한다.
+        return _irregular_kernel(a, x, np.float32(threshold), threshold == .001)
+    return _irregular_numpy(a, x, axis, threshold)
+
+
+def _irregular_numpy(a, x, axis=0, threshold=1e-5):
     lo, hi = shift(a, axis, -1), shift(a, axis, 1)
     xl, xh = shift(x, axis, -1), shift(x, axis, 1)
     d1, d2 = x-xl, xh-x
@@ -68,6 +189,12 @@ def smooth(a, horizontal=1, vertical=0, domain=None):
     """meanFilter3D: original y, x, z ordering; DIRICHLET regional ends."""
     out = np.array(a, dtype='f4', copy=True)
     region = np.ones(a.shape, dtype=bool) if domain is None else np.broadcast_to(domain, a.shape)
+    if out.ndim == 3 or (out.ndim == 2 and vertical == 0):
+        return _smooth_kernel(_as3d(out), horizontal, vertical, _as3d(region)).reshape(a.shape)
+    return _smooth_numpy(out, horizontal, vertical, region)
+
+
+def _smooth_numpy(out, horizontal, vertical, region):
     for _ in range(horizontal):
         lo, hi = shift(out, -2, -1), shift(out, -2, 1)
         good = region & np.isfinite(lo) & np.isfinite(out) & np.isfinite(hi)
