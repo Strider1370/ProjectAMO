@@ -16,9 +16,9 @@ module.exports = {
         DATA_PATH: '/opt/projectamo/shared/data',
         KIM_GKTG_PYTHON: '/opt/projectamo/shared/venvs/kim-gktg/bin/python',
         NUMBA_CACHE_DIR: '/opt/projectamo/shared/data/.numba-cache',
-        // KIM 격자 저장 형식(backend/src/processors/kim-doc-store.js). both = JSON+NC 동시 저장·대조 기간(2026-10-08~).
-        // 1주 불일치 0이면 nc로 바꾸고 scripts/kim-store-convert.mjs로 남은 JSON 회차를 옮긴다. docs/operations/operations.md.
-        KIM_STORE_FORMAT: 'both',
+        // KIM 격자 저장 형식(backend/src/processors/kim-doc-store.js). both 기간(2026-10-08 01:37~15:50 KST)의
+        // 00 UTC 회차 문서 585개 대조 일치·저장 대조 불일치 0을 확인하고 nc로 전환했다. 되돌리기: 'json'. docs/operations/operations.md.
+        KIM_STORE_FORMAT: 'nc',
       },
     },
   ],

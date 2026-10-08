@@ -23,6 +23,7 @@ KIM 저장 형식(`KIM_STORE_FORMAT`, 기본 `json`):
   되돌릴 때는 `json`으로 바꾸면 된다(`both` 기간에는 JSON이 남아 있다).
 - 회차 상태·진행 기록: `node scripts/kim-inspect.mjs --data /opt/projectamo/shared/data [--run <tmfc> --events 30]`.
 - 새 npm 의존성은 없다(`h5wasm`은 위성 파서가 이미 쓴다). 설정 변경은 fast deploy와 PM2 환경 갱신으로 충분하다.
+- 운영: 2026-10-08 01:37 KST `both` 배포 → 00 UTC 회차 585개 문서 일치, 저장 대조 불일치 0 → 같은 날 `nc`로 전환(현재 값은 `ecosystem.config.cjs`).
 
 Terrain runtime path:
 
