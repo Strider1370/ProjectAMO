@@ -23,6 +23,8 @@ import { runKimDerivedWorker } from './kim-derived-worker.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import store from '../store.js'
+import { prefetchAciSupplements, ACI_ALGORITHM, ACI_SPEC } from './kim-aci-processor.js'
+import { publishKimAciRun, writeKimAciAttempt } from './kim-aci-store.js'
 
 const DOMAIN = 'ea'
 
@@ -62,6 +64,9 @@ export async function collectExpandedRun({
   collectTask = collectKimNwpTask,
   prefetch = [prefetchGktgSupplements, prefetchTropopauseSupplements, prefetchSurfaceChartInputs],
   publishChart = publishExpandedSurfaceChart,
+  aciEnabled = config.kim_aci.enabled,
+  prefetchAci = prefetchAciSupplements,
+  publishAci = publishKimAciRun,
   runDerived = runKimDerivedWorker,
   onProgress = () => {},
   // 시각마다 받기 전에 부른다. 이유 문자열을 돌려주면 새 시각을 받지 않는다(디스크 보호선, 다음 회차 시작 등).
@@ -80,6 +85,8 @@ export async function collectExpandedRun({
   const downloaded = []
   const computed = []
   const failures = []
+  const aciInputs = new Set()
+  const aciEntries = []
   const started = now()
   appendKimRunEvent(runDir, { type: 'expanded_started', hours: hours.length, stopAt: Number.isFinite(stopAt) ? new Date(stopAt).toISOString() : null })
 
@@ -97,6 +104,13 @@ export async function collectExpandedRun({
           result[kind] = String(error.code || error.message).slice(0, 200)
         }
       }
+      if (aciEnabled && aciInputs.has(hf)) {
+        try {
+          const out = await runDerived('kim_aci', { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf], publish: false } })
+          aciEntries.push(...(out?.entries || []))
+          result.kim_aci = out?.entries?.length ? 'ok' : out?.failures?.[0]?.reason || 'failed'
+        } catch (error) { if (signal?.aborted) throw error; result.kim_aci = String(error.code || error.message).slice(0,200) }
+      } else if (aciEnabled) result.kim_aci = 'inputs_unavailable'
       // 지도 이진 파일(착빙·구름 등)과 강수 레이어 장 만들기. 실패해도 그 시각은 게시한다(지도 파일은 요청 때 만들고,
       // 강수 장이 없는 시각은 강수 레이어에서만 빠진다).
       for (const kind of ['kim_map_responses', 'kim_surface_chart']) {
@@ -181,6 +195,18 @@ export async function collectExpandedRun({
       failures.push({ hf, stage: prefetchError ? 'supplement' : 'base', reason: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
       continue
     }
+    if (aciEnabled) {
+      // ACI 실패는 기본 격자 성공 여부와 분리한다. 키 마감 전에 캐시를 확보한다.
+      for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+        try { await prefetchAci({root,domain:DOMAIN,tmfc,hf,signal,fetchGrid}); aciInputs.add(hf); break }
+        catch (error) {
+          if (signal?.aborted) throw error
+          appendKimRunEvent(runDir,{type:'aci_inputs_failed',hf,attempt,reason:String(error.code||error.message).slice(0,200)})
+          if (attempt === retryDelaysMs.length || now() >= stopAt) break
+          await delay(retryDelaysMs[attempt],undefined,{signal})
+        }
+      }
+    }
     entries.set(hf, hourEntries)
     downloaded.push(hf)
     compute(hf)
@@ -195,16 +221,17 @@ export async function collectExpandedRun({
   if (failures.some(failure => /HTTP (401|403)|unauthori[sz]ed|forbidden/i.test(failure.reason || ''))) stopReason ||= 'credential_rejected'
   const meetsMinimum = Number.isFinite(lastHour) && lastHour >= minHour
   let published = null
-  if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, publishChart, signal, complete: publishable.length === hours.length })
+  if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, publishChart, signal, aciEntries, aciEnabled, publishAci, plannedHours: hours, complete: publishable.length === hours.length })
   const result = { type: 'kim_expanded', tmfc, planned: hours.length, downloaded: downloaded.length, computed: computed.length,
     publishedHours: published ? publishable.length : 0, lastHour: lastHour ?? null, minHour, stopReason, failures,
+    aci: aciEnabled ? { inputs: aciInputs.size, computed: aciEntries.length, published: published?.aciPublished || 0 } : null,
     published: Boolean(published), ms: now() - started }
   appendKimRunEvent(runDir, { ...result, type: published ? 'expanded_published' : 'expanded_not_published', failures: failures.slice(0, 20) })
   return result
 }
 
 // 기본 격자 index·latest와 GKTG·권계면 게시. 파생 계산은 이미 시각별로 끝나 있어 결과를 다시 쓰지 않고 확인·게시만 한다.
-async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publishChart, signal, complete }) {
+async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publishChart, signal, complete, aciEntries, aciEnabled, publishAci, plannedHours }) {
   const allEntries = hours.flatMap(hf => entries.get(hf))
   const index = buildKimNwpIndex({ model: KIM_NWP_MODEL, tmfc, entries: allEntries })
   const runId = buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc })
@@ -213,6 +240,18 @@ async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publ
   for (const kind of ['kim_gktg', 'kim_tropopause']) {
     const out = await runDerived(kind, { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: hours, publish: true } })
     if (!out?.saved && !out?.unchanged) throw new Error(`kim_expanded_${kind}_publish_failed`)
+  }
+  let aciPublished = 0
+  if (aciEnabled) {
+    try {
+      const ready = aciEntries.filter(entry => hours.includes(entry.hf))
+      if (ready.length) {
+        const manifest = publishAci({root,domain:DOMAIN,tmfc,entries:ready,expectedHours:plannedHours,algorithm:ACI_ALGORITHM,scoreSpec:ACI_SPEC})
+        aciPublished = manifest?.tmfc === tmfc ? manifest.entries.length : 0
+      }
+      writeKimAciAttempt(root,DOMAIN,tmfc,{tmfc,outcome:aciPublished===plannedHours.length?'complete':'partial',expectedHours:plannedHours,availableHours:ready.map(e=>e.hf),failures:plannedHours.filter(hf=>!ready.some(e=>e.hf===hf)).map(hf=>({hf,reason:'ACI 입력 또는 계산 미완료'})),scoreSpec:ACI_SPEC,completed_at:new Date().toISOString()})
+      appendKimRunEvent(resolveKimNwpRunDir({root,model:KIM_NWP_MODEL,tmfc,domain:DOMAIN}),{type:'aci_published',hours:aciPublished})
+    } catch(error) { appendKimRunEvent(resolveKimNwpRunDir({root,model:KIM_NWP_MODEL,tmfc,domain:DOMAIN}),{type:'aci_publish_failed',reason:String(error.code||error.message).slice(0,200)}) }
   }
   // 강수 레이어. 실패해도 회차는 게시한다(이전 강수 런이 남는다).
   try {
@@ -226,7 +265,7 @@ async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publ
   writeKimNwpLatest(root, { type: 'kim_nwp_latest', model: KIM_NWP_MODEL, latestRun: tmfc, latestRunId: runId, indexPath: 'kim_nwp_ea/index.json',
     hours, updated_at: new Date().toISOString(), content_hash: store.canonicalHash(index) }, DOMAIN)
   cleanupKimNwpRuns({ root, domain: DOMAIN, maxRuns: 1, latestRunId: runId, reason: 'expanded_published' })
-  return { runId, hours }
+  return { runId, hours, aciPublished }
 }
 
 export default { collectExpandedRun }

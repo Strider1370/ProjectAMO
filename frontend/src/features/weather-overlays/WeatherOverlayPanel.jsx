@@ -17,6 +17,7 @@ const WEATHER_TILE_ICON = {
   echoTop: Mountain,
   satellite: Satellite,
   satelliteVisible: Sun,
+  aciExperiment: CloudLightning,
   ci: CloudLightning,
   ctps: Cloud,
   lightning: Zap,
@@ -76,7 +77,7 @@ function WeatherOverlayPanel({
       ids: ['radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
     },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'sigwxHigh', 'typhoon'] },
-    { id: 'nwp', title: '수치모델', ids: showWind ? ['surfaceChart', 'wind', 'cloudIcing', 'turbulence', 'tropopause', 'visibility'] : [] },
+    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'surfaceChart', 'visibility', 'cloudIcing', 'aciExperiment', 'turbulence', 'tropopause'] : ['aciExperiment'] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
   const layerLabels = {
@@ -86,6 +87,7 @@ function WeatherOverlayPanel({
     echoTop: '에코탑(재산출)',
     satellite: '적외영상',
     satelliteVisible: '가시영상',
+    aciExperiment: '대류영역',
     ci: '대류 가능성',
     ctps: '운정고도',
     lightning: '낙뢰',

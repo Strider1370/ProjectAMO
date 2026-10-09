@@ -96,6 +96,7 @@ function WeatherLegends({
   onOpenChange,
   onOpenPanelHeightChange,
   supplementalContent = null,
+  aciLegendContent = null,
   sampleWarning = false,
 }) {
   const isMobile = useIsMobile()
@@ -250,6 +251,7 @@ function WeatherLegends({
         </div>
       )}
       <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} mode="map" cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} />
+      {aciLegendContent}
       {ciLegendVisible && <ConvectiveLegend title="대류 가능성" entries={CI_LEGEND} note="위성 기반 대류 발생 가능성 참고 — 레이더 실황·위험등급 아님" />}
       {ctpsLegendVisible && <ConvectiveLegend title="구름 꼭대기" entries={CTPS_LEGEND} note="CTH 기반 높이 — 위험등급 아님" />}
       {echoTopLegendVisible && (echoTopOutOfRange ? (
@@ -296,7 +298,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible && !supplementalContent) return null
+  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible && !supplementalContent && !aciLegendContent) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -345,6 +347,7 @@ function WeatherLegends({
     <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {supplementalContent}
+        {aciLegendContent}
         <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} mode="map" compact />
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />

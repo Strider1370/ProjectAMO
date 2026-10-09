@@ -65,11 +65,22 @@ export function readKimExpandedProgress(basePath, { now = Date.now() } = {}) {
   const chartFailed = new Set(events.filter((event) => event.type === 'surface_chart_hour_failed').map((event) => event.hf))
   for (const event of events) if (event.type === 'surface_chart_hour') chartFailed.delete(event.hf)
   const chartPublished = [...events].reverse().find((event) => event.type === 'surface_chart_published' || event.type === 'surface_chart_publish_failed') || null
+  const aciInputs = new Set(), aciComputed = new Set(), aciFailed = new Map()
+  let aciRequests = 0, aciBytes = 0, aciMs = 0
+  for (const event of events) {
+    if (event.type === 'aci_inputs') { aciInputs.add(event.hf); aciFailed.delete(event.hf); aciRequests += event.requests || 0; aciBytes += event.bytes || 0 }
+    if (event.type === 'aci_inputs_failed' || event.type === 'aci_hour_failed') aciFailed.set(event.hf,event.reason)
+    if (event.type === 'aci_hour') { aciComputed.add(event.hf); aciFailed.delete(event.hf); aciMs += event.ms || 0 }
+  }
+  const aciPublished = events.findLast(event => event.type === 'aci_published')?.hours ?? null
+  const aciTask = events.findLast(event => ['aci_wait','aci_calculating','aci_hour','aci_hour_failed'].includes(event.type))
+  const aci = aciInputs.size || aciComputed.size || aciFailed.size || aciPublished != null ? { inputs:aciInputs.size,computed:aciComputed.size,published:aciPublished,failures:[...aciFailed].map(([hf,reason])=>({hf,reason})),requests:aciRequests,bytes:aciBytes,calculationMs:aciMs,task:aciTask ? {hf:aciTask.hf,state:aciTask.type,waitedMs:aciTask.waitedMs??0} : null } : null
   const samples = readLines(path.join(runDir, 'monitor.jsonl')).filter((row) => row.at >= start.at)
   const last = samples.at(-1) || null
   const available = samples.map((row) => row.availableMiB).filter(Number.isFinite)
   return {
     tmfc,
+    aci,
     cycle,
     state,
     planned,

@@ -349,6 +349,13 @@ export const kim_gktg = {
   collect_on_startup: process.env.KIM_GKTG_COLLECT_ON_STARTUP !== '0',
 }
 
+// 확대영역 ACI. 새 수집은 명시적으로 활성화하며 기존 KIM 작업 큐를 사용한다.
+export const kim_aci = {
+  enabled: process.env.KIM_ACI_ENABLED === '1',
+  python: process.env.KIM_ACI_PYTHON || process.env.KIM_GKTG_PYTHON || path.resolve(__dirname, '../../.venvs/kim-gktg/bin/python'),
+  calculation_timeout_ms: Number(process.env.KIM_ACI_TIMEOUT_MS || 120000),
+}
+
 // 권계면·제트: GKTG 가상환경(NumPy)을 함께 쓰고, 100·70 hPa 추가 입력은 레이더·위성 키로 받는다.
 export const kim_tropopause = {
   enabled: process.env.KIM_TROPOPAUSE_DISABLED !== '1',
@@ -620,6 +627,7 @@ export default {
   ktg,
   kim_gktg,
   kim_tropopause,
+  kim_aci,
   kim_derived_worker,
   lightning,
   amos,

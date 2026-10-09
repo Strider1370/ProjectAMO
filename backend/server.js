@@ -1,3 +1,5 @@
+import { registerKimAciRoutes } from './src/http/kim-aci-routes.js'
+import { readKimAciLatest, ensureAciBinary } from './src/processors/kim-aci-store.js'
 import { createOrganizationPreviewRouter } from './src/organizations/preview-router.js'
 import { createOrganizationWeatherDependencies } from './src/briefing/organization-runtime.js'
 import { createMeOrganizationsRouter, createAdminOrganizationsRouter, createOrganizationRouter } from './src/organizations/router.js'
@@ -246,6 +248,11 @@ app.get(/^\/data\/kim_nwp(?:_ea)?\/runs\/KIMG_NE57_\d{10}\/derived\/map-bin\//, 
   const selection = parseKimMapBinaryPath(req.path.slice('/data/'.length))
   if (!selection) return res.status(404).end()
   try {
+    const aciRevision = /^aci-([a-f0-9]{20,64})-score-v1$/.exec(selection.name)?.[1]
+    if (aciRevision && selection.level === 'column') {
+      const { gzip } = ensureAciBinary({root:DATA_ROOT,domain:selection.domain,tmfc:selection.tmfc,hf:selection.hf,revision:aciRevision})
+      res.setHeader('Content-Type','application/gzip'); res.setHeader('Cache-Control','public, max-age=86400, immutable'); return res.end(gzip)
+    }
     const layer = /^(temp|cloud|icing|wind)-below-ground-v1$/.exec(selection.name)?.[1]
     const gktgRevision = /^gktg-([a-z0-9]+)-below-ground-v2-q3$/.exec(selection.name)?.[1]
     if (!layer && !gktgRevision) return res.status(404).end()
@@ -510,6 +517,7 @@ function buildKimNwpSnapshotEntry() {
       cloud: { hash: cloudIndex ? store.canonicalHash(cloudIndex) : null },
       icing: { hash: icingIndex ? store.canonicalHash(icingIndex) : null },
       gktg: { hash: readKimGktgLatest(DATA_ROOT, domain)?.revision || null },
+      aci: { hash: readKimAciLatest(DATA_ROOT, domain)?.revision || null },
     },
   }
 }
@@ -588,7 +596,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['lightning'], files: [snapshotMetaLatest('lightning')], build: () => buildHashEntry('lightning') },
   { keys: ['typhoon'], files: [snapshotMetaLatest('typhoon')], build: () => buildHashEntry('typhoon') },
   { keys: ['adsb'], files: [snapshotMetaLatest('adsb')], build: () => buildHashEntry('adsb') },
-  { keys: ['kimNwp', 'kim_nwp'], files: ['kim_nwp', 'kim_nwp_ea'].flatMap((dir) => [snapshotMetaFile(dir, 'index.json'), snapshotMetaFile(dir, 'latest.json'), snapshotMetaFile(dir, 'derived', 'gktg', 'latest.json')]), build: buildKimNwpSnapshotEntry },
+  { keys: ['kimNwp', 'kim_nwp'], files: ['kim_nwp', 'kim_nwp_ea'].flatMap((dir) => [snapshotMetaFile(dir, 'index.json'), snapshotMetaFile(dir, 'latest.json'), snapshotMetaFile(dir, 'derived', 'gktg', 'latest.json'), snapshotMetaFile(dir, 'derived', 'aci', 'latest.json')]), build: buildKimNwpSnapshotEntry },
   { keys: ['kimSurfaceWind', 'kim_surface_wind'], files: [snapshotMetaLatest('kim_surface_wind')], build: buildKimSurfaceWindEntry },
   { keys: ['kimSurfaceChart'], files: [snapshotMetaLatest('kim_surface_chart')], build: buildKimSurfaceChartEntry },
   { keys: ['groundForecast', 'ground_forecast'], files: [snapshotMetaLatest('ground_forecast')], build: () => buildHashEntry('ground_forecast') },
@@ -956,6 +964,7 @@ app.get('/api/kim/icing/index', (req, res) => sendKimIndex(req, res, {
 app.get('/api/kim/icing/field', (req, res) =>
   sendKimField(req, res, { type: 'icing', buildFn: buildKimIcingFieldFromGrid, errorLabel: 'invalid kim icing selection' })
 )
+registerKimAciRoutes(app, {root:DATA_ROOT,resolveDomain:resolveKimDomain,sendIndex:sendRevalidatedJson,sendField:sendImmutableJson})
 app.get('/api/kim/gktg/index', (req, res) => {
   let domain
   try { domain = resolveKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }

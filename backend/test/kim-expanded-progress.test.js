@@ -69,3 +69,20 @@ test('a finished cycle shows its outcome, and a cycle without an end or a live p
   assert.equal(readKimExpandedProgress(other).state, 'interrupted')
   assert.equal(readKimExpandedProgress(temporary(t)), null)
 })
+
+test('ACI progress tracks successful retries, failures, usage and current calculation',t=>{
+ const root=temporary(t)
+ seed(root,'2026100900',[
+  {at:at(0),type:'expanded_started',hours:29},
+  {at:at(1),type:'aci_inputs_failed',hf:0,reason:'q2m failed'},
+  {at:at(2),type:'aci_inputs',hf:0,requests:3,bytes:17000000},
+  {at:at(3),type:'aci_hour',hf:0,ms:41000},
+  {at:at(4),type:'aci_hour_failed',hf:1,reason:'CAPE failed'},
+  {at:at(5),type:'aci_calculating',hf:2,waitedMs:1000},
+ ],{lockPid:process.pid})
+ const value=readKimExpandedProgress(root)
+ assert.equal(value.aci.inputs,1);assert.equal(value.aci.computed,1)
+ assert.deepEqual(value.aci.failures,[{hf:1,reason:'CAPE failed'}])
+ assert.equal(value.aci.bytes,17000000);assert.equal(value.aci.requests,3)
+ assert.equal(value.aci.task.hf,2);assert.equal(value.aci.task.state,'aci_calculating')
+})

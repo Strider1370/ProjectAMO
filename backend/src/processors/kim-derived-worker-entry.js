@@ -7,9 +7,10 @@ import { fileURLToPath } from 'node:url'
 
 // kim_map_responses: 착빙·구름 지도 응답을 시각별로 미리 만든다(kim-map-responses.js).
 // kim_surface_chart: 확대 회차 강수 레이어(지상 일기도) 장을 시각별로 만든다(kim-surface-chart-expanded.js).
-export const KIM_DERIVED_JOBS = ['kim_gktg', 'kim_tropopause', 'kim_map_responses', 'kim_surface_chart']
+export const KIM_DERIVED_JOBS = ['kim_gktg', 'kim_tropopause', 'kim_map_responses', 'kim_surface_chart', 'kim_aci']
 
 const loadProcessor = {
+  kim_aci: () => import('./kim-aci-processor.js'),
   kim_gktg: () => import('./kim-gktg-processor.js'),
   kim_tropopause: () => import('./kim-tropopause-processor.js'),
   kim_map_responses: () => import('./kim-map-responses.js'),

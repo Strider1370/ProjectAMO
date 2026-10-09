@@ -1,3 +1,5 @@
+import { useKimAciOverlay } from '../weather-overlays/lib/useKimAciOverlay.js'
+import AciExperimentLegend from '../weather-overlays/AciExperimentLegend.jsx'
 import CloudIcingMapControls from '../weather-overlays/CloudIcingMapControls.jsx'
 import WeatherPointInfoControl from '../weather-overlays/WeatherPointInfoControl.jsx'
 import { useWeatherPointInspection } from '../weather-overlays/lib/useWeatherPointInspection.js'
@@ -718,7 +720,7 @@ const MapView = forwardRef(function MapView({
     windStatus, tempStatus, cloudStatus, icingStatus, turbulenceStatus,
     lowPower, cloudMaxSpread,
     altLevelsFt, selectedAltFt, setSelectedAltFt,
-    sliderLevels, sliderTimes, sliderAvailability, nwpSelection, setNwpSelection,
+    sliderLevels, sliderTimes, sliderAvailability, nwpSelection, setNwpSelection, aci,
   } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs: weatherTimelineSelectedMs, dataMode: routeBriefing.state.briefingContext?.kind === 'organization' ? 'pinned' : dataMode, mapDataSelection: organizationMapSelection ?? mapDataSelection })
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
@@ -1048,6 +1050,10 @@ const MapView = forwardRef(function MapView({
     canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current,
     pausePlayback: () => { if (weatherTimelinePlaying) toggleWeatherTimelinePlay() },
   })
+  const aciExperiment = useKimAciOverlay({ mapRef, isStyleReady, styleRevision, aci, tz, priorityLayers:AIRPORT_INTERACTIVE_LAYERS, canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current })
+  useEffect(() => {
+    if (aciExperiment.selected) setWeatherLegendOpen(true)
+  }, [aciExperiment.selected])
   const tropopauseJetEnabled = enableWindOverlay && !!metVisibility.tropopause
   // 개발 서버에서는 저장된 권계면·제트 사례를 범례의 버튼으로 바꿔 볼 수 있다.
   const [tropopauseCaseKey, setTropopauseCaseKey] = useState(null)
@@ -1138,9 +1144,10 @@ const MapView = forwardRef(function MapView({
     }
     if (sigwxHigh.timestamp) entries.push(sigwxHigh.timestamp)
     if (tropopauseJet.timestamp) entries.push(tropopauseJet.timestamp)
+    if (aciExperiment.timestamp) entries.push(aciExperiment.timestamp)
     return entries
   }, [
-    enableWindOverlay, sigwxHigh.timestamp, tropopauseJet.timestamp, tempStatus, dataMode,
+    enableWindOverlay, sigwxHigh.timestamp, tropopauseJet.timestamp, aciExperiment.timestamp, tempStatus, dataMode,
     metVisibility.surfaceChart, surfaceChart.issueLabel, surfaceChart.validLabel,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
     metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
@@ -2066,6 +2073,7 @@ const MapView = forwardRef(function MapView({
 
         {showWeatherLegends && (
           <WeatherLegends
+          aciLegendContent={aciExperiment.enabled ? <AciExperimentLegend overlay={aciExperiment} /> : null}
           supplementalContent={isMobile && timestampEntries.some(entry => entry.issueLabel && entry.issueLabel !== '-') ? (
             <WeatherLayerTimestampBar entries={timestampEntries} embedded>
               <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />

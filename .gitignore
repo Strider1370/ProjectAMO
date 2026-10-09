@@ -27,3 +27,6 @@ test-results/
 .venvs/
 backend/python/kim_turbulence/__pycache__/
 backend/python/kim_tropopause/__pycache__/
+backend/python/aci_experiment/__pycache__/
+backend/python/kim_aci/__pycache__/
+docs/design/mockups/aci-experiment/__pycache__/

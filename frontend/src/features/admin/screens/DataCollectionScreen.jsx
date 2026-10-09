@@ -228,7 +228,7 @@ function CollectionRowDetail({ row, entry, timeline, now, tz, formatDateTime, on
       </dl>
 
       {row.derivedCalculation && <div className="ac-sub" data-derived-calculation>
-        계산 {row.derivedCalculation.outcome === 'complete' ? '완료' : row.derivedCalculation.outcome === 'running' ? '진행 중' : '입력 대기 또는 일부 실패'} · {row.derivedCalculation.fields ?? 0}/{(row.derivedCalculation.expectedHours?.length || 13) * 21}층
+        계산 {row.derivedCalculation.outcome === 'complete' ? '완료' : row.derivedCalculation.outcome === 'running' ? '진행 중' : '입력 대기 또는 일부 실패'} · {row.key === 'kim_aci' ? `${row.derivedCalculation.availableHours?.length ?? 0}/${row.derivedCalculation.expectedHours?.length ?? 0}시각` : `${row.derivedCalculation.fields ?? 0}/${(row.derivedCalculation.expectedHours?.length || 13) * 21}층`}
         {row.derivedCalculation.failures?.length > 0 && <details><summary>미완료 {row.derivedCalculation.failures.length}개 시각</summary>{row.derivedCalculation.failures.map((failure) => <div key={failure.hf}>F{String(failure.hf).padStart(3, '0')}: {failure.reason}</div>)}</details>}
       </div>}
       {row.expandedProgress && <ExpandedProgress progress={row.expandedProgress} formatDateTime={formatDateTime} />}

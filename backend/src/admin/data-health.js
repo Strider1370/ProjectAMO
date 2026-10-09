@@ -207,7 +207,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
       key: row.key,
       statsKey: row.statsKey, // Task 7이 통계를 붙일 때 쓴다 — 저장 키와 다른 행이 셋 있다
       label: row.label,
-      derivedCalculation: ['kim_gktg', 'kim_tropopause'].includes(row.key) ? (() => { try { return JSON.parse(fs.readFileSync(path.join(basePath, `kim_nwp/derived/${row.key === 'kim_gktg' ? 'gktg' : 'tropopause'}/last-attempt.json`), 'utf8')) } catch { return null } })() : null,
+      derivedCalculation: row.key === 'kim_aci' ? (() => { try { return JSON.parse(fs.readFileSync(path.join(basePath, 'kim_nwp_ea/derived/aci/last-attempt.json'), 'utf8')) } catch { return null } })() : ['kim_gktg', 'kim_tropopause'].includes(row.key) ? (() => { try { return JSON.parse(fs.readFileSync(path.join(basePath, `kim_nwp/derived/${row.key === 'kim_gktg' ? 'gktg' : 'tropopause'}/last-attempt.json`), 'utf8')) } catch { return null } })() : null,
       // 확대 영역 회차 진행률. 화면에 보이는 자료(데모 등)가 아니라 실제 수집 폴더를 읽는다.
       expandedProgress: row.key === 'kim_expanded' && !disabled ? readKimExpandedProgress(cfg.storage?.base_path || basePath, { now }) : null,
       source: row.source,

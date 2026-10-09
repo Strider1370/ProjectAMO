@@ -18,4 +18,4 @@ fi
 "${gktg_base_python}" -c 'import sys; assert sys.version_info >= (3, 12), "GKTG NumPy requires Python >=3.12; set GKTG_BOOTSTRAP_PYTHON to the installed interpreter"'
 "${gktg_base_python}" -m venv "${gktg_env}"
 "${gktg_env}/bin/python" -m pip install -r "${project_dir}/backend/python/kim_turbulence/requirements.txt"
-"${gktg_env}/bin/python" -c 'import numpy, numba; print("GKTG Python ready", numpy.__version__, numba.__version__)'
+"${gktg_env}/bin/python" -c 'import numpy, numba, metpy; print("GKTG Python ready", numpy.__version__, numba.__version__)'

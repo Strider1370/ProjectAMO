@@ -164,10 +164,12 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = f
   const keep = new Set(completeRuns.slice(0, limit))
   if (latestRunId) keep.add(latestRunId)
   for (const derivedLatest of [readKimGktgLatest(root, domain), readKimTropopauseLatest(root, domain)]) if (derivedLatest?.runId) keep.add(derivedLatest.runId)
+  const aciLatestFile = path.join(resolveKimNwpRoot(root, domain), 'derived', 'aci', 'latest.json')
+  if (fs.existsSync(aciLatestFile)) { const aci = readJson(aciLatestFile); if (aci?.runId) keep.add(aci.runId) }
   // Partial calculations and institution-pinned runs must survive base retention.
   for (const runId of listKimNwpRuns(root, domain)) {
     const dir = path.join(runsDir, runId)
-    for (const product of ['gktg', 'tropopause']) {
+    for (const product of ['gktg', 'tropopause', 'aci']) {
       const attemptFile = path.join(dir, 'derived', product, 'last-attempt.json')
       const attempt = fs.existsSync(attemptFile) ? readJson(attemptFile) : null
       if (attempt?.outcome === 'running' || (attempt?.outcome === 'partial' && Date.now() - Date.parse(attempt.completed_at) < 24 * 3600000)) keep.add(runId)

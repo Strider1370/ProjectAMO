@@ -112,3 +112,15 @@ test('a level that fails once inside an hour is fetched again, and the hour stil
   const events = fs.readFileSync(path.join(root, 'kim_nwp_ea', 'runs', `KIMG_NE57_${TMFC}`, 'events.jsonl'), 'utf8')
   assert.match(events, /"type":"expanded_hour_retry","hf":0,"attempt":1,"failedTasks":1/)
 })
+
+test('ACI input or publication failure does not block the base KIM publication', async t => {
+  const root = temporary(t), { options } = harness(root, { stepMinutes: 1 })
+  const result = await collectExpandedRun({ ...options, hours:[0,1,27],stopAtMs:Infinity,aciEnabled:true,
+    prefetchAci:async({hf})=>{if(hf===1)throw new Error('q2m unavailable')},
+    runDerived:async(kind,{jobOptions})=>kind==='kim_aci'?{entries:[{hf:jobOptions.forecastHours[0],revision:'a'.repeat(24)}],failures:[]}:{saved:true,failures:[]},
+    publishAci:()=>{throw new Error('ACI publication failed')} })
+  assert.equal(result.published,true)
+  assert.equal(result.computed,3)
+  assert.deepEqual(result.aci,{inputs:2,computed:2,published:0})
+  assert.equal(readKimNwpLatest(root,'ea').latestRun,TMFC)
+})

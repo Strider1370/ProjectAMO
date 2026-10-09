@@ -466,3 +466,19 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all', si
   }
   return out
 }
+
+export function fetchKimAciIndex(options = {}) {
+  return fetchJson(`/api/kim/aci/index?domain=${KIM_MAP_DOMAIN}`,options)
+}
+export async function fetchKimAciField(selection,options = {}) {
+  const {domain,tmfc,hf,revision}=selection
+  if(revision && kimMapBinarySupported()) {
+    try {return await fetchKimMapBinary(kimMapBinaryUrl({domain,tmfc,hf,level:'column',name:`aci-${revision}-score-v1`}),options)}
+    catch(error){if(options.signal?.aborted)throw error}
+  }
+  return fetchJson(`/api/kim/aci/field?${kimFieldParams({domain,tmfc,hf,revision})}`,options)
+}
+export function fetchKimAciPoint(selection,point,options = {}) {
+  const params=kimFieldParams(selection);params.set('lon',String(point.lon));params.set('lat',String(point.lat))
+  return fetchJson(`/api/kim/aci/point?${params}`,options)
+}

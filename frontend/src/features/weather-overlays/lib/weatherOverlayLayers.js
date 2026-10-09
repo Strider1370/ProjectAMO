@@ -175,6 +175,7 @@ export const MET_LAYERS = [
   { id: 'echoTop', label: '에코탑(재산출)', color: '#7E22CE' },
   { id: 'satellite', label: '적외영상', color: '#64748b' },
   { id: 'satelliteVisible', label: '가시영상', color: '#94a3b8' },
+  { id: 'aciExperiment', label: '대류영역', color: '#fb923c' },
   { id: 'ci', label: '대류 가능성', color: '#F6C945' },
   { id: 'ctps', label: '구름 꼭대기', color: '#7E22CE' },
   { id: 'lightning', label: 'Lightning', color: '#facc15' },

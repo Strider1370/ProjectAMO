@@ -78,6 +78,7 @@ export const CATALOG = [
   { key: 'kim_gktg', label: '난류(GKTG)', source: 'kma_radar', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/derived/gktg/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_gktg?.enabled === false },
   // 확대 영역(90~160°E)은 하루 두 회차(00 UTC 약 17시·06 UTC 약 23시 KST 게시). 수집 기록은 06 UTC 행 기준.
   { key: 'kim_expanded', label: 'KIM 확대 영역', source: 'kma_bulk', character: 'nwp', statsKey: 'kim_expanded_06', normalMs: h(16), lateMs: h(30), stoppedMs: h(48), meta: 'kim_nwp_ea/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_expanded?.enabled !== true },
+  { key: 'kim_aci', label: '대류 영역(ACI)', source: 'kma_bulk', character: 'nwp', statsKey: 'kim_aci', normalMs: h(16), lateMs: h(30), stoppedMs: h(48), meta: 'kim_nwp_ea/derived/aci/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_aci?.enabled !== true },
   { key: 'kim_tropopause', label: '권계면·제트', source: 'kma_radar', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/derived/tropopause/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_tropopause?.enabled === false },
 
   { key: 'metar_overseas', label: 'METAR 해외', source: 'noaa', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },

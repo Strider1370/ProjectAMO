@@ -25,8 +25,8 @@ export function expandedProgressView(progress) {
     stop: progress.stopReason ? STOP_TEXT[progress.stopReason] || progress.stopReason : null,
     korea: progress.korea === undefined ? null : progress.korea === null ? '아직(+0~12h가 모이면)' : progress.korea.saved ? '게시함' : `안 함(${progress.korea.reason || '이유 없음'})`,
     // 지도 파일·강수 장: 이 기능이 없던 회차(기록 없음)는 표시하지 않는다.
-    extras: progress.mapFiles || progress.precipFrames || progress.precipFailed
-      ? `지도 파일 ${progress.mapFiles ?? 0}시각 · 강수 ${progress.precipFrames ?? 0}시각${progress.precipFailed ? ` (실패 ${progress.precipFailed})` : ''}${progress.precipPublished != null ? ` · 강수 게시 ${progress.precipPublished}장` : ''}`
+    extras: progress.aci || progress.mapFiles || progress.precipFrames || progress.precipFailed
+      ? `${progress.aci ? `${progress.aci.task?.state === 'aci_wait' ? `ACI 작업 순번 대기 +${progress.aci.task.hf}h · ` : progress.aci.task?.state === 'aci_calculating' ? `ACI 계산 중 +${progress.aci.task.hf}h · ` : ''}ACI 입력 ${progress.aci.inputs}/${progress.planned} · 계산 ${progress.aci.computed}/${progress.planned} · 게시 ${progress.aci.published ?? 0}${progress.aci.failures.length ? ` · 실패 ${progress.aci.failures.map(f=>`+${f.hf}h`).join(',')}` : ''} · 추가 ${progress.aci.requests}회 ${(progress.aci.bytes/1e6).toFixed(1)}MB · 계산 ${(progress.aci.calculationMs/1000).toFixed(0)}초 / ` : ''}지도 파일 ${progress.mapFiles ?? 0}시각 · 강수 ${progress.precipFrames ?? 0}시각${progress.precipFailed ? ` (실패 ${progress.precipFailed})` : ''}${progress.precipPublished != null ? ` · 강수 게시 ${progress.precipPublished}장` : ''}`
       : null,
     memory: progress.memory ? `남은 ${progress.memory.availableMiB} MiB(최저 ${progress.memory.minAvailableMiB}) · 스왑 ${progress.memory.swapUsedMiB} MiB` : null,
   }

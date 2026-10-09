@@ -1,3 +1,4 @@
+import { useKimAci } from './useKimAci.js'
 import { useEffect, useMemo, useState } from 'react'
 import { useKimSurfaceWind, selectFallbackKimNwpSelection } from './useKimSurfaceWind.js'
 import { useKimTemperature } from './useKimTemperature.js'
@@ -77,6 +78,8 @@ export function useNwpOverlays({
     setNwpSelection(previous => selectFallbackKimNwpSelection(combinedIndex, previous) || previous)
   }, [pinned, combinedEnabled, kimTemperature.temperatureIndex, combinedIndex])
 
+  const aci = useKimAci(enableWindOverlay && !!metVisibility.aciExperiment,nwpSelection,{commonActive:anyKimActive,selectedMs:timelineSelectedMs,pinned})
+
   const windRendererOptions = useMemo(() => ({
     ...(kimSurfaceWind.lowPower
       ? { desktopCap: 800, mobileCap: 800, frameCap: 15, sampleStep: 4, pixelRatioCap: 1.5 }
@@ -110,7 +113,7 @@ export function useNwpOverlays({
     ? (pinnedKimModel?.validTime ? [{ tmfc: pinnedKimModel.tmfc, hf: pinnedKimModel.hf, validTime: pinnedKimModel.validTime }] : [])
     : anyKimActive
     ? nwpSliderSource.availableTimes
-    : (turbulenceEnabled ? legacyKtg.availableTimes : [])
+    : (turbulenceEnabled ? legacyKtg.availableTimes : aci.times)
 
   // 메인 타임라인 스크럽(절대시각) → 가장 가까운 예보시간(hf)으로 공유 selection 갱신.
   // NWP·난류가 함께 그 예보시각으로 따라감. 라이브(selectedMs=null)면 기본 예보시각 유지.
@@ -137,6 +140,7 @@ export function useNwpOverlays({
   const aligned = compatibleKimFields([temperatureField, cloudField, icingField])
 
   return {
+    aci,
     // map sync
     windField: kimSurfaceWind.windField,
     windRendererOptions,

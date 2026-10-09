@@ -4,7 +4,7 @@ export const COPILOT_MET_LAYER_IDS = Object.freeze([
   'radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'satellite', 'satelliteVisible',
   'ci', 'ctps', 'lightning', 'surfaceChart', 'wind', 'cloudIcing', 'temp', 'cloud', 'icing',
   'turbulence', 'sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon',
-  'visibility', 'ceiling', 'terrainHazard',
+  'visibility', 'ceiling', 'terrainHazard', 'aciExperiment',
 ])
 
 export function validateCopilotUiAction(value) {
