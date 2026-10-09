@@ -148,3 +148,32 @@ test('ACI inputs are tried once inline and again at the end of the run; a failed
   assert.ok(events.findIndex(event => event.type === 'aci_retry') > lastCollected)
   assert.deepEqual(events.filter(event => event.type === 'aci_retry').map(event => [event.hf, event.outcome]), [[1, 'ok'], [2, 'ok']])
 })
+
+test('GKTG and tropopause are published from the per-hour results; a failed direct publish falls back to the derived job', async t => {
+  for (const failDirect of [false, true]) {
+    const root = temporary(t), { log, options } = harness(root, { stepMinutes: 1 })
+    const direct = []
+    const runDerived = async (kind, { jobOptions }) => {
+      log.push(`${jobOptions.publish ? 'publish' : 'compute'}:${kind}:${jobOptions.forecastHours.join(',')}`)
+      if (['kim_gktg', 'kim_tropopause'].includes(kind) && !jobOptions.publish) {
+        const hf = jobOptions.forecastHours[0]
+        return { failures: [], entries: [{ hf, revision: 'r' + hf }], baseFingerprints: { [hf]: 'fp' }, engineRevision: 'e1' }
+      }
+      return { saved: true, failures: [] }
+    }
+    const publishComputed = Object.fromEntries(['kim_gktg', 'kim_tropopause'].map(kind => [kind, ({ forecastHours, hourResults }) => {
+      if (failDirect) throw new Error('kim_gktg_base_changed')
+      direct.push(`${kind}:${forecastHours.join(',')}:${hourResults.map(result => result.entries[0].revision).join(',')}`)
+    }]))
+    const result = await collectExpandedRun({ ...options, hours: [0, 1, 27], stopAtMs: Infinity, runDerived, publishComputed })
+    assert.equal(result.published, true)
+    const publishedByJob = log.filter(entry => entry.startsWith('publish:'))
+    if (!failDirect) {
+      assert.deepEqual(direct, ['kim_gktg:0,1,27:r0,r1,r27', 'kim_tropopause:0,1,27:r0,r1,r27'])
+      assert.deepEqual(publishedByJob, [])
+    } else {
+      assert.deepEqual(publishedByJob, ['publish:kim_gktg:0,1,27', 'publish:kim_tropopause:0,1,27'])
+      assert.match(fs.readFileSync(path.join(root, 'kim_nwp_ea', 'runs', `KIMG_NE57_${TMFC}`, 'events.jsonl'), 'utf8'), /"type":"derived_publish_fallback","kind":"kim_gktg"/)
+    }
+  }
+})

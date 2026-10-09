@@ -234,8 +234,34 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   }
   appendKimRunEvent(runDir, { type: !complete ? 'tropopause_partial' : publish ? 'tropopause_published' : 'tropopause_computed', hours: forecastHours, revision: published?.revision || null, fields: entries.length, failures: failures.length })
   writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: !complete ? 'partial' : publish ? 'complete' : 'computed', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() }, domain)
-  return { type: 'kim_tropopause', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
+  // publish=false인 시각별 계산은 결과 목록·입력 지문·계산 판을 돌려준다. 확대 회차가 모아 두었다가
+  // publishComputedTropopause로 다시 읽지 않고 게시한다.
+  const computedResult = publish ? {} : { entries, baseFingerprints: Object.fromEntries(baseFingerprints), engineRevision: engine }
+  return { type: 'kim_tropopause', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete, ...computedResult,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length }, complete ? {} : { reason: 'kim_tropopause_incomplete' }) }
+}
+
+// 확대 회차 게시: 시각별 계산(publish=false)이 돌려준 결과로 바로 게시한다. 게시를 다시 부르면 33시각 입력을 다시 준비하고
+// 결과를 모두 다시 열어 운영 서버에서 회차마다 약 7분(GKTG)·2분(권계면)이 걸렸다(2026-10-09). 입력 격자가 계산 뒤 바뀌지
+// 않았는지(파일 지문)와 결과 파일이 모두 있는지만 확인한다. 하나라도 맞지 않으면 던지고, 호출한 쪽이 예전 방식으로 게시한다.
+export function publishComputedTropopause({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc, forecastHours, hourResults }) {
+  const engines = new Set(hourResults.map(result => result?.engineRevision))
+  if (engines.size !== 1 || !engines.values().next().value) throw new Error('kim_tropopause_engine_mismatch')
+  const engine = engines.values().next().value
+  const entries = []
+  forecastHours.forEach((hf, index) => {
+    const result = hourResults[index]
+    const list = (result?.entries || []).filter(entry => entry.hf === hf)
+    if (!list.length) throw new Error('kim_tropopause_hour_incomplete')
+    const captured = result.baseFingerprints?.[hf]
+    if (!captured || fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }) !== captured) throw new Error('kim_tropopause_base_changed')
+    entries.push(...list)
+  })
+  const baseFingerprint = fingerprintKimNwpBase({ root, tmfc, hours: forecastHours, domain })
+  const published = publishKimTropopauseRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() }, domain, { readFields: false })
+  appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), { type: 'tropopause_published', hours: forecastHours, revision: published.revision, fields: entries.length, failures: 0, fromComputed: true })
+  writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: 'complete', expectedHours: forecastHours, fields: entries.length, failures: [], completed_at: new Date().toISOString() }, domain)
+  return published
 }
 
 export default { process }

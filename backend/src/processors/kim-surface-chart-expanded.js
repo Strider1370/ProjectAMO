@@ -70,13 +70,13 @@ function parseChartText(text, name) {
 // +0h에는 누적강수가 없다(시작값 0). 받지 않는다.
 const inputNames = (hf) => (hf === 0 ? ['psl'] : ['psl', 'prec_acc'])
 
-export async function prefetchSurfaceChartInputs({ root = config.storage.base_path, domain, tmfc, hf, signal, fetchGrid = fetchKimGrid }) {
+export async function prefetchSurfaceChartInputs({ root = config.storage.base_path, domain, tmfc, hf, signal, fetchGrid = fetchKimGrid, now = Date.now }) {
   if (domain !== DOMAIN || !expandedChartEnabled()) return
   for (const name of inputNames(hf)) {
     const file = rawFile({ root, tmfc, hf, name })
     if (readKimRawText(file) !== null) continue
     signal?.throwIfAborted()
-    const credential = selectKimRunCredential({ tmfc, ...kimBulkCredentialOptions(config, Date.now(), { required: true }) })
+    const credential = selectKimRunCredential({ tmfc, ...kimBulkCredentialOptions(config, now(), { required: true }) })
     // 작업 분류는 확대 회차의 다른 격자처럼 kim_grid(대용량 키)다. kim_grid_chart는 기존 수집기 범위(sub)로만 판별된다.
     const text = await fetchGrid({ data: 'U', name, level: 0, tmfc, hf, map: 'S', disp: 'A',
       sub: kimDomainRequest(config, DOMAIN).sub, credential, signal })

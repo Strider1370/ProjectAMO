@@ -279,19 +279,25 @@ export function readKimGktgField({ root, tmfc, hf, levelId, revision, domain = K
   return field
 }
 
-export function publishKimGktgRun(root, manifest, domain = KIM_DEFAULT_DOMAIN) {
+// readFields=false: 같은 실행에서 방금 계산·검증해 쓴 결과를 게시할 때(확대 회차). 파일을 다시 열지 않고 모두 있는지만
+// 지문으로 확인한다(33시각 × 21층을 다시 풀면 운영 서버에서 2분 넘게 걸렸다, 2026-10-09).
+export function publishKimGktgRun(root, manifest, domain = KIM_DEFAULT_DOMAIN, { readFields = true } = {}) {
   validateGktgRevision(manifest.revision)
   const levels = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
   if (!manifest.expectedHours?.length || !manifest.expectedHours.every(hf => levels.every(level =>
     manifest.entries?.some(entry => entry.hf === hf && entry.levelId === level.id)))) {
     throw new Error('Incomplete GKTG run cannot be published')
   }
-  for (const entry of manifest.entries) {
-    const field = readKimGktgField({ root, tmfc: manifest.tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision, domain })
-    if (field.inputRevision !== entry.inputRevision || field.gktg.length !== field.grid.nx * field.grid.ny) throw new Error('Invalid GKTG published field')
+  if (readFields) {
+    for (const entry of manifest.entries) {
+      const field = readKimGktgField({ root, tmfc: manifest.tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision, domain })
+      if (field.inputRevision !== entry.inputRevision || field.gktg.length !== field.grid.nx * field.grid.ny) throw new Error('Invalid GKTG published field')
+    }
   }
+  const outputFingerprint = fingerprintKimGktgOutputs(root, manifest, domain)
+  if (!readFields && !outputFingerprint) throw new Error('GKTG published field missing')
   const payload = { ...manifest, type: 'kim_gktg_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }),
-    outputFingerprint: fingerprintKimGktgOutputs(root, manifest, domain) }
+    outputFingerprint }
   writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc, domain }), 'derived', 'gktg', manifest.revision, 'manifest.json'), payload)
   writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'derived', 'gktg', 'latest.json'), payload)
   return payload
@@ -396,17 +402,22 @@ export function readKimTropopauseField({ root, tmfc, hf, revision, domain = KIM_
   return field
 }
 
-export function publishKimTropopauseRun(root, manifest, domain = KIM_DEFAULT_DOMAIN) {
+// readFields=false: publishKimGktgRun과 같다(같은 실행에서 방금 쓴 결과는 다시 열지 않고 존재만 확인).
+export function publishKimTropopauseRun(root, manifest, domain = KIM_DEFAULT_DOMAIN, { readFields = true } = {}) {
   validateGktgRevision(manifest.revision)
   if (!manifest.expectedHours?.length || !manifest.expectedHours.every(hf => manifest.entries?.some(entry => entry.hf === hf))) {
     throw new Error('Incomplete tropopause run cannot be published')
   }
-  for (const entry of manifest.entries) {
-    const field = readKimTropopauseField({ root, tmfc: manifest.tmfc, hf: entry.hf, revision: entry.revision, domain })
-    if (field.inputRevision !== entry.inputRevision) throw new Error('Invalid tropopause published field')
+  if (readFields) {
+    for (const entry of manifest.entries) {
+      const field = readKimTropopauseField({ root, tmfc: manifest.tmfc, hf: entry.hf, revision: entry.revision, domain })
+      if (field.inputRevision !== entry.inputRevision) throw new Error('Invalid tropopause published field')
+    }
   }
+  const outputFingerprint = fingerprintKimTropopauseOutputs(root, manifest, domain)
+  if (!readFields && !outputFingerprint) throw new Error('Tropopause published field missing')
   const payload = { ...manifest, type: 'kim_tropopause_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }),
-    outputFingerprint: fingerprintKimTropopauseOutputs(root, manifest, domain) }
+    outputFingerprint }
   writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc, domain }), 'derived', 'tropopause', manifest.revision, 'manifest.json'), payload)
   writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'derived', 'tropopause', 'latest.json'), payload)
   return payload

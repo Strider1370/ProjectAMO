@@ -16,8 +16,8 @@ import {
   writeKimNwpIndex, writeKimNwpLatest, writeKimNwpManifest,
 } from './kim-nwp-store.js'
 import { collectKimNwpTask, mapKimNwpTasksWithConcurrency } from './kim-surface-wind-processor.js'
-import { prefetchGktgSupplements } from './kim-gktg-processor.js'
-import { prefetchTropopauseSupplements } from './kim-tropopause-processor.js'
+import { prefetchGktgSupplements, publishComputedGktg } from './kim-gktg-processor.js'
+import { prefetchTropopauseSupplements, publishComputedTropopause } from './kim-tropopause-processor.js'
 import { prefetchSurfaceChartInputs, publishExpandedSurfaceChart } from './kim-surface-chart-expanded.js'
 import { runKimDerivedWorker } from './kim-derived-worker.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
@@ -64,6 +64,8 @@ export async function collectExpandedRun({
   collectTask = collectKimNwpTask,
   prefetch = [prefetchGktgSupplements, prefetchTropopauseSupplements, prefetchSurfaceChartInputs],
   publishChart = publishExpandedSurfaceChart,
+  // GKTG·권계면 게시: 시각별 계산 결과로 바로 게시한다(실패하면 예전처럼 파생 작업에 게시를 맡긴다).
+  publishComputed = { kim_gktg: publishComputedGktg, kim_tropopause: publishComputedTropopause },
   aciEnabled = config.kim_aci.enabled,
   prefetchAci = prefetchAciSupplements,
   publishAci = publishKimAciRun,
@@ -108,6 +110,9 @@ export async function collectExpandedRun({
   const started = now()
   appendKimRunEvent(runDir, { type: 'expanded_started', hours: hours.length, stopAt: Number.isFinite(stopAt) ? new Date(stopAt).toISOString() : null })
 
+  // 시각별 GKTG·권계면 계산 결과(결과 목록·입력 지문·계산 판). 게시 때 다시 읽지 않고 쓴다.
+  const computedResults = { kim_gktg: new Map(), kim_tropopause: new Map() }
+
   // 계산은 순서대로 하나씩. 다운로드와 겹쳐 돈다.
   let computeChain = Promise.resolve()
   const compute = (hf) => {
@@ -118,7 +123,10 @@ export async function collectExpandedRun({
         try {
           const out = await runDerived(kind, { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf], publish: false } })
           result[kind] = out?.failures?.length ? out.failures[0].reason : 'ok'
+          if (!out?.failures?.length && out?.entries?.length) computedResults[kind].set(hf, out)
+          else computedResults[kind].delete(hf)
         } catch (error) {
+          computedResults[kind].delete(hf)
           result[kind] = String(error.code || error.message).slice(0, 200)
         }
       }
@@ -247,7 +255,7 @@ export async function collectExpandedRun({
   if (failures.some(failure => /HTTP (401|403)|unauthori[sz]ed|forbidden/i.test(failure.reason || ''))) stopReason ||= 'credential_rejected'
   const meetsMinimum = Number.isFinite(lastHour) && lastHour >= minHour
   let published = null
-  if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, publishChart, signal, aciEntries, aciEnabled, publishAci, plannedHours: hours, complete: publishable.length === hours.length })
+  if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, publishChart, publishComputed, computedResults, signal, aciEntries, aciEnabled, publishAci, plannedHours: hours, complete: publishable.length === hours.length })
   const result = { type: 'kim_expanded', tmfc, planned: hours.length, downloaded: downloaded.length, computed: computed.length,
     publishedHours: published ? publishable.length : 0, lastHour: lastHour ?? null, minHour, stopReason, failures,
     aci: aciEnabled ? { inputs: aciInputs.size, computed: aciEntries.length, published: published?.aciPublished || 0 } : null,
@@ -257,13 +265,22 @@ export async function collectExpandedRun({
 }
 
 // 기본 격자 index·latest와 GKTG·권계면 게시. 파생 계산은 이미 시각별로 끝나 있어 결과를 다시 쓰지 않고 확인·게시만 한다.
-async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publishChart, signal, complete, aciEntries, aciEnabled, publishAci, plannedHours }) {
+async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publishChart, publishComputed, computedResults, signal, complete, aciEntries, aciEnabled, publishAci, plannedHours }) {
   const allEntries = hours.flatMap(hf => entries.get(hf))
   const index = buildKimNwpIndex({ model: KIM_NWP_MODEL, tmfc, entries: allEntries })
   const runId = buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc })
   writeKimNwpManifest(root, { type: 'kim_nwp_manifest', model: KIM_NWP_MODEL, tmfc, runId, usable: true, complete,
     gridCount: allEntries.length, expectedGridCount: allEntries.length, hours, updated_at: new Date().toISOString() }, DOMAIN)
   for (const kind of ['kim_gktg', 'kim_tropopause']) {
+    const hourResults = hours.map(hf => computedResults?.[kind]?.get(hf))
+    if (publishComputed?.[kind] && hourResults.every(Boolean)) {
+      try {
+        publishComputed[kind]({ root, domain: DOMAIN, tmfc, forecastHours: hours, hourResults })
+        continue
+      } catch (error) {
+        appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: DOMAIN }), { type: 'derived_publish_fallback', kind, reason: String(error.code || error.message).slice(0, 200) })
+      }
+    }
     const out = await runDerived(kind, { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: hours, publish: true } })
     if (!out?.saved && !out?.unchanged) throw new Error(`kim_expanded_${kind}_publish_failed`)
   }

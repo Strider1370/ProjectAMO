@@ -15,6 +15,8 @@ const BOUNDS = { lonMin: 120, latMin: 30, lonMax: 130, latMax: 38, dx: STEP, dy:
 const NX = 10 * 12 + 1
 const NY = 8 * 12 + 1
 const TMFC = '2026100906'
+// 대용량 키 사용 시간(KST 15~24시) 안의 시각.
+const IN_WINDOW = () => Date.parse('2026-10-09T11:00:00Z')
 
 function gridText(valueAt) {
   const rows = [`# 변수명 = x, unit = x, level = 0, i = ${NX}, j = ${NY}, map = S`]
@@ -48,10 +50,10 @@ test('expanded run fetches psl and accumulated precipitation per hour, builds ho
     writeKimNwpGrid({ root, domain: 'ea', grid: buildKimNwpGrid({ model: KIM_NWP_MODEL, tmfc: TMFC, hf, level, fetchedAt: '2099-01-01T00:00:00.000Z',
       components: [{ variable: 'u', unit: 'm/s', level: 0, nx: NX, ny: NY, bounds: BOUNDS, values: Array(NX * NY).fill(5) },
         { variable: 'v', unit: 'm/s', level: 0, nx: NX, ny: NY, bounds: BOUNDS, values: Array(NX * NY).fill(-3) }] }) })
-    await prefetchSurfaceChartInputs({ root, domain: 'ea', tmfc: TMFC, hf, fetchGrid })
+    await prefetchSurfaceChartInputs({ root, domain: 'ea', tmfc: TMFC, hf, fetchGrid, now: IN_WINDOW })
   }
-  await prefetchSurfaceChartInputs({ root, domain: 'ea', tmfc: TMFC, hf: 1, fetchGrid }) // 이미 받은 시각은 다시 받지 않는다.
-  await prefetchSurfaceChartInputs({ root, domain: 'kr', tmfc: TMFC, hf: 1, fetchGrid }) // 한반도 회차는 대상이 아니다.
+  await prefetchSurfaceChartInputs({ root, domain: 'ea', tmfc: TMFC, hf: 1, fetchGrid, now: IN_WINDOW }) // 이미 받은 시각은 다시 받지 않는다.
+  await prefetchSurfaceChartInputs({ root, domain: 'kr', tmfc: TMFC, hf: 1, fetchGrid, now: IN_WINDOW }) // 한반도 회차는 대상이 아니다.
   assert.deepEqual(calls, ['psl:0:bulk-key:1441,1441,1561,1537', ...[1, 2, 3, 4].flatMap(hf => [`psl:${hf}:bulk-key:1441,1441,1561,1537`, `prec_acc:${hf}:bulk-key:1441,1441,1561,1537`])])
 
   const result = await buildFrames({ root, tmfc: TMFC, forecastHours: hours })

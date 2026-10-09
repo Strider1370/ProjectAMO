@@ -19,7 +19,11 @@ const engineDir = fileURLToPath(new URL('../../python/kim_turbulence/', import.m
 const pressures = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
 export const GKTG_ALGORITHM = 'kim-gktg-python-v5'
 const sha = value => crypto.createHash('sha256').update(value).digest('hex').slice(0, 20)
-const engineRevision = () => sha(['python_core.py', 'python_port.py', 'python_dynamics.py', 'python_theta.py', 'python_structure.py', 'python_combine.py', 'calibration.json', 'calculate.py', 'input_validation.py', 'products.py', 'requirements.txt'].map(name => fs.readFileSync(path.join(engineDir, name))).reduce((result, value) => Buffer.concat([result, value]), Buffer.from('kim-gktg-field-v1\n')))
+// 계산 판: GKTG 코드와 계산에 쓰는 의존성(numpy·numba) 버전. requirements.txt의 다른 줄(같은 환경을 쓰는 ACI의 MetPy 등)은
+// GKTG 결과와 관계없으므로 넣지 않는다(2026-10-09 MetPy 한 줄 추가로 판이 바뀌어 이미 계산한 결과를 다시 계산했다).
+const gktgRequirements = () => Buffer.from(fs.readFileSync(path.join(engineDir, 'requirements.txt'), 'utf8').split('\n')
+  .filter(line => /^(numpy|numba)\b/.test(line.trim())).map(line => line.trim()).join('\n') + '\n')
+const engineRevision = () => sha([...['python_core.py', 'python_port.py', 'python_dynamics.py', 'python_theta.py', 'python_structure.py', 'python_combine.py', 'calibration.json', 'calculate.py', 'input_validation.py', 'products.py'].map(name => fs.readFileSync(path.join(engineDir, name))), gktgRequirements()].reduce((result, value) => Buffer.concat([result, value]), Buffer.from('kim-gktg-field-v1\n')))
 const sameGrid = (a, b) => ['nx', 'ny', 'lonMin', 'lonMax', 'latMin', 'latMax'].every(key => a[key] === b[key])
 // calculate.py의 FIELDS·SURFACE와 같은 순서.
 const CUBE_FIELDS = ['u', 'v', 'w', 'T', 'q', 'hgt']
@@ -288,8 +292,34 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   }
   appendKimRunEvent(runDir, { type: !complete ? 'gktg_partial' : publish ? 'gktg_published' : 'gktg_computed', hours: forecastHours, revision: published?.revision || null, fields: entries.length, failures: failures.length })
   writeKimGktgAttempt(root, tmfc, { tmfc, outcome: !complete ? 'partial' : publish ? 'complete' : 'computed', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() }, domain)
-  return { type: 'kim_gktg', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
+  // publish=false인 시각별 계산은 결과 목록·입력 지문·계산 판을 돌려준다. 확대 회차가 모아 두었다가
+  // publishComputedGktg로 다시 읽지 않고 게시한다.
+  const computedResult = publish ? {} : { entries, baseFingerprints: Object.fromEntries(baseFingerprints), engineRevision: engine }
+  return { type: 'kim_gktg', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete, ...computedResult,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length * pressures.length }, complete ? {} : { reason: 'kim_gktg_incomplete' }) }
+}
+
+// 확대 회차 게시: 시각별 계산(publish=false)이 돌려준 결과로 바로 게시한다. 게시를 다시 부르면 33시각 입력을 다시 준비하고
+// 결과를 모두 다시 열어 운영 서버에서 회차마다 약 7분(GKTG)·2분(권계면)이 걸렸다(2026-10-09). 입력 격자가 계산 뒤 바뀌지
+// 않았는지(파일 지문)와 결과 파일이 모두 있는지만 확인한다. 하나라도 맞지 않으면 던지고, 호출한 쪽이 예전 방식으로 게시한다.
+export function publishComputedGktg({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc, forecastHours, hourResults }) {
+  const engines = new Set(hourResults.map(result => result?.engineRevision))
+  if (engines.size !== 1 || !engines.values().next().value) throw new Error('kim_gktg_engine_mismatch')
+  const engine = engines.values().next().value
+  const entries = []
+  forecastHours.forEach((hf, index) => {
+    const result = hourResults[index]
+    const list = (result?.entries || []).filter(entry => entry.hf === hf)
+    for (const level of pressures) if (!list.some(entry => entry.levelId === level.id)) throw new Error('kim_gktg_hour_incomplete')
+    const captured = result.baseFingerprints?.[hf]
+    if (!captured || fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }) !== captured) throw new Error('kim_gktg_base_changed')
+    entries.push(...list)
+  })
+  const baseFingerprint = fingerprintKimNwpBase({ root, tmfc, hours: forecastHours, domain })
+  const published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() }, domain, { readFields: false })
+  appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), { type: 'gktg_published', hours: forecastHours, revision: published.revision, fields: entries.length, failures: 0, fromComputed: true })
+  writeKimGktgAttempt(root, tmfc, { tmfc, outcome: 'complete', expectedHours: forecastHours, fields: entries.length, failures: [], completed_at: new Date().toISOString() }, domain)
+  return published
 }
 
 export default { process }
