@@ -164,14 +164,25 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = f
   const keep = new Set(completeRuns.slice(0, limit))
   if (latestRunId) keep.add(latestRunId)
   for (const derivedLatest of [readKimGktgLatest(root, domain), readKimTropopauseLatest(root, domain)]) if (derivedLatest?.runId) keep.add(derivedLatest.runId)
+  // ACI는 기본 회차와 같은 회차일 때만 보존한다. 지도는 기본 회차와 다른 ACI를 표시하지 않으므로(aci_base_run_mismatch),
+  // 새 회차의 ACI가 실패해 latest가 옛 회차에 남아도 그 회차(약 5 GB)를 붙잡지 않는다. 기본 latest가 없으면 보존한다.
   const aciLatestFile = path.join(resolveKimNwpRoot(root, domain), 'derived', 'aci', 'latest.json')
-  if (fs.existsSync(aciLatestFile)) { const aci = readJson(aciLatestFile); if (aci?.runId) keep.add(aci.runId) }
+  if (fs.existsSync(aciLatestFile)) {
+    const aci = readJson(aciLatestFile)
+    const baseRunId = readKimNwpLatest(root, domain)?.latestRunId
+    if (aci?.runId && (!baseRunId || aci.runId === baseRunId)) keep.add(aci.runId)
+  }
   // Partial calculations and institution-pinned runs must survive base retention.
+  // ACI는 확대 수집기 안에서 시각별로 계산·재시도하므로 진행 중(6시간 이내)인 회차만 지킨다.
   for (const runId of listKimNwpRuns(root, domain)) {
     const dir = path.join(runsDir, runId)
     for (const product of ['gktg', 'tropopause', 'aci']) {
       const attemptFile = path.join(dir, 'derived', product, 'last-attempt.json')
       const attempt = fs.existsSync(attemptFile) ? readJson(attemptFile) : null
+      if (product === 'aci') {
+        if (attempt?.outcome === 'running' && Date.now() - Date.parse(attempt.started_at) < 6 * 3600000) keep.add(runId)
+        continue
+      }
       if (attempt?.outcome === 'running' || (attempt?.outcome === 'partial' && Date.now() - Date.parse(attempt.completed_at) < 24 * 3600000)) keep.add(runId)
     }
     if (fs.existsSync(path.join(dir, 'pins.json'))) keep.add(runId)

@@ -41,6 +41,10 @@ test('NC round trip, immutable binary/JSON, CAPE reuse across score changes and 
  assert.ok(fs.existsSync(aciPath({root,domain,tmfc,hf,revision})))
  assert.throws(()=>readKimAciField({root,domain:'kr',tmfc,hf,revision}),/ENOENT/)
  writeKimNwpLatest(root,{latestRun:'2026100906'},domain)
+ // 기본 회차가 바뀌었는데 ACI가 옛 회차에 남아 있으면, 옛 회차를 붙잡지 않는다(화면에도 안 쓰임).
+ writeKimNwpLatest(root,{latestRun:'2026100906',latestRunId:'KIMG_NE57_2026100906'},domain)
+ cleanupKimNwpRuns({root,domain,maxRuns:1,latestRunId:'KIMG_NE57_2026100906'})
+ assert.equal(fs.existsSync(aciPath({root,domain,tmfc,hf,revision})),false)
  assert.equal(readKimAciIndex(root,domain).times.length,0)
  assert.equal(readKimAciIndex(root,domain).reason,'aci_base_run_mismatch')
 })

@@ -87,6 +87,24 @@ export async function collectExpandedRun({
   const failures = []
   const aciInputs = new Set()
   const aciEntries = []
+  // ACI 입력 또는 계산이 실패한 시각. 회차 끝에서 한 번 더 시도한다(기본 다운로드·계산 흐름을 기다리게 하지 않는다).
+  const aciPending = new Set()
+  const runAci = async (hf) => {
+    try {
+      const out = await runDerived('kim_aci', { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf], publish: false } })
+      if (out?.entries?.length) {
+        aciEntries.push(...out.entries)
+        aciPending.delete(hf)
+        return 'ok'
+      }
+      aciPending.add(hf)
+      return out?.failures?.[0]?.reason || 'failed'
+    } catch (error) {
+      if (signal?.aborted) throw error
+      aciPending.add(hf)
+      return String(error.code || error.message).slice(0, 200)
+    }
+  }
   const started = now()
   appendKimRunEvent(runDir, { type: 'expanded_started', hours: hours.length, stopAt: Number.isFinite(stopAt) ? new Date(stopAt).toISOString() : null })
 
@@ -104,13 +122,8 @@ export async function collectExpandedRun({
           result[kind] = String(error.code || error.message).slice(0, 200)
         }
       }
-      if (aciEnabled && aciInputs.has(hf)) {
-        try {
-          const out = await runDerived('kim_aci', { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf], publish: false } })
-          aciEntries.push(...(out?.entries || []))
-          result.kim_aci = out?.entries?.length ? 'ok' : out?.failures?.[0]?.reason || 'failed'
-        } catch (error) { if (signal?.aborted) throw error; result.kim_aci = String(error.code || error.message).slice(0,200) }
-      } else if (aciEnabled) result.kim_aci = 'inputs_unavailable'
+      if (aciEnabled && aciInputs.has(hf)) result.kim_aci = await runAci(hf)
+      else if (aciEnabled) { result.kim_aci = 'inputs_unavailable'; aciPending.add(hf) }
       // 지도 이진 파일(착빙·구름 등)과 강수 레이어 장 만들기. 실패해도 그 시각은 게시한다(지도 파일은 요청 때 만들고,
       // 강수 장이 없는 시각은 강수 레이어에서만 빠진다).
       for (const kind of ['kim_map_responses', 'kim_surface_chart']) {
@@ -196,15 +209,10 @@ export async function collectExpandedRun({
       continue
     }
     if (aciEnabled) {
-      // ACI 실패는 기본 격자 성공 여부와 분리한다. 키 마감 전에 캐시를 확보한다.
-      for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
-        try { await prefetchAci({root,domain:DOMAIN,tmfc,hf,signal,fetchGrid}); aciInputs.add(hf); break }
-        catch (error) {
-          if (signal?.aborted) throw error
-          appendKimRunEvent(runDir,{type:'aci_inputs_failed',hf,attempt,reason:String(error.code||error.message).slice(0,200)})
-          if (attempt === retryDelaysMs.length || now() >= stopAt) break
-          await delay(retryDelaysMs[attempt],undefined,{signal})
-        }
+      // ACI 실패는 기본 격자 성공 여부와 분리한다. 여기서는 한 번만 시도하고(기다리지 않음), 실패한 시각은 회차 끝에서 다시 받는다.
+      try { await prefetchAci({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }); aciInputs.add(hf) } catch (error) {
+        if (signal?.aborted) throw error
+        appendKimRunEvent(runDir, { type: 'aci_inputs_failed', hf, attempt: 0, reason: String(error.code || error.message).slice(0, 200) })
       }
     }
     entries.set(hf, hourEntries)
@@ -215,6 +223,24 @@ export async function collectExpandedRun({
     }
   }
   await computeChain
+
+  // ACI가 빠진 시각을 한 번 더: 입력은 키 마감(stopAt) 전에만 다시 받고, 계산은 마감과 관계없이 한다.
+  if (aciEnabled && aciPending.size) {
+    for (const hf of [...aciPending].sort((a, b) => a - b)) {
+      if (signal?.aborted) break
+      if (!downloaded.includes(hf)) continue
+      if (!aciInputs.has(hf)) {
+        if (now() >= stopAt) continue
+        try { await prefetchAci({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }); aciInputs.add(hf) } catch (error) {
+          if (signal?.aborted) throw error
+          appendKimRunEvent(runDir, { type: 'aci_inputs_failed', hf, attempt: 1, reason: String(error.code || error.message).slice(0, 200) })
+          continue
+        }
+      }
+      const outcome = await runAci(hf)
+      appendKimRunEvent(runDir, { type: 'aci_retry', hf, outcome })
+    }
+  }
 
   const publishable = publishableHours(hours, downloaded, computed)
   const lastHour = publishable.at(-1)

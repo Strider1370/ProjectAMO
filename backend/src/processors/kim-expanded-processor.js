@@ -1,4 +1,3 @@
-import { readKimAciLatest } from './kim-aci-store.js'
 // 확대 영역 정기 수집 작업(kim_expanded_00·kim_expanded_06). 수집·계산 자체는 kim-expanded-collector.js가 한다.
 //
 // 여기서 정하는 것(운영안 "관리 방법", 2026-10-08):
@@ -93,8 +92,9 @@ export async function processExpandedCycle({
   if (!availability.available) return { type: 'kim_expanded', tmfc, skipped: true, reason: availability.reason, collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: availability.reason }) }
   const latest = readKimNwpLatest(root, 'ea')
   const manifest = readKimNwpManifest(root, buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc }), 'ea')
-  const aciLatest = config.kim_aci.enabled ? readKimAciLatest(root, 'ea') : null
-  if (latest?.latestRun === tmfc && manifest?.complete && (!config.kim_aci.enabled || (aciLatest?.tmfc === tmfc && aciLatest?.complete))) {
+  // 회차 완료는 기본 격자로만 판정한다. ACI가 빠진 시각은 수집기가 회차 끝에서 다시 시도하며, 그 때문에 정기 재시도마다
+  // 회차 전체를 다시 확인(30분 안팎)하지 않는다.
+  if (latest?.latestRun === tmfc && manifest?.complete) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: 'kim_expanded_run_complete', collection: collectionResult('complete', { tmfc }) }
   }
   const elsewhere = expandedRunElsewhere(root, cycle)

@@ -124,3 +124,27 @@ test('ACI input or publication failure does not block the base KIM publication',
   assert.deepEqual(result.aci,{inputs:2,computed:2,published:0})
   assert.equal(readKimNwpLatest(root,'ea').latestRun,TMFC)
 })
+
+test('ACI inputs are tried once inline and again at the end of the run; a failed ACI calculation is retried there too', async t => {
+  const root = temporary(t), { options } = harness(root, { stepMinutes: 1 })
+  let inputCalls = 0
+  let aciCalls = 0
+  const result = await collectExpandedRun({ ...options, hours: [0, 1, 2, 27], stopAtMs: Infinity, aciEnabled: true,
+    prefetchAci: async ({ hf }) => { inputCalls++; if (hf === 1 && inputCalls <= 3) throw new Error('q2m unavailable') },
+    runDerived: async (kind, { jobOptions }) => {
+      if (kind !== 'kim_aci') return { saved: true, failures: [] }
+      const hf = jobOptions.forecastHours[0]
+      aciCalls++
+      if (hf === 2 && aciCalls === 2) return { entries: [], failures: [{ hf, reason: 'python_failed' }] }
+      return { entries: [{ hf, revision: 'a'.repeat(24) }], failures: [] }
+    },
+    publishAci: ({ entries }) => ({ tmfc: TMFC, entries }) })
+  assert.equal(result.published, true)
+  // +1h 입력은 줄 안에서 한 번 실패, 끝에서 다시 받아 성공. +2h 계산은 끝에서 다시 해 성공.
+  assert.equal(inputCalls, 5)
+  assert.deepEqual(result.aci, { inputs: 4, computed: 4, published: 4 })
+  const events = fs.readFileSync(path.join(root, 'kim_nwp_ea', 'runs', `KIMG_NE57_${TMFC}`, 'events.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line))
+  const lastCollected = events.findLastIndex(event => event.type === 'expanded_hour_collected')
+  assert.ok(events.findIndex(event => event.type === 'aci_retry') > lastCollected)
+  assert.deepEqual(events.filter(event => event.type === 'aci_retry').map(event => [event.hf, event.outcome]), [[1, 'ok'], [2, 'ok']])
+})
