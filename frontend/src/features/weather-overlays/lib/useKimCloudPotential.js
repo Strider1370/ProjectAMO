@@ -11,6 +11,7 @@ import {
 } from './useKimSurfaceWind.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
 import { kimFieldCache } from './kimFieldCache.js'
+import { prefetchKimNeighbors } from './kimNeighborPrefetch.js'
 
 function isAbortError(error) {
   return error?.name === 'AbortError'
@@ -156,6 +157,12 @@ export function useKimCloudPotential(enabled, selection, setSelection, { dataMod
   }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(cloudIndex)
+
+  // 지금 장이 다 뜨면 이웃 시각·고도를 미리 받아 둔다(kimNeighborPrefetch.js).
+  useEffect(() => {
+    if (!enabled || pinned || status !== 'ready') return
+    prefetchKimNeighbors({ type: 'cloud', index: cloudIndex, selection, canRequest: canRequestKimCloudField })
+  }, [enabled, pinned, status, cloudIndex, selection?.domain, selection?.tmfc, selection?.hf, selection?.level])
   return {
     cloudField: getKimCloudFieldForSelection(cloudField, cloudFieldKey, selection),
     cloudIndex: normalized.windIndex,

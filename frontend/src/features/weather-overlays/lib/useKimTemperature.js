@@ -11,6 +11,7 @@ import {
 } from './useKimSurfaceWind.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
 import { kimFieldCache } from './kimFieldCache.js'
+import { prefetchKimNeighbors } from './kimNeighborPrefetch.js'
 import { pressureKimIndex } from './cloudIcingModel.js'
 
 function selectionKey(selection) {
@@ -144,6 +145,12 @@ export function useKimTemperature(enabled, selection, setSelection, { dataMode =
   }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(temperatureIndex)
+
+  // 지금 장이 다 뜨면 이웃 시각·고도를 미리 받아 둔다(kimNeighborPrefetch.js).
+  useEffect(() => {
+    if (!enabled || pinned || status !== 'ready') return
+    prefetchKimNeighbors({ type: 'temp', index: temperatureIndex, selection, canRequest: (index, candidate) => !!selectKimNwpAvailability(index, candidate) && (!pressureOnly || /hPa$/.test(candidate.level)) })
+  }, [enabled, pinned, status, temperatureIndex, selection?.domain, selection?.tmfc, selection?.hf, selection?.level])
   return {
     temperatureField: getKimNwpFieldForSelection(temperatureField, temperatureFieldKey, selection, 'T'),
     temperatureIndex: normalized.windIndex,

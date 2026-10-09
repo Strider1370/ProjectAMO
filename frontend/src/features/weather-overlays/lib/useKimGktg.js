@@ -10,6 +10,7 @@ import {
 } from './useKimSurfaceWind.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
 import { kimFieldCache } from './kimFieldCache.js'
+import { prefetchKimNeighbors } from './kimNeighborPrefetch.js'
 
 function isAbortError(error) {
   return error?.name === 'AbortError'
@@ -156,6 +157,12 @@ export function useKimGktg(enabled, selection, setSelection, { dataMode = 'live'
   }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(gktgIndex)
+
+  // 지금 장이 다 뜨면 이웃 시각·고도를 미리 받아 둔다(kimNeighborPrefetch.js).
+  useEffect(() => {
+    if (!enabled || pinned || status !== 'ready') return
+    prefetchKimNeighbors({ type: 'gktg', index: gktgIndex, selection, canRequest: canRequestKimGktgField, revisionFor: (candidate) => selectKimNwpAvailability(gktgIndex, candidate)?.hashes?.gktg })
+  }, [enabled, pinned, status, gktgIndex, selection?.domain, selection?.tmfc, selection?.hf, selection?.level])
   return {
     gktgField: getKimGktgFieldForSelection(gktgField, gktgFieldKey, pinned ? selection : { ...selection, revision: selectKimNwpAvailability(gktgIndex, selection)?.hashes?.gktg }),
     gktgIndex: normalized.windIndex,

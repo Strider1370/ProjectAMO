@@ -6,6 +6,7 @@ import {
 } from '../../../api/weatherApi.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
 import { kimFieldCache } from './kimFieldCache.js'
+import { prefetchKimNeighbors } from './kimNeighborPrefetch.js'
 
 function getLowPowerState() {
   if (typeof window === 'undefined') return false
@@ -253,6 +254,12 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
 
   const normalized = normalizeKimNwpIndex(windIndex)
 
+
+  // 지금 장이 다 뜨면 이웃 시각·고도를 미리 받아 둔다(kimNeighborPrefetch.js).
+  useEffect(() => {
+    if (!enabled || pinned || status !== 'ready') return
+    prefetchKimNeighbors({ type: 'wind', index: windIndex, selection, canRequest: (index, candidate) => !!selectKimNwpAvailability(index, candidate) })
+  }, [enabled, pinned, status, windIndex, selection?.domain, selection?.tmfc, selection?.hf, selection?.level])
   return {
     windField: windIndex ? getKimNwpFieldForSelection(windField, windFieldKey, selection) : windField,
     windIndex: normalized.windIndex,
