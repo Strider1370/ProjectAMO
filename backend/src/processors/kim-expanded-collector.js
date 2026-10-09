@@ -3,8 +3,8 @@
 // 대용량 키는 KST 15~24시에만 쓸 수 있어, 예보시각을 앞쪽부터 하나씩 받고(기본 격자 22층 + GKTG·권계면 추가 입력)
 // 받은 시각은 바로 GKTG·권계면 계산(자식 프로세스, 게시 없음)에 넘긴다. 다음 시각을 받는 동안 앞 시각을 계산한다.
 // stop_requests_kst(23:50)가 지나면 새 시각을 받지 않는다. 계산은 키가 필요 없어 자정을 넘겨도 끝까지 한다.
-// 다 끝나면 앞에서부터 끊김 없이 받은 시각까지를 게시하되, 회차별 기준(publish_min_hour)에 못 미치면 게시하지 않고
-// 이전 회차를 그대로 둔다(짧은 회차로 바꾸면 이전 회차가 덮던 시간이 빈다).
+// 다 끝나면 받고 계산까지 끝난 시각을 모두 게시한다(중간에 빠진 시각은 시간 막대에서만 빠진다). 마지막 시각이
+// 회차별 기준(publish_min_hour)에 못 미치면 게시하지 않고 이전 회차를 그대로 둔다(짧은 회차로 바꾸면 이전 회차가 덮던 시간이 빈다).
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
@@ -36,15 +36,10 @@ export function kstCutoffMs(tmfc, hhmm) {
   return dayUtc + (hour * 60 + minute) * 60_000 - 9 * 3600_000
 }
 
-// 앞에서부터 끊김 없이 받은 예보시각들.
-export function contiguousHours(planned, okHours) {
-  const ok = new Set(okHours)
-  const out = []
-  for (const hf of planned) {
-    if (!ok.has(hf)) break
-    out.push(hf)
-  }
-  return out
+// 게시할 수 있는 예보시각: 받기와 계산이 모두 끝난 시각(계획 순서). 중간에 빠진 시각이 있어도 뒤 시각을 버리지 않는다.
+export function publishableHours(planned, downloaded, computed) {
+  const ok = new Set(downloaded.filter(hf => computed.includes(hf)))
+  return planned.filter(hf => ok.has(hf))
 }
 
 export function expandedCycle(tmfc) {
@@ -182,7 +177,7 @@ export async function collectExpandedRun({
   }
   await computeChain
 
-  const publishable = contiguousHours(hours, downloaded.filter(hf => computed.includes(hf)))
+  const publishable = publishableHours(hours, downloaded, computed)
   const lastHour = publishable.at(-1)
   if (failures.some(failure => /HTTP (401|403)|unauthori[sz]ed|forbidden/i.test(failure.reason || ''))) stopReason ||= 'credential_rejected'
   const meetsMinimum = Number.isFinite(lastHour) && lastHour >= minHour

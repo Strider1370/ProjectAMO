@@ -6,7 +6,7 @@ import path from 'node:path'
 import config from '../src/config.js'
 import { KIM_NWP_MODEL, addForecastHours } from '../src/processors/kim-nwp-model.js'
 import { readKimNwpIndex, readKimNwpLatest, writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
-import { collectExpandedRun, contiguousHours, kstCutoffMs } from '../src/processors/kim-expanded-collector.js'
+import { collectExpandedRun, kstCutoffMs, publishableHours } from '../src/processors/kim-expanded-collector.js'
 
 const TMFC = '2099010106'
 const temporary = t => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-expanded-')); t.after(() => fs.rmSync(root, { recursive: true, force: true })); return root }
@@ -76,27 +76,30 @@ test('new requests stop at 23:50 KST; a run reaching +27h for 06 UTC is publishe
   assert.equal(readKimNwpLatest(root2), null)
 })
 
-test('a gap stops the published range; below the minimum the previous run is kept', async t => {
+test('a missing hour in the middle only drops that hour; a run ending below the minimum keeps the previous run', async t => {
   const root = temporary(t)
   const hours = config.kim_expanded.cycles['06']
-  const gap = harness(root, { failHours: [30], stepMinutes: 1 }) // +30h 수집 실패
+  const gap = harness(root, { failHours: [10], stepMinutes: 1 }) // +10h 수집 실패(재시도 후에도)
   const result = await collectExpandedRun({ ...gap.options, stopAtMs: Number.POSITIVE_INFINITY, hours })
-  assert.equal(result.lastHour, 27)
   assert.equal(result.published, true)
-  assert.deepEqual(readKimNwpIndex(root, 'ea').times.map(time => time.hf).at(-1), 27)
-  assert.ok(result.failures.some(failure => failure.hf === 30 && failure.stage === 'base'))
+  assert.equal(result.lastHour, 48)
+  assert.equal(result.publishedHours, hours.length - 1)
+  const published = readKimNwpIndex(root, 'ea').times.map(time => time.hf)
+  assert.equal(published.includes(10), false)
+  assert.equal(published.includes(11), true)
+  assert.ok(result.failures.some(failure => failure.hf === 10 && failure.stage === 'base'))
 
+  // 06 UTC가 23:50 마감으로 +24h에서 끊기면(기준 +27h 미만) 게시하지 않는다.
   const root2 = temporary(t)
-  const broken = harness(root2, { computeFail: [10], stepMinutes: 1 })
-  const short = await collectExpandedRun({ ...broken.options, stopAtMs: Number.POSITIVE_INFINITY, hours })
-  assert.equal(short.lastHour, 9)
+  const cut = harness(root2, { stepMinutes: 1 })
+  const short = await collectExpandedRun({ ...cut.options, stopAtMs: Number.POSITIVE_INFINITY, hours: hours.filter(hf => hf <= 24) })
+  assert.equal(short.lastHour, 24)
   assert.equal(short.published, false)
-  assert.ok(short.failures.some(failure => failure.hf === 10 && failure.stage === 'compute'))
 })
 
-test('helpers: KST request cutoff and contiguous hours', () => {
+test('helpers: KST request cutoff and publishable hours', () => {
   assert.equal(new Date(kstCutoffMs('2026100906', '23:50')).toISOString(), '2026-10-09T14:50:00.000Z')
-  assert.deepEqual(contiguousHours([0, 1, 2, 27], [0, 1, 27]), [0, 1])
+  assert.deepEqual(publishableHours([0, 1, 2, 27], [27, 0, 2, 1], [0, 2, 27]), [0, 2, 27])
 })
 
 test('a level that fails once inside an hour is fetched again, and the hour still counts', async t => {
