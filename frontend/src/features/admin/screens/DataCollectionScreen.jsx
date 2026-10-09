@@ -4,6 +4,7 @@ import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import { getCollectionTimeline } from '../adminApi.js'
 import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, eventMeasurementLabel, executionProblems, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
 import { apiOperationSummary } from '../lib/apiOperationSummary.js'
+import { expandedProgressView } from '../lib/expandedProgress.js'
 import { boardGroups, hourCell, minuteClock, nextScheduled, reasonText, runSummary, upcomingRuns } from '../lib/collectionBoard.js'
 import ApiExecutionDialog from './ApiExecutionDialog.jsx'
 
@@ -138,7 +139,7 @@ export default function DataCollectionScreen({ health, now = Date.now(), adminQu
                         aria-selected={selectedKey === row.key}
                         onClick={() => setSelectedKey(row.key)}
                         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedKey(row.key) } }}>
-                        <td className="ac-cb-name" title={entry ? `${row.label} · ${entry.cadence}` : row.label}>{row.label}</td>
+                        <td className="ac-cb-name" title={entry ? `${row.label} · ${entry.cadence}` : row.label}>{row.label}{row.expandedProgress?.state === 'running' && <span className="ac-cb-progress-brief" data-expanded-brief>{expandedProgressView(row.expandedProgress).brief}</span>}</td>
                         <td className="ac-cb-state"><span className={`ac-chip ac-${STATUS_TONE[row.status]}`}>{STATUS_WORD[row.status]}</span></td>
                         {HOURS.map((hour) => <HourCell key={hour} entry={entry} hour={hour} nowMinute={nowMinute} current={hour === currentHour}
                           onHover={(event) => showTip(event, row, hour)} />)}
@@ -230,6 +231,7 @@ function CollectionRowDetail({ row, entry, timeline, now, tz, formatDateTime, on
         계산 {row.derivedCalculation.outcome === 'complete' ? '완료' : row.derivedCalculation.outcome === 'running' ? '진행 중' : '입력 대기 또는 일부 실패'} · {row.derivedCalculation.fields ?? 0}/{(row.derivedCalculation.expectedHours?.length || 13) * 21}층
         {row.derivedCalculation.failures?.length > 0 && <details><summary>미완료 {row.derivedCalculation.failures.length}개 시각</summary>{row.derivedCalculation.failures.map((failure) => <div key={failure.hf}>F{String(failure.hf).padStart(3, '0')}: {failure.reason}</div>)}</details>}
       </div>}
+      {row.expandedProgress && <ExpandedProgress progress={row.expandedProgress} formatDateTime={formatDateTime} />}
       {row.eventDriven && <div className="ac-sub">{eventMeasurementLabel(row.eventMeasurement)}</div>}
       {row.airportRuns && (
         <details className="ac-sub ac-model-health">
@@ -264,6 +266,32 @@ function CollectionRowDetail({ row, entry, timeline, now, tz, formatDateTime, on
           ))}</ul>
         ) : <p className="ac-cb-hint">{dayWord} 실행 기록이 없습니다.</p>}
       </div>
+    </div>
+  )
+}
+
+// KIM 확대 영역 최근 회차: 받기·계산 막대, 예상 끝 시각, 한반도 06 UTC 잘라내기, 서버 메모리.
+function ExpandedProgress({ progress, formatDateTime }) {
+  const view = expandedProgressView(progress)
+  return (
+    <div className="ac-cb-expanded" data-expanded-progress={progress.state}>
+      <h3 className="ac-cb-h3">{view.cycle} 회차 <span className={`ac-chip ac-${view.tone}`}>{view.stateWord}</span></h3>
+      {[['받기', progress.collectedPct, view.collected], ['계산', progress.computedPct, view.computed]].map(([label, pct, text]) => (
+        <div key={label} className="ac-bar-row">
+          <span className="ac-bn">{label}</span>
+          <div className="ac-bar" role="progressbar" aria-label={`${label} 진행률`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span style={{ width: `${pct}%` }} /></div>
+          <span className="ac-bv">{text}</span>
+        </div>
+      ))}
+      <dl className="ac-cb-facts">
+        <dt>시작</dt><dd>{formatDateTime(progress.startedAt)}</dd>
+        {progress.state === 'running'
+          ? <><dt>예상 끝</dt><dd>{progress.etaAt ? formatDateTime(progress.etaAt) : '첫 시각 계산 뒤 표시'}</dd></>
+          : <><dt>끝</dt><dd>{progress.endedAt ? formatDateTime(progress.endedAt) : '기록 없음(재시작 등으로 끊김)'}{progress.publishedHours ? ` · ${progress.publishedHours}시각 게시` : ''}</dd></>}
+        {view.stop && <><dt>중단</dt><dd className="ac-cb-err">{view.stop}</dd></>}
+        {view.korea && <><dt>한반도 06 UTC</dt><dd>{view.korea}{progress.korea?.saved ? ` · ${formatDateTime(progress.korea.at)}` : ''}</dd></>}
+        {view.memory && <><dt>서버 메모리</dt><dd>{view.memory}</dd></>}
+      </dl>
     </div>
   )
 }

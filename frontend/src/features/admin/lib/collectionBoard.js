@@ -10,6 +10,8 @@ const REASON_TEXT = [
   [/^collection_cancelled_for_data_transition$/, '자료 전환으로 취소'],
   [/^kim_(gktg|tropopause)_(base_waiting|incomplete)$/, 'KIM 입력 대기'],
   [/^api_hub_budget_blocked$/, '하루 사용량 초과'],
+  [/^kim_expanded_running_elsewhere$/, '수동 실행이 같은 회차를 받는 중'],
+  [/^kim_expanded_run_complete$/, '이미 받은 회차라 건너뜀'],
 ]
 export function reasonText(reason) {
   if (!reason) return null
