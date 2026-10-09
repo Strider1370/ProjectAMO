@@ -95,6 +95,14 @@ export async function collectExpandedRun({
           result[kind] = String(error.code || error.message).slice(0, 200)
         }
       }
+      // 착빙·구름 지도 응답 미리 만들기. 실패해도 그 시각은 게시한다(지도 API가 요청 때 만든다).
+      try {
+        const out = await runDerived('kim_map_responses', { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf] } })
+        result.kim_map_responses = out?.failures?.length ? `${out.failures.length} failed` : 'ok'
+      } catch (error) {
+        if (signal?.aborted) throw error
+        result.kim_map_responses = String(error.code || error.message).slice(0, 200)
+      }
       result.ms = now() - at
       if (result.kim_gktg === 'ok' && result.kim_tropopause === 'ok') computed.push(hf)
       else failures.push({ hf, stage: 'compute', gktg: result.kim_gktg, tropopause: result.kim_tropopause })

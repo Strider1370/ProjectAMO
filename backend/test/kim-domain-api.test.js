@@ -3,11 +3,14 @@ import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import { mkdtemp, rm } from 'node:fs/promises'
+import fs from 'node:fs'
+import zlib from 'node:zlib'
 import test from 'node:test'
 
 // config를 가져오는 모듈은 import하지 않는다. 서버를 띄우기 전에 DATA_PATH를 정해야 한다.
 import { KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpGrid, buildKimNwpIndex, buildKimNwpIndexEntry } from '../src/processors/kim-nwp-model.js'
 import { buildKimNwpRunId, resolveKimNwpGridPath, writeKimNwpGrid, writeKimNwpIndex, writeKimNwpLatest } from '../src/processors/kim-nwp-store.js'
+import { decodeKimMapBinary } from '../../shared/kim-map-binary.js'
 
 const listen = app => new Promise((resolve, reject) => {
   const server = http.createServer(app)
@@ -65,6 +68,19 @@ test('KIM map API serves the expanded domain only when asked and keeps Korea as 
     assert.equal(auto.status, 200)
     assert.equal(auto.body.domain, 'ea')
     assert.equal((await json('/api/snapshot-meta')).body.kimNwp.domain, 'ea')
+
+    // 지도 이진 파일: 처음에는 백엔드가 만들어 저장하고, 다음부터는 저장된 파일(정적)을 보낸다. 내용은 JSON 응답과 같다.
+    const binPath = `kim_nwp_ea/runs/KIMG_NE57_${tmfc}/derived/map-bin/temp-below-ground-v1/850hPa/hf030.bin.gz`
+    const first = await fetch(`${base}/data/${binPath}`)
+    assert.equal(first.status, 200)
+    const decoded = decodeKimMapBinary(zlib.gunzipSync(Buffer.from(await first.arrayBuffer())))
+    assert.deepEqual(decoded, eaField.body)
+    assert.ok(fs.existsSync(path.join(root, binPath)))
+    const second = await fetch(`${base}/data/${binPath}`)
+    assert.equal(second.status, 200)
+    assert.match(second.headers.get('cache-control'), /immutable/)
+    assert.equal((await fetch(`${base}/data/kim_nwp_ea/runs/KIMG_NE57_${tmfc}/derived/map-bin/evil-name/850hPa/hf030.bin.gz`)).status, 404)
+    assert.equal((await fetch(`${base}/data/kim_nwp_ea/runs/KIMG_NE57_${tmfc}/derived/map-bin/temp-below-ground-v1/9999hPa/hf030.bin.gz`)).status, 400)
 
     assert.equal((await json('/api/kim/temp/index?domain=xx')).status, 400)
     assert.equal((await json(`/api/kim/temp/field?domain=xx&tmfc=${tmfc}&hf=0&level=850hPa`)).status, 400)

@@ -1,6 +1,7 @@
 import FALLBACK_AIRPORTS from '../../../shared/airports.js'
 import { ADSB_FETCH_DISABLED } from './adsbApi.js'
 import { versionedAsset } from '../shared/versionedAsset.js'
+import { fetchKimMapBinary, kimMapBinaryName, kimMapBinarySupported, kimMapBinaryUrl } from './kimMapBinary.js'
 
 const KMA_RADAR_GRAPHICS_META = /^\/data\/radar\/(?:hsr\/hsr_meta|hci\/hci_meta|wissdom\/wissdom_meta|qpf\/qpf_meta)\.json$/
 
@@ -298,12 +299,25 @@ function kimFieldParams({ tmfc, hf, level, revision, domain }) {
   return params
 }
 
+// 라이브 지도 한 장은 이진 파일로 받는다(kimMapBinary.js). 특정 판(revision)을 고정한 요청(기관 브리핑)과
+// 이진 파일을 받지 못한 경우는 JSON API를 쓴다.
+async function fetchKimMapField(type, selection, jsonUrl, options) {
+  if (!selection?.revision && selection?.level && kimMapBinarySupported()) {
+    try {
+      return await fetchKimMapBinary(kimMapBinaryUrl({ ...selection, name: kimMapBinaryName(type) }), options)
+    } catch (error) {
+      if (options?.signal?.aborted) throw error
+    }
+  }
+  return fetchJson(jsonUrl, options)
+}
+
 export async function fetchKimNwpIndex(options = {}) {
   return fetchJson(`/api/kim/wind/index?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
 export async function fetchKimNwpField(selection, options = {}) {
-  return fetchJson(`/api/kim/wind/field?${kimFieldParams(selection).toString()}`, options)
+  return fetchKimMapField('wind', selection, `/api/kim/wind/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimTemperatureIndex(options = {}) {
@@ -311,7 +325,7 @@ export async function fetchKimTemperatureIndex(options = {}) {
 }
 
 export async function fetchKimTemperatureField(selection, options = {}) {
-  return fetchJson(`/api/kim/temp/field?${kimFieldParams(selection).toString()}`, options)
+  return fetchKimMapField('temp', selection, `/api/kim/temp/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimCloudPotentialIndex(options = {}) {
@@ -319,7 +333,7 @@ export async function fetchKimCloudPotentialIndex(options = {}) {
 }
 
 export async function fetchKimCloudPotentialField(selection, options = {}) {
-  return fetchJson(`/api/kim/cloud/field?${kimFieldParams(selection).toString()}`, options)
+  return fetchKimMapField('cloud', selection, `/api/kim/cloud/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimIcingIndex(options = {}) {
@@ -327,7 +341,7 @@ export async function fetchKimIcingIndex(options = {}) {
 }
 
 export async function fetchKimIcingField(selection, options = {}) {
-  return fetchJson(`/api/kim/icing/field?${kimFieldParams(selection).toString()}`, options)
+  return fetchKimMapField('icing', selection, `/api/kim/icing/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimGktgIndex(options = {}) {
@@ -354,7 +368,16 @@ export async function fetchKimGktgField({ tmfc, hf, level, revision, domain }, o
   const params = new URLSearchParams({ tmfc, hf: String(hf), level, view: KIM_FIELD_VIEW })
   if (revision) params.set('revision', revision)
   if (domain && domain !== 'kr') params.set('domain', domain)
-  return fetchJson(`/api/kim/gktg/field?${params.toString()}`, options)
+  const jsonUrl = `/api/kim/gktg/field?${params.toString()}`
+  // GKTG 판(revision)은 목록에서 오며 이진 파일 이름에 들어간다.
+  if (revision && /^[a-z0-9]+$/i.test(revision) && kimMapBinarySupported()) {
+    try {
+      return await fetchKimMapBinary(kimMapBinaryUrl({ domain, tmfc, hf, level, name: kimMapBinaryName('gktg', revision) }), options)
+    } catch (error) {
+      if (options?.signal?.aborted) throw error
+    }
+  }
+  return fetchJson(jsonUrl, options)
 }
 
 export async function fetchKtgIndex(options = {}) {

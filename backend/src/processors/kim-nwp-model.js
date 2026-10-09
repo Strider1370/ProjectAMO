@@ -85,6 +85,20 @@ function encodeComponent(values, scale = DEFAULT_SCALE) {
   })
 }
 
+// decodeComponent와 같은 값을 Float64Array로 만든다(큰 격자에서 배열 복사·클로저 없이).
+function decodeComponentFloat(values, variable = {}) {
+  const out = new Float64Array(values.length)
+  const scaled = variable.encoding === 'int16-scaled-json-v1'
+  const scale = variable.scale ?? 1
+  const offset = variable.offset ?? 0
+  for (let i = 0; i < values.length; i += 1) {
+    const value = values[i]
+    if (scaled) out[i] = value === MISSING_ENCODED || !Number.isFinite(value) ? Number.NaN : value * scale + offset
+    else out[i] = value == null ? Number.NaN : value
+  }
+  return out
+}
+
 export function decodeComponent(values, variable = {}) {
   if (variable.encoding === 'int16-scaled-json-v1') {
     return values.map((value) => (
@@ -420,33 +434,41 @@ export function buildKimIcingFieldFromGrid(grid) {
     if (!variables[name]) throw new Error(`KIM NWP grid is missing ${name} variable`)
   }
 
-  const decoded = Object.fromEntries(required.map((name) => [name, decodeComponent(variables[name].values || [], variables[name])]))
-  const rawScores = []
-  const icingScore = []
-  const icingGrade = []
+  // 확대 영역 한 장은 44만 칸이다. 칸마다 객체를 만들지 않고, 판정 조건(-35~0°C, RH 60% 이상) 밖의 칸은 점수 0으로 바로 둔다
+  // (calcKFipLiteScore도 이 칸에 0을 돌려준다). 조건 안의 칸만 기존 계산식으로 계산한다.
+  const decoded = Object.fromEntries(required.map((name) => [name, decodeComponentFloat(variables[name].values || [], variables[name])]))
+  const { T, rh_liq: rhLiqs, w: ws, tqc: tqcs, tqi: tqis, tqr: tqrs, tqs: tqss, cld: clds } = decoded
+  const count = T.length
+  const rawScores = new Float64Array(count)
+  const icingScore = new Array(count)
+  const icingGrade = new Array(count)
 
-  for (let index = 0; index < decoded.T.length; index += 1) {
-    const values = {
-      tempC: decoded.T[index] - 273.15,
-      rhLiq: decoded.rh_liq[index],
-      w: decoded.w[index],
-      tqc: decoded.tqc[index],
-      tqi: decoded.tqi[index],
-      tqr: decoded.tqr[index],
-      tqs: decoded.tqs[index],
-      cld: decoded.cld[index],
-    }
-    if (!Object.values(values).every(Number.isFinite)) {
-      rawScores.push(Number.NaN)
-      icingScore.push(MISSING_ENCODED)
-      icingGrade.push(MISSING_ENCODED)
+  for (let index = 0; index < count; index += 1) {
+    const tempC = T[index] - 273.15
+    const rhLiq = rhLiqs[index]
+    const w = ws[index]
+    const tqc = tqcs[index]
+    const tqi = tqis[index]
+    const tqr = tqrs[index]
+    const tqs = tqss[index]
+    const cld = clds[index]
+    if (!(Number.isFinite(tempC) && Number.isFinite(rhLiq) && Number.isFinite(w) && Number.isFinite(tqc)
+      && Number.isFinite(tqi) && Number.isFinite(tqr) && Number.isFinite(tqs) && Number.isFinite(cld))) {
+      rawScores[index] = Number.NaN
+      icingScore[index] = MISSING_ENCODED
+      icingGrade[index] = MISSING_ENCODED
       continue
     }
-    const { score, mCl, bFrz } = calcKFipLiteScore(values)
-    const grade = icingGradeFor(score, { mCl, bFrz })
-    rawScores.push(score)
-    icingScore.push(encodeComponent([score], 0.0001)[0])
-    icingGrade.push(grade)
+    if (!(tempC >= -35 && tempC <= 0 && rhLiq >= 60)) {
+      rawScores[index] = 0
+      icingScore[index] = 0
+      icingGrade[index] = 0
+      continue
+    }
+    const { score, mCl, bFrz } = calcKFipLiteScore({ tempC, rhLiq, w, tqc, tqi, tqr, tqs, cld })
+    rawScores[index] = score
+    icingScore[index] = Number.isFinite(score) ? Math.max(INT16_MIN, Math.min(INT16_MAX, Math.round((score - OFFSET) / 0.0001))) : MISSING_ENCODED
+    icingGrade[index] = icingGradeFor(score, { mCl, bFrz })
   }
 
   return {

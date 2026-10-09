@@ -20,6 +20,14 @@ export default defineConfig(({ mode }) => {
       // Frontend public/data/ serves aviation geojson — don't catch those here.
       // 끝의 슬래시가 중요하다: vite 프록시는 접두사 일치라, '/data/radar'로 두면
       // public/data/radar-coverage.geojson 같은 정적 파일까지 백엔드로 넘겨 404가 된다.
+      '/data/kim_nwp/': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+      '/data/kim_nwp_ea/': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       '/data/kim_surface_chart/': {
         target: backendTarget,
         changeOrigin: true,

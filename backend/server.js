@@ -80,6 +80,7 @@ import {
   validateKimNwpSelection,
 } from './src/processors/kim-nwp-store.js'
 import { applyKimBelowGround } from './src/processors/kim-surface-mask.js'
+import { KIM_BELOW_GROUND_ARRAYS, KIM_BELOW_GROUND_VIEW, buildKimMapField, kimMapBinaryPath, parseKimMapBinaryPath, readOrWriteKimMapBinary } from './src/processors/kim-map-responses.js'
 import { KIM_DEFAULT_DOMAIN, parseKimDomain } from './src/processors/kim-domain.js'
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
 import { buildNavlogNwpPatch } from './src/briefing/navlog-nwp-patch.js'
@@ -204,6 +205,12 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
+  // KIM 지도 이진 파일은 회차·시각·고도·응답 모양이 이름에 들어 있어 바뀌지 않는다.
+  if (/^kim_nwp(?:_ea)?\/runs\/KIMG_NE57_\d{10}\/derived\/map-bin\/[a-z0-9-]+\/\w+\/hf\d{3}\.bin\.gz$/i.test(relPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable')
+    return
+  }
+
   if (/^sigwx_low\/(?:fronts|clouds)_\d{10}(?:_standard|_detail)?\.png$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
@@ -234,6 +241,26 @@ app.use('/data', (req, res, next) => {
   next()
 })
 app.use('/data', publicDataGuard, express.static(DATA_ROOT, { setHeaders: setGeneratedDataCacheHeaders }))
+// KIM 지도 이진 파일(kim-map-responses.js): 아직 없으면 여기서 만들어 저장하고 보낸다. 다음부터는 nginx·정적 파일이 보낸다.
+app.get(/^\/data\/kim_nwp(?:_ea)?\/runs\/KIMG_NE57_\d{10}\/derived\/map-bin\//, (req, res) => {
+  const selection = parseKimMapBinaryPath(req.path.slice('/data/'.length))
+  if (!selection) return res.status(404).end()
+  try {
+    const layer = /^(temp|cloud|icing|wind)-below-ground-v1$/.exec(selection.name)?.[1]
+    const gktgRevision = /^gktg-([a-z0-9]+)-below-ground-v2-q3$/.exec(selection.name)?.[1]
+    if (!layer && !gktgRevision) return res.status(404).end()
+    const build = layer
+      ? () => buildKimMapField({ root: DATA_ROOT, domain: selection.domain, tmfc: selection.tmfc, hf: selection.hf, level: selection.level, type: layer })
+      : () => buildKimGktgMapField(readKimGktgField({ root: DATA_ROOT, tmfc: selection.tmfc, hf: selection.hf, levelId: selection.level, revision: gktgRevision, domain: selection.domain }), selection.domain)
+    const { gzip } = readOrWriteKimMapBinary(kimMapBinaryPath({ root: DATA_ROOT, ...selection }), build)
+    res.setHeader('Content-Type', 'application/gzip')
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable')
+    res.end(gzip)
+  } catch (error) {
+    setNoStore(res)
+    res.status(/ENOENT|unavailable/.test(String(error.code || error.message)) ? 404 : 400).json({ error: error.message })
+  }
+})
 function isImmutableKimFieldRequest(req) {
   return /^\/kim\/(?:wind|temp|cloud|icing)\/field$/i.test(req.path)
 }
@@ -724,9 +751,6 @@ function readSelectedKimIcingField(selection) {
   return readSelectedKimField(selection, buildKimIcingFieldFromGrid)
 }
 
-// 지면 아래 칸을 비울 필드 배열(int16, 결측 -32768). 바람 10 m 같은 높이 고도는 kim-surface-mask가 건드리지 않는다.
-const KIM_BELOW_GROUND_ARRAYS = { wind: ['u', 'v'], temp: ['T'], cloud: ['spread', 'cloudPotential'], icing: ['icingScore', 'icingGrade'] }
-const KIM_BELOW_GROUND_VIEW = 'below-ground-v1'
 function withKimBelowGround(field, type, domain) {
   return applyKimBelowGround(field, { root: DATA_ROOT, arrays: KIM_BELOW_GROUND_ARRAYS[type], domain, missing: -32768 })
 }
@@ -753,7 +777,7 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
       res.status(304).end()
       return
     }
-    sendCachedImmutableJson(req, res, etagSeed, () => withKimBelowGround(readSelectedKimField(selection, buildFn), type, selection.domain))
+    sendCachedImmutableJson(req, res, etagSeed, () => buildKimMapField({ root: DATA_ROOT, domain: selection.domain, tmfc: selection.tmfc, hf: selection.hf, level: selection.level, type }))
   } catch (error) {
     res.status(400).json({ error: error.message || errorLabel })
   }
@@ -806,7 +830,7 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
       res.status(304).end()
       return
     }
-    sendCachedImmutableJson(req, res, etagSeed, () => withKimBelowGround(readSelectedKimField(selection, buildKimSurfaceWindFieldFromWindGrid), 'wind', selection.domain))
+    sendCachedImmutableJson(req, res, etagSeed, () => buildKimMapField({ root: DATA_ROOT, domain: selection.domain, tmfc: selection.tmfc, hf: selection.hf, level: selection.level, type: 'wind' }))
   } catch (error) {
     res.status(400).json({ error: error.message || 'invalid kim wind selection' })
   }
@@ -939,6 +963,13 @@ app.get('/api/kim/gktg/index', (req, res) => {
   if (!index) return res.status(503).json({ error: 'kim gktg index unavailable' })
   sendRevalidatedJson(res, { ...index, domain }, `${kimDomainEtagScope(domain)}${index.revision}`)
 })
+// 지면 아래 기압면은 비우고 표시를 붙인다(kim-surface-mask.js). GKTG가 계산하지 않는 가장자리 10칸에는 표시하지 않는다.
+// 값은 소수 셋째 자리에서 버린다(등급 경계 0.15·0.22·0.34가 그대로 유지된다). 그대로 보내면 확대 영역 한 장이 10 MB를 넘는다.
+function buildKimGktgMapField(stored, domain) {
+  const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'], domain, edgeCells: 10 })
+  return { ...field, gktg: field.gktg.map((value) => (value == null ? null : Math.floor(value * 1000 + 1e-9) / 1000)) }
+}
+
 app.get('/api/kim/gktg/field', (req, res) => {
   try {
     const domain = parseKimDomain(req.query.domain)
@@ -946,13 +977,8 @@ app.get('/api/kim/gktg/field', (req, res) => {
     // revision이 주어지면 파일을 읽기 전에 캐시·304를 확인한다. 없으면 최신 게시본에서 revision을 찾아야 하므로 먼저 읽는다.
     const stored = selection.revision ? null : readKimGktgField(selection)
     const revision = selection.revision || stored.revision
-    // 지면 아래 기압면은 비우고 표시를 붙인다(kim-surface-mask.js). ETag에 표시 방식을 넣어 이전 응답 캐시와 구분한다.
-    // GKTG가 계산하지 않는 가장자리 10칸에는 표시하지 않는다. 값은 소수 셋째 자리에서 버린다(등급 경계 0.15·0.22·0.34가
-    // 그대로 유지된다). 그대로 보내면 확대 영역 한 장이 10 MB를 넘는다.
-    sendCachedImmutableJson(req, res, `kim-gktg:${kimDomainEtagScope(domain)}${selection.tmfc}:${selection.hf}:${selection.levelId}:${revision}:below-ground-v2:q3`, () => {
-      const field = applyKimBelowGround(stored || readKimGktgField(selection), { root: DATA_ROOT, arrays: ['gktg'], domain, edgeCells: 10 })
-      return { ...field, gktg: field.gktg.map((value) => (value == null ? null : Math.floor(value * 1000 + 1e-9) / 1000)) }
-    })
+    sendCachedImmutableJson(req, res, `kim-gktg:${kimDomainEtagScope(domain)}${selection.tmfc}:${selection.hf}:${selection.levelId}:${revision}:below-ground-v2:q3`,
+      () => buildKimGktgMapField(stored || readKimGktgField(selection), domain))
   } catch (error) {
     setNoStore(res)
     res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })

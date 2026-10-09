@@ -8,7 +8,8 @@ export function createCompressedResponseCache({ maxBytes = 64 * 1024 * 1024, lev
   const entries = new Map()
   let bytes = 0
   return {
-    // key의 압축 본문. 없으면 build()로 만들어 넣는다. build가 던지면 넣지 않는다.
+    // key의 압축 본문. 없으면 build()로 만들어 넣는다. build는 응답 객체나 이미 압축한 { gzip }을 돌려준다.
+    // build가 던지면 넣지 않는다.
     get(key, build) {
       const hit = entries.get(key)
       if (hit) {
@@ -16,7 +17,8 @@ export function createCompressedResponseCache({ maxBytes = 64 * 1024 * 1024, lev
         entries.set(key, hit)
         return hit
       }
-      const gzip = zlib.gzipSync(Buffer.from(JSON.stringify(build())), { level })
+      const built = build()
+      const gzip = Buffer.isBuffer(built?.gzip) ? built.gzip : zlib.gzipSync(Buffer.from(JSON.stringify(built)), { level })
       const entry = { gzip }
       if (gzip.length <= maxBytes) {
         entries.set(key, entry)
