@@ -28,6 +28,9 @@ test('a running cycle reports collect and compute percentages, an ETA from the c
     { at: at(8), type: 'expanded_hour_computed', hf: 0, kim_gktg: 'ok', kim_tropopause: 'ok' },
     { at: at(12), type: 'expanded_hour_collected', hf: 2, ok: false },
     { at: at(12), type: 'expanded_hour_computed', hf: 1, kim_gktg: 'failed', kim_tropopause: 'ok' },
+    { at: at(9), type: 'map_responses_hour', hf: 0 },
+    { at: at(9), type: 'surface_chart_hour', hf: 0 },
+    { at: at(12), type: 'surface_chart_hour_failed', hf: 1 },
   ], { lockPid: process.pid, monitor: [
     { at: at(-1), availableMiB: 100 },
     { at: at(5), availableMiB: 400, swapUsedMiB: 200 },
@@ -42,6 +45,7 @@ test('a running cycle reports collect and compute percentages, an ETA from the c
   // 12분에 계산 2건(성공 1) → 건당 6분, 남은 32시각 → 192분 뒤.
   assert.equal(progress.etaAt, new Date(now + 192 * 60_000).toISOString())
   assert.equal(progress.korea, null)
+  assert.deepEqual([progress.mapFiles, progress.precipFrames, progress.precipFailed, progress.precipPublished], [1, 1, 1, null])
   assert.deepEqual(progress.memory, { at: at(11), availableMiB: 650, swapUsedMiB: 210, minAvailableMiB: 400 })
 })
 

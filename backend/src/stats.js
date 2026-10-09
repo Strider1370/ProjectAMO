@@ -411,7 +411,9 @@ export function recordSuccess(type, result, durationMs, run) {
   bumpHourly(entry, true)
   addRecentRun(type, true, null, failedAirports, durationMs)
   setExecutionCompletion(type, 'succeeded', null, run)
-  notifyRun(type, run, 'succeeded', durationMs, failedAirports.length ? `공항 ${failedAirports.length}곳 실패: ${failedAirports.join(', ')}` : null)
+  // 할 일이 없어 끝낸 실행(이미 받은 회차, 확대 회차가 대신 만듦 등)은 그 이유를 시간표에 남긴다.
+  const skipReason = result?.skipped && typeof result.reason === 'string' ? result.reason : null
+  notifyRun(type, run, 'succeeded', durationMs, failedAirports.length ? `공항 ${failedAirports.length}곳 실패: ${failedAirports.join(', ')}` : skipReason)
   persistCompletion()
 }
 

@@ -11,6 +11,13 @@ const REASON_TEXT = [
   [/^kim_(gktg|tropopause)_(base_waiting|incomplete)$/, 'KIM 입력 대기'],
   [/^api_hub_budget_blocked$/, '하루 사용량 초과'],
   [/^kim_expanded_running_elsewhere$/, '수동 실행이 같은 회차를 받는 중'],
+  [/^kim_surface_chart_from_expanded$/, '확대 회차가 대신 만듦'],
+  [/^kim_surface_chart_latest_run_published$/, '새 회차 없음(이미 게시)'],
+  [/^already_collected$/, '이미 받은 자료'],
+  [/^kim_expanded_disabled$/, '확대 수집 꺼짐'],
+  [/^kim_bulk_credential_unavailable$/, '대용량 키 없음'],
+  [/^kim_bulk_credential_expired$/, '대용량 키 만료'],
+  [/^kim_bulk_credential_rejected$/, '대용량 키 거부(오늘 중지)'],
   [/^kim_expanded_run_complete$/, '이미 받은 회차라 건너뜀'],
 ]
 export function reasonText(reason) {

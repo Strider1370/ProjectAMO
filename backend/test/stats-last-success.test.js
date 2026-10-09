@@ -29,3 +29,13 @@ test('예전 통계 파일을 읽어도 last_success 칸이 생긴다', () => {
   stats.initFromFile(dir)
   assert.equal(stats.getStats().types.metar.last_success, null, '없던 값은 null로 채운다')
 })
+
+test('할 일이 없어 끝낸 성공 실행은 그 이유를 수집 시간표에 남긴다', (t) => {
+  stats.initFromFile(fs.mkdtempSync(path.join(os.tmpdir(), 'stats-')))
+  const runs = []
+  stats.setRunListener((entry) => runs.push(entry))
+  t.after(() => stats.setRunListener(null))
+  stats.recordSuccess('kim_surface_chart', { skipped: true, reason: 'kim_surface_chart_from_expanded' }, 5)
+  stats.recordSuccess('kim_surface_chart', { saved: true }, 5)
+  assert.deepEqual(runs.map((run) => [run.outcome, run.reason]), [['succeeded', 'kim_surface_chart_from_expanded'], ['succeeded', null]])
+})

@@ -289,6 +289,7 @@ function ExpandedProgress({ progress, formatDateTime }) {
           ? <><dt>예상 끝</dt><dd>{progress.etaAt ? formatDateTime(progress.etaAt) : '첫 시각 계산 뒤 표시'}</dd></>
           : <><dt>끝</dt><dd>{progress.endedAt ? formatDateTime(progress.endedAt) : '기록 없음(재시작 등으로 끊김)'}{progress.publishedHours ? ` · ${progress.publishedHours}시각 게시` : ''}</dd></>}
         {view.stop && <><dt>중단</dt><dd className="ac-cb-err">{view.stop}</dd></>}
+        {view.extras && <><dt>지도·강수</dt><dd>{view.extras}</dd></>}
         {view.korea && <><dt>한반도 06 UTC</dt><dd>{view.korea}{progress.korea?.saved ? ` · ${formatDateTime(progress.korea.at)}` : ''}</dd></>}
         {view.memory && <><dt>서버 메모리</dt><dd>{view.memory}</dd></>}
       </dl>

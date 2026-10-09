@@ -24,6 +24,10 @@ export function expandedProgressView(progress) {
     computed: `${progress.computed}/${progress.planned} (${progress.computedPct}%)`,
     stop: progress.stopReason ? STOP_TEXT[progress.stopReason] || progress.stopReason : null,
     korea: progress.korea === undefined ? null : progress.korea === null ? '아직(+0~12h가 모이면)' : progress.korea.saved ? '게시함' : `안 함(${progress.korea.reason || '이유 없음'})`,
+    // 지도 파일·강수 장: 이 기능이 없던 회차(기록 없음)는 표시하지 않는다.
+    extras: progress.mapFiles || progress.precipFrames || progress.precipFailed
+      ? `지도 파일 ${progress.mapFiles ?? 0}시각 · 강수 ${progress.precipFrames ?? 0}시각${progress.precipFailed ? ` (실패 ${progress.precipFailed})` : ''}${progress.precipPublished != null ? ` · 강수 게시 ${progress.precipPublished}장` : ''}`
+      : null,
     memory: progress.memory ? `남은 ${progress.memory.availableMiB} MiB(최저 ${progress.memory.minAvailableMiB}) · 스왑 ${progress.memory.swapUsedMiB} MiB` : null,
   }
 }

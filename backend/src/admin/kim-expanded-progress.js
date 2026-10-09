@@ -60,6 +60,11 @@ export function readKimExpandedProgress(basePath, { now = Date.now() } = {}) {
     ? new Date(now + ((now - startedMs) / doneThisRun) * remaining).toISOString()
     : null
 
+  // 시각별 부가 작업: 지도 파일 미리 만들기(kim_map_responses), 강수 레이어 장(kim_surface_chart). 회차 전체 기준(이어받기 포함).
+  const extraHours = (type) => new Set(events.filter((event) => event.type === type).map((event) => event.hf)).size
+  const chartFailed = new Set(events.filter((event) => event.type === 'surface_chart_hour_failed').map((event) => event.hf))
+  for (const event of events) if (event.type === 'surface_chart_hour') chartFailed.delete(event.hf)
+  const chartPublished = [...events].reverse().find((event) => event.type === 'surface_chart_published' || event.type === 'surface_chart_publish_failed') || null
   const samples = readLines(path.join(runDir, 'monitor.jsonl')).filter((row) => row.at >= start.at)
   const last = samples.at(-1) || null
   const available = samples.map((row) => row.availableMiB).filter(Number.isFinite)
@@ -78,6 +83,10 @@ export function readKimExpandedProgress(basePath, { now = Date.now() } = {}) {
     etaAt,
     stopReason: end?.stopReason ?? null,
     publishedHours: end?.publishedHours ?? null,
+    mapFiles: extraHours('map_responses_hour'),
+    precipFrames: extraHours('surface_chart_hour'),
+    precipFailed: chartFailed.size,
+    precipPublished: chartPublished ? (chartPublished.type === 'surface_chart_published' ? chartPublished.frames : 0) : null,
     korea: cycle === '06' ? (korea ? { at: korea.at, saved: Boolean(korea.saved), reason: korea.reason ?? null } : null) : undefined,
     memory: last ? {
       at: last.at,
