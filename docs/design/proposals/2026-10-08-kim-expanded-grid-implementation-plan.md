@@ -282,7 +282,7 @@ health 모두 200(최대 0.008초), 서버 남은 메모리 최저 864 MiB.
 - 4-4 한반도 06 UTC: 확대 06 UTC의 +0~12h가 모이면 한반도 범위를 잘라 한반도 회차로 게시하고(`kim-korea-crop.js`, 격자 정보 키 순서까지 한반도 수집과 같게),
   이어서 한반도 GKTG·권계면을 계산한다. 한반도 수집기는 확대 수집을 쓸 수 있는 날 21:30 KST까지 06 UTC를 일반 키로 받지 않는다(`koreaSixFromExpanded`).
   그 뒤에도 한반도 06 UTC가 없으면 일반 키로 받는다.
-- 4-5 보호: 시작 전 디스크 여유 ≥ 2.5 GB + 3 GiB, 시각마다 3 GiB 미만이면 멈춤(`disk_reserve`). 06 UTC가 시작되면 이어받던 00 UTC는 새 시각을 받지 않는다.
+- 4-5 보호: 시작 전 디스크 여유 ≥ 5 GB(2026-10-09 실측으로 2.5 GB에서 올림) + 3 GiB, 시각마다 3 GiB 미만이면 멈춤(`disk_reserve`). 06 UTC가 시작되면 이어받던 00 UTC는 새 시각을 받지 않는다.
   키 없음·만료(KST 날짜)·플래그 꺼짐이면 수집하지 않고 empty로 기록, 401·403이면 그날(KST)은 확대 수집을 멈춘다(`kim_nwp_ea/disabled.json`).
   텔레그램: 대용량 키 만료 7일·1일 전, 확대 회차 30시간 미게시.
 - 값 확인: 같은 회차의 한반도 단독 수집과 잘라낸 값 비교는 `scripts/kim-crop-compare.mjs`(진단 실행 `--crop`과 운영 한반도 06 UTC).
@@ -307,6 +307,20 @@ health 모두 200(최대 0.008초), 서버 남은 메모리 최저 864 MiB.
 - 프론트: 단면 예보시각 이동·NWP 시각 다시 받기에 단면의 `domain`을 함께 보낸다.
 - 확인: 로컬 확대 영역 자료(100~145°E)로 인천→마닐라 1,408 NM 단면 2,500점 모두 바람·기온·GKTG·권계면 값. 시험 `kim-route-domain.test.js`.
 
+### 4단계 실제 API 짧은 실행 (2026-10-09 15:03 KST, 이 PC)
+
+`kim-expanded-diagnostic.mjs --tmfc 2026100900 --hours 0-2`, 별도 DATA_PATH(`artifacts/kim-ea-real-20261009/`).
+처음으로 90~160°E 실제 자료를 받았다(그전 확인은 모두 100~145°E 시험판).
+
+- 결과: 3시각 모두 22층 받기·GKTG·권계면 성공, 실패 없음. 격자 841×529, 90~160°E·6~50°N 확인.
+  +15h 전이라 게시하지 않음(정상, `minHour` 15).
+- 시간: 받기 시각당 116~154초(동시 8건), 계산 45~54초(이 PC). 3시각 전체 447초(받기와 계산이 겹침).
+- 디스크: 예보시각당 약 129 MiB(격자 88 + GKTG 32 + 권계면 7 + 지상 2). 06 UTC 33시각 약 4.3 GB, 00 UTC 29시각 약 3.7 GB.
+  처음 추정(2.5 GB)보다 크다. 회차 시작 전 확인값을 5 GB로 올렸다(`EXPECTED_RUN_BYTES`).
+  최대 동시 보관은 게시된 확대 회차 + 수집 중 확대 회차 + 한반도 NC ≈ 10 GB(처음 추정 7.9 GB).
+- 메모리(이 PC, 16 GB라 압박 없음): 본 프로세스 최대 694 MiB, 계산 자식(Node 작업 + Python) 최대 701 MiB.
+  서버(1.9 GiB)에서는 오늘 밤 진단 실행으로 실측한다.
+
 ### 재개 안내 (2026-10-09 03시경 기준)
 
 2단계·3단계·5단계(지금 할 부분)는 끝났고, 4단계는 코드까지 끝났다. 운영에는 아직 아무것도 들어가지 않았다(`99c56d3d` 이후 미배포).
@@ -327,8 +341,8 @@ health 모두 200(최대 0.008초), 서버 남은 메모리 최저 864 MiB.
 
 다음 순서:
 
-1. **실제 API 짧게(KST 15시 이후, 이 PC):** 별도 DATA_PATH로 `scripts/kim-expanded-diagnostic.mjs --tmfc <오늘>00 --hours 0-2`.
-   로컬 `.env`의 대용량 키를 쓴다. 기본 DATA_PATH(backend/data)로 돌리지 않는다.
+1. ~~실제 API 짧게~~ 2026-10-09 15:03 완료(위 기록). 대용량 키는 `.env`에서 읽어 환경변수로 넘겼다. 로컬에서 쓸 때
+   `--health https://www.projectamo.co.kr/api/health`를 줘야 한다(로컬 백엔드가 없으면 health 실패로 멈춘다).
 2. **운영 서버 진단 실행(KST 20:15, 06 UTC 33시각):** 브랜치 코드를 서버 별도 폴더(예: `~/kim-ea-diag/code`)에 올리고
    `DATA_PATH=~/kim-ea-diag/data`, `KIM_STORE_FORMAT=nc`, `KIM_GKTG_PYTHON=/opt/projectamo/shared/venvs/kim-gktg/bin/python`,
    `NUMBA_CACHE_DIR=~/kim-ea-diag/numba`로 `--tmfc <오늘>06 --crop` 실행. 대용량 키는 이 PC에서 환경변수로만 넘긴다(서버 `.env`에 없음).
