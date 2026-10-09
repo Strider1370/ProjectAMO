@@ -1,6 +1,6 @@
 # KIM 강수(지상 일기도) 확대 영역 전환 계획
 
-작성 2026-10-09. 상태: 계획(구현 전 사용자 확인).
+작성 2026-10-09. 상태: 구현(로컬 실제 자료 확인 완료, 미배포). 구현 기록은 맨 아래.
 
 ## 목표
 
@@ -84,3 +84,20 @@
 ## 되돌리기
 
 - `KIM_SURFACE_CHART_FROM_EXPANDED=0`: 확대 회차에서 일기도를 만들지 않고 기존 수집기가 지금 방식으로 받는다.
+
+## 구현 기록 (2026-10-09)
+
+계획과 다른 점:
+- 기압·누적강수는 10 m 격자 문서에 넣지 않고 난류 보조 입력처럼 회차 폴더 `raw/chart/hfN-<변수>.txt`에 원문으로 둔다
+  (`prefetchSurfaceChartInputs`). 한반도 잘라내기·10 m 문서 모양이 바뀌지 않는다. +0h는 누적강수를 받지 않는다.
+- 요청 작업 분류는 `kim_grid`(대용량 키 사용량 장부). `kim_grid_chart`는 기존 수집기 범위(sub)로만 판별된다.
+- 프론트는 선택한 런의 `view`로 강수 그림을 얹는다(확대 런 90~160°E, 기존 런 95~165°E가 섞일 수 있음).
+
+파일: `backend/src/processors/kim-surface-chart-expanded.js`(받기·장 만들기·게시), 파생 작업 `kim_surface_chart`,
+`kim-expanded-collector.js`(보조 입력·시각별 계산·게시), `kim-surface-chart-processor.js`(확대 런이 36시간 안에 있으면 건너뜀,
+manifest `source`), `lib/kim-surface-chart.js`(H/L 판정 범위 `centerView`), 설정 `kim_surface_chart.from_expanded`.
+
+로컬 실제 자료(00 UTC +0~3h, 대용량 키 7건):
+- 장 하나 약 1.3초(이 PC). +3h 강수 최댓값 86.8 mm, H/L 5개가 운영 강수 레이어(같은 회차 +3h, 95~165°E)와 같다
+  (저기압 하나만 160°E 가장자리 근처라 0.25° 차이).
+- 화면: 11:00 KST(+2h) 장이 확대 영역 전체에 등압선·H/L·강수·바람깃으로 그려짐(artifacts/kim-ea-real-20261009/ui/precip-wide.png).

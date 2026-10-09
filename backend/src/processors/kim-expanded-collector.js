@@ -18,6 +18,7 @@ import {
 import { collectKimNwpTask, mapKimNwpTasksWithConcurrency } from './kim-surface-wind-processor.js'
 import { prefetchGktgSupplements } from './kim-gktg-processor.js'
 import { prefetchTropopauseSupplements } from './kim-tropopause-processor.js'
+import { prefetchSurfaceChartInputs, publishExpandedSurfaceChart } from './kim-surface-chart-expanded.js'
 import { runKimDerivedWorker } from './kim-derived-worker.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { appendKimRunEvent } from './kim-run-events.js'
@@ -59,7 +60,8 @@ export async function collectExpandedRun({
   publish = true,
   fetchGrid = fetchKimGrid,
   collectTask = collectKimNwpTask,
-  prefetch = [prefetchGktgSupplements, prefetchTropopauseSupplements],
+  prefetch = [prefetchGktgSupplements, prefetchTropopauseSupplements, prefetchSurfaceChartInputs],
+  publishChart = publishExpandedSurfaceChart,
   runDerived = runKimDerivedWorker,
   onProgress = () => {},
   // 시각마다 받기 전에 부른다. 이유 문자열을 돌려주면 새 시각을 받지 않는다(디스크 보호선, 다음 회차 시작 등).
@@ -95,13 +97,16 @@ export async function collectExpandedRun({
           result[kind] = String(error.code || error.message).slice(0, 200)
         }
       }
-      // 착빙·구름 지도 응답 미리 만들기. 실패해도 그 시각은 게시한다(지도 API가 요청 때 만든다).
-      try {
-        const out = await runDerived('kim_map_responses', { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf] } })
-        result.kim_map_responses = out?.failures?.length ? `${out.failures.length} failed` : 'ok'
-      } catch (error) {
-        if (signal?.aborted) throw error
-        result.kim_map_responses = String(error.code || error.message).slice(0, 200)
+      // 지도 이진 파일(착빙·구름 등)과 강수 레이어 장 만들기. 실패해도 그 시각은 게시한다(지도 파일은 요청 때 만들고,
+      // 강수 장이 없는 시각은 강수 레이어에서만 빠진다).
+      for (const kind of ['kim_map_responses', 'kim_surface_chart']) {
+        try {
+          const out = await runDerived(kind, { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: [hf] } })
+          result[kind] = out?.failures?.length ? `${out.failures.length} failed` : 'ok'
+        } catch (error) {
+          if (signal?.aborted) throw error
+          result[kind] = String(error.code || error.message).slice(0, 200)
+        }
       }
       result.ms = now() - at
       if (result.kim_gktg === 'ok' && result.kim_tropopause === 'ok') computed.push(hf)
@@ -190,7 +195,7 @@ export async function collectExpandedRun({
   if (failures.some(failure => /HTTP (401|403)|unauthori[sz]ed|forbidden/i.test(failure.reason || ''))) stopReason ||= 'credential_rejected'
   const meetsMinimum = Number.isFinite(lastHour) && lastHour >= minHour
   let published = null
-  if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, signal, complete: publishable.length === hours.length })
+  if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, publishChart, signal, complete: publishable.length === hours.length })
   const result = { type: 'kim_expanded', tmfc, planned: hours.length, downloaded: downloaded.length, computed: computed.length,
     publishedHours: published ? publishable.length : 0, lastHour: lastHour ?? null, minHour, stopReason, failures,
     published: Boolean(published), ms: now() - started }
@@ -199,7 +204,7 @@ export async function collectExpandedRun({
 }
 
 // 기본 격자 index·latest와 GKTG·권계면 게시. 파생 계산은 이미 시각별로 끝나 있어 결과를 다시 쓰지 않고 확인·게시만 한다.
-async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, signal, complete }) {
+async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publishChart, signal, complete }) {
   const allEntries = hours.flatMap(hf => entries.get(hf))
   const index = buildKimNwpIndex({ model: KIM_NWP_MODEL, tmfc, entries: allEntries })
   const runId = buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc })
@@ -208,6 +213,13 @@ async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, sign
   for (const kind of ['kim_gktg', 'kim_tropopause']) {
     const out = await runDerived(kind, { signal, jobOptions: { domain: DOMAIN, tmfc, forecastHours: hours, publish: true } })
     if (!out?.saved && !out?.unchanged) throw new Error(`kim_expanded_${kind}_publish_failed`)
+  }
+  // 강수 레이어. 실패해도 회차는 게시한다(이전 강수 런이 남는다).
+  try {
+    const chart = publishChart({ root, tmfc, hours })
+    appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: DOMAIN }), { type: 'surface_chart_published', frames: chart?.runs?.[0]?.frames?.length ?? 0 })
+  } catch (error) {
+    appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: DOMAIN }), { type: 'surface_chart_publish_failed', error: String(error.code || error.message).slice(0, 200) })
   }
   // 파생 결과를 먼저 게시하고 기본 격자 latest를 바꾼다(지도·단면이 새 회차를 볼 때 난류·권계면이 함께 있게).
   writeKimNwpIndex(root, index, DOMAIN)

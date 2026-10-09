@@ -1,5 +1,6 @@
 // KIM 지상 일기도 수집기. 최신 KIM 런의 +3·+6·+9·+12시간 해면기압·누적강수·지상바람(16장)을
 // 레이더·위성 키로 받아, 시각마다 등압선·H/L·3시간 강수 그림·바람 격자를 만들어 발행한다.
+// 대용량 키를 쓰는 동안은 확대 회차가 만든 런(00·06 UTC, 매시간)이 대신한다(kim-surface-chart-expanded.js).
 // 16장이 모두 검증을 통과한 런만 원자적으로 발행하고, 실패하면 마지막 정상 런을 유지한다.
 import fs from 'node:fs'
 import path from 'node:path'
@@ -126,7 +127,8 @@ export async function buildSurfaceChartRun({ tmfc, signal, fetchGrid = fetchKimG
 }
 
 // 런 폴더를 임시 이름으로 다 쓴 뒤 한 번에 이름을 바꾸고, 그다음 latest.json을 바꾼다.
-export function publishSurfaceChartRun({ root = config.storage.base_path, run, settings = config.kim_surface_chart, now = Date.now() }) {
+// source: 확대 회차에서 만든 런이면 'kim_expanded'(kim-surface-chart-expanded.js). 기존 수집기 런은 없음.
+export function publishSurfaceChartRun({ root = config.storage.base_path, run, settings = config.kim_surface_chart, source = null, now = Date.now() }) {
   const runId = buildSurfaceChartRunId(run.tmfc)
   const finalDir = path.join(runsDir(root), runId)
   const stagingDir = path.join(runsDir(root), `.${runId}.${process.pid}.${now}.tmp`)
@@ -149,7 +151,7 @@ export function publishSurfaceChartRun({ root = config.storage.base_path, run, s
     })
   }
   // revision: 같은 런을 다시 발행해도(계산 방식 변경 등) 브라우저가 예전 파일을 쓰지 않도록 주소에 붙이는 값.
-  const manifest = { type: 'kim_surface_chart_run', model: MODEL, runId, tmfc: run.tmfc, analysisTimeMs: run.analysisTimeMs, revision: now, view: settings.view, files: FRAME_FILES, frames }
+  const manifest = { type: 'kim_surface_chart_run', model: MODEL, runId, tmfc: run.tmfc, analysisTimeMs: run.analysisTimeMs, revision: now, view: settings.view, files: FRAME_FILES, frames, ...(source ? { source } : {}) }
   fs.writeFileSync(path.join(stagingDir, 'manifest.json'), `${JSON.stringify(manifest)}\n`)
   fs.rmSync(finalDir, { recursive: true, force: true })
   fs.renameSync(stagingDir, finalDir)
@@ -192,8 +194,18 @@ export async function process({
   root = config.storage.base_path,
   settings = config.kim_surface_chart,
   credential = config.api.radar_satellite_auth_key,
+  now = Date.now,
 } = {}) {
   if (!credential) throw new Error('kim_surface_chart_credential_missing')
+  // 대용량 키를 쓰는 동안은 확대 회차가 강수 레이어를 만든다(kim-surface-chart-expanded.js). 확대 회차 런이 36시간 안에
+  // 게시돼 있으면 받지 않는다. 확대 수집이 멈추면(만료·키 거부·이틀 실패) 이 수집기가 지금 방식으로 이어 받는다.
+  if (settings.from_expanded !== false) {
+    const { expandedAvailability } = await import('./kim-expanded-processor.js')
+    const recentExpanded = (readSurfaceChartLatest(root)?.runs || []).some((item) => item.source === 'kim_expanded' && now() - item.analysisTimeMs < 36 * HOUR_MS)
+    if (recentExpanded && expandedAvailability({ root, now: now() }).available) {
+      return { type: TYPE, skipped: true, reason: 'kim_surface_chart_from_expanded' }
+    }
+  }
   const published = new Set((readSurfaceChartLatest(root)?.runs || []).map((item) => item.tmfc))
   let lastError = null
   // 최신 후보부터 시도한다. 이미 발행한 런에 닿으면 그보다 새 런은 아직 공개 전이므로 기다린다.

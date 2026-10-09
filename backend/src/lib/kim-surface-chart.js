@@ -376,12 +376,14 @@ export function buildWindField(u, v, view, rules = SURFACE_CHART_RULES) {
   }
 }
 
-export async function buildSurfaceChartFrame({ psl, precNow, precPrev = null, u, v, view, rules = SURFACE_CHART_RULES }) {
+// centerView: H/L을 표시할 범위. 받은 격자가 표시 영역과 같으면(확대 영역) 가장자리 근처는 닫힌 등압선 판정이 불완전해
+// 안쪽으로 줄여 넘긴다. 기본은 표시 영역.
+export async function buildSurfaceChartFrame({ psl, precNow, precPrev = null, u, v, view, centerView = view, rules = SURFACE_CHART_RULES }) {
   assertSeaLevelPressure(psl)
   const pressure = buildPressureField(psl, rules)
   const points = pointGrid(pressure)
   const isobars = buildIsobars(pressure, view, { points, rules })
-  const centers = detectPressureCenters(pressure, psl, view, { points, rules })
+  const centers = detectPressureCenters(pressure, psl, centerView, { points, rules })
   const precip = await buildPrecipImage(precNow, precPrev, view, rules)
   const wind = buildWindField(u, v, view, rules)
   return { isobars, centers: turf.featureCollection(centers.map(({ lon, lat, ...rest }) => turf.point([lon, lat], rest))), precip, wind }

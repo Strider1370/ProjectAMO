@@ -99,6 +99,8 @@ export function useKimSurfaceChart({
   const effectiveTargetMs = pinned ? pinnedTargetMs : Number.isFinite(targetMs) ? targetMs : clockMs
   const frame = useMemo(() => pickSurfaceChartFrame(run, effectiveTargetMs), [run, effectiveTargetMs])
   const urls = useMemo(() => surfaceChartFrameUrls(latest, frame, run), [latest, frame, run])
+  // 런마다 영역이 다를 수 있다(확대 회차 런 90~160°E, 기존 수집기 런 95~165°E). 강수 그림은 그 런의 영역에 얹는다.
+  const chartView = run?.view ?? latest?.view
 
   useEffect(() => {
     if (!visible || !urls) { setFrameData(null); return undefined }
@@ -141,12 +143,12 @@ export function useKimSurfaceChart({
     syncSurfaceChartLayers(map, {
       visible,
       show,
-      frame: frameData ? { isobars: frameData.isobars, centers: frameData.centers, precipUrl: frameData.precipUrl, view: latest?.view } : null,
+      frame: frameData ? { isobars: frameData.isobars, centers: frameData.centers, precipUrl: frameData.precipUrl, view: chartView } : null,
       barbs,
       basemapId,
       ensureBarbImages: registerAirportWindBarbImages,
     })
-  }, [mapRef, isStyleReady, styleRevision, visible, show, frameData, barbs, basemapId, latest?.view])
+  }, [mapRef, isStyleReady, styleRevision, visible, show, frameData, barbs, basemapId, chartView])
 
   // 바람 입자: 기존 바람 레이어와 별개 인스턴스라 서로의 상태를 건드리지 않는다.
   useEffect(() => {

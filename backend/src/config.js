@@ -337,6 +337,8 @@ export const kim_surface_chart = {
   timeout_ms: Number(process.env.KIM_SURFACE_CHART_TIMEOUT_MS || 60000),
   concurrency: 2,
   max_runs: 2,
+  // 대용량 키를 쓰는 동안 확대 회차(00·06 UTC, 매시간, 확대 영역)에서 만든다. '0'이면 이 수집기만 쓴다.
+  from_expanded: process.env.KIM_SURFACE_CHART_FROM_EXPANDED !== '0',
 }
 
 export const kim_gktg = {

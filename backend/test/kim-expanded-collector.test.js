@@ -46,7 +46,7 @@ test('hours are fetched in order and each fetched hour is computed without publi
   const result = await collectExpandedRun({ ...options, hours: [0, 1, 2], publish: false })
   // 받는 순서와 계산 순서는 각각 앞쪽부터이고, 시각마다 받은 뒤에 계산한다(다음 시각을 받는 동안 계산이 겹칠 수 있다).
   assert.deepEqual(log.filter(entry => entry.startsWith('prefetch')), ['prefetch:0', 'prefetch:1', 'prefetch:2'])
-  assert.deepEqual(log.filter(entry => entry.startsWith('compute')), [0, 1, 2].flatMap(hf => [`compute:kim_gktg:${hf}`, `compute:kim_tropopause:${hf}`, `compute:kim_map_responses:${hf}`]))
+  assert.deepEqual(log.filter(entry => entry.startsWith('compute')), [0, 1, 2].flatMap(hf => [`compute:kim_gktg:${hf}`, `compute:kim_tropopause:${hf}`, `compute:kim_map_responses:${hf}`, `compute:kim_surface_chart:${hf}`]))
   for (const hf of [0, 1, 2]) assert.ok(log.indexOf(`prefetch:${hf}`) < log.indexOf(`compute:kim_gktg:${hf}`))
   assert.equal(result.downloaded, 3)
   assert.equal(result.computed, 3)
