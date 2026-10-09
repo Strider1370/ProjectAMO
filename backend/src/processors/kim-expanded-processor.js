@@ -19,9 +19,9 @@ import { appendKimRunEvent } from './kim-run-events.js'
 import { readKimNwpLatest, readKimNwpManifest, buildKimNwpRunId, resolveKimNwpRoot, resolveKimNwpRunDir } from './kim-nwp-store.js'
 import { KIM_NWP_MODEL } from './kim-nwp-model.js'
 
-// 확대 영역 06 UTC 한 회차(33시각) 최대 크기. 2026-10-09 실측 예보시각당 약 129 MiB(격자 88 + GKTG 32 + 권계면 7 + 지상 2)
-// + 지도 이진 파일 약 16 MiB(착빙·구름 전 고도, 기온·바람 700 hPa) × 33 ≈ 5 GB에 날씨에 따른 압축률 차이를 더했다.
-const EXPECTED_RUN_BYTES = 5.5e9
+// 확대 영역 06 UTC 한 회차(33시각) 최대 크기. 2026-10-09 06 UTC 실측 5.83 GB(기본 격자 + GKTG·권계면 + 지도 이진 파일
+// + ACI + 강수 장)에 날씨에 따른 압축률 차이를 더했다.
+const EXPECTED_RUN_BYTES = 6.5e9
 const KOREA_FALLBACK_KST = '21:30'
 const stopRequested = { '00': false, '06': false }
 
