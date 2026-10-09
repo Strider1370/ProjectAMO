@@ -25,8 +25,9 @@ test('boundary rejects mismatched run, hour, level, units, colour scale or paylo
   }
 })
 test('GKTG uses the existing turbulence button and shares pressure controls', () => {
+  // 바람과 같은 KIM 고도를 쓰므로 바람과는 함께 켜지고, 구름·착빙을 켜면 꺼진다.
   const on = getNextMetVisibility({ wind: true, turbulence: false, radarHsr: false }, 'turbulence')
   assert.equal(on.turbulence, true)
-  assert.equal(on.wind, false)
+  assert.equal(on.wind, true)
   assert.equal(getNextMetVisibility(on, 'icing').turbulence, false)
 })

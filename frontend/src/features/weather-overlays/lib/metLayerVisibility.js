@@ -1,5 +1,6 @@
 // 구름·착빙·등온선은 같은 KIM 선택에서 함께 표시한다.
-// 바람·난류·운정과는 하나의 고도 레일을 공유하는 보기로 전환한다.
+// 바람·난류·운정과는 하나의 고도 레일을 공유하는 보기로 전환한다. 바람과 난류는 같은 KIM 고도라 함께 켤 수 있고,
+// 그때 바람은 속도 색을 끄고 흐름만 보여 아래 난류 색이 보이게 한다.
 // WISSDOM is an independent radar-height control, not a MET visibility layer; it must
 // never clear or rewrite the KIM pressure selection here.
 const KIM_LAYER_IDS = ['wind', 'temp', 'cloud', 'icing']
@@ -48,11 +49,13 @@ export function getNextMetVisibility(prev, id, { lowPower = false } = {}) {
   }
   if (id === 'wind') {
     const nextWind = !prev.wind
+    const turbulence = !!prev.turbulence
     return {
       ...clearVerticalSliderGroup(prev),
       wind: nextWind,
+      turbulence,
       windFlow: nextWind ? !lowPower : prev.windFlow,
-      windSpeed: nextWind ? true : prev.windSpeed,
+      windSpeed: nextWind ? !turbulence : prev.windSpeed,
     }
   }
   if (id === 'cloudIcing') {
@@ -77,10 +80,14 @@ export function getNextMetVisibility(prev, id, { lowPower = false } = {}) {
   }
   if (id === 'turbulence') {
     const nextTurbulence = !prev.turbulence
+    const wind = !!prev.wind
     return {
       ...clearVerticalSliderGroup(prev),
       turbulence: nextTurbulence,
-      windFlow: nextTurbulence ? false : prev.windFlow,
+      wind,
+      // 바람이 켜져 있으면 흐름은 그대로 두고 속도 색만 끈다(난류를 끄면 다시 켠다).
+      windFlow: wind ? prev.windFlow : nextTurbulence ? false : prev.windFlow,
+      windSpeed: wind ? !nextTurbulence : prev.windSpeed,
     }
   }
   if (id === 'ctps') {

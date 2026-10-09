@@ -165,8 +165,8 @@ test('legacy child states and parent-only deep links initialize consistently', (
   assert.equal(createInitialMetVisibility(ids, null).cloudIcing, false)
 })
 
-// 오른쪽 세로 슬라이더 자리는 하나뿐 — KIM(바람 등) ↔ 난류 ↔ 운정고도(ctps)는 서로 배타적이다.
-test('KIM, 난류, 운정고도는 세로 슬라이더 자리를 두고 서로 배타적', () => {
+// 오른쪽 세로 슬라이더 자리는 하나뿐 — 운정고도(ctps)는 KIM·난류와 배타적. 바람과 난류는 같은 KIM 고도라 함께 켤 수 있다.
+test('운정고도는 KIM·난류와 배타적이고, 바람과 난류는 함께 켜진다', () => {
   assert.deepEqual(
     getNextMetVisibility(
       { wind: false, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: false, windSpeed: false },
@@ -176,15 +176,22 @@ test('KIM, 난류, 운정고도는 세로 슬라이더 자리를 두고 서로 �
     { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
   )
 
-  // 난류가 켜진 상태에서 KIM(바람)을 켜면 난류는 꺼진다.
-  assert.deepEqual(
-    getNextMetVisibility(
-      { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
-      'wind',
-      { lowPower: false },
-    ),
-    { wind: true, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: true, windSpeed: true },
+  // 난류가 켜진 상태에서 바람을 켜면 둘 다 켜지고, 바람은 흐름만(속도 색 없이) 보인다.
+  const both = getNextMetVisibility(
+    { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
+    'wind',
+    { lowPower: false },
   )
+  assert.deepEqual(both, { wind: true, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: true, windSpeed: false })
+  // 난류를 끄면 바람 속도 색이 돌아온다. 다시 켜면 속도 색만 꺼진다.
+  const windOnly = getNextMetVisibility(both, 'turbulence', { lowPower: false })
+  assert.deepEqual(windOnly, { wind: true, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: true, windSpeed: true })
+  assert.deepEqual(getNextMetVisibility(windOnly, 'turbulence', { lowPower: false }), both)
+  // 둘 다 켠 상태에서 바람을 끄면 난류만 남는다.
+  assert.equal(getNextMetVisibility(both, 'wind', { lowPower: false }).turbulence, true)
+  // 구름·착빙을 켜면 바람과 난류는 꺼진다.
+  const cloudIcing = getNextMetVisibility({ ...both, cloudIcing: false }, 'cloudIcing', { lowPower: false })
+  assert.equal(cloudIcing.wind || cloudIcing.turbulence, false)
 
   // 운정고도를 켜면 KIM과 난류가 모두 꺼진다.
   assert.deepEqual(
