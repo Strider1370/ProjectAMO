@@ -95,6 +95,7 @@ import { createAiAccess } from './src/ai/access.js'
 import { outputTokenBudget } from './src/ai/output-budget.js'
 import { createSavedRouteTools } from './src/ai/saved-route-tools.js'
 import { createAlertTools } from './src/ai/alert-tools.js'
+import { createCompressedResponseCache, sendCompressedJson } from './src/lib/compressed-response-cache.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // libvips(sharp) 연산 캐시 끔 — 레이더/위성/오버레이 PNG 생성 시 네이티브 메모리가 안 줄고 쌓이는 것 방지. #메모리
@@ -391,6 +392,21 @@ function sendJsonFile(res, filePath) {
 
 function sendImmutableJson(res, payload, etagSeed) {
   sendWithEtag(res, payload, etagOf(etagSeed), 'public, max-age=86400, immutable')
+}
+
+// KIM 지도 한 장(확대 영역 JSON 5~10 MB)은 바뀌지 않으므로 압축본을 사용자 공용으로 보관한다(compressed-response-cache.js).
+const kimFieldResponses = createCompressedResponseCache()
+
+function sendCachedImmutableJson(req, res, etagSeed, build) {
+  const etag = etagOf(etagSeed)
+  res.setHeader('Cache-Control', 'public, max-age=86400, immutable')
+  res.setHeader('ETag', etag)
+  res.setHeader('Vary', 'Accept-Encoding')
+  if (requestHasMatchingEtag(req, etag)) {
+    res.status(304).end()
+    return
+  }
+  sendCompressedJson(req, res, kimFieldResponses.get(etag, build))
 }
 
 function sendStaticConfigJson(res, payload, name) {
@@ -737,8 +753,7 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
       res.status(304).end()
       return
     }
-    const field = withKimBelowGround(readSelectedKimField(selection, buildFn), type, selection.domain)
-    sendImmutableJson(res, field, etagSeed)
+    sendCachedImmutableJson(req, res, etagSeed, () => withKimBelowGround(readSelectedKimField(selection, buildFn), type, selection.domain))
   } catch (error) {
     res.status(400).json({ error: error.message || errorLabel })
   }
@@ -791,8 +806,7 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
       res.status(304).end()
       return
     }
-    const field = withKimBelowGround(readSelectedKimField(selection, buildKimSurfaceWindFieldFromWindGrid), 'wind', selection.domain)
-    sendImmutableJson(res, field, etagSeed)
+    sendCachedImmutableJson(req, res, etagSeed, () => withKimBelowGround(readSelectedKimField(selection, buildKimSurfaceWindFieldFromWindGrid), 'wind', selection.domain))
   } catch (error) {
     res.status(400).json({ error: error.message || 'invalid kim wind selection' })
   }
@@ -928,11 +942,17 @@ app.get('/api/kim/gktg/index', (req, res) => {
 app.get('/api/kim/gktg/field', (req, res) => {
   try {
     const domain = parseKimDomain(req.query.domain)
-    const stored = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision, domain })
+    const selection = { root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision, domain }
+    // revision이 주어지면 파일을 읽기 전에 캐시·304를 확인한다. 없으면 최신 게시본에서 revision을 찾아야 하므로 먼저 읽는다.
+    const stored = selection.revision ? null : readKimGktgField(selection)
+    const revision = selection.revision || stored.revision
     // 지면 아래 기압면은 비우고 표시를 붙인다(kim-surface-mask.js). ETag에 표시 방식을 넣어 이전 응답 캐시와 구분한다.
-    // GKTG가 계산하지 않는 가장자리 10칸에는 표시하지 않는다.
-    const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'], domain, edgeCells: 10 })
-    sendImmutableJson(res, field, `kim-gktg:${kimDomainEtagScope(domain)}${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}:below-ground-v2`)
+    // GKTG가 계산하지 않는 가장자리 10칸에는 표시하지 않는다. 값은 소수 셋째 자리에서 버린다(등급 경계 0.15·0.22·0.34가
+    // 그대로 유지된다). 그대로 보내면 확대 영역 한 장이 10 MB를 넘는다.
+    sendCachedImmutableJson(req, res, `kim-gktg:${kimDomainEtagScope(domain)}${selection.tmfc}:${selection.hf}:${selection.levelId}:${revision}:below-ground-v2:q3`, () => {
+      const field = applyKimBelowGround(stored || readKimGktgField(selection), { root: DATA_ROOT, arrays: ['gktg'], domain, edgeCells: 10 })
+      return { ...field, gktg: field.gktg.map((value) => (value == null ? null : Math.floor(value * 1000 + 1e-9) / 1000)) }
+    })
   } catch (error) {
     setNoStore(res)
     res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })
