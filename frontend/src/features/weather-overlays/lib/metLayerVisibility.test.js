@@ -176,14 +176,14 @@ test('운정고도는 KIM·난류와 배타적이고, 바람과 난류는 함께
     { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
   )
 
-  // 난류가 켜진 상태에서 바람을 켜면 둘 다 켜지고, 바람은 흐름만(속도 색 없이) 보인다.
+  // 난류가 켜진 상태에서 바람을 켜면 둘 다 켜진다(바람 흐름·속도 색 그대로).
   const both = getNextMetVisibility(
     { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
     'wind',
     { lowPower: false },
   )
-  assert.deepEqual(both, { wind: true, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: true, windSpeed: false })
-  // 난류를 끄면 바람 속도 색이 돌아온다. 다시 켜면 속도 색만 꺼진다.
+  assert.deepEqual(both, { wind: true, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: true, windSpeed: true })
+  // 바람이 켜진 상태에서 난류를 껐다 켜도 바람 표시는 그대로다.
   const windOnly = getNextMetVisibility(both, 'turbulence', { lowPower: false })
   assert.deepEqual(windOnly, { wind: true, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: true, windSpeed: true })
   assert.deepEqual(getNextMetVisibility(windOnly, 'turbulence', { lowPower: false }), both)
