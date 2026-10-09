@@ -14,7 +14,9 @@ import { collectionResult } from '../collector-execution.js'
 import { MIN_FREE_BYTES } from '../maps/storage-budget.js'
 import { collectExpandedRun, expandedCycle, kstCutoffMs } from './kim-expanded-collector.js'
 import { publishKoreaFromExpanded } from './kim-korea-crop.js'
-import { readKimNwpLatest, readKimNwpManifest, buildKimNwpRunId, resolveKimNwpRoot } from './kim-nwp-store.js'
+import { startExpandedMonitor } from './kim-expanded-monitor.js'
+import { appendKimRunEvent } from './kim-run-events.js'
+import { readKimNwpLatest, readKimNwpManifest, buildKimNwpRunId, resolveKimNwpRoot, resolveKimNwpRunDir } from './kim-nwp-store.js'
 import { KIM_NWP_MODEL } from './kim-nwp-model.js'
 
 // 확대 영역 06 UTC 한 회차(33시각) 최대 크기. 2026-10-09 실측 예보시각당 약 129 MiB(격자 88 + GKTG 32 + 권계면 7 + 지상 2)
@@ -73,6 +75,7 @@ export async function processExpandedCycle({
   cropKorea = publishKoreaFromExpanded,
   onKoreaPublished = async () => {},
   diskFree = freeBytes,
+  startMonitor = startExpandedMonitor,
 } = {}) {
   const tmfc = expandedRunTmfc(cycle, now())
   const availability = expandedAvailability({ root, now: now() })
@@ -90,19 +93,30 @@ export async function processExpandedCycle({
   const { hours } = expandedCycle(tmfc)
   const koreaHours = config.kim_nwp?.forecast_hours || []
   let korea = null
-  const result = await collect({
-    tmfc, hours, root, signal, now,
-    beforeHour: () => {
-      if (stopRequested[cycle]) return 'next_cycle_started'
-      if (diskFree(root) < MIN_FREE_BYTES) return 'disk_reserve'
-      return null
-    },
-    onHourDownloaded: async ({ downloaded }) => {
-      if (cycle !== '06' || korea || !koreaHours.every(hf => downloaded.includes(hf))) return
-      korea = cropKorea({ root, tmfc, hours: koreaHours })
-      if (korea?.saved) await onKoreaPublished({ tmfc })
-    },
-  })
+  const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: 'ea' })
+  const monitor = startMonitor({ runDir })
+  let result
+  let memory
+  try {
+    result = await collect({
+      tmfc, hours, root, signal, now,
+      beforeHour: () => {
+        if (stopRequested[cycle]) return 'next_cycle_started'
+        if (diskFree(root) < MIN_FREE_BYTES) return 'disk_reserve'
+        return monitor.stopReason()
+      },
+      onHourDownloaded: async ({ downloaded }) => {
+        if (cycle !== '06' || korea || !koreaHours.every(hf => downloaded.includes(hf))) return
+        korea = cropKorea({ root, tmfc, hours: koreaHours })
+        appendKimRunEvent(runDir, { type: 'expanded_korea_crop', ...korea })
+        if (korea?.saved) await onKoreaPublished({ tmfc })
+      },
+    })
+  } finally {
+    memory = monitor.stop()
+    appendKimRunEvent(runDir, { type: 'expanded_monitor', ...memory })
+  }
+  result = { ...result, memory }
   if (result.stopReason === 'credential_rejected') markExpandedDisabled({ root, reason: 'kim_bulk_credential_rejected', now: now() })
   const outcome = result.published ? (result.publishedHours === hours.length ? 'complete' : 'partial') : 'failed'
   const data = outcome === 'failed' ? null : { publishedHours: result.publishedHours, planned: result.planned }

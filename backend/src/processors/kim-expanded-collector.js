@@ -165,7 +165,7 @@ export async function collectExpandedRun({
   const result = { type: 'kim_expanded', tmfc, planned: hours.length, downloaded: downloaded.length, computed: computed.length,
     publishedHours: published ? publishable.length : 0, lastHour: lastHour ?? null, minHour, stopReason, failures,
     published: Boolean(published), ms: now() - started }
-  appendKimRunEvent(runDir, { type: published ? 'expanded_published' : 'expanded_not_published', ...result, failures: failures.slice(0, 20) })
+  appendKimRunEvent(runDir, { ...result, type: published ? 'expanded_published' : 'expanded_not_published', failures: failures.slice(0, 20) })
   return result
 }
 

@@ -9,6 +9,7 @@ import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, writeKimNwpGrid } fr
 import { cropGridDocument, publishKoreaFromExpanded } from '../src/processors/kim-korea-crop.js'
 import { expandedAvailability, koreaSixFromExpanded, markExpandedDisabled, processExpandedCycle } from '../src/processors/kim-expanded-processor.js'
 import { kstCutoffMs } from '../src/processors/kim-expanded-collector.js'
+import { startExpandedMonitor } from '../src/processors/kim-expanded-monitor.js'
 
 const temporary = t => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-expanded-proc-')); t.after(() => fs.rmSync(root, { recursive: true, force: true })); return root }
 const KST = (date, hhmm) => kstCutoffMs(`${date.replaceAll('-', '')}00`, hhmm)
@@ -111,4 +112,29 @@ test('a cycle job skips when unusable or short of disk, crops Korea from 06 UTC,
   assert.equal(six.collection.outcome, 'complete')
   assert.equal(koreaCalls, 1)
   assert.equal(koreaPublished, 1)
+})
+
+test('the memory monitor logs samples and stops new hours after three low readings in a row', async t => {
+  const root = temporary(t)
+  const readings = [900, 200, 200, 600, 200, 200, 200].map(mib => mib * 1048576)
+  const monitor = startExpandedMonitor({ runDir: root, intervalMs: 3_600_000, readAvailable: () => readings.shift(),
+    sample: () => ({ selfRss: 300 * 1048576, childrenRss: 500 * 1048576, swapUsed: 0 }) })
+  const reasons = []
+  for (let i = 0; i < 6; i++) { monitor.tick(); reasons.push(monitor.stopReason()) }
+  const peak = monitor.stop()
+  assert.deepEqual(reasons, [null, null, null, null, null, 'memory_reserve'])
+  assert.equal(peak.minAvailableMiB, 200)
+  assert.equal(peak.maxChildrenRssMiB, 500)
+  assert.equal(peak.samples, 7)
+  assert.equal(fs.readFileSync(path.join(root, 'monitor.jsonl'), 'utf8').trim().split('\n').length, 7)
+
+  // 회차 작업은 감시 결과를 수집 중단 이유로 쓰고, 최댓값을 결과에 싣는다.
+  const now = KST('2026-10-09', '20:15')
+  let asked
+  const result = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 1e12,
+    startMonitor: () => ({ stopReason: () => 'memory_reserve', stop: () => ({ minAvailableMiB: 180 }) }),
+    collect: async ({ beforeHour }) => { asked = beforeHour({ hf: 3 }); return { published: true, publishedHours: 28, planned: 33, stopReason: asked } } })
+  assert.equal(asked, 'memory_reserve')
+  assert.deepEqual(result.memory, { minAvailableMiB: 180 })
+  assert.equal(result.collection.outcome, 'partial')
 })
