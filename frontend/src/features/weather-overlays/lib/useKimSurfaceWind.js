@@ -35,12 +35,18 @@ function getSelectableTimes(times = [], nowMs = null) {
   return nearestPast ? [nearestPast.time, ...futureTimes] : futureTimes
 }
 
+// KIM 레이어(바람·착빙·난류)를 처음 켤 때의 고도. 이 고도에 자료가 없으면 목록의 첫 고도를 쓴다.
+export const KIM_DEFAULT_LEVEL = '700hPa'
+
 export function selectDefaultKimNwp(index, nowMs = null) {
-  const preferredLevel = index?.levels?.[0]
-  if (!preferredLevel) return null
-  const time = getSelectableTimes(index.times, nowMs).find((candidate) =>
-    selectKimNwpAvailability(index, { level: preferredLevel.id, hf: candidate.hf }))
-  return time ? withDomain(index, { tmfc: index.latestRun, level: preferredLevel.id, hf: time.hf }) : null
+  const levels = index?.levels || []
+  const candidates = [levels.find((level) => level.id === KIM_DEFAULT_LEVEL), levels[0]].filter(Boolean)
+  for (const level of candidates) {
+    const time = getSelectableTimes(index.times, nowMs).find((candidate) =>
+      selectKimNwpAvailability(index, { level: level.id, hf: candidate.hf }))
+    if (time) return withDomain(index, { tmfc: index.latestRun, level: level.id, hf: time.hf })
+  }
+  return null
 }
 
 // 목록이 정한 KIM 영역(한반도 kr·확대 ea)을 선택값에 싣는다. 필드 요청·캐시 키가 이 값을 따른다.

@@ -42,6 +42,16 @@ test('normalizeKimNwpIndex exposes levels and times', () => {
   assert.deepEqual(normalized.defaultSelection, { tmfc: '2026051900', level: '10m', hf: 0 })
 })
 
+test('selectDefaultKimNwp starts at 700 hPa when it has data, else the first level', () => {
+  const index = {
+    ...INDEX,
+    levels: [...INDEX.levels, { id: '700hPa', label: '700', kind: 'pressure', value: 700, unit: 'hPa' }],
+    availability: { ...INDEX.availability, '700hPa': { 3: { variables: ['u', 'v'] } } },
+  }
+  assert.deepEqual(selectDefaultKimNwp(index), { tmfc: '2026051900', level: '700hPa', hf: 3 })
+  assert.deepEqual(selectDefaultKimNwp({ ...index, availability: INDEX.availability }), { tmfc: '2026051900', level: '10m', hf: 0 })
+})
+
 test('selectDefaultKimNwp keeps nearest past valid time when now is provided', () => {
   const selection = selectDefaultKimNwp(INDEX, Date.parse('2026-05-19T01:00:00.000Z'))
   assert.deepEqual(selection, { tmfc: '2026051900', level: '10m', hf: 0 })
