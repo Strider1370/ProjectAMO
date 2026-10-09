@@ -20,11 +20,12 @@ test.beforeEach(t => {
 })
 
 // 실제 API 대신 격자를 바로 저장하는 가짜 수집. 시계는 시각 하나에 10분씩 간다.
-function harness(root, { failHours = [], computeFail = [], stepMinutes = 10 } = {}) {
+function harness(root, { failHours = [], flakyTasks = 0, computeFail = [], stepMinutes = 10 } = {}) {
   let clock = kstCutoffMs(TMFC, '20:15')
   const log = []
   const collectTask = async ({ task }) => {
     if (failHours.includes(task.hf)) throw new Error('upstream 500')
+    if (flakyTasks > 0) { flakyTasks--; log.push(`flaky:${task.hf}:${task.level.id}`); throw new Error('fetch failed') }
     const grid = { type: 'kim_nwp_grid', model: KIM_NWP_MODEL, tmfc: task.tmfc, hf: task.hf, validTime: addForecastHours(task.tmfc, task.hf), level: task.level,
       grid: { nx: 2, ny: 1, lonMin: 90, lonMax: 90.083333, latMin: 6, latMax: 6 }, variables: { u: { values: [1, 2] }, v: { values: [3, 4] } } }
     writeKimNwpGrid({ root, grid, domain: task.domain })
@@ -36,7 +37,7 @@ function harness(root, { failHours = [], computeFail = [], stepMinutes = 10 } = 
     if (!jobOptions.publish && computeFail.includes(jobOptions.forecastHours[0])) return { failures: [{ hf: jobOptions.forecastHours[0], reason: 'python_failed' }] }
     return { saved: true, failures: [] }
   }
-  return { log, now: () => clock, options: { root, tmfc: TMFC, collectTask, prefetch, runDerived, now: () => clock } }
+  return { log, now: () => clock, options: { root, tmfc: TMFC, collectTask, prefetch, runDerived, now: () => clock, retryDelaysMs: [0, 0] } }
 }
 
 test('hours are fetched in order and each fetched hour is computed without publishing', async t => {
@@ -96,4 +97,15 @@ test('a gap stops the published range; below the minimum the previous run is kep
 test('helpers: KST request cutoff and contiguous hours', () => {
   assert.equal(new Date(kstCutoffMs('2026100906', '23:50')).toISOString(), '2026-10-09T14:50:00.000Z')
   assert.deepEqual(contiguousHours([0, 1, 2, 27], [0, 1, 27]), [0, 1])
+})
+
+test('a level that fails once inside an hour is fetched again, and the hour still counts', async t => {
+  const root = temporary(t)
+  const { log, options } = harness(root, { flakyTasks: 1 })
+  const result = await collectExpandedRun({ ...options, hours: [0, 1], publish: false })
+  assert.equal(log.filter(entry => entry.startsWith('flaky:')).length, 1)
+  assert.equal(result.downloaded, 2)
+  assert.deepEqual(result.failures, [])
+  const events = fs.readFileSync(path.join(root, 'kim_nwp_ea', 'runs', `KIMG_NE57_${TMFC}`, 'events.jsonl'), 'utf8')
+  assert.match(events, /"type":"expanded_hour_retry","hf":0,"attempt":1,"failedTasks":1/)
 })

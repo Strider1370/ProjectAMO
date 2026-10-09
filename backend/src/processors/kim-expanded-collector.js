@@ -6,6 +6,7 @@
 // 다 끝나면 앞에서부터 끊김 없이 받은 시각까지를 게시하되, 회차별 기준(publish_min_hour)에 못 미치면 게시하지 않고
 // 이전 회차를 그대로 둔다(짧은 회차로 바꾸면 이전 회차가 덮던 시간이 빈다).
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
@@ -25,6 +26,9 @@ import store from '../store.js'
 const DOMAIN = 'ea'
 
 // 발표회차 날짜(KST)의 HH:MM KST를 epoch ms로. 00 UTC 회차는 같은 날 15시, 06 UTC는 20:15에 시작해 그날 23:50에 멈춘다.
+// 시각 안 재시도 간격(첫 시도 뒤 2번).
+export const HOUR_RETRY_DELAYS_MS = [15_000, 60_000]
+
 export function kstCutoffMs(tmfc, hhmm) {
   const [hour, minute] = String(hhmm).split(':').map(Number)
   const dayUtc = Date.UTC(+tmfc.slice(0, 4), +tmfc.slice(4, 6) - 1, +tmfc.slice(6, 8))
@@ -67,6 +71,8 @@ export async function collectExpandedRun({
   beforeHour = () => null,
   // 시각 하나를 다 받았을 때(계산 전). 06 UTC는 +0~12h가 모이면 한반도 회차를 잘라 게시한다.
   onHourDownloaded = async () => {},
+  // 한 시각 안에서 실패한 층·보조 입력은 이만큼 기다렸다 다시 받는다(일시적인 fetch failed로 시각 전체를 잃지 않게).
+  retryDelaysMs = HOUR_RETRY_DELAYS_MS,
 } = {}) {
   const { hours: cycleHours, minHour } = expandedCycle(tmfc)
   const hours = plannedHours ?? cycleHours
@@ -118,26 +124,46 @@ export async function collectExpandedRun({
       break
     }
     const hourEntries = []
-    let hourFailed = 0
     let lastError = null
-    const tasks = levels.map(level => ({ level, tmfc, hf, credential, domain: DOMAIN }))
-    await mapKimNwpTasksWithConcurrency(tasks, config.kim_expanded.concurrency, async (task) => {
-      try {
-        const { grid, lastError: taskError } = await collectTask({ task })
-        if (taskError) { hourFailed += 1; lastError = taskError; return }
-        hourEntries.push(buildKimNwpIndexEntry(grid, path.relative(root, resolveKimNwpGridPath({ root, model: grid.model, tmfc, hf, levelId: grid.level.id, domain: DOMAIN })).replace(/\\/g, '/')))
-      } catch (error) {
-        if (signal?.aborted || error?.name === 'AbortError') throw error
-        hourFailed += 1
-        lastError = error
-      }
-    }).catch(error => { lastError = error; hourFailed = Math.max(hourFailed, 1) })
+    let pending = levels.map(level => ({ level, tmfc, hf, credential, domain: DOMAIN }))
     let prefetchError = null
-    if (!hourFailed) {
-      for (const run of prefetch) {
-        try { await run({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }) } catch (error) { prefetchError = error; break }
+    try {
+      for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+        if (attempt > 0) {
+          appendKimRunEvent(runDir, { type: 'expanded_hour_retry', hf, attempt, failedTasks: pending.length, supplement: Boolean(prefetchError),
+            error: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
+          await delay(retryDelaysMs[attempt - 1], undefined, { signal })
+        }
+        const failed = []
+        await mapKimNwpTasksWithConcurrency(pending, config.kim_expanded.concurrency, async (task) => {
+          try {
+            const { grid, lastError: taskError } = await collectTask({ task })
+            if (taskError) { failed.push(task); lastError = taskError; return }
+            hourEntries.push(buildKimNwpIndexEntry(grid, path.relative(root, resolveKimNwpGridPath({ root, model: grid.model, tmfc, hf, levelId: grid.level.id, domain: DOMAIN })).replace(/\\/g, '/')))
+          } catch (error) {
+            if (signal?.aborted || error?.name === 'AbortError') throw error
+            failed.push(task)
+            lastError = error
+          }
+        })
+        pending = failed
+        prefetchError = null
+        if (pending.length) continue
+        for (const run of prefetch) {
+          try { await run({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }) } catch (error) {
+            if (signal?.aborted || error?.name === 'AbortError') throw error
+            prefetchError = error
+            break
+          }
+        }
+        if (!prefetchError) break
       }
+    } catch (error) {
+      // 취소(abort)는 이 시각을 실패로 두고, 아래 시각 반복에서 cancelled로 끝난다.
+      lastError = error
+      if (!pending.length) pending = [null]
     }
+    const hourFailed = pending.length
     const ms = now() - at
     const ok = !hourFailed && !prefetchError
     appendKimRunEvent(runDir, { type: 'expanded_hour_collected', hf, ok, grids: hourEntries.length, failedTasks: hourFailed, ms,
