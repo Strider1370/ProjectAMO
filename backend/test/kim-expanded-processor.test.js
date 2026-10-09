@@ -7,7 +7,7 @@ import config from '../src/config.js'
 import { KIM_NWP_LEVELS, KIM_NWP_MODEL, addForecastHours } from '../src/processors/kim-nwp-model.js'
 import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
 import { cropGridDocument, publishKoreaFromExpanded } from '../src/processors/kim-korea-crop.js'
-import { expandedAvailability, koreaSixFromExpanded, markExpandedDisabled, processExpandedCycle } from '../src/processors/kim-expanded-processor.js'
+import { expandedAvailability, expandedRunElsewhere, koreaSixFromExpanded, markExpandedDisabled, processExpandedCycle } from '../src/processors/kim-expanded-processor.js'
 import { kstCutoffMs } from '../src/processors/kim-expanded-collector.js'
 import { startExpandedMonitor } from '../src/processors/kim-expanded-monitor.js'
 
@@ -137,4 +137,24 @@ test('the memory monitor logs samples and stops new hours after three low readin
   assert.equal(asked, 'memory_reserve')
   assert.deepEqual(result.memory, { minAvailableMiB: 180 })
   assert.equal(result.collection.outcome, 'partial')
+})
+
+test('a run already going in another process makes the scheduled run skip; a stale lock is ignored and the lock is removed after', async t => {
+  const root = temporary(t)
+  const now = KST('2026-10-09', '17:00')
+  const lock = path.join(root, 'kim_nwp_ea', 'run-00.lock')
+  fs.mkdirSync(path.dirname(lock), { recursive: true })
+  fs.writeFileSync(lock, JSON.stringify({ pid: process.ppid, tmfc: '2026100900' }))
+  let collected = 0
+  const collect = async () => { collected++; assert.equal(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, process.pid); return { published: false, planned: 29 } }
+  const skipped = await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 1e12, collect })
+  assert.equal(skipped.reason, 'kim_expanded_running_elsewhere')
+  assert.equal(skipped.collection.outcome, 'empty')
+  assert.equal(collected, 0)
+
+  fs.writeFileSync(lock, JSON.stringify({ pid: 2 ** 22 + 12345, tmfc: '2026100900' }))
+  assert.equal(expandedRunElsewhere(root, '00'), null)
+  await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 1e12, collect })
+  assert.equal(collected, 1)
+  assert.equal(fs.existsSync(lock), false)
 })

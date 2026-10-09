@@ -467,6 +467,8 @@ C는 3시간 간격이 하루 약 4시간(00 UTC 게시 전 오후)으로 줄고
 - 점검: `cd /opt/projectamo/current && node scripts/kim-expanded-report.mjs --data /opt/projectamo/shared/data [--tmfc 2026100906] [--memory]`.
   게시 상태, 한반도 06 UTC 출처(`expanded_crop`), 디스크, 회차별 시작·끝·중단 이유, 시각별 받기·계산 시간, 메모리 최댓값을 보인다.
 - 격자 확인: `node scripts/kim-inspect.mjs --data /opt/projectamo/shared/data --domain ea`.
+- 지금 한 번 돌리기: `nohup node scripts/kim-expanded-run.mjs --cycle 00 [--stop-kst 20:10] > ~/kim-expanded-run.log 2>&1 &`.
+  백엔드와 같은 환경(PM2 설정)과 운영 데이터를 쓰고, 도는 동안 같은 회차의 정기 수집은 건너뛴다(`kim_nwp_ea/run-<회차>.lock`).
 - 끄기: 서버 `.env`에서 `KIM_EXPANDED_ENABLED=0` 후 `pm2 restart projectamo-backend --update-env`. 한반도 06 UTC는 일반 키로 돌아가고,
   지도는 게시된 확대 회차가 남아 있으면 그것을 계속 보인다(`kim_nwp_ea/` 폴더를 옮기면 한반도로 돌아간다).
 - 확대 회차가 21:30 KST까지 한반도 +0~12h를 만들지 못하면 한반도 수집기가 일반 키로 받는다(자동).

@@ -27,6 +27,16 @@ const stopRequested = { '00': false, '06': false }
 
 const kstDate = (ms) => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)
 const disabledFile = (root) => path.join(resolveKimNwpRoot(root, 'ea'), 'disabled.json')
+const lockFile = (root, cycle) => path.join(resolveKimNwpRoot(root, 'ea'), `run-${cycle}.lock`)
+
+// 다른 프로세스(수동 실행 등)가 같은 회차(00·06)를 받는 중이면 그 프로세스 정보. 프로세스가 없으면 남은 잠금은 무시한다.
+export function expandedRunElsewhere(root, cycle, pid = process.pid) {
+  let lock
+  try { lock = JSON.parse(fs.readFileSync(lockFile(root, cycle), 'utf8')) } catch { return null }
+  if (!Number.isInteger(lock?.pid) || lock.pid === pid) return null
+  try { process.kill(lock.pid, 0) } catch (error) { if (error.code === 'ESRCH') return null }
+  return lock
+}
 
 // 확대 수집을 지금 쓸 수 있는지와 그 이유.
 export function expandedAvailability({ root = config.storage.base_path, now = Date.now() } = {}) {
@@ -85,6 +95,10 @@ export async function processExpandedCycle({
   if (latest?.latestRun === tmfc && manifest?.complete) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: 'kim_expanded_run_complete', collection: collectionResult('complete', { tmfc }) }
   }
+  const elsewhere = expandedRunElsewhere(root, cycle)
+  if (elsewhere) {
+    return { type: 'kim_expanded', tmfc, skipped: true, reason: 'kim_expanded_running_elsewhere', collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: 'kim_expanded_running_elsewhere' }) }
+  }
   if (diskFree(root) < EXPECTED_RUN_BYTES + MIN_FREE_BYTES) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: 'disk_reserve', collection: collectionResult('failed', null, { reason: 'disk_reserve' }) }
   }
@@ -94,6 +108,8 @@ export async function processExpandedCycle({
   const koreaHours = config.kim_nwp?.forecast_hours || []
   let korea = null
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: 'ea' })
+  fs.mkdirSync(path.dirname(lockFile(root, cycle)), { recursive: true })
+  fs.writeFileSync(lockFile(root, cycle), `${JSON.stringify({ pid: process.pid, tmfc, startedAt: new Date(now()).toISOString() })}\n`)
   const monitor = startMonitor({ runDir })
   let result
   let memory
@@ -113,6 +129,7 @@ export async function processExpandedCycle({
       },
     })
   } finally {
+    try { if (JSON.parse(fs.readFileSync(lockFile(root, cycle), 'utf8')).pid === process.pid) fs.rmSync(lockFile(root, cycle), { force: true }) } catch {}
     memory = monitor.stop()
     appendKimRunEvent(runDir, { type: 'expanded_monitor', ...memory })
   }
