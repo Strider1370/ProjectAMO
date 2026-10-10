@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { recommendProcedures } from './recommendProcedures.js'
+import { recommendProcedures } from './route-planning/recommendProcedures.js'
 
 // 비동기 I/O는 주입 — 네트워크 없이 결정 로직만 검증한다.
 const base = {

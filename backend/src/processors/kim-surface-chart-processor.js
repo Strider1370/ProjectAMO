@@ -120,6 +120,8 @@ export async function buildSurfaceChartRun({ tmfc, signal, fetchGrid = fetchKimG
       u: grids.get(`u10m:${hf}`),
       v: grids.get(`v10m:${hf}`),
       view: settings.view,
+      // 운영 설정에는 없어 기본 규칙을 쓴다. 테스트가 강수 그림 크기를 줄일 때만 넘긴다.
+      rules: settings.rules,
     })
     frames.push({ hf, validTimeMs: analysisTimeMs + hf * HOUR_MS, precipStartMs: analysisTimeMs + (hf - 3) * HOUR_MS, ...frame })
   }

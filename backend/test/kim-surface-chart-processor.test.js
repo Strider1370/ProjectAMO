@@ -9,6 +9,7 @@ import {
   process as processSurfaceChart,
   readSurfaceChartLatest,
 } from '../src/processors/kim-surface-chart-processor.js'
+import { SURFACE_CHART_RULES } from '../src/lib/kim-surface-chart.js'
 
 const STEP = 1 / 12
 const SETTINGS = Object.freeze({
@@ -18,6 +19,8 @@ const SETTINGS = Object.freeze({
   forecast_hours: [3, 6, 9, 12],
   concurrency: 2,
   max_runs: 2,
+  // 강수 그림은 운영 크기(1400×1000)로 그리면 처리 한 번에 2초 넘게 걸린다. 여기서 보는 규칙과는 무관하다.
+  rules: { ...SURFACE_CHART_RULES, precipImageWidth: 140, precipImageHeight: 100 },
 })
 const KEY = 'test-radar-key'
 
