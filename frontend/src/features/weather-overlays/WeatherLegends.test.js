@@ -42,7 +42,7 @@ test('WISSDOM uses its existing panel button and is not automatic with HSR', () 
 
 test('all hooks run before the no-visible-legend return', () => {
   const effect = source.indexOf('useEffect(() =>')
-  const emptyReturn = source.indexOf('&& !surfaceChartLegendVisible && !supplementalContent && !aciLegendContent) return null')
+  const emptyReturn = source.indexOf('&& !surfaceChartLegendVisible && !supplementalContent && !aciLegendContent && !tropopauseLegendContent) return null')
   assert.ok(effect >= 0)
   assert.ok(emptyReturn > effect)
 })

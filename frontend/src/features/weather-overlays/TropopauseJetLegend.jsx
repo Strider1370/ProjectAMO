@@ -9,7 +9,7 @@ const caseLabel = c => `${SEASON[Number(c.tmfc.slice(4, 6))]} ${c.tmfc.slice(4, 
 export default function TropopauseJetLegend({ enabled, cases = [], caseKey = null, onSelectCase }) {
   if (!enabled) return null
   return <section className="tropopause-jet-legend" aria-label="권계면·제트 범례">
-    <strong className="tropopause-jet-legend__title">권계면·제트 <span className="tropopause-jet-legend__trop"
+    <strong className="tropopause-jet-legend__title">권계면·제트 · FL <span className="tropopause-jet-legend__trop"
       style={{ '--trop-fill': TROP_LABEL.fill, '--trop-stroke': TROP_LABEL.stroke, '--trop-text': TROP_LABEL.text }}>TROP 380</span></strong>
     <div className="tropopause-jet-legend__bands" role="list" aria-label="권계면 높이(FL)">
       {TROP_BANDS.map(band => <span role="listitem" key={band.label}><i aria-hidden="true" style={{ backgroundColor: band.color }} />{band.label}</span>)}

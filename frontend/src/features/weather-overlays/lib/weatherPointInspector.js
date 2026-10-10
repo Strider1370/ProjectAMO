@@ -1,3 +1,4 @@
+import { ACI_BANDS } from '../../../../../shared/aci.js'
 import { gktgBand } from '../../../../../shared/gktg.js'
 import { createCloudPotentialSampler, pickCloudPotentialColor } from './cloudPotentialField.js'
 import { createIcingPotentialSampler, pickIcingColor } from './icingPotentialField.js'
@@ -213,6 +214,20 @@ export function buildWeatherPointRows({
   if (visibility.icing && fields.icingField) rows.push(row('icing', '착빙', fields.icingField, () => buildIcingRow(fields.icingField, samplers.icing, metadata)))
   if (visibility.turbulence && fields.ktgGrid) rows.push(buildTurbulenceRow(fields.ktgGrid, samplers.turbulence, turbulenceMetadata))
   return rows.filter(Boolean)
+}
+
+export function buildAciPointRow(point, { issueLabel = '-', validLabel = '-' } = {}) {
+  const valid = Number.isFinite(point?.score)
+  const band = valid ? [...ACI_BANDS].reverse().find(b => point.score >= b.min) : null
+  return {
+    key: 'aci', label: '대류영역',
+    value: valid ? `점수 ${fixed(point.score, 3)}` : '자료 없음',
+    detail: valid
+      ? `CAPE ${fixed(point.cape, 0)} J/kg · 강수 ${fixed(point.rainRate, 2)} mm/h · OLR ${fixed(point.olr, 1)} W/m²`
+      : '지점 자료를 확인할 수 없습니다',
+    color: band?.color || 'var(--stroke-2)',
+    issueLabel, validLabel,
+  }
 }
 
 export function formatWeatherPointCoordinate(value, positive, negative) {

@@ -1,3 +1,4 @@
+import './WeatherLegends.css'
 import CloudIcingLegend from './CloudIcingLegend.jsx'
 import { useEffect, useRef, useState } from 'react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
@@ -26,6 +27,43 @@ function HLegend({ title, entries = [], reverse = false, note = null }) {
       </div>
       {note && <div className="hlegend-note">{note}</div>}
     </div>
+  )
+}
+
+function TurbulenceLegend({ product, entries }) {
+  const ranges = product === 'GKTG'
+    ? ['0.15–<0.22', '0.22–<0.34', '≥0.34']
+    : ['0.30–<0.475', '0.475–<0.75', '≥0.75']
+  return (
+    <section className="turbulence-legend" aria-label={`${product} 난류 범례`}>
+      <strong className="hlegend-title">난류 · {product}</strong>
+      <div className="turbulence-legend__scale">
+        {entries.map((entry, index) => (
+          <div className="turbulence-legend__band" key={entry.label}>
+            <i style={{ backgroundColor: entry.color }} aria-hidden="true" />
+            <strong>{['LGT', 'MOD', 'SEV'][index]}</strong>
+            <span>{ranges[index]}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function FlightCategoryBandLegend({ title, entries }) {
+  return (
+    <section className="flight-category-band-legend" aria-label={`${title} 범례`}>
+      <strong className="hlegend-title">{title}</strong>
+      <div className="flight-category-band-legend__scale" style={{ '--band-count': entries.length }}>
+        {entries.map(entry => (
+          <div className="flight-category-band-legend__band" key={entry.label}>
+            <i style={{ backgroundColor: entry.color }} aria-hidden="true" />
+            <span>{entry.compactLabel || entry.label}</span>
+            {entry.detail && <small>{entry.detail}</small>}
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -59,11 +97,6 @@ function WeatherLegends({
   flightCategoryCeilingBands = [],
   flightCategoryStationLegendVisible = false,
   flightCategoryStationBands = [],
-  flightCategoryStationCount = null,
-  showFlightCategoryMissing = false,
-  onShowFlightCategoryMissingChange,
-  showFlightCategoryStations = true,
-  onShowFlightCategoryStationsChange,
   radarRainrateLegend,
   qpfStatus = null,
   qpfLegendPath = null,
@@ -97,6 +130,7 @@ function WeatherLegends({
   onOpenPanelHeightChange,
   supplementalContent = null,
   aciLegendContent = null,
+  tropopauseLegendContent = null,
   sampleWarning = false,
 }) {
   const isMobile = useIsMobile()
@@ -252,6 +286,7 @@ function WeatherLegends({
       )}
       <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} mode="map" cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} />
       {aciLegendContent}
+      {tropopauseLegendContent}
       {ciLegendVisible && <ConvectiveLegend title="대류 가능성" entries={CI_LEGEND} note="위성 기반 대류 발생 가능성 참고 — 레이더 실황·위험등급 아님" />}
       {ctpsLegendVisible && <ConvectiveLegend title="구름 꼭대기" entries={CTPS_LEGEND} note="CTH 기반 높이 — 위험등급 아님" />}
       {echoTopLegendVisible && (echoTopOutOfRange ? (
@@ -264,23 +299,7 @@ function WeatherLegends({
       ) : (
         <ConvectiveLegend title="에코탑(재산출)" entries={ECHO_TOP_LEGEND} note="재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님" />
       ))}
-      {turbulenceLegendVisible && (
-        <div className="temperature-legend" aria-label={`${turbulenceProduct} 난류 범례`}>
-          <div className="temperature-legend-title">{turbulenceProduct}</div>
-          <div className="temperature-legend-scale">
-            {turbulenceLegendEntries.map((entry) => (
-              <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="temperature-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {turbulenceLegendVisible && <TurbulenceLegend product={turbulenceProduct} entries={turbulenceLegendEntries} />}
     </div>
   )
 
@@ -298,7 +317,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible && !supplementalContent && !aciLegendContent) return null
+  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible && !supplementalContent && !aciLegendContent && !tropopauseLegendContent) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -309,31 +328,8 @@ function WeatherLegends({
     wissdomLegendVisible && { key: 'wissdom', title: 'WISSDOM · m/s', entries: WISSDOM_WIND_LEGEND, note: wissdomNote },
     radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
     lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
-    // 자료없음 표시가 꺼져 있으면 결측 밴드는 아예 안 그려지므로(flightCategoryLayers.js
-    // filterMissing) 위 note 문구로 충분하다. 켜면 결측이 회색(#9ca3af, 백엔드
-    // flight-category-processor.js의 missing 색과 같다)으로 화면에 나오는데, 범례에 그
-    // 항목이 없으면 회색이 "설명 안 된 네 번째 밴드"로 보인다.
-    flightCategoryVisibilityOn && {
-      key: 'fc', title: '시정 · km',
-      entries: showFlightCategoryMissing
-        ? [...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]
-        : flightCategoryBands,
-      note: '채움 = 시정 · 색 없음 = 기준 충족 또는 자료 없음',
-    },
-    flightCategoryCeilingOn && {
-      key: 'fcCeiling', title: '운고 · m', entries: flightCategoryCeilingBands,
-      note: '옅은 채움·윤곽선 = 운고 · 색 없음 = 기준 충족 또는 자료 없음',
-    },
-    // 점 색의 뜻(빨강·주황·초록)과 흰 테두리(관측이 모델보다 낮음)를 알려준다.
-    // 게이트는 지점 층이 실제로 그려지는 조건(showFlightCategoryStations && (시정 또는 운고))과 같다.
-    flightCategoryStationLegendVisible && {
-      key: 'fcStations', title: '관측지점',
-      entries: flightCategoryStationBands,
-      note: '흰 테두리 = 관측이 모델보다 낮음',
-    },
     surfaceChartLegendVisible && { key: 'surfaceChart', title: '강수 · KIM · mm/3h', entries: surfaceChartLegendEntries, note: surfaceChartLegendNote },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
-    turbulenceLegendVisible && { key: 'turb', title: `난류 · ${turbulenceProduct}`, entries: turbulenceLegendEntries, note: turbulenceProduct === 'GKTG' ? 'LGT 0.15–<0.22 · MOD 0.22–<0.34 · SEV ≥0.34' : 'LGT 0.30–<0.475 · MOD 0.475–<0.75 · SEV ≥0.75' },
     ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
     ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
     // 이 하단 독이 데스크톱·모바일 모두에서 실제로 렌더되는 범례다(MapView가 bottomDock={!isMobile}).
@@ -348,6 +344,8 @@ function WeatherLegends({
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {supplementalContent}
         {aciLegendContent}
+        {tropopauseLegendContent}
+        {turbulenceLegendVisible && <TurbulenceLegend product={turbulenceProduct} entries={turbulenceLegendEntries} />}
         <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} mode="map" compact />
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
@@ -359,18 +357,14 @@ function WeatherLegends({
           <HLegend title="초단기 강수예측 · MAPLE · mm/h" entries={QPF_LEGEND} />
         )}
         {flightCategoryLegendVisible && (
-          <div className="flight-category-legend-controls">
-            <button type="button" className={`lightning-legend-blink${showFlightCategoryMissing ? ' is-on' : ''}`}
-              aria-pressed={showFlightCategoryMissing}
-              onClick={() => onShowFlightCategoryMissingChange?.((prev) => !prev)}>
-              자료없음 표시 {showFlightCategoryMissing ? 'ON' : 'OFF'}
-            </button>
-            <button type="button" className={`lightning-legend-blink${showFlightCategoryStations ? ' is-on' : ''}`}
-              aria-pressed={showFlightCategoryStations}
-              onClick={() => onShowFlightCategoryStationsChange?.((prev) => !prev)}>
-              관측지점 {flightCategoryStationCount == null ? '자료 없음' : `${flightCategoryStationCount}곳`}
-            </button>
-          </div>
+          <section className="flight-category-legend" aria-label="시정·운고 범례">
+            {flightCategoryVisibilityOn && <FlightCategoryBandLegend title="시정 · km" entries={[...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]} />}
+            {flightCategoryCeilingOn && <FlightCategoryBandLegend title="운고 · m" entries={[...flightCategoryCeilingBands, { label: '자료 없음', color: '#9ca3af' }]} />}
+            <p className="flight-category-legend__note">
+              {[flightCategoryVisibilityOn && '시정: 채움', flightCategoryCeilingOn && '운고: 옅은 채움·윤곽'].filter(Boolean).join(' · ')}
+            </p>
+            {flightCategoryStationLegendVisible && <FlightCategoryBandLegend title="관측지점 · 운고 m" entries={flightCategoryStationBands} />}
+          </section>
         )}
       </div>
       <button

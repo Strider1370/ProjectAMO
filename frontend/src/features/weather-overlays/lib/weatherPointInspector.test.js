@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildWeatherPointRows, chooseWeatherPointPlacement, createWeatherPointSamplers } from './weatherPointInspector.js'
+import { buildAciPointRow, buildWeatherPointRows, chooseWeatherPointPlacement, createWeatherPointSamplers } from './weatherPointInspector.js'
 
 const fields = {
   windField: {
@@ -99,4 +99,16 @@ test('a below-ground cell reads "지면 아래" for that layer only', () => {
   assert.match(rows[0].value, /^풍향/)
   const elsewhere = buildWeatherPointRows({ lon: 126, lat: 36, visibility: { temp: true }, fields: withMask, samplers: createWeatherPointSamplers(withMask) })
   assert.equal(elsewhere[0].value, '0.0 °C')
+})
+
+
+test('ACI point rows include score and input values with their own time, without a layer altitude', () => {
+  const row = buildAciPointRow({ score: 0.67, cape: 2774, rainRate: 1.04, olr: 162.9 }, { issueLabel: '10/09 09:00 KST', validLabel: '10/09 21:00 KST' })
+  assert.equal(row.label, '대류영역')
+  assert.equal(row.value, '점수 0.670')
+  assert.equal(row.validLabel, '10/09 21:00 KST')
+  assert.equal(row.altitude, undefined)
+  assert.match(row.detail, /CAPE 2774 J\/kg · 강수 1.04 mm\/h · OLR 162.9 W\/m²/)
+  assert.equal(buildAciPointRow({ score: 0, cape: 0, rainRate: 0, olr: 250 }).value, '점수 0.000')
+  assert.equal(buildAciPointRow({ score: null }).value, '자료 없음')
 })

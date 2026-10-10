@@ -1,5 +1,5 @@
 import { isothermSegments, chainContourSegments } from '../../../shared/weather/gridContours.js'
-import { JET_MIN_KT, TROP_BANDS, TROP_CAP_FL, TROP_EDGE_LEVELS } from '../../../shared/weather/tropopauseJetPresentation.js'
+import { JET_MIN_KT, TROP_BANDS, TROP_CAP_FL, TROP_CLEAR_FL, TROP_EDGE_LEVELS } from '../../../shared/weather/tropopauseJetPresentation.js'
 
 
 // ISA 기압고도(100 ft 단위 FL). FL은 기압고도이므로 지오퍼텐셜고도가 아니라 기압에서 바로 환산한다.
@@ -41,16 +41,21 @@ export function buildTropDisplayFl(field, passes = 6) {
 }
 
 export function tropBandColor(fl) {
-  if (!Number.isFinite(fl) || fl >= TROP_CAP_FL - 0.2) return null
+  if (!Number.isFinite(fl) || fl >= TROP_CLEAR_FL) return null
   return TROP_BANDS.find(band => fl >= band.from && fl < band.to)?.color ?? null
 }
 
 const hexRgb = hex => [1, 3, 5].map(k => Number.parseInt(hex.slice(k, k + 2), 16))
 
-// 권계면 면(색 단계)을 한 장의 RGBA로 만든다. scale배 확대해 경계를 부드럽게 하고, 행은 북쪽이 위가 되도록 뒤집는다.
+const mercatorY = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))
+const latFromMercatorY = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI
+
+// Mapbox 이미지 소스는 네 모서리 사이를 지도 투영 좌표에서 선형으로 편다.
+// 각 픽셀 중심의 Mercator 위도를 원 격자에 역투영해 경계선(map.project)과 면색을 맞춘다.
 export function buildTropJetRaster(field, displayFl, scale = 4) {
-  const { nx, ny } = field.grid
+  const { nx, ny, latMin, latMax } = field.grid
   const width = nx * scale, height = ny * scale
+  const top = mercatorY(latMax), bottom = mercatorY(latMin)
   const data = new Uint8ClampedArray(width * height * 4)
   const sample = (values, gx, gy) => {
     const i = Math.min(nx - 2, Math.max(0, Math.floor(gx))), j = Math.min(ny - 2, Math.max(0, Math.floor(gy)))
@@ -61,9 +66,10 @@ export function buildTropJetRaster(field, displayFl, scale = 4) {
   }
   const rgbCache = new Map()
   for (let y = 0; y < height; y++) {
-    const gy = (height - 1 - y) / scale
+    const lat = latFromMercatorY(top - (y + 0.5) / height * (top - bottom))
+    const gy = Math.min(ny - 1, Math.max(0, (lat - latMin) / (latMax - latMin) * (ny - 1)))
     for (let x = 0; x < width; x++) {
-      const gx = x / scale, o = (y * width + x) * 4
+      const gx = (x + 0.5) / width * (nx - 1), o = (y * width + x) * 4
       const color = tropBandColor(sample(displayFl, gx, gy))
       if (color) {
         if (!rgbCache.has(color)) rgbCache.set(color, hexRgb(color))
@@ -84,7 +90,7 @@ function lines(field, values, level) {
 
 // 권계면 단계 경계선(TROP 라벨 위치).
 export function buildTropEdges(field, displayFl) {
-  return TROP_EDGE_LEVELS.map(level => ({ level, lines: lines(field, displayFl, level === TROP_CAP_FL ? TROP_CAP_FL - 2 : level) }))
+  return TROP_EDGE_LEVELS.map(level => ({ level, lines: lines(field, displayFl, level === TROP_CAP_FL ? TROP_CLEAR_FL : level) }))
 }
 
 export function sampleField(field, name, lon, lat) {
@@ -160,4 +166,3 @@ export function describeTropopauseJetPoint(field, lon, lat) {
     maxWind: Number.isFinite(field.vmax[i]) ? { speedKt: Math.round(field.vmax[i]), flightLevel: Math.round(pressureToFl(field.pmax[i])) } : null,
   }
 }
-

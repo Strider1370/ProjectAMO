@@ -1,5 +1,5 @@
-.weather-point-info-toggle { min-height: var(--touch-min); white-space: nowrap; box-shadow: none; font-family: var(--app-font); pointer-events: auto; }
-.weather-point-info-toggle.is-open { background: var(--accent); color: var(--bg-1); border-color: var(--accent); }
+.weather-point-info-toggle { min-height: var(--touch-min); white-space: nowrap; box-shadow: none; font-family: var(--font-base); pointer-events: auto; }
+.map-legend-toggle.weather-point-info-toggle[aria-pressed="true"] { background: var(--accent); color: var(--bg-1); border-color: var(--accent); }
 .weather-point-info-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 719px) {
   .weather-point-info-toggle { padding-inline: var(--space-s); }

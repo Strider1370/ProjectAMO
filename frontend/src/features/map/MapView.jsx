@@ -260,17 +260,17 @@ const RANGE_RING_COLORS = ['#ff0000', '#ff8800', '#ffd500']
 // 예전 값에 머물러 거짓말을 하게 된다 — flightCategoryLayers.js의 STATION_FILL 주석과
 // 같은 종류의 경고.
 const FLIGHT_CATEGORY_LEGEND_BANDS = [
-  { label: '3 km 미만', color: '#dc2626' },
-  { label: '3~5 km', color: '#f97316' },
-  { label: '5~7 km', color: '#fde047' },
+  { label: '3 km 미만', compactLabel: '<3', color: '#dc2626' },
+  { label: '3~5 km', compactLabel: '3–5', color: '#f97316' },
+  { label: '5~7 km', compactLabel: '5–7', color: '#fde047' },
 ]
 
 // 지점 색은 flightCategoryLayers.js의 STATION_COLORS를 그대로 쓴다 — 여기서 리터럴로
 // 다시 적으면 그 파일의 STATION_FILL이 바뀔 때 범례만 예전 색에 머무는 거짓말이 생긴다.
 const FLIGHT_CATEGORY_STATION_LEGEND_BANDS = [
-  { label: '450 m 미만', color: STATION_COLORS.severe },
-  { label: '450~900 m', color: STATION_COLORS.caution },
-  { label: '900 m 초과·구름 없음', color: STATION_COLORS.good },
+  { label: '450 m 미만', compactLabel: '<450', color: STATION_COLORS.severe },
+  { label: '450~900 m', compactLabel: '450–900', color: STATION_COLORS.caution },
+  { label: '900 m 초과·구름 없음', compactLabel: '>900', detail: '구름 없음 포함', color: STATION_COLORS.good },
 ]
 
 // 선택 공항 중심 낙뢰 접근 확인용 거리(km) 점선 원. ponytail: km 라벨 텍스트만, 회전/자북 보정 없음.
@@ -447,8 +447,7 @@ const MapView = forwardRef(function MapView({
   ), [metLayerIds])
   const [metVisibility, setMetVisibility] = useState(() => initMetVisibility(initialMetVisibility))
   const [visibleSatelliteVisuals, setVisibleSatelliteVisuals] = useState({ brightness: 12, contrast: 0 })
-  const [showFlightCategoryMissing, setShowFlightCategoryMissing] = useState(false)
-  const [showFlightCategoryStations, setShowFlightCategoryStations] = useState(true)
+  const showFlightCategoryStations = true
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
   useEffect(() => { onWeatherLegendPanelHeightChange?.(weatherLegendPanelHeight) }, [onWeatherLegendPanelHeightChange, weatherLegendPanelHeight])
@@ -1050,10 +1049,7 @@ const MapView = forwardRef(function MapView({
     canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current,
     pausePlayback: () => { if (weatherTimelinePlaying) toggleWeatherTimelinePlay() },
   })
-  const aciExperiment = useKimAciOverlay({ mapRef, isStyleReady, styleRevision, aci, tz, priorityLayers:AIRPORT_INTERACTIVE_LAYERS, canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current })
-  useEffect(() => {
-    if (aciExperiment.selected) setWeatherLegendOpen(true)
-  }, [aciExperiment.selected])
+  const aciExperiment = useKimAciOverlay({ mapRef, isStyleReady, styleRevision, aci, tz })
   const tropopauseJetEnabled = enableWindOverlay && !!metVisibility.tropopause
   // 개발 서버에서는 저장된 권계면·제트 사례를 범례의 버튼으로 바꿔 볼 수 있다.
   const [tropopauseCaseKey, setTropopauseCaseKey] = useState(null)
@@ -1174,7 +1170,12 @@ const MapView = forwardRef(function MapView({
     shouldSkipClick: sigwxHigh.shouldSkipLowerPriorityClick,
     mapRef,
     isStyleReady,
-    enabled: weatherPointInspection.enabled && Object.values(weatherPointVisibility).some(Boolean),
+    enabled: weatherPointInspection.enabled && (Object.values(weatherPointVisibility).some(Boolean) || aci.enabled),
+    aciTime: aci.enabled ? aci.time : null,
+    aciIssueLabel: aciExperiment.timestamp?.issueLabel,
+    aciValidLabel: aciExperiment.timestamp?.validLabel,
+    canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current,
+    aciPriorityLayers: AIRPORT_INTERACTIVE_LAYERS,
     visibility: weatherPointVisibility,
     fields: weatherPointFields,
     issueLabel: nwpIssueLabel,
@@ -1860,14 +1861,14 @@ const MapView = forwardRef(function MapView({
       stations: flightCategory.stations,
       showVisibility: !!metVisibility.visibility,
       showCeiling: !!metVisibility.ceiling,
-      showMissing: showFlightCategoryMissing,
+      showMissing: true,
       showStations: showFlightCategoryStations,
       beforeLayerId: AIRPORT_CIRCLE_LAYER,
     })
   }, removeFlightCategoryLayers, [
     flightCategory.visibility, flightCategory.ceiling, flightCategory.stations,
     metVisibility.visibility, metVisibility.ceiling,
-    showFlightCategoryMissing, showFlightCategoryStations,
+    showFlightCategoryStations,
   ])
 
   // ???? Sync selected-airport range rings (monitoring only) ??????????????????????????????????????????????????????????????????????????
@@ -2066,18 +2067,17 @@ const MapView = forwardRef(function MapView({
 
       {!isMobile && <WeatherLayerTimestampBar entries={timestampEntries}>
         <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
-        <TropopauseJetLegend enabled={tropopauseJetEnabled} cases={tropopauseJet.cases} caseKey={tropopauseJet.caseKey} onSelectCase={setTropopauseCaseKey} />
       </WeatherLayerTimestampBar>}
 
       <div className={`map-bottom-control-dock${weatherLegendOpen ? ' is-legend-open' : ''}`}>
 
         {showWeatherLegends && (
           <WeatherLegends
+          tropopauseLegendContent={tropopauseJetEnabled ? <TropopauseJetLegend enabled cases={tropopauseJet.cases} caseKey={tropopauseJet.caseKey} onSelectCase={setTropopauseCaseKey} /> : null}
           aciLegendContent={aciExperiment.enabled ? <AciExperimentLegend overlay={aciExperiment} /> : null}
           supplementalContent={isMobile && timestampEntries.some(entry => entry.issueLabel && entry.issueLabel !== '-') ? (
             <WeatherLayerTimestampBar entries={timestampEntries} embedded>
               <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
-              <TropopauseJetLegend enabled={tropopauseJetEnabled} cases={tropopauseJet.cases} caseKey={tropopauseJet.caseKey} onSelectCase={setTropopauseCaseKey} />
             </WeatherLayerTimestampBar>
           ) : null}
           sampleWarning={isMobile && !!metVisibility.sigwxHigh}
@@ -2103,11 +2103,6 @@ const MapView = forwardRef(function MapView({
           flightCategoryCeilingBands={FLIGHT_CATEGORY_STATION_LEGEND_BANDS.slice(0, 2)}
           flightCategoryStationLegendVisible={showFlightCategoryStations && !!(metVisibility.visibility || metVisibility.ceiling)}
           flightCategoryStationBands={FLIGHT_CATEGORY_STATION_LEGEND_BANDS}
-          flightCategoryStationCount={flightCategory.hasData ? fcStamps.stationCount : null}
-          showFlightCategoryMissing={showFlightCategoryMissing}
-          onShowFlightCategoryMissingChange={setShowFlightCategoryMissing}
-          showFlightCategoryStations={showFlightCategoryStations}
-          onShowFlightCategoryStationsChange={setShowFlightCategoryStations}
           radarRainrateLegend={RADAR_RAINRATE_LEGEND}
           qpfStatus={weatherOverlayModel.qpfStatus}
           qpfLegendPath={weatherOverlayModel.qpfFrame?.legendPath}

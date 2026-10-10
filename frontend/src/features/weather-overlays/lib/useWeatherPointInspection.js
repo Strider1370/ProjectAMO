@@ -4,7 +4,7 @@ export function useWeatherPointInspection({ visibility, enableWindOverlay, contr
   const [selected, setSelected] = useState(false)
   const available = Boolean(
     (enableWindOverlay && ['wind', 'temp', 'cloud', 'icing', 'turbulence'].some(id => visibility[id]))
-    || visibility.ci || visibility.ctps || visibility.echoTop,
+    || visibility.ci || visibility.ctps || visibility.echoTop || visibility.aciExperiment,
   )
   return {
     available,

@@ -874,7 +874,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.map-legends-bottom .flight-category-legend-controls { display: flex; gap: var(--space-xs); }
 
 .map-view-wrapper .radar-wind-control {
   display: grid;

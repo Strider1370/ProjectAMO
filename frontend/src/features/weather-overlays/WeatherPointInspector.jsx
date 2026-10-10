@@ -30,7 +30,7 @@ export default function WeatherPointInspector({ selection, onClose }) {
             </div>
             <div className="weather-point-inspector__meta">
               <span>발표 {row.issueLabel}</span>
-              <span>고도 {row.altitude}</span>
+              {row.altitude && <span>고도 {row.altitude}</span>}
               {row.geopotentialHeight && <span>{row.geopotentialHeight}</span>}
               {row.detail && row.key !== 'wind' && row.key !== 'temp' && <span>{row.detail}</span>}
             </div>

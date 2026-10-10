@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildTropDisplayFl, buildTropopauseJetModel, describeTropopauseJetPoint, pickJetBarbs, pickTropopauseTime, pressureToFl, tropBandColor } from './tropopauseJetModel.js'
+import mapboxgl from 'mapbox-gl'
+import { buildTropDisplayFl, buildTropEdges, buildTropJetRaster, buildTropopauseJetModel, describeTropopauseJetPoint, pickJetBarbs, pickTropopauseTime, pressureToFl, tropBandColor } from './tropopauseJetModel.js'
 import { TROP_BANDS, TROP_CAP_FL } from '../../../shared/weather/tropopauseJetPresentation.js'
 
 const grid = { nx: 21, ny: 11, lonMin: 120, lonMax: 130, latMin: 30, latMax: 35 }
@@ -42,6 +43,55 @@ test('band colours follow the five FL steps and leave FL450 and above unfilled',
   assert.equal(tropBandColor(345), TROP_BANDS[2].color)
   assert.equal(tropBandColor(449), TROP_BANDS[4].color)
   assert.equal(tropBandColor(450), null)
+})
+
+// Mapbox image coordinates cover the outer pixel edges. Compare raster transitions
+// with independently projected contour positions, allowing half a pixel for sampling.
+const rgbaAt = (raster, x, y) => Array.from(raster.data.slice((y * raster.width + x) * 4, (y * raster.width + x + 1) * 4))
+
+test('all horizontal band boundaries align with Mapbox-projected contours, including the transparent cap', () => {
+  const wideGrid = { nx: 205, ny: 169, lonMin: 119, lonMax: 136, latMin: 30, latMax: 44 }
+  const display = Float32Array.from({ length: wideGrid.nx * wideGrid.ny }, (_, k) => {
+    const lat = wideGrid.latMin + Math.floor(k / wideGrid.nx) / (wideGrid.ny - 1) * (wideGrid.latMax - wideGrid.latMin)
+    return Math.min(TROP_CAP_FL, 260 + (lat - wideGrid.latMin) * 20)
+  })
+  const edges = buildTropEdges({ grid: wideGrid }, display)
+  const top = mapboxgl.MercatorCoordinate.fromLngLat([wideGrid.lonMin, wideGrid.latMax])
+  const bottom = mapboxgl.MercatorCoordinate.fromLngLat([wideGrid.lonMin, wideGrid.latMin])
+  for (const scale of [2, 4, 8]) {
+    const raster = buildTropJetRaster({ grid: wideGrid }, display, scale)
+    const transitions = []
+    for (let y = 1; y < raster.height; y++) {
+      if (rgbaAt(raster, 0, y).join() !== rgbaAt(raster, 0, y - 1).join()) transitions.push(y)
+    }
+    assert.equal(transitions.length, edges.length)
+    edges.forEach((edge, i) => {
+      assert.equal(edge.lines.length, 1)
+      const [lon, lat] = edge.lines[0][0]
+      const projected = mapboxgl.MercatorCoordinate.fromLngLat([lon, lat])
+      const expectedRow = (projected.y - top.y) / (bottom.y - top.y) * raster.height
+      const actualRow = transitions[transitions.length - 1 - i]
+      assert.ok(Math.abs(actualRow - expectedRow) <= 0.5, `FL${edge.level}, scale ${scale}: raster row ${actualRow}, contour row ${expectedRow}`)
+    })
+    assert.equal(rgbaAt(raster, 0, 0)[3], 0)
+    assert.equal(rgbaAt(raster, 0, raster.height - 1)[3], 150)
+  }
+})
+
+test('longitude band boundaries align across the full image extent without stretching the last grid cell', () => {
+  const display = Float32Array.from({ length: size }, (_, k) => Math.min(TROP_CAP_FL, 270 + k % grid.nx / (grid.nx - 1) * 200))
+  const raster = buildTropJetRaster({ grid }, display)
+  const edges = buildTropEdges({ grid }, display)
+  const transitions = []
+  for (let x = 1; x < raster.width; x++) {
+    if (rgbaAt(raster, x, 0).join() !== rgbaAt(raster, x - 1, 0).join()) transitions.push(x)
+  }
+  assert.equal(transitions.length, edges.length)
+  edges.forEach((edge, i) => {
+    const lon = edge.lines[0][0][0]
+    const expectedColumn = (lon - grid.lonMin) / (grid.lonMax - grid.lonMin) * raster.width
+    assert.ok(Math.abs(transitions[i] - expectedColumn) <= 0.5, `FL${edge.level}: raster column ${transitions[i]}, contour column ${expectedColumn}`)
+  })
 })
 
 test('barbs follow the SIGWX rule: core, then ±20 kt or ±3,000 ft changes at least 400 km apart', () => {

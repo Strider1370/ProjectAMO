@@ -1,0 +1,32 @@
+.turbulence-legend { display: grid; gap: var(--space-xs); min-width: 0; }
+.turbulence-legend__scale { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.turbulence-legend__band {
+  display: grid;
+  gap: var(--space-xxs);
+  min-width: 0;
+  text-align: center;
+  font-size: var(--fs-100);
+  line-height: var(--lh-100);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.turbulence-legend__band i { display: block; height: var(--space-m); }
+.turbulence-legend__band span { white-space: nowrap; }
+.flight-category-legend { display: grid; gap: var(--space-s); min-width: 0; }
+.flight-category-band-legend { display: grid; gap: var(--space-xs); }
+.flight-category-band-legend__scale { display: grid; grid-template-columns: repeat(var(--band-count), minmax(0, 1fr)); }
+.flight-category-band-legend__band {
+  display: grid;
+  align-content: start;
+  gap: var(--space-xxs);
+  min-width: 0;
+  text-align: center;
+  font-size: var(--fs-100);
+  line-height: var(--lh-100);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.flight-category-band-legend__band i { display: block; height: var(--space-m); }
+.flight-category-band-legend__band span { white-space: nowrap; }
+.flight-category-band-legend__band small { font: inherit; color: var(--text-3); }
+.flight-category-legend__note { margin: 0; font-size: var(--fs-100); line-height: var(--lh-100); color: var(--text-3); }

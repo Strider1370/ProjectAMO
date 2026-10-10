@@ -1,7 +1,6 @@
 .tropopause-jet-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .tropopause-jet-legend {
-  display: grid; gap: var(--space-xs); margin-top: var(--space-s);
-  padding-top: var(--space-xs); border-top: 1px solid var(--stroke-1);
+  display: grid; gap: var(--space-xs); min-width: 0;
   font-size: var(--fs-100); line-height: var(--lh-100); color: var(--text-2);
 }
 .tropopause-jet-legend__title { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-100); color: var(--accent); }
@@ -9,16 +8,15 @@
   padding: 0 var(--space-xs); border: 1.2px solid var(--trop-stroke); border-radius: 999px;
   background: var(--trop-fill); color: var(--trop-text); font-weight: var(--fw-semibold);
 }
-.tropopause-jet-legend__bands { display: flex; flex-wrap: wrap; gap: 0; }
-.tropopause-jet-legend__bands span { display: grid; justify-items: center; gap: 2px; min-width: 36px; font-variant-numeric: tabular-nums; }
+.tropopause-jet-legend__bands { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; }
+.tropopause-jet-legend__bands span { display: grid; justify-items: center; gap: var(--space-xxs); min-width: 0; font-variant-numeric: tabular-nums; }
 .tropopause-jet-legend__bands i { display: block; width: 100%; height: 12px; }
 .tropopause-jet-legend__bands i.is-empty { outline: 1px solid var(--stroke-1); outline-offset: -1px; background: var(--bg-1); }
-.tropopause-jet-legend__jet { display: flex; flex-wrap: wrap; gap: var(--space-s) var(--space-m); }
-.tropopause-jet-legend__jet span { display: flex; align-items: center; gap: var(--space-xs); white-space: nowrap; }
+.tropopause-jet-legend__jet { display: grid; gap: var(--space-xs); }
+.tropopause-jet-legend__jet span { display: flex; align-items: center; gap: var(--space-xs); }
 .tropopause-jet-legend__jet i { display: block; width: 22px; height: 12px; }
 .tropopause-jet-legend__jet i.is-axis { height: 0; border-top: 3px solid var(--text-1); }
 .tropopause-jet-legend__note { font-size: var(--fs-100); }
-.weather-time-card:has(.tropopause-jet-legend) .weather-time-card__times { flex-wrap: wrap; row-gap: var(--space-xxs); }
 .tropopause-jet-legend__cases { display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
 .tropopause-jet-legend__cases button {
   padding: 2px var(--space-s); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm);

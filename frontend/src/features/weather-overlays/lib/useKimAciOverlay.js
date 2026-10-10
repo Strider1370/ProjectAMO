@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchKimAciPoint } from '../../../api/weatherApi.js'
-import { aciSelectionKey } from './useKimAci.js'
+import { useEffect, useMemo } from 'react'
 import { ACI_BANDS, ACI_MISSING } from '../../../../../shared/aci.js'
 import { cellCoordinatesForGrid, mercatorSourceRows } from './overlayUtils.js'
 import { ACI_SOURCE, ACI_LAYER, removeAciLayer } from './aciExperimentModel.js'
@@ -20,38 +18,19 @@ export function aciFieldPixels(field) {
   }
   return pixels
 }
-export function useKimAciOverlay({mapRef,isStyleReady,styleRevision,aci,tz,canPick,priorityLayers=[]}) {
-  const [selected,setSelected]=useState(null),[pointProblem,setPointProblem]=useState(null),pending=useRef(null)
-  const canPickRef = useRef(canPick)
-  canPickRef.current = canPick
-  const key=aciSelectionKey(aci.time)
+export function useKimAciOverlay({mapRef,isStyleReady,styleRevision,aci,tz}) {
   const raster=useMemo(()=>{
     if(!aci.field)return null
     const canvas=document.createElement('canvas');canvas.width=aci.field.grid.nx;canvas.height=aci.field.grid.ny
     canvas.getContext('2d').putImageData(new ImageData(aciFieldPixels(aci.field),canvas.width,canvas.height),0,0)
     return {url:canvas.toDataURL('image/png'),coordinates:cellCoordinatesForGrid(aci.field.grid)}
   },[aci.field])
-  useEffect(()=>{setSelected(null);setPointProblem(null);pending.current?.abort();return ()=>pending.current?.abort()},[key,aci.enabled])
   useEffect(()=>{
     const map=mapRef.current;if(!map||!isStyleReady)return
     if(!aci.enabled||!raster){removeAciLayer(map);return}
     syncAciRaster(map,raster,true)
     return ()=>removeAciLayer(map)
   },[mapRef,isStyleReady,styleRevision,aci.enabled,raster])
-  useEffect(()=>{
-    const map=mapRef.current;if(!map||!aci.enabled||!aci.field||!isStyleReady)return
-    const click=e=>{
-      if(canPickRef.current&&!canPickRef.current())return
-      const active=priorityLayers.filter(id=>map.getLayer(id))
-      if(active.length&&map.queryRenderedFeatures(e.point,{layers:active}).length)return
-      pending.current?.abort();const controller=new AbortController();pending.current=controller
-      setSelected(null);setPointProblem(null)
-      fetchKimAciPoint(aci.time,{lon:e.lngLat.lng,lat:e.lngLat.lat},{signal:controller.signal}).then(p=>{
-        if(!controller.signal.aborted){setSelected(p.score==null?null:{...p,capeContribution:p.contributions[0],rainContribution:p.contributions[1],olrContribution:p.contributions[2]});if(p.score==null)setPointProblem('이 격자는 계산 자료가 부족합니다')}
-      }).catch(error=>{if(!controller.signal.aborted&&!/404/.test(error.message))setPointProblem('지점 값을 불러오지 못했습니다')})
-    }
-    map.on('click',click);return()=>{map.off('click',click);pending.current?.abort()}
-  },[mapRef,isStyleReady,aci.enabled,aci.field,key,priorityLayers])
   const timestamp=aci.enabled?{key:'aci',label:'대류영역',issueLabel:aci.time?formatUtcTmfcStamp(aci.time.tmfc,tz):'-',validLabel:aci.time?formatSigwxStamp(aci.time.validTime,tz):'-',note:aci.problem,noteTone:aci.problem?'warning':undefined}:null
-  return {enabled:aci.enabled,selected,problem:pointProblem||aci.problem,timestamp,count:aci.field?.validCount??0,caseLabel:aci.time?`${formatUtcTmfcStamp(aci.time.tmfc,tz)} 발표 · ${formatSigwxStamp(aci.time.validTime,tz)} 유효`:'자료 준비 중'}
+  return {enabled:aci.enabled,problem:aci.problem,timestamp,count:aci.field?.validCount??0,caseLabel:aci.time?`${formatUtcTmfcStamp(aci.time.tmfc,tz)} 발표 · ${formatSigwxStamp(aci.time.validTime,tz)} 유효`:'자료 준비 중'}
 }
