@@ -76,6 +76,7 @@ export async function process({root=config.storage.base_path,domain='ea',tmfc,fo
       appendKimRunEvent(runDir,{type:'aci_wait',hf})
       release=await turn()
       appendKimRunEvent(runDir,{type:'aci_calculating',hf,waitedMs:Date.now()-started})
+      const phases={waitMs:Date.now()-started};let mark=Date.now()
       const dir=path.join(runDir,'derived','aci','.staging');fs.mkdirSync(dir,{recursive:true});stage=fs.mkdtempSync(path.join(dir,'hour-'))
       const hash=createHash('sha256');let grid,size;const sources=[...levels.map(l=>l.id),'10m'].map(levelId=>kimDocumentStoragePath(resolveKimNwpGridPath({root,domain,model:KIM_NWP_MODEL,tmfc,hf,levelId})))
       if(sources.some(file=>!file))throw new Error('ACI base input unavailable')
@@ -102,15 +103,19 @@ export async function process({root=config.storage.base_path,domain='ea',tmfc,fo
       for(const values of [inputs.ps,t2m,inputs.q2m]){const bytes=Buffer.from(values.buffer);fs.appendFileSync(path.join(stage,'surface.f32'),bytes);hash.update(bytes)}
       const capeRevision=aciHash(`${engine}:${hash.digest('hex')}`),job={grid,pressures:levels.map(l=>l.value),maxStepPa:2000}
       fs.writeFileSync(path.join(stage,'job.json'),JSON.stringify(job))
+      phases.inputMs=Date.now()-mark
       const time={tmfc,hf,validTime:addForecastHours(tmfc,hf)}
       let capeField,computed=false
       try{capeField=readKimAciField({root,domain,tmfc,hf,revision:capeRevision,cape:true})}catch(error){if(!/ENOENT/.test(error.code||''))throw error}
       if(!capeField) {
+        mark=Date.now()
         const result=await calculate(job,stage,{signal,python}),r=result.values
+        phases.pythonMs=Date.now()-mark
         if(r?.length!==size*3)throw new Error('Invalid ACI calculation shape')
         const status=Array.from(r.subarray(2*size));if(status.some(v=>![0,1,2].includes(v)))throw new Error('Invalid ACI calculation status')
         capeField=writeKimAciField({root,domain,cape:true,field:{type:'kim_aci_cape',grid,time,revision:capeRevision,engineRevision:engine,algorithm:ACI_ALGORITHM,cape:Array.from(r.subarray(0,size),v=>Number.isFinite(v)?v:null),cin:Array.from(r.subarray(size,2*size),v=>Number.isFinite(v)?v:null),status,checks:{fallbacks:result.fallbacks,seconds:result.seconds,maxStepHpa:20,topPressureHpa:150}}});computed=true
       }
+      mark=Date.now()
       const rainRate=Array.from(inputs.pr,v=>Number.isFinite(v)?Math.fround(v*3600):null),olr=Array.from(inputs.ulwrtoa,v=>Number.isFinite(v)?v:null)
       const revision=aciHash({capeRevision,rainRate,olr,scoreSpec});let field
       try{field=readKimAciField({root,domain,tmfc,hf,revision})}catch(error){if(!/ENOENT/.test(error.code||''))throw error}
@@ -124,7 +129,8 @@ export async function process({root=config.storage.base_path,domain='ea',tmfc,fo
       if(digestFiles(sources)!==captured || digestFiles(sources.slice(0,levels.length+1))!==baseCaptured)throw new Error('ACI inputs changed during calculation')
       ensureAciBinary({root,domain,tmfc,hf,revision})
       entries.push({hf,validTime:time.validTime,revision,capeRevision,inputFiles:sources.map(file=>path.relative(root,file)),inputFingerprint:captured})
-      appendKimRunEvent(runDir,{type:'aci_hour',hf,computed,validCount:field.validCount,ms:Date.now()-started,revision})
+      phases.outputMs=Date.now()-mark
+      appendKimRunEvent(runDir,{type:'aci_hour',hf,computed,validCount:field.validCount,ms:Date.now()-started,revision,phases})
     }catch(error){if(signal?.aborted){writeKimAciAttempt(root,domain,tmfc,{tmfc,outcome:'cancelled',expectedHours:forecastHours,completed_at:new Date().toISOString()});throw error}failures.push({hf,reason:String(error.code||error.message).slice(0,250)});appendKimRunEvent(runDir,{type:'aci_hour_failed',hf,reason:failures.at(-1).reason})}
     finally{if(stage)fs.rmSync(stage,{recursive:true,force:true});release?.()}
   }

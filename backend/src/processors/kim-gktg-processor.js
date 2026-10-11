@@ -109,6 +109,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
 // inputRevision은 쓴 값(float32, 계산 엔진이 쓰는 정밀도)과 격자·시각으로 만든다.
 async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain }) {
   const validTime = addForecastHours(tmfc, hf)
+  let readMs = 0
   const nz = pressures.length
   const hash = crypto.createHash('sha256')
   let grid = null
@@ -125,7 +126,9 @@ async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain
     // 기본 21층을 모두 확인한 다음에만 추가 입력을 요청한다.
     for (let k = 0; k < nz; k++) {
       // 계산에 쓰는 6개 변수만 읽는다(층 문서의 나머지 바람·습도·착빙 변수는 열지 않는다).
+      const readStarted = performance.now()
       const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, names: CUBE_FIELDS, domain })
+      readMs += performance.now() - readStarted
       if (!grid) {
         grid = layer.grid
         size = grid.nx * grid.ny
@@ -149,7 +152,7 @@ async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain
   } finally { fs.closeSync(surface) }
   const job = { grid, hf, validTime, pressures: pressures.map(p => p.value * 100), cube: 'cube.f32', surface: 'surface.f32' }
   fs.writeFileSync(path.join(stage, 'job.json'), JSON.stringify(job))
-  return { job, inputRevision: hash.digest('hex').slice(0, 20) }
+  return { job, inputRevision: hash.digest('hex').slice(0, 20), readMs: Math.round(readMs) }
 }
 
 // Python은 블록마다 stdout에 진행 한 줄을 쓴다. 제한시간은 블록 하나(한반도는 한 번에 계산하는 한 덩어리) 기준이다.
@@ -220,6 +223,8 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain })
   for (const hf of forecastHours) {
     const hourStarted = Date.now()
+    // 서버에서 어디가 무거운지 보려고 단계별 시간을 남긴다(기다림·입력 준비·그중 격자 읽기·Python·결과 저장).
+    const phases = {}
     // 시각마다 한 번 이벤트 루프에 양보해 계산 중에도 API 요청을 처리한다.
     await nextTurn()
     if (signal?.aborted) {
@@ -231,12 +236,15 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
     try {
       // 무거운 계산 순번을 예보시각마다 받는다(부모가 서버 남은 메모리도 확인한다). 시각 사이에 위성 처리가 들어올 수 있다.
       releaseTurn = await turn()
+      phases.waitMs = Date.now() - hourStarted
       // 계산 중 기본 수집기가 이 시각 입력을 바꾸면 게시하지 않는다. 파일 지문(inode·크기·수정 시각)으로 본다.
       baseFingerprints.set(hf, fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }))
       const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'gktg', '.staging')
       fs.mkdirSync(stages, { recursive: true })
       stage = fs.mkdtempSync(path.join(stages, 'hour-'))
-      const { job, inputRevision } = await writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain })
+      let mark = Date.now()
+      const { job, inputRevision, readMs } = await writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain })
+      Object.assign(phases, { inputMs: Date.now() - mark, readMs })
       const { grid } = job
       const revision = sha(`${engine}:${inputRevision}`)
       const exists = pressures.every(level => {
@@ -244,7 +252,10 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
         catch { return false }
       })
       if (!exists) {
+        mark = Date.now()
         const output = await calculate(job, stage, { python, signal })
+        phases.pythonMs = Date.now() - mark
+        mark = Date.now()
         const levelValues = typeof output === 'function' ? output : k => output[k]
         for (let k = 0; k < pressures.length; k++) {
           const gktg = levelValues(k)
@@ -254,10 +265,11 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
           layer.variables = { hgt: { ...layer.variables.hgt, values: Array.from(layer.variables.hgt.values, v => (Number.isNaN(v) ? null : v)) } }
           writeKimGktgField(root, buildKimGktgFieldFromGrid(layer, { gktg, revision, inputRevision, algorithm: GKTG_ALGORITHM, engineRevision: engine }), domain)
         }
+        phases.outputMs = Date.now() - mark
       }
       for (const level of pressures) entries.push({ levelId: level.id, hf, validTime: job.validTime, variables: ['gktg'], hashes: { gktg: revision }, revision, inputRevision, grid,
         path: path.relative(root, resolveKimGktgFieldPath({ root, tmfc, hf, levelId: level.id, revision, domain })) })
-      appendKimRunEvent(runDir, { type: 'gktg_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision })
+      appendKimRunEvent(runDir, { type: 'gktg_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision, phases })
     } catch (error) {
       if (signal?.aborted) {
         writeKimGktgAttempt(root, tmfc, { tmfc, outcome: 'cancelled', expectedHours: forecastHours, fields: entries.length, completed_at: new Date().toISOString() }, domain)

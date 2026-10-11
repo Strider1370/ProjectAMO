@@ -33,11 +33,12 @@ const BUILDERS = Object.freeze({
 // 확대 회차를 받을 때 미리 만드는 레이어와 고도. 착빙·구름은 요청 때 계산이 들어 전 고도, 기온·바람은 처음 켤 때 고도(700 hPa).
 export const KIM_PRECOMPUTED_MAP_LAYERS = Object.freeze({ icing: KIM_NWP_ICING_LEVEL_IDS, cloud: KIM_NWP_MOISTURE_LEVEL_IDS, temp: ['700hPa'], wind: ['700hPa'] })
 
-export function buildKimMapField({ root, domain = KIM_DEFAULT_DOMAIN, tmfc, hf, level, type }) {
+// grid: 이미 읽은 층 격자(미리 만들기에서 같은 층을 여러 레이어가 함께 쓴다). 없으면 여기서 읽는다.
+export function buildKimMapField({ root, domain = KIM_DEFAULT_DOMAIN, tmfc, hf, level, type, grid = null }) {
   const build = BUILDERS[type]
   if (!build) throw new Error('Invalid KIM map layer')
   validateKimNwpSelection({ tmfc, hf, levelId: level, domain })
-  const grid = readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf: Number(hf), levelId: level, domain })
+  grid ??= readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf: Number(hf), levelId: level, domain })
   return applyKimBelowGround(build(grid), { root, arrays: KIM_BELOW_GROUND_ARRAYS[type], domain, missing: -32768 })
 }
 
@@ -80,7 +81,17 @@ export function kimMapResponseName(type) {
   return `${type}-${KIM_BELOW_GROUND_VIEW}`
 }
 
+// 층마다 그 층을 쓰는 레이어 목록. 착빙·구름은 대부분 같은 층이고 700 hPa는 네 레이어가 함께 쓴다.
+const PRECOMPUTED_BY_LEVEL = (() => {
+  const byLevel = new Map()
+  for (const [type, levels] of Object.entries(KIM_PRECOMPUTED_MAP_LAYERS)) {
+    for (const level of levels) byLevel.set(level, [...(byLevel.get(level) || []), type])
+  }
+  return byLevel
+})()
+
 // 파생 작업(kim_map_responses): 지정한 시각들의 KIM_PRECOMPUTED_MAP_LAYERS를 미리 만든다. 이미 있으면 건너뛴다.
+// 층 격자는 층마다 한 번만 읽어 그 층의 레이어들이 같이 쓴다(전에는 레이어마다 읽어 41번, 지금 21번).
 export async function process({ root, domain = 'ea', tmfc, forecastHours = [], signal, turn = async () => () => {} } = {}) {
   root ??= (await import('../config.js')).default.storage.base_path
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain })
@@ -90,13 +101,23 @@ export async function process({ root, domain = 'ea', tmfc, forecastHours = [], s
     signal?.throwIfAborted()
     const started = Date.now()
     const release = await turn()
+    let readMs = 0
     try {
-      for (const [type, levels] of Object.entries(KIM_PRECOMPUTED_MAP_LAYERS)) {
-        for (const level of levels) {
+      for (const [level, types] of PRECOMPUTED_BY_LEVEL) {
+        let grid = null
+        const levelGrid = () => {
+          if (!grid) {
+            const readStarted = Date.now()
+            grid = readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf: Number(hf), levelId: level, domain })
+            readMs += Date.now() - readStarted
+          }
+          return grid
+        }
+        for (const type of types) {
           signal?.throwIfAborted()
           try {
             const result = readOrWriteKimMapBinary(kimMapBinaryPath({ root, domain, tmfc, hf, level, name: kimMapResponseName(type) }),
-              () => buildKimMapField({ root, domain, tmfc, hf, level, type }))
+              () => buildKimMapField({ root, domain, tmfc, hf, level, type, grid: levelGrid() }))
             if (!result.stored) written += 1
           } catch (error) {
             if (signal?.aborted) throw error
@@ -107,7 +128,7 @@ export async function process({ root, domain = 'ea', tmfc, forecastHours = [], s
     } finally {
       release?.()
     }
-    appendKimRunEvent(runDir, { type: 'map_responses_hour', hf, ms: Date.now() - started, written, failures: failures.filter(f => f.hf === hf).length })
+    appendKimRunEvent(runDir, { type: 'map_responses_hour', hf, ms: Date.now() - started, readMs, written, failures: failures.filter(f => f.hf === hf).length })
   }
   return { type: 'kim_map_responses', tmfc, written, failures, saved: failures.length === 0 }
 }

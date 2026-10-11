@@ -54,6 +54,23 @@ for (const run of runs) {
   const avg = (list) => (list.length ? Math.round(list.reduce((a, b) => a + b, 0) / list.length / 1000) : '-')
   const max = (list) => (list.length ? Math.round(Math.max(...list) / 1000) : '-')
   console.log(`시각별: 받기 ${collected.length}건(평균 ${avg(ms(collected))}초, 최대 ${max(ms(collected))}초, 실패 ${collected.filter(e => !e.ok).length}), 계산 ${computed.length}건(평균 ${avg(ms(computed))}초, 최대 ${max(ms(computed))}초, 실패 ${computed.filter(e => e.kim_gktg !== 'ok' || e.kim_tropopause !== 'ok').length})`)
+  // 단계별 평균(초). 2026-10-11부터 시각 기록에 phases(기다림·입력·그중 격자 읽기·Python·결과 저장)가 붙는다.
+  const phaseAvg = (type, keys) => {
+    const list = events.filter(e => e.type === type && e.computed !== false)
+    const values = keys.map(key => [key, list.map(e => (key === 'ms' || key === 'readMs' && !e.phases ? e[key] : e.phases?.[key])).filter(Number.isFinite)])
+    if (!list.length || values.every(([key, v]) => key === 'ms' || !v.length)) return null
+    const sec = (v) => (v.length ? (v.reduce((a, b) => a + b, 0) / v.length / 1000).toFixed(1) : '-')
+    return `${list.length}건 ${values.map(([key, v]) => `${{ ms: '합계', waitMs: '기다림', inputMs: '입력', readMs: '격자 읽기', pythonMs: 'Python', outputMs: '저장' }[key]} ${sec(v)}`).join(' · ')}`
+  }
+  for (const [label, type, keys] of [
+    ['GKTG', 'gktg_hour', ['ms', 'waitMs', 'inputMs', 'readMs', 'pythonMs', 'outputMs']],
+    ['권계면', 'tropopause_hour', ['ms', 'waitMs', 'inputMs', 'pythonMs', 'outputMs']],
+    ['ACI', 'aci_hour', ['ms', 'waitMs', 'inputMs', 'pythonMs', 'outputMs']],
+    ['지도 파일', 'map_responses_hour', ['ms', 'readMs']],
+  ]) {
+    const line = phaseAvg(type, keys)
+    if (line) console.log(`  ${label} 평균(초): ${line}`)
+  }
   for (const event of [...collected.filter(e => !e.ok), ...computed.filter(e => e.kim_gktg !== 'ok' || e.kim_tropopause !== 'ok')].slice(0, 5)) {
     console.log(`  +${event.hf}h: ${JSON.stringify(event).slice(0, 200)}`)
   }

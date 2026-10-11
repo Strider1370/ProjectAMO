@@ -170,6 +170,7 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain })
   for (const hf of forecastHours) {
     const hourStarted = Date.now()
+    const phases = {}
     // 시각마다 한 번 이벤트 루프에 양보해 계산 중에도 API 요청을 처리한다.
     await nextTurn()
     if (signal?.aborted) cancelled()
@@ -178,19 +179,25 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
     try {
       // 무거운 계산 순번을 예보시각마다 받는다(GKTG와 같다).
       releaseTurn = await turn()
+      phases.waitMs = Date.now() - hourStarted
       // 계산 중 기본 수집기가 이 시각 입력을 바꾸면 게시하지 않는다. 파일 지문(inode·크기·수정 시각)으로 본다.
       baseFingerprints.set(hf, fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }))
       const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'tropopause', '.staging')
       fs.mkdirSync(stages, { recursive: true })
       stage = fs.mkdtempSync(path.join(stages, 'hour-'))
+      let mark = Date.now()
       const { job, upper, inputRevision } = await writeTropopauseInput({ root, tmfc, hf, stage, signal, fetchGrid, domain })
+      phases.inputMs = Date.now() - mark
       const { grid } = job
       const size = grid.nx * grid.ny
       const revision = sha(`${engine}:${inputRevision}`)
       let exists = true
       try { readKimTropopauseField({ root, tmfc, hf, revision, domain }); readKimTropopauseUpper({ root, tmfc, hf, revision, domain }) } catch { exists = false }
       if (!exists) {
+        mark = Date.now()
         const result = await calculate(job, stage, { python, signal })
+        phases.pythonMs = Date.now() - mark
+        mark = Date.now()
         validateResult(result, size)
         writeKimTropopauseField(root, {
           type: 'kim_nwp_tropopause', product: 'TROP_JET', model: KIM_NWP_MODEL, grid,
@@ -203,8 +210,9 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
       // 단면용 상층(100·70 hPa) 원 격자. 지도 결과와 분리해 지도 요청 크기를 늘리지 않는다.
       writeKimTropopauseUpper(root, { tmfc, hf, revision, grid, levels: TROPOPAUSE_SUPPLEMENT_LEVELS.map((pressure, k) => ({
         pressure, hgt: upper.hgt[k], T: upper.T[k], u: upper.u[k], v: upper.v[k] })) }, domain)
+      if (phases.pythonMs !== undefined) phases.outputMs = Date.now() - mark
       entries.push({ hf, validTime: job.validTime, revision, inputRevision })
-      appendKimRunEvent(runDir, { type: 'tropopause_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision })
+      appendKimRunEvent(runDir, { type: 'tropopause_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision, phases })
     } catch (error) {
       if (signal?.aborted) cancelled()
       failures.push({ hf, reason: error.code || error.message })
