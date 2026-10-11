@@ -103,14 +103,15 @@ test('Python GKTG output file maps NaN to null and keeps float32 values', t => {
 test('block plan covers the domain once with 192-cell windows; Korea (smaller in area) stays one piece', { skip: !fs.existsSync(config.kim_gktg.python) && 'GKTG Python environment unavailable' }, () => {
   const code = `
 import json
-from calculate import plan_blocks, WINDOW
+from calculate import plan_blocks, WINDOW, HALO
+assert HALO >= 18  # 블록 경계 이웃 범위(18칸)보다 좁으면 영역 전체 계산과 달라진다
 out = {}
 for name, (ny, nx) in {"kr": (169, 205), "ea": (529, 841), "proto": (529, 541)}.items():
     blocks = plan_blocks(ny, nx)
     cover = [[0] * nx for _ in range(ny)]
     for (cy0, cy1, cx0, cx1), (y0, y1, x0, x1) in blocks:
         assert y0 <= cy0 < cy1 <= y1 and x0 <= cx0 < cx1 <= x1 and (len(blocks) == 1 or (y1 - y0 <= WINDOW and x1 - x0 <= WINDOW))
-        assert (cy0 - y0 >= 24 or y0 == 0) and (y1 - cy1 >= 24 or y1 == ny) and (cx0 - x0 >= 24 or x0 == 0) and (x1 - cx1 >= 24 or x1 == nx)
+        assert (cy0 - y0 >= HALO or y0 == 0) and (y1 - cy1 >= HALO or y1 == ny) and (cx0 - x0 >= HALO or x0 == 0) and (x1 - cx1 >= HALO or x1 == nx)
         for y in range(cy0, cy1):
             for x in range(cx0, cx1):
                 cover[y][x] += 1
