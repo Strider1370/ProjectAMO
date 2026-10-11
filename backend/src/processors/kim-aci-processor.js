@@ -16,7 +16,7 @@ import { appendKimRunEvent } from './kim-run-events.js'
 import { aciHash, readKimAciField, writeKimAciField, writeKimAciAttempt, publishKimAciRun, ensureAciBinary } from './kim-aci-store.js'
 import { DEFAULTS, ACI_SCORE_VERSION, packAciScore } from '../../../shared/aci.js'
 
-export const ACI_ALGORITHM='kim-aci-sbcape-rk4-20hpa-v1'
+export const ACI_ALGORITHM='kim-aci-sbcape-rk4-20hpa-v2'
 export const ACI_SPEC={version:ACI_SCORE_VERSION,settings:DEFAULTS}
 const levels=KIM_NWP_LEVELS.filter(l=>l.kind==='pressure')
 const cli=fileURLToPath(new URL('../../python/kim_aci/calculate.py',import.meta.url))

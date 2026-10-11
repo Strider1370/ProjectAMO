@@ -130,10 +130,13 @@ def cape_column(ps,t2m,q2m,levels,temperatures,humidities,max_step=2000.0):
         env[k]=t[k]*(re+EPS)/(EPS*(1+re))
         vpar[k]=parcel[k]*(rp+EPS)/(EPS*(1+rp))
     y=vpar-env
-    # Near-zero buoyancy can change which of multiple LFCs is selected when
-    # RK4 and LSODA differ by only a few microkelvin. Defer to reference.
+    # 부력이 0 근처(|y|<1e-3 K)인 기둥도 이 커널 결과를 쓴다(2026-10-11, v2). 전에는 RK4와 LSODA의
+    # 미세한 차이로 LFC 선택이 갈릴 수 있다며 모두 MetPy에 다시 맡겼는데(기둥의 약 0.4%, ACI 계산시간의 약 60%),
+    # 확대 영역 +12h 1,732기둥 비교에서 CAPE 차이 최대 0.03 J/kg, CIN 0.003 J/kg였다. 다만 이런 기둥에서
+    # 커널이 계산 불가(음의 CAPE 등)를 내면 MetPy와 달라질 수 있어(fixtures/crossings.json 첫 사례) 그때만 맡긴다.
+    near_zero=False
     for k in range(1,n):
-        if abs(y[k])<1e-3:return np.nan,np.nan,3
+        if abs(y[k])<1e-3:near_zero=True
     # cape_cin calls LFC/EL with the virtual-temperature profiles and dewpoint.
     lcl_lfc,_=lcl(ps,vpar[0],td[0])
     inc=intersections(p[:n],y,1 if close(vpar[0],env[0]) else 0,1)
@@ -168,7 +171,7 @@ def cape_column(ps,t2m,q2m,levels,temperatures,humidities,max_step=2000.0):
         if x>lfc or close(x,lfc):
             if not math.isnan(pi):cin+=(v+yi)/2*math.log(x/pi)*RD
             pi=x;yi=v
-    if not math.isfinite(cape) or cape<-1e-8:return np.nan,np.nan,2
+    if not math.isfinite(cape) or cape<-1e-8:return np.nan,np.nan,(3 if near_zero else 2)
     return max(0.0,cape),min(0.0,cin),0
 
 @njit(cache=True)

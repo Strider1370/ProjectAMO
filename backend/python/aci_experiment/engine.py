@@ -2,6 +2,8 @@
 
 Status 0: valid, 1: invalid input, 2: invalid CAPE. Kernel-internal status 3
 requests MetPy evaluation; it is never published as a missing result.
+Since v2 (2026-10-11) near-zero-buoyancy columns keep the kernel result and are
+sent to MetPy only when the kernel finds no valid CAPE for them.
 """
 import warnings
 import numpy as np
