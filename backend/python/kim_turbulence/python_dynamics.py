@@ -10,8 +10,11 @@ def advective_grad(a,geo):
             regular(a,geo.dy,1).astype('f8')-az*geo.zy,az)
 
 
-def inertial(u,v,geo):
-    ux,uy,_=advective_grad(u,geo);vx,vy,_=advective_grad(v,geo)
+def inertial(u,v,geo,grads=None):
+    if grads is None:
+        ux,uy,_=advective_grad(u,geo);vx,vy,_=advective_grad(v,geo)
+    else:
+        ux,uy,vx,vy=grads
     mx=geo.mx.astype('f8')
     dm=regular(np.broadcast_to(geo.mx,u.shape),geo.dy,1).astype('f8')
     ud,vd=u.astype('f8'),v.astype('f8')
@@ -22,7 +25,8 @@ def inertial(u,v,geo):
 
 def imbalance(a,qmix,p,tv,geo):
     u,v,w=(a[n] for n in ('u','v','w'))
-    ax,ay=inertial(u,v,geo)
+    ux,uy,_=advective_grad(u,geo);vx,vy,_=advective_grad(v,geo)
+    ax,ay=inertial(u,v,geo,(ux,uy,vx,vy))
     rho=(p.astype('f8')/(RD*tv.astype('f8'))).astype('f4')
     dpdz=(-rho.astype('f8')*G).astype('f4')
     phix=(-dpdz*geo.zx)/rho;phiy=(-dpdz*geo.zy)/rho
@@ -35,7 +39,6 @@ def imbalance(a,qmix,p,tv,geo):
     gy=(v.astype('f8')*div.astype('f8')+ay).astype('f4')
     gd=np.where(geo.cross,gd,np.nan);gy=np.where(geo.cross,gy,np.nan)
     term2=(geo.f*geo.vorticity(gd,gy)).astype('f4')
-    ux,uy,_=advective_grad(u,geo);vx,vy,_=advective_grad(v,geo)
     utx,uty,_=advective_grad(ut,geo);vtx,vty,_=advective_grad(vt,geo)
     mx=geo.mx.astype('f8')
     dm=regular(np.broadcast_to(geo.mx,u.shape),geo.dy,1).astype('f8')

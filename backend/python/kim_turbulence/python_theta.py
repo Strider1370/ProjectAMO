@@ -20,6 +20,7 @@ def front_theta(u,v,theta,geo,theta_range=None):
     columns=np.all(np.isfinite(theta)&np.isfinite(geo.z)&np.isfinite(u),axis=0)
     zth=np.full((len(levels),ny,nx),np.nan,dtype='f4')
     uth=zth.copy();vth=zth.copy()
+    first=np.sum(levels[:,None,None]<adjusted[0],axis=0)
     # First matching interval, followed by source-specific extrapolation.
     for ko,lev in enumerate(levels):
         found=np.zeros((ny,nx),dtype=bool)
@@ -32,7 +33,6 @@ def front_theta(u,v,theta,geo,theta_range=None):
                 dst[ko]=np.where(use,val,dst[ko])
             found |= use
         # Two theta surfaces below first input theta; all surfaces above top.
-        first=np.sum(levels[:,None,None]<adjusted[0],axis=0)
         low=columns&(lev<adjusted[0])&(ko>=first-2)
         high=columns&(levels[-1]>adjusted[-1])&(lev>=adjusted[-1])
         for end,condition in ((0,low),(nz-2,high)):

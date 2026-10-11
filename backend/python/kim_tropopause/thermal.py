@@ -51,13 +51,12 @@ def _mean(values, n):
 
 
 @njit(cache=True)
-def column(pressures, temperature, height):
+def _column(pressures, temperature, height, xp, half):
     """Return (pressure hPa or nan, above_top).
 
     above_top is True when no tropopause is confirmed and every half-level lapse rate below
     the top layer stays above the threshold: the tropopause lies near or above the model top."""
     gam = -(temperature[1:] - temperature[:-1]) / (height[1:] - height[:-1]) * 1000.0
-    half = np.power((_pk(pressures[1:]) + _pk(pressures[:-1])) / 2.0, 1.0 / KAPPA)
     half_height = np.empty(len(half))
     have_half_height = False
     within = np.empty(len(gam))
@@ -66,12 +65,12 @@ def column(pressures, temperature, height):
             continue
         w = (THRESHOLD_K_PER_KM - gam[i - 1]) / (gam[i] - gam[i - 1])
         trop = np.power(_pk(half[i - 1]) + w * (_pk(half[i]) - _pk(half[i - 1])), 1.0 / KAPPA)
-        z_trop = _interp_pk(pressures, height, trop)
+        z_trop = _interp_prepared(xp, height, trop)
         if height[-1] < z_trop + 2000.0:
             return np.nan, True  # candidate too close to the model top to confirm
         if not have_half_height:
             for j in range(len(half)):
-                half_height[j] = _interp_pk(pressures, height, half[j])
+                half_height[j] = _interp_prepared(xp, height, half[j])
             have_half_height = True
         n = 0
         for j in range(i, len(gam)):
@@ -100,16 +99,18 @@ def _field(pressures, temperature, height):
     trop = np.full((ny, nx), np.nan)
     trop_t = np.full((ny, nx), np.nan)
     above = np.zeros((ny, nx), np.bool_)
+    xp = np.ascontiguousarray(_pk(pressures)[::-1])
+    half = np.power((_pk(pressures[1:]) + _pk(pressures[:-1])) / 2.0, 1.0 / KAPPA)
     for y in range(ny):
         for x in range(nx):
             t = np.ascontiguousarray(temperature[:, y, x])
             z = np.ascontiguousarray(height[:, y, x])
             if not (np.all(np.isfinite(t)) and np.all(np.isfinite(z))):
                 continue
-            p, above[y, x] = column(pressures, t, z)
+            p, above[y, x] = _column(pressures, t, z, xp, half)
             if np.isfinite(p):
                 trop[y, x] = p
-                trop_t[y, x] = _interp_pk(pressures, t, p) - 273.15
+                trop_t[y, x] = _interp_prepared(xp, t, p) - 273.15
     return trop, trop_t, above
 
 
@@ -119,3 +120,15 @@ def field(pressures, temperature, height):
     pressures: (L,) hPa descending; temperature (K) and height (m): (L, ny, nx).
     """
     return _field(np.asarray(pressures, dtype=np.float64), np.asarray(temperature, dtype=np.float64), np.asarray(height, dtype=np.float64))
+
+
+@njit(cache=True)
+def _interp_prepared(xp, values, target):
+    return np.interp(_pk(target), xp, np.ascontiguousarray(values[::-1]))
+
+
+@njit(cache=True)
+def column(pressures, temperature, height):
+    xp = np.ascontiguousarray(_pk(pressures)[::-1])
+    half = np.power((_pk(pressures[1:]) + _pk(pressures[:-1])) / 2.0, 1.0 / KAPPA)
+    return _column(pressures, temperature, height, xp, half)

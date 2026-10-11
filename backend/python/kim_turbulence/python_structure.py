@@ -15,6 +15,8 @@ def structure_fields(fields,z,mx,ds,halo=10):
     work=np.full(fields.shape,np.nan,dtype=np.float32)
     outputs=np.full((4,2,nz,ny,nx),np.nan,dtype=np.float32)
     # 기준 모델 값은 (변수, 축, lag, 행)에만 달려 있다. 중심마다 다시 계산하던 것을 행마다 한 번 계산한다(같은 식·같은 순서).
+    patch=np.empty((4,3,5,5),dtype=np.float32)
+    valid=np.empty((4,3,5,5),dtype=np.bool_)
     models=np.empty((4,2,5),dtype=np.float64)
     for kc in range(1,nz-1):
         for jc in range(halo,ny-halo):
@@ -70,6 +72,13 @@ def structure_fields(fields,z,mx,ds,halo=10):
                                 ratio=(zc-z[ki,j,i])/dz if abs(dz)>=F(.1) else F(0)
                                 for n in range(4):
                                     work[n,k,j,i]=((F(1)-ratio)*fields[n,ki,j,i]+ratio*fields[n,ki+1,j,i]) if abs(dz)>=F(.1) else fields[n,ki,j,i]
+                for n in range(4):
+                    for kk in range(3):
+                        for jj in range(5):
+                            for ii in range(5):
+                                val=work[n,kc-1+kk,jc-2+jj,ic-2+ii]
+                                patch[n,kk,jj,ii]=val
+                                valid[n,kk,jj,ii]=np.isfinite(val)
                 for axis in range(2):
                     for n in range(4):
                         sumn=0.;sumd=0.;valid_lags=0
@@ -83,11 +92,13 @@ def structure_fields(fields,z,mx,ds,halo=10):
                                     for along in range(-2,3-lag):
                                         if axis==0:
                                             j=jc+across;i=ic+along
-                                            v1=work[n,k,j,i];v2=work[n,k,j,i+lag]
+                                            v1=patch[n,k-kc+1,across+2,along+2];v2=patch[n,k-kc+1,across+2,along+2+lag]
+                                            good=valid[n,k-kc+1,across+2,along+2] and valid[n,k-kc+1,across+2,along+2+lag]
                                         else:
                                             j=jc+along;i=ic+across
-                                            v1=work[n,k,j,i];v2=work[n,k,j+lag,i]
-                                        if np.isfinite(v1) and np.isfinite(v2):
+                                            v1=patch[n,k-kc+1,along+2,across+2];v2=patch[n,k-kc+1,along+2+lag,across+2]
+                                            good=valid[n,k-kc+1,along+2,across+2] and valid[n,k-kc+1,along+2+lag,across+2]
+                                        if good:
                                             diff=F(v1-v2)
                                             total+=np.float64(F(diff*diff));count+=1
                             if count<=1:continue

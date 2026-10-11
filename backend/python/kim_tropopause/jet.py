@@ -27,7 +27,7 @@ def box(a, r):
     return (c[..., k:, k:] - c[..., :-k, k:] - c[..., k:, :-k] + c[..., :-k, :-k]) / (k * k)
 
 
-def max_wind(pressures, u, v):
+def max_wind(pressures, u, v, layer_limits=True):
     """Column maximum wind (kt), its pressure (hPa, parabolic in log p) and 80 kt layer limits.
 
     Returns vmax, pmax, ui, vi (wind components at the maximum), bottom, top (hPa; nan below 120 kt).
@@ -48,7 +48,7 @@ def max_wind(pressures, u, v):
     vi = np.take_along_axis(v[use], k[None], 0)[0]
     bottom = np.full((ny, nx), np.nan)
     top = np.full((ny, nx), np.nan)
-    for y, x in zip(*np.where(vmax >= 120)):
+    for y, x in zip(*np.where(vmax >= 120)) if layer_limits else ():
         col, k0 = s[:, y, x], k[y, x]
         for j in range(k0, 0, -1):
             if col[j - 1] < JET_MIN_KT:
@@ -254,16 +254,18 @@ def jets(g, pressures, u, v):
     vmax, pmax, _, _, bottom, top = max_wind(pressures, u, v)
     # Axes are traced on winds smoothed over ~0.4 deg (5x5) and then ~0.6 deg (7x7) so that
     # isolated grid-scale maxima do not start fragments; stored grids and checks stay raw.
-    smooth, _, ui, vi, _, _ = max_wind(pressures, box(u, 2), box(v, 2))
+    smooth, _, ui, vi, _, _ = max_wind(pressures, box(u, 2), box(v, 2), layer_limits=False)
     traced = trace_axes(g, box(smooth[None], 3)[0], box(ui[None], 3)[0], box(vi[None], 3)[0])
     pieces = [piece for pts in traced for piece in tidy(g, pts)]
     features, shown = [], []
+    offs_all = []
     for pts, minor in pieces:
         offs = axis_offsets(g, pts, vmax)
         p95 = float(np.percentile(offs, 95)) if offs else 0.0
         ok = p95 <= HIDE_SHIFT_KM
         if ok:
             shown.append(pts)
+            offs_all.extend(offs)
         speeds = [bilinear(vmax, x, y) for x, y in pts]
         speeds = [s if np.isfinite(s) else -1.0 for s in speeds]
         core = int(np.argmax(speeds))
@@ -276,7 +278,6 @@ def jets(g, pressures, u, v):
             "core": {"lon": round(g.lon(cx), 4), "lat": round(g.lat(cy), 4), "speedKt": round(float(speeds[core]), 1),
                      "pressureHpa": round(float(pmax[j, k]), 1), "layer80KtHpa": layer},
         })
-    offs_all = [o for pts in shown for o in axis_offsets(g, pts, vmax)]
     checks = {
         "axes": len(features), "hiddenAxes": sum(not f["axisShown"] for f in features),
         "medianOffsetKm": round(float(np.median(offs_all)), 1) if offs_all else 0.0,
