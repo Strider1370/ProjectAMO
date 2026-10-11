@@ -9,6 +9,7 @@ import {
   kimNcPath,
   kimRawTextExists,
   kimStoreCheckSummary,
+  normalizeLikeJson,
   readKimDocument,
   readKimNcDocument,
   readKimNcTyped,
@@ -256,4 +257,17 @@ test('a damaged NC result is quarantined and rewritten, like a damaged JSON resu
     assert.deepStrictEqual(readKimGktgField(selector), original)
     assert.ok(fs.readdirSync(path.dirname(ncFile)).some(name => name.includes('.nc.corrupt-')))
   })
+})
+
+test('normalizeLikeJson matches a JSON round trip, including long numeric arrays', () => {
+  const long = (n) => Array.from({ length: n }, (_, i) => [1.5, null, Number.NaN, -0, Infinity, -Infinity, 3, 1e-30][i % 8])
+  const cases = [
+    { a: long(300), b: { c: long(1000), d: [1, undefined, () => 1, Number.NaN] }, e: undefined, f: () => 1, g: new Date(0), h: Float32Array.from([1, Number.NaN]) },
+    { mixed: [...long(299), 'x'] },
+    { hole: [...long(299), undefined] },
+    { sparse: Object.assign(new Array(300), { 5: 1 }) },
+    { nested: [{ x: long(400) }, 'y', null, true] },
+    { bare: Object.create(null) },
+  ]
+  for (const value of cases) assert.deepStrictEqual(normalizeLikeJson(value), JSON.parse(JSON.stringify(value)))
 })

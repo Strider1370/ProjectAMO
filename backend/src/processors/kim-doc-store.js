@@ -232,10 +232,41 @@ function recordStoreCheck(jsonPath, ok, reason) {
   appendKimRunEventForPath(jsonPath, { type: 'store_check_mismatch', path: path.basename(path.dirname(jsonPath)) + '/' + path.basename(jsonPath), reason })
 }
 
+// JSON.parse(JSON.stringify(value))와 같은 결과를 만든다. 확대 영역 한 층의 44만 칸 배열을 글자로 바꿨다 되돌리는 데
+// 층마다 수백 ms가 들어, 숫자·null로만 된 긴 배열과 일반 객체는 직접 정규화하고 나머지는 JSON으로 되돌린다.
+// 숫자: 유한하면 그대로(-0은 0), 아니면 null. 객체: undefined·함수·심벌 값의 키는 뺀다.
+export function normalizeLikeJson(value) {
+  if (Array.isArray(value)) {
+    if (value.length >= MIN_ARRAY_LENGTH) {
+      const out = new Array(value.length)
+      for (let i = 0; i < value.length; i++) {
+        const item = value[i]
+        if (typeof item === 'number') out[i] = Number.isFinite(item) ? (item === 0 ? 0 : item) : null
+        else if (item === null) out[i] = null
+        else return JSON.parse(JSON.stringify(value))
+      }
+      return out
+    }
+    return JSON.parse(JSON.stringify(value))
+  }
+  if (value && typeof value === 'object') {
+    const proto = Object.getPrototypeOf(value)
+    if ((proto !== Object.prototype && proto !== null) || typeof value.toJSON === 'function') return JSON.parse(JSON.stringify(value))
+    const out = {}
+    for (const key of Object.keys(value)) {
+      const item = value[key]
+      if (item === undefined || typeof item === 'function' || typeof item === 'symbol') continue
+      out[key] = normalizeLikeJson(item)
+    }
+    return out
+  }
+  return JSON.parse(JSON.stringify(value))
+}
+
 export function writeKimDocument(jsonPath, payload, { format = kimStoreFormat() } = {}) {
   if (format === 'json') return writeJsonAtomic(jsonPath, payload)
   // JSON으로 쓰고 읽은 값과 같아지도록 먼저 정규화한다(NaN·Infinity → null, undefined 키 제거).
-  const doc = JSON.parse(JSON.stringify(payload))
+  const doc = normalizeLikeJson(payload)
   if (format === 'both') {
     writeJsonAtomic(jsonPath, payload)
     const ncPath = kimNcPath(jsonPath)

@@ -14,8 +14,23 @@ def structure_fields(fields,z,mx,ds,halo=10):
     nz,ny,nx=z.shape
     work=np.full(fields.shape,np.nan,dtype=np.float32)
     outputs=np.full((4,2,nz,ny,nx),np.nan,dtype=np.float32)
+    # 기준 모델 값은 (변수, 축, lag, 행)에만 달려 있다. 중심마다 다시 계산하던 것을 행마다 한 번 계산한다(같은 식·같은 순서).
+    models=np.empty((4,2,5),dtype=np.float64)
     for kc in range(1,nz-1):
         for jc in range(halo,ny-halo):
+            for axis in range(2):
+                for n in range(4):
+                    for lag in range(1,5):
+                        distance=F(F(mx[jc]*ds)*F(lag)) if axis==0 else F(ds*F(lag))
+                        ssq=F(distance*distance)
+                        if n==3:
+                            power=F(F(distance/F(5000))**F(.66666666666))
+                            models[n,axis,lag]=np.float64(F(power/(F(1)+power)))
+                        else:
+                            transverse=(n==1 and axis==0) or (n==0 and axis==1)
+                            b=F(1.625e-6) if transverse else F(6.66666666e-7)
+                            c=F(1.075e-7) if transverse else F(4.444444444e-8)
+                            models[n,axis,lag]=np.float64(F(F(F(distance**F(.6666667))+F(b*ssq))-F(F(c*ssq)*F(np.log(distance)))))
             for ic in range(halo,nx-halo):
                 # interp_to_zc2 for u/v and interp_to_zc1 for T/w.
                 for k in range(kc-1,kc+2):
@@ -77,17 +92,7 @@ def structure_fields(fields,z,mx,ds,halo=10):
                                             total+=np.float64(F(diff*diff));count+=1
                             if count<=1:continue
                             dl=F(total/count)
-                            distance=F(F(mx[jc]*ds)*F(lag)) if axis==0 else F(ds*F(lag))
-                            ssq=F(distance*distance)
-                            if n==3:
-                                power=F(F(distance/F(5000))**F(.66666666666))
-                                model=np.float64(F(power/(F(1)+power)))
-                            else:
-                                transverse=(n==1 and axis==0) or (n==0 and axis==1)
-                                b=F(1.625e-6) if transverse else F(6.66666666e-7)
-                                c=F(1.075e-7) if transverse else F(4.444444444e-8)
-                                model=np.float64(F(F(F(distance**F(.6666667))+F(b*ssq))-F(F(c*ssq)*F(np.log(distance)))))
-                            ratio=np.float64(dl)/model
+                            ratio=np.float64(dl)/models[n,axis,lag]
                             sumn+=ratio**2/F(lag);sumd+=ratio/F(lag);valid_lags+=1
                         threshold=F(1e-16) if n==3 else F(1e-12)
                         if valid_lags==4:
