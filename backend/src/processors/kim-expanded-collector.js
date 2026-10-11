@@ -20,6 +20,7 @@ import { prefetchGktgSupplements, publishComputedGktg } from './kim-gktg-process
 import { prefetchTropopauseSupplements, publishComputedTropopause } from './kim-tropopause-processor.js'
 import { prefetchSurfaceChartInputs, publishExpandedSurfaceChart } from './kim-surface-chart-expanded.js'
 import { runKimDerivedWorker } from './kim-derived-worker.js'
+import { createKimDownloadOffload } from './kim-download-offload.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import store from '../store.js'
@@ -153,82 +154,92 @@ export async function collectExpandedRun({
   }
 
   let stopReason = null
-  for (const hf of hours) {
-    if (signal?.aborted) { stopReason = 'cancelled'; break }
-    if (now() >= stopAt) { stopReason = 'request_cutoff'; break }
-    const blocked = beforeHour({ hf, downloaded: [...downloaded] })
-    if (blocked) { stopReason = blocked; break }
-    const at = now()
-    let credential
-    try {
-      credential = selectKimRunCredential({ tmfc, ...kimBulkCredentialOptions(config, now(), { required: true }) })
-    } catch (error) {
-      stopReason = error.code || error.message
-      break
-    }
-    const hourEntries = []
-    let lastError = null
-    let pending = levels.map(level => ({ level, tmfc, hf, credential, domain: DOMAIN }))
-    let prefetchError = null
-    try {
-      for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
-        if (attempt > 0) {
-          appendKimRunEvent(runDir, { type: 'expanded_hour_retry', hf, attempt, failedTasks: pending.length, supplement: Boolean(prefetchError),
-            error: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
-          await delay(retryDelaysMs[attempt - 1], undefined, { signal })
-        }
-        const failed = []
-        await mapKimNwpTasksWithConcurrency(pending, config.kim_expanded.concurrency, async (task) => {
-          try {
-            const { grid, lastError: taskError } = await collectTask({ task })
-            if (taskError) { failed.push(task); lastError = taskError; return }
-            hourEntries.push(buildKimNwpIndexEntry(grid, path.relative(root, resolveKimNwpGridPath({ root, model: grid.model, tmfc, hf, levelId: grid.level.id, domain: DOMAIN })).replace(/\\/g, '/')))
-          } catch (error) {
-            if (signal?.aborted || error?.name === 'AbortError') throw error
-            failed.push(task)
-            lastError = error
-          }
-        })
-        pending = failed
-        prefetchError = null
-        if (pending.length) continue
-        for (const run of prefetch) {
-          try { await run({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }) } catch (error) {
-            if (signal?.aborted || error?.name === 'AbortError') throw error
-            prefetchError = error
-            break
-          }
-        }
-        if (!prefetchError) break
+  // 층 받기(파싱·격자·층 저장)는 작업 스레드에서 한다(kim-download-offload.js). 본 스레드가 사이트 요청을 막지 않게 한다.
+  // 시험 등에서 collectTask를 넣으면 그대로 쓴다. KIM_DOWNLOAD_OFFLOAD=0이면 예전처럼 본 스레드에서 한다.
+  const offload = collectTask === collectKimNwpTask && config.kim_expanded.offload_download
+    ? createKimDownloadOffload({ root, fetchGrid, signal }) : null
+  const runTask = offload ? offload.collectTask : collectTask
+  try {
+    for (const hf of hours) {
+      if (signal?.aborted) { stopReason = 'cancelled'; break }
+      if (now() >= stopAt) { stopReason = 'request_cutoff'; break }
+      const blocked = beforeHour({ hf, downloaded: [...downloaded] })
+      if (blocked) { stopReason = blocked; break }
+      const at = now()
+      let credential
+      try {
+        credential = selectKimRunCredential({ tmfc, ...kimBulkCredentialOptions(config, now(), { required: true }) })
+      } catch (error) {
+        stopReason = error.code || error.message
+        break
       }
-    } catch (error) {
-      // 취소(abort)는 이 시각을 실패로 두고, 아래 시각 반복에서 cancelled로 끝난다.
-      lastError = error
-      if (!pending.length) pending = [null]
-    }
-    const hourFailed = pending.length
-    const ms = now() - at
-    const ok = !hourFailed && !prefetchError
-    appendKimRunEvent(runDir, { type: 'expanded_hour_collected', hf, ok, grids: hourEntries.length, failedTasks: hourFailed, ms,
-      error: ok ? null : String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 300) })
-    onProgress({ type: 'collected', hf, ok, ms, grids: hourEntries.length })
-    if (!ok) {
-      failures.push({ hf, stage: prefetchError ? 'supplement' : 'base', reason: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
-      continue
-    }
-    if (aciEnabled) {
-      // ACI 실패는 기본 격자 성공 여부와 분리한다. 여기서는 한 번만 시도하고(기다리지 않음), 실패한 시각은 회차 끝에서 다시 받는다.
-      try { await prefetchAci({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }); aciInputs.add(hf) } catch (error) {
-        if (signal?.aborted) throw error
-        appendKimRunEvent(runDir, { type: 'aci_inputs_failed', hf, attempt: 0, reason: String(error.code || error.message).slice(0, 200) })
+      const hourEntries = []
+      let lastError = null
+      let pending = levels.map(level => ({ level, tmfc, hf, credential, domain: DOMAIN }))
+      let prefetchError = null
+      try {
+        for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+          if (attempt > 0) {
+            appendKimRunEvent(runDir, { type: 'expanded_hour_retry', hf, attempt, failedTasks: pending.length, supplement: Boolean(prefetchError),
+              error: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
+            await delay(retryDelaysMs[attempt - 1], undefined, { signal })
+          }
+          const failed = []
+          await mapKimNwpTasksWithConcurrency(pending, config.kim_expanded.concurrency, async (task) => {
+            try {
+              const { grid, entry, lastError: taskError } = await runTask({ task })
+              if (taskError) { failed.push(task); lastError = taskError; return }
+              hourEntries.push(entry || buildKimNwpIndexEntry(grid, path.relative(root, resolveKimNwpGridPath({ root, model: grid.model, tmfc, hf, levelId: grid.level.id, domain: DOMAIN })).replace(/\\/g, '/')))
+            } catch (error) {
+              if (signal?.aborted || error?.name === 'AbortError') throw error
+              failed.push(task)
+              lastError = error
+            }
+          })
+          pending = failed
+          prefetchError = null
+          if (pending.length) continue
+          for (const run of prefetch) {
+            try { await run({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }) } catch (error) {
+              if (signal?.aborted || error?.name === 'AbortError') throw error
+              prefetchError = error
+              break
+            }
+          }
+          if (!prefetchError) break
+        }
+      } catch (error) {
+        // 취소(abort)는 이 시각을 실패로 두고, 아래 시각 반복에서 cancelled로 끝난다.
+        lastError = error
+        if (!pending.length) pending = [null]
+      }
+      const hourFailed = pending.length
+      const ms = now() - at
+      const ok = !hourFailed && !prefetchError
+      appendKimRunEvent(runDir, { type: 'expanded_hour_collected', hf, ok, grids: hourEntries.length, failedTasks: hourFailed, ms,
+        error: ok ? null : String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 300) })
+      onProgress({ type: 'collected', hf, ok, ms, grids: hourEntries.length })
+      if (!ok) {
+        failures.push({ hf, stage: prefetchError ? 'supplement' : 'base', reason: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
+        continue
+      }
+      if (aciEnabled) {
+        // ACI 실패는 기본 격자 성공 여부와 분리한다. 여기서는 한 번만 시도하고(기다리지 않음), 실패한 시각은 회차 끝에서 다시 받는다.
+        try { await prefetchAci({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }); aciInputs.add(hf) } catch (error) {
+          if (signal?.aborted) throw error
+          appendKimRunEvent(runDir, { type: 'aci_inputs_failed', hf, attempt: 0, reason: String(error.code || error.message).slice(0, 200) })
+        }
+      }
+      entries.set(hf, hourEntries)
+      downloaded.push(hf)
+      compute(hf)
+      try { await onHourDownloaded({ hf, downloaded: [...downloaded] }) } catch (error) {
+        appendKimRunEvent(runDir, { type: 'expanded_hour_hook_failed', hf, error: String(error.code || error.message).slice(0, 300) })
       }
     }
-    entries.set(hf, hourEntries)
-    downloaded.push(hf)
-    compute(hf)
-    try { await onHourDownloaded({ hf, downloaded: [...downloaded] }) } catch (error) {
-      appendKimRunEvent(runDir, { type: 'expanded_hour_hook_failed', hf, error: String(error.code || error.message).slice(0, 300) })
-    }
+  } finally {
+    // 받기가 끝나면 스레드를 닫아 메모리를 돌려준다(계산은 이어서 돈다).
+    await offload?.close()
   }
   await computeChain
 

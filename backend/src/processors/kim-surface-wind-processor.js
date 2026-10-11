@@ -5,6 +5,13 @@ import airports from '../../../shared/airports.js'
 import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
+
+// 격자 원문 요청 함수. 확대 영역 다운로드 작업 스레드(kim-download-worker.js)는 요청을 본 스레드에 맡기려고 바꿔 끼운다
+// (대용량 키·사용량 장부·재시도는 본 스레드 한 곳에서만 다룬다). 그 밖에서는 바꾸지 않는다.
+let kimGridFetcher = fetchKimGrid
+export function setKimGridFetcher(fetcher) {
+  kimGridFetcher = fetcher || fetchKimGrid
+}
 import { collectKimAirportComparison } from '../airport-model-comparison/kim.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import store from '../store.js'
@@ -185,7 +192,7 @@ function writeRawComponent({ level, tmfc, hf, name, variable, text, domain }) {
 
 async function fetchComponentForLevel({ name, level, tmfc, hf, credential, domain }) {
   const kim = kimDomainRequest(config, domain)
-  const text = await fetchKimGrid({
+  const text = await kimGridFetcher({
     data: level.kind === 'pressure' ? 'P' : 'U',
     name,
     level: level.level,
@@ -207,7 +214,7 @@ async function fetchComponentForLevel({ name, level, tmfc, hf, credential, domai
 async function fetchTemperatureComponent({ level, tmfc, hf, credential, domain }) {
   const kim = kimDomainRequest(config, domain)
   const request = resolveKimTemperatureComponentRequest({ level })
-  const text = await fetchKimGrid({
+  const text = await kimGridFetcher({
     data: request.data,
     name: request.name,
     level: request.level,
@@ -231,7 +238,7 @@ async function fetchHumidityComponent({ level, tmfc, hf, credential, domain }) {
   const kim = kimDomainRequest(config, domain)
   const request = resolveKimHumidityComponentRequest({ level })
   if (!request) return null
-  const text = await fetchKimGrid({
+  const text = await kimGridFetcher({
     data: request.data,
     name: request.name,
     level: request.level,
@@ -253,7 +260,7 @@ async function fetchHumidityComponent({ level, tmfc, hf, credential, domain }) {
 
 async function fetchIcingComponent({ request, level, tmfc, hf, credential, domain }) {
   const kim = kimDomainRequest(config, domain)
-  const text = await fetchKimGrid({
+  const text = await kimGridFetcher({
     data: request.data,
     name: request.name,
     level: request.level,
@@ -374,7 +381,7 @@ async function fetchHgtComponent({ level, tmfc, hf, credential, domain }) {
   const kim = kimDomainRequest(config, domain)
   const request = resolveKimHgtComponentRequest({ level })
   if (!request) return null
-  const text = await fetchKimGrid({
+  const text = await kimGridFetcher({
     data: request.data,
     name: request.name,
     level: request.level,
@@ -403,7 +410,7 @@ async function fetchSpecificHumidityComponent({ level, tmfc, hf, credential, dom
   const kim = kimDomainRequest(config, domain)
   const request = resolveKimSpecificHumidityComponentRequest({ level })
   if (!request) return null
-  const text = await fetchKimGrid({
+  const text = await kimGridFetcher({
     data: request.data,
     name: request.name,
     level: request.level,
