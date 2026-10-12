@@ -10,6 +10,7 @@ import {
   kimRawTextExists,
   kimStoreCheckSummary,
   normalizeLikeJson,
+  readKimDocumentCells,
   readKimDocument,
   readKimNcDocument,
   readKimNcTyped,
@@ -270,4 +271,32 @@ test('normalizeLikeJson matches a JSON round trip, including long numeric arrays
     { bare: Object.create(null) },
   ]
   for (const value of cases) assert.deepStrictEqual(normalizeLikeJson(value), JSON.parse(JSON.stringify(value)))
+})
+
+test('readKimDocumentCells reads only the requested grid cells and matches the full read (NC and JSON)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kim-cells-'))
+  try {
+    const nx = 300, ny = 200
+    const ints = Array.from({ length: nx * ny }, (_, i) => (i * 7919) % 30000 - 15000)
+    const floats = Array.from({ length: nx * ny }, (_, i) => (i % 97 === 0 ? null : Math.fround(i / 3)))
+    const doc = { grid: { nx, ny }, variables: { a: { scale: 0.01, values: ints }, b: { values: floats } } }
+    const cells = [0, 1, 299, 300, 25_000, 59_999, 12_345, null, 128 * 300 + 127, 128 * 300 + 128, 97 * 5]
+    for (const format of ['nc', 'json']) {
+      const file = path.join(dir, `${format}.json`)
+      writeKimDocument(file, doc, { format })
+      const full = readKimDocument(file, { format })
+      const part = readKimDocumentCells(file, ['/variables/a/values', '/variables/b/values'], (meta) => {
+        assert.deepEqual(meta.grid, { nx, ny })
+        return cells
+      }, { format })
+      for (const cell of cells.filter((c) => c != null)) {
+        assert.equal(part.variables.a.values[cell], full.variables.a.values[cell], `${format} a ${cell}`)
+        assert.equal(part.variables.b.values[cell], full.variables.b.values[cell], `${format} b ${cell}`)
+      }
+      assert.equal(part.variables.a.scale, 0.01)
+      assert.equal(Object.keys(part.variables.a.values).length, cells.filter((c) => c != null).length)
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 })

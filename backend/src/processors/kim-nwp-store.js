@@ -5,7 +5,7 @@ import { createHash, randomUUID } from 'node:crypto'
 
 import { KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpIndex } from './kim-nwp-model.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain } from './kim-domain.js'
-import { kimDocumentExists, kimDocumentStoragePath, quarantineKimDocument, readKimDocument, readKimDocumentArrays, writeKimDocument } from './kim-doc-store.js'
+import { kimDocumentExists, kimDocumentStoragePath, quarantineKimDocument, readKimDocument, readKimDocumentArrays, writeKimDocument, readKimDocumentCells } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 
 // 모든 함수는 영역(domain, 기본 'kr')을 받는다. 영역마다 저장 폴더가 따로라(kim-domain.js) 회차·latest·index·
@@ -400,6 +400,27 @@ export function readKimTropopauseField({ root, tmfc, hf, revision, domain = KIM_
   if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.revision !== selectedRevision
     || !validTropopauseShape(field) || field.content_hash !== tropopauseContentHash(field)) throw new Error('Corrupt tropopause immutable field')
   return field
+}
+
+// 연직단면용 부분 읽기: 경로가 지나는 칸(cellsFor가 돌려준 격자 번호)만 읽는다. 배열 전체가 없으므로 내용 지문은
+// 검증하지 않고 시각·층·계산 판만 맞춘다(전체 검증은 지도 응답을 만들 때 readKimGktgField/readKimTropopauseField가 한다).
+export function readKimGktgFieldCells({ root, tmfc, hf, levelId, revision, domain = KIM_DEFAULT_DOMAIN, cellsFor }) {
+  const field = readKimDocumentCells(resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision, domain }), ['/gktg', '/geopotentialHeight'], cellsFor)
+  if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.level?.id !== levelId || field.revision !== revision) throw new Error('Corrupt GKTG immutable field')
+  return field
+}
+
+export function readKimTropopauseFieldCells({ root, tmfc, hf, revision, domain = KIM_DEFAULT_DOMAIN, cellsFor }) {
+  const field = readKimDocumentCells(resolveKimTropopauseFieldPath({ root, tmfc, hf, revision, domain }), ['/trop', '/tropAboveTop', '/vmax', '/pmax'], cellsFor)
+  if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.revision !== revision) throw new Error('Corrupt tropopause immutable field')
+  return field
+}
+
+export function readKimTropopauseUpperCells({ root, tmfc, hf, revision, domain = KIM_DEFAULT_DOMAIN, cellsFor }) {
+  const pointers = [0, 1].flatMap((k) => ['hgt', 'T', 'u', 'v'].map((name) => `/levels/${k}/${name}`))
+  const upper = readKimDocumentCells(resolveKimTropopauseUpperPath({ root, tmfc, hf, revision, domain }), pointers, cellsFor)
+  if (upper.tmfc !== tmfc || upper.hf !== Number(hf) || upper.revision !== revision) throw new Error('Corrupt tropopause upper levels')
+  return upper
 }
 
 // readFields=false: publishKimGktgRun과 같다(같은 실행에서 방금 쓴 결과는 다시 열지 않고 존재만 확인).

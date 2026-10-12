@@ -1,6 +1,7 @@
 import { gridIndexFor } from './cross-section-sampler.js'
 import { KIM_NWP_LEVELS, decodeComponent } from '../processors/kim-nwp-model.js'
-import { readKimGktgIndex, readKimGktgField } from '../processors/kim-nwp-store.js'
+import { readKimGktgIndex, readKimGktgField, readKimGktgFieldCells } from '../processors/kim-nwp-store.js'
+import { KIM_DEFAULT_DOMAIN } from '../processors/kim-domain.js'
 
 // Keep native pressure layers and sample the height from the identical calculation input.
 // The ktg member remains a transport compatibility alias; product identifies its thresholds.
@@ -23,7 +24,13 @@ export function loadGktgCrossSection({ root, axis, validTime, timeRules = null, 
       const entry = index.availability?.[level.id]?.[String(target.hf)]
       if (!entry?.hashes?.gktg) return missing
       if (!cache.has(target.hf)) {
-        try { cache.set(target.hf, readKimGktgField({ root, tmfc: index.latestRun, hf: target.hf, levelId: level.id, revision: entry.hashes.gktg, domain })) } catch { cache.set(target.hf, null) }
+        // 한반도 밖(확대 영역)은 경로가 지나는 칸만 읽는다(층마다 44만 칸 전체와 내용 지문 계산을 피한다).
+        const selection = { root, tmfc: index.latestRun, hf: target.hf, levelId: level.id, revision: entry.hashes.gktg, domain }
+        try {
+          cache.set(target.hf, domain && domain !== KIM_DEFAULT_DOMAIN
+            ? readKimGktgFieldCells({ ...selection, cellsFor: (meta) => axis.samples.map((s) => gridIndexFor(meta.grid, s.lon, s.lat)) })
+            : readKimGktgField(selection))
+        } catch { cache.set(target.hf, null) }
       }
       const field = cache.get(target.hf)
       if (!field || sample.lon < field.grid.lonMin || sample.lon > field.grid.lonMax || sample.lat < field.grid.latMin || sample.lat > field.grid.latMax) return missing

@@ -325,6 +325,76 @@ export function readKimDocumentArrays(jsonPath, pointers, options) {
   }
 }
 
+// 문서의 2차원 배열(격자)에서 필요한 칸만 읽는다. cellsFor(meta)가 돌려준 전체 격자 번호(y*nx+x)만 담은 희소 객체를
+// 그 배열 자리에 넣는다(values[번호]로 읽는다). NC는 그 칸이 든 압축 조각(128×128)만 풀어서, 경로 연직단면처럼
+// 넓은 격자에서 몇천 칸만 쓸 때 전체를 푸는 것보다 훨씬 적게 읽는다. 값은 readKimDocument와 같다(실수 결측은 null).
+export function readKimDocumentCells(jsonPath, pointers, cellsFor, options) {
+  const storagePath = kimDocumentStoragePath(jsonPath, options)
+  if (!storagePath) {
+    const error = new Error(`ENOENT: no such file, open '${jsonPath}'`)
+    error.code = 'ENOENT'
+    throw error
+  }
+  const pick = (values, cells) => {
+    const sparse = {}
+    for (const cell of cells) if (cell != null) sparse[cell] = values[cell]
+    return sparse
+  }
+  if (!storagePath.endsWith('.nc')) {
+    const doc = readJsonFile(storagePath)
+    const cells = cellsFor(doc)
+    for (const pointer of pointers) {
+      const tokens = pointer.split('/').slice(1).map(unescapeToken)
+      let cursor = doc
+      for (const token of tokens) cursor = cursor?.[token]
+      if (Array.isArray(cursor)) setAtPointer(doc, pointer, pick(cursor, cells))
+    }
+    return doc
+  }
+  const wanted = new Set(pointers)
+  const file = new h5wasm.File(storagePath, 'r')
+  try {
+    const { arrays, meta } = readNcHeader(file)
+    const cells = cellsFor(meta)
+    for (const { pointer, name, dtype, length } of arrays) {
+      if (!wanted.has(pointer)) continue
+      // readKimNcDocument(plainArray)와 같게 실수 배열의 결측(NaN)은 null로 둔다.
+      const asStored = dtype === '<f' || dtype === '<d' ? (value) => (Number.isNaN(value) ? null : value) : (value) => value
+      const dataset = file.get(name)
+      const shape = dataset.shape
+      if (shape?.length !== 2) {
+        const typed = dataset.value
+        if (typed.length !== length) throw new Error(`Corrupt KIM NC array ${pointer}`)
+        const sparse = {}
+        for (const cell of cells) if (cell != null && cell >= 0 && cell < typed.length) sparse[cell] = asStored(typed[cell])
+        setAtPointer(meta, pointer, sparse)
+        continue
+      }
+      const [ny, nx] = shape
+      const [cy, cx] = dataset.metadata?.chunks?.length === 2 ? dataset.metadata.chunks : [CHUNK, CHUNK]
+      const tiles = new Map()
+      for (const cell of cells) {
+        if (cell == null || cell < 0 || cell >= ny * nx) continue
+        const key = Math.floor(Math.floor(cell / nx) / cy) * 1e6 + Math.floor((cell % nx) / cx)
+        if (!tiles.has(key)) tiles.set(key, [])
+        tiles.get(key).push(cell)
+      }
+      const sparse = {}
+      for (const [key, tileCells] of tiles) {
+        const ty = Math.floor(key / 1e6), tx = key % 1e6
+        const y0 = ty * cy, y1 = Math.min(ny, y0 + cy), x0 = tx * cx, x1 = Math.min(nx, x0 + cx)
+        const tile = dataset.slice([[y0, y1], [x0, x1]])
+        const width = x1 - x0
+        for (const cell of tileCells) sparse[cell] = asStored(tile[(Math.floor(cell / nx) - y0) * width + (cell % nx) - x0])
+      }
+      setAtPointer(meta, pointer, sparse)
+    }
+    return meta
+  } finally {
+    file.close()
+  }
+}
+
 // 손상된 불변 결과를 지우지 않고 옆으로 옮긴다(JSON·NC 둘 다).
 export function quarantineKimDocument(jsonPath, suffix) {
   for (const candidate of [jsonPath, kimNcPath(jsonPath)]) {

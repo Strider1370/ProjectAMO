@@ -16,21 +16,23 @@ import {
   filterKimNwpIndexForVariables,
   icingGradeFor,
 } from '../processors/kim-nwp-model.js'
-import { readKimNwpGrid, readKimNwpGridVariables, readKimNwpIndex, readKimNwpLatest, readKimGktgLatest } from '../processors/kim-nwp-store.js'
+import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, readKimGktgLatest, resolveKimNwpGridPath } from '../processors/kim-nwp-store.js'
+import { readKimDocumentCells } from '../processors/kim-doc-store.js'
 import { KIM_DEFAULT_DOMAIN, kimDomainRequest, parseKimDomain } from '../processors/kim-domain.js'
 import { buildNwpTimeSegments, normalizeNwpTimeSelection } from '../../../shared/nwp-time-selection.js'
 
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
 const MAX_CACHED_ROUTE_GRIDS = 32 // 21 KIM pressure levels + 10 KTG levels + KTG coordinates; measured below 64 MiB in production.
-// 확대 영역 격자는 한 장(13변수 일반 배열)이 약 46 MB라, 21장을 장 수로만 붙잡으면 백엔드가 1 GB를 넘었다
-// (2026-10-12 회차가 메모리 부족으로 멈춤). 한반도 밖 격자는 단면에 쓰는 변수만 정수 배열 그대로 읽고(층당 약 11 MB),
-// 캐시는 용량으로 제한한다. 넘치는 층은 캐시하지 않고 요청 때 읽는다.
+// 확대 영역 격자는 한 장(13변수 일반 배열)이 약 46 MB라, 21장을 통째로 읽어 캐시하면 백엔드가 1 GB를 넘었다
+// (2026-10-12 회차가 메모리 부족으로 멈춤). 한반도 밖 격자는 경로가 지나는 칸이 든 압축 조각(128×128)만 읽는다
+// (readKimDocumentCells). 경로마다 읽는 칸이 달라 캐시하지 않는다. 캐시는 한반도 격자에만 쓰고 용량으로도 제한한다.
 const ROUTE_GRID_VARIABLES = ['hgt', 'T', 'u', 'v', 'cld', 'rh', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs']
 const MAX_CACHED_ROUTE_GRID_BYTES = Number(process.env.KIM_CROSS_SECTION_CACHE_MB || 96) * 1024 * 1024
 
-function readRouteKimGrid({ root, tmfc, hf, levelId, domain }) {
-  if (domain === KIM_DEFAULT_DOMAIN) return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId, domain })
-  return readKimNwpGridVariables({ root, model: 'KIMG/NE57', tmfc, hf, levelId, names: ROUTE_GRID_VARIABLES, domain })
+function readRouteKimCells({ root, tmfc, hf, levelId, domain, samples }) {
+  const file = resolveKimNwpGridPath({ root, model: 'KIMG/NE57', tmfc, hf, levelId, domain })
+  return readKimDocumentCells(file, ROUTE_GRID_VARIABLES.map((name) => `/variables/${name}/values`),
+    (meta) => samples.map((sample) => gridIndexFor(meta.grid, sample.lon, sample.lat)))
 }
 
 function gridBytes(grid) {
@@ -262,14 +264,20 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
           samples: axis.samples,
           segments: timeRules.segments,
           readGrid: (sourceHf) => {
-            try { return readRouteKimGrid({ root, tmfc, hf: sourceHf, levelId, domain }) } catch { return null }
+            try {
+              return domain === KIM_DEFAULT_DOMAIN
+                ? readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: sourceHf, levelId, domain })
+                : readRouteKimCells({ root, tmfc, hf: sourceHf, levelId, domain, samples: axis.samples })
+            } catch { return null }
           },
         }),
       }
     }
-    const grid = cachedGrid('kim', kimBundleKey, levelId, () => {
-      try { return readRouteKimGrid({ root, tmfc, hf, levelId, domain }) } catch { return null }
-    })
+    const grid = domain === KIM_DEFAULT_DOMAIN
+      ? cachedGrid('kim', kimBundleKey, levelId, () => {
+        try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId, domain }) } catch { return null }
+      })
+      : (() => { try { return readRouteKimCells({ root, tmfc, hf, levelId, domain, samples: axis.samples }) } catch { return null } })()
     if (!grid) return null
     return { pressure: level.value, values: sampleLevelValues(grid, axis.samples) }
   }

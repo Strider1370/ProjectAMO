@@ -1,5 +1,6 @@
 import { gridIndexFor } from './cross-section-sampler.js'
-import { readKimTropopauseIndex, readKimTropopauseField, readKimTropopauseUpper } from '../processors/kim-nwp-store.js'
+import { readKimTropopauseIndex, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseFieldCells, readKimTropopauseUpperCells } from '../processors/kim-nwp-store.js'
+import { KIM_DEFAULT_DOMAIN } from '../processors/kim-domain.js'
 
 // ISA 기압고도(ft). FL은 기압고도이므로 지오퍼텐셜고도가 아니라 기압에서 바로 환산한다.
 // 단면 차트는 지오퍼텐셜 고도 축이므로 *Hpa 값으로 같은 층 고도에 보간해 그린다.
@@ -16,9 +17,13 @@ export function loadTropopauseCrossSection({ root, axis, validTime, timeRules = 
   const time = index.times.find(t => t.validTime === validTime)
   if (!time && !timeRules) return { available: false, product: 'TROP_JET', reason: 'tropopause_time_unavailable' }
   const cache = new Map()
+  // 한반도 밖(확대 영역)은 경로가 지나는 칸만 읽는다.
+  const partial = domain && domain !== KIM_DEFAULT_DOMAIN
+  const cellsFor = (meta) => (axis?.samples ?? []).map((s) => gridIndexFor(meta.grid, s.lon, s.lat))
   const fieldFor = target => {
     if (!cache.has(target.hf)) {
-      try { cache.set(target.hf, readKimTropopauseField({ root, tmfc: index.latestRun, hf: target.hf, revision: target.revision, domain })) } catch { cache.set(target.hf, null) }
+      const selection = { root, tmfc: index.latestRun, hf: target.hf, revision: target.revision, domain }
+      try { cache.set(target.hf, partial ? readKimTropopauseFieldCells({ ...selection, cellsFor }) : readKimTropopauseField(selection)) } catch { cache.set(target.hf, null) }
     }
     return cache.get(target.hf)
   }
@@ -48,7 +53,8 @@ export function loadTropopauseCrossSection({ root, axis, validTime, timeRules = 
   const upperCache = new Map()
   const upperFor = target => {
     if (!upperCache.has(target.hf)) {
-      try { upperCache.set(target.hf, readKimTropopauseUpper({ root, tmfc: index.latestRun, hf: target.hf, revision: target.revision, domain })) } catch { upperCache.set(target.hf, null) }
+      const selection = { root, tmfc: index.latestRun, hf: target.hf, revision: target.revision, domain }
+      try { upperCache.set(target.hf, partial ? readKimTropopauseUpperCells({ ...selection, cellsFor }) : readKimTropopauseUpper(selection)) } catch { upperCache.set(target.hf, null) }
     }
     return upperCache.get(target.hf)
   }
