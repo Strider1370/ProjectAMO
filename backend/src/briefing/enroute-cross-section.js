@@ -16,16 +16,35 @@ import {
   filterKimNwpIndexForVariables,
   icingGradeFor,
 } from '../processors/kim-nwp-model.js'
-import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, readKimGktgLatest } from '../processors/kim-nwp-store.js'
+import { readKimNwpGrid, readKimNwpGridVariables, readKimNwpIndex, readKimNwpLatest, readKimGktgLatest } from '../processors/kim-nwp-store.js'
 import { KIM_DEFAULT_DOMAIN, kimDomainRequest, parseKimDomain } from '../processors/kim-domain.js'
 import { buildNwpTimeSegments, normalizeNwpTimeSelection } from '../../../shared/nwp-time-selection.js'
 
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
 const MAX_CACHED_ROUTE_GRIDS = 32 // 21 KIM pressure levels + 10 KTG levels + KTG coordinates; measured below 64 MiB in production.
+// 확대 영역 격자는 한 장(13변수 일반 배열)이 약 46 MB라, 21장을 장 수로만 붙잡으면 백엔드가 1 GB를 넘었다
+// (2026-10-12 회차가 메모리 부족으로 멈춤). 한반도 밖 격자는 단면에 쓰는 변수만 정수 배열 그대로 읽고(층당 약 11 MB),
+// 캐시는 용량으로 제한한다. 넘치는 층은 캐시하지 않고 요청 때 읽는다.
+const ROUTE_GRID_VARIABLES = ['hgt', 'T', 'u', 'v', 'cld', 'rh', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs']
+const MAX_CACHED_ROUTE_GRID_BYTES = Number(process.env.KIM_CROSS_SECTION_CACHE_MB || 96) * 1024 * 1024
+
+function readRouteKimGrid({ root, tmfc, hf, levelId, domain }) {
+  if (domain === KIM_DEFAULT_DOMAIN) return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId, domain })
+  return readKimNwpGridVariables({ root, model: 'KIMG/NE57', tmfc, hf, levelId, names: ROUTE_GRID_VARIABLES, domain })
+}
+
+function gridBytes(grid) {
+  let bytes = 0
+  for (const variable of Object.values(grid?.variables || {})) {
+    const values = variable?.values
+    if (values) bytes += values.byteLength ?? values.length * 8
+  }
+  return bytes
+}
 
 const routeGridCache = {
-  kim: { key: null, grids: new Map(), hits: 0, misses: 0 },
-  ktg: { key: null, grids: new Map(), hits: 0, misses: 0 },
+  kim: { key: null, grids: new Map(), bytes: 0, hits: 0, misses: 0 },
+  ktg: { key: null, grids: new Map(), bytes: 0, hits: 0, misses: 0 },
 }
 
 function cachedGrid(family, bundleKey, gridKey, read) {
@@ -33,6 +52,7 @@ function cachedGrid(family, bundleKey, gridKey, read) {
   if (cache.key !== bundleKey) {
     cache.key = bundleKey
     cache.grids.clear()
+    cache.bytes = 0
   }
   if (cache.grids.has(gridKey)) {
     cache.hits += 1
@@ -40,7 +60,11 @@ function cachedGrid(family, bundleKey, gridKey, read) {
   }
   cache.misses += 1
   const grid = read()
-  if (cache.grids.size < MAX_CACHED_ROUTE_GRIDS) cache.grids.set(gridKey, grid)
+  const bytes = family === 'kim' ? gridBytes(grid) : 0
+  if (cache.grids.size < MAX_CACHED_ROUTE_GRIDS && cache.bytes + bytes <= MAX_CACHED_ROUTE_GRID_BYTES) {
+    cache.grids.set(gridKey, grid)
+    cache.bytes += bytes
+  }
   return grid
 }
 
@@ -48,6 +72,7 @@ export function clearRouteCrossSectionCache() {
   for (const cache of Object.values(routeGridCache)) {
     cache.key = null
     cache.grids.clear()
+    cache.bytes = 0
     cache.hits = 0
     cache.misses = 0
   }
@@ -55,7 +80,7 @@ export function clearRouteCrossSectionCache() {
 
 export function routeCrossSectionCacheMetrics() {
   return Object.fromEntries(Object.entries(routeGridCache).map(([family, cache]) => [family, {
-    hits: cache.hits, misses: cache.misses, retainedGrids: cache.grids.size,
+    hits: cache.hits, misses: cache.misses, retainedGrids: cache.grids.size, retainedMiB: Math.round(cache.bytes / 1048576),
   }]))
 }
 
@@ -237,13 +262,13 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
           samples: axis.samples,
           segments: timeRules.segments,
           readGrid: (sourceHf) => {
-            try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: sourceHf, levelId, domain }) } catch { return null }
+            try { return readRouteKimGrid({ root, tmfc, hf: sourceHf, levelId, domain }) } catch { return null }
           },
         }),
       }
     }
     const grid = cachedGrid('kim', kimBundleKey, levelId, () => {
-      try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId, domain }) } catch { return null }
+      try { return readRouteKimGrid({ root, tmfc, hf, levelId, domain }) } catch { return null }
     })
     if (!grid) return null
     return { pressure: level.value, values: sampleLevelValues(grid, axis.samples) }
