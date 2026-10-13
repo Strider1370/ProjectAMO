@@ -7,7 +7,7 @@ import test from 'node:test'
 import { parseKimGridText } from '../src/parsers/kim-grid-parser.js'
 import { buildKimGridUrl } from '../src/api-client.js'
 import config from '../src/config.js'
-import { readKimNwpIndex, readKimNwpLatest, readKimNwpManifest, writeKimNwpLatest, writeKimNwpManifest } from '../src/processors/kim-nwp-store.js'
+import { readKimNwpIndex, readKimNwpLatest, readKimNwpManifest, writeKimNwpIndex, writeKimNwpLatest, writeKimNwpManifest } from '../src/processors/kim-nwp-store.js'
 import {
   KIM_NWP_ICING_LEVEL_IDS,
   KIM_NWP_LEVELS,
@@ -415,6 +415,42 @@ test('hasCompleteKimNwpRun skips only when latest run has wind temp and moisture
     collectIcing: false,
     collectSpecificHumidity: false,
   }), false)
+})
+
+test('a complete newer run stops the collector from fetching an older candidate', async () => {
+  // 2026-10-13 21:12 KST: 06 UTC는 확대 영역에 맡겨 건너뛰고, 후보가 00 UTC로 내려가 옛 회차를 다시 받아 게시했다.
+  const original = { basePath: config.storage.base_path, forecastHours: config.kim_nwp.forecast_hours, collectIcing: config.kim_nwp.collect_icing, collectQ: config.kim_nwp.collect_specific_humidity }
+  const root = await mkdtemp(path.join(os.tmpdir(), 'projectamo-kim-newer-run-'))
+  const originalFetch = globalThis.fetch
+  let requests = 0
+  try {
+    config.storage.base_path = root
+    config.kim_nwp.forecast_hours = [0]
+    config.kim_nwp.collect_icing = false
+    config.kim_nwp.collect_specific_humidity = false
+    globalThis.fetch = async () => { requests += 1; throw new Error('network blocked in test') }
+    const tmfc = '2026101306'
+    const grids = KIM_NWP_LEVELS.map((level) => buildKimNwpGrid({
+      model: 'KIMG/NE57', tmfc, hf: 0, level,
+      components: ['u', 'v', 'T', ...(level.kind === 'pressure' ? ['hgt', 'rh'] : [])]
+        .map((variable) => ({ variable, unit: '1', level: level.level, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [1, 2, 3, 4] })),
+    }))
+    writeKimNwpIndex(root, buildKimNwpIndex({ model: 'KIMG/NE57', tmfc, entries: indexEntries(grids) }))
+    writeKimNwpLatest(root, { type: 'kim_nwp_latest', model: 'KIMG/NE57', latestRun: tmfc, latestRunId: `KIMG_NE57_${tmfc}` })
+
+    const result = await processKimNwp({ candidates: [{ tmfc: '2026101300', hf: 0 }] })
+    assert.equal(result.reason, 'kim_nwp_newer_run_complete')
+    assert.equal(result.tmfc, tmfc)
+    assert.equal(requests, 0)
+    assert.equal(readKimNwpLatest(root).latestRun, tmfc)
+  } finally {
+    globalThis.fetch = originalFetch
+    config.storage.base_path = original.basePath
+    config.kim_nwp.forecast_hours = original.forecastHours
+    config.kim_nwp.collect_icing = original.collectIcing
+    config.kim_nwp.collect_specific_humidity = original.collectQ
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test('hasCompleteKimNwpRun requires icing variables when collect_icing is enabled', () => {

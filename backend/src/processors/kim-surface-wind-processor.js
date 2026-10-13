@@ -675,7 +675,21 @@ export async function process({
       candidateHours,
       single: config.kim_nwp?.single_forecast !== false,
     })
-    const collectAirportComparison = () => domain !== KIM_DEFAULT_DOMAIN ? { skipped: true, reason: 'kim_comparison_korea_domain_only' } : collectKimComparisonIfEligible({ tmfc: candidate.tmfc, forecastHours, credential, signal, root: config.storage.base_path, airports: comparisonAirports, single: config.kim_nwp?.single_forecast !== false, collectComparison })
+    // 이미 게시한 회차가 이 후보보다 새롭고 다 갖춰졌으면 더 오래된 회차는 받지 않는다. 06 UTC를 확대 영역에 맡긴
+    // 시간(위 continue)에는 후보가 00 UTC로 내려가, 2026-10-13 21:12 KST에 지운 00 UTC를 29분 동안 다시 받아
+    // 06 UTC 자리에 게시했다(22:12 수집이 06 UTC를 되돌릴 때까지 30분 동안 한반도가 옛 회차를 보였다).
+    const latest = readKimNwpLatest(config.storage.base_path, domain)
+    if (latest?.latestRun && candidate.tmfc < latest.latestRun && hasCompleteKimNwpRun({
+      latest,
+      index: readKimNwpIndex(config.storage.base_path, domain),
+      tmfc: latest.latestRun,
+      forecastHours: resolveCollectedForecastHours({ tmfc: latest.latestRun, candidateHours, single: config.kim_nwp?.single_forecast !== false }),
+      levels: KIM_NWP_LEVELS,
+      collectIcing: config.kim_nwp?.collect_icing !== false,
+    })) {
+      return { type: TYPE, skipped: true, reason: 'kim_nwp_newer_run_complete', tmfc: latest.latestRun }
+    }
+    const collectAirportComparison =() => domain !== KIM_DEFAULT_DOMAIN ? { skipped: true, reason: 'kim_comparison_korea_domain_only' } : collectKimComparisonIfEligible({ tmfc: candidate.tmfc, forecastHours, credential, signal, root: config.storage.base_path, airports: comparisonAirports, single: config.kim_nwp?.single_forecast !== false, collectComparison })
     if (hasCompleteKimNwpRun({
       latest: readKimNwpLatest(config.storage.base_path, domain),
       index: readKimNwpIndex(config.storage.base_path, domain),
