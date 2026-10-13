@@ -6,7 +6,7 @@ import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-compari
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 
-// 격자 원문 요청 함수. 확대 영역 다운로드 작업 스레드(kim-download-worker.js)는 요청을 본 스레드에 맡기려고 바꿔 끼운다
+// 격자 원문 요청 함수. 확대 영역 다운로드 자식 프로세스(kim-download-worker.js)는 요청을 부모(백엔드)에 맡기려고 바꿔 끼운다
 // (대용량 키·사용량 장부·재시도는 본 스레드 한 곳에서만 다룬다). 그 밖에서는 바꾸지 않는다.
 let kimGridFetcher = fetchKimGrid
 export function setKimGridFetcher(fetcher) {

@@ -310,7 +310,7 @@ export const kim_expanded = {
   sub: process.env.KIM_EXPANDED_SUB || '1081,1153,1921,1681',
   bounds: { lonMin: 90, latMin: 6, lonMax: 160, latMax: 50, dx: 0.083333, dy: 0.083333 },
   concurrency: Number(process.env.KIM_EXPANDED_CONCURRENCY || 8),
-  // 층 받기를 작업 스레드에서 한다(사이트 응답 보호). 0이면 본 스레드에서 한다.
+  // 층 받기를 다운로드 자식 프로세스에서 한다(사이트 응답 보호). 0이면 백엔드 본 스레드에서 한다.
   offload_download: process.env.KIM_DOWNLOAD_OFFLOAD !== '0',
   // 00 UTC +0~24h 1시간·+27~36h 3시간(29개), 06 UTC +0~24h 1시간·+27~48h 3시간(33개).
   cycles: { '00': expandedHours(36), '06': expandedHours(48) },

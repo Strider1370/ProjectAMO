@@ -1,22 +1,49 @@
-// 확대 영역 다운로드의 층 받기를 작업 스레드(kim-download-worker.js)로 보낸다. collectKimNwpTask 자리에 쓰는
-// collectTask를 돌려주며, 결과로 격자 대신 목록 항목(entry)을 준다(큰 배열은 스레드 사이를 오가지 않는다).
+// 확대 영역 다운로드의 층 받기를 자식 프로세스(kim-download-worker.js)로 보낸다. collectKimNwpTask 자리에 쓰는
+// collectTask를 돌려주며, 결과로 격자 대신 목록 항목(entry)을 준다(큰 배열은 프로세스 사이를 오가지 않는다).
 //
-// 기상청 요청은 작업 스레드가 부탁하면 여기(본 스레드)서 fetchGrid로 한다. 작업 스레드가 죽거나 멈추면 처리 중인
-// 층을 실패로 돌려 수집기의 기존 재시도가 다시 받게 하고, 다음 요청 때 스레드를 새로 띄운다.
-import { Worker } from 'node:worker_threads'
+// 기상청 요청은 자식이 부탁하면 여기(백엔드)서 fetchGrid로 한다. 자식이 죽거나 멈추면 처리 중인 층을 실패로
+// 돌려 수집기의 기존 재시도가 다시 받게 하고, 다음 요청 때 자식을 새로 띄운다.
+//
+// 작업 스레드가 아니라 자식 프로세스인 이유: 운영 백엔드는 NODE_OPTIONS=--max-old-space-size=1400으로 뜨는데,
+// 이 V8 옵션은 프로세스 전체에 걸려 작업 스레드의 resourceLimits(힙 한도)를 덮는다. 그래서 320 MB로 건 한도가
+// 실제로는 1,424 MB였고, 2026-10-12·13 회차에서 다운로드 쪽이 최대 600~770 MB를 붙잡아 백엔드가 1 GB에 닿았다.
+// 자식 프로세스는 명령줄 옵션이 NODE_OPTIONS보다 앞서므로 한도가 그대로 걸린다(GKTG 등 계산 자식과 같은 방식).
+import { fork } from 'node:child_process'
+import { EventEmitter } from 'node:events'
+import { fileURLToPath } from 'node:url'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 import { errorPayload, restoreError } from './kim-derived-worker-entry.js'
 
-const ENTRY = new URL('./kim-download-worker.js', import.meta.url)
+const ENTRY = fileURLToPath(new URL('./kim-download-worker.js', import.meta.url))
 
-// 작업 스레드 힙 한도(MB). 동시에 받는 층 수만큼 격자를 들고 있으므로 동시 수에 맞춘다(동시 4개 → 320 MB).
-// 2026-10-11 재연(한 시각 22층, 동시 4개): 본 스레드에서 할 때 회차 중 +400 MB, 작업 스레드 한도 256/320/384 MB에서
-// +301/+342/+387 MB(한도가 있어 정리가 잦다). 동시 8개는 384 MB에서 부족, 512 MB에서 됐다.
-const WORKER_OLD_SPACE_MB = Number(process.env.KIM_DOWNLOAD_WORKER_HEAP_MB || 64 + 64 * Math.max(1, config.kim_expanded.concurrency || 4))
+// 자식 힙 한도(MB). 동시에 받는 층 수만큼 격자를 들고 있으므로 동시 수에 맞춘다(동시 4개 → 320 MB).
+// 2026-10-13 재연(8시각 연속, 동시 4개): 한도 1,424 MB에서 다운로드 쪽 힙 중간 330·최대 1,017 MB,
+// 한도 344 MB에서 중간 169·최대 300 MB이고 걸린 시간은 같았다(323초 대 322초).
+const CHILD_OLD_SPACE_MB = Number(process.env.KIM_DOWNLOAD_WORKER_HEAP_MB || 64 + 64 * Math.max(1, config.kim_expanded.concurrency || 4))
+
+// 자식 프로세스를 작업 스레드와 같은 모양(on message/error/exit, postMessage, terminate)으로 감싼다.
+export function forkKimDownloadChild({ forkImpl = fork, oldSpaceMb = CHILD_OLD_SPACE_MB } = {}) {
+  const child = forkImpl(ENTRY, [], {
+    stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    execArgv: [`--max-old-space-size=${oldSpaceMb}`],
+    serialization: 'advanced',
+  })
+  const handle = new EventEmitter()
+  child.on('message', (message) => handle.emit('message', message))
+  child.on('error', (error) => handle.emit('error', error))
+  child.once('exit', (code, signal) => handle.emit('exit', code ?? signal))
+  handle.postMessage = (message) => child.send(message)
+  handle.terminate = () => new Promise((resolve) => {
+    if (child.exitCode !== null || child.signalCode !== null) return resolve()
+    child.once('exit', () => resolve())
+    try { child.kill() } catch { resolve() }
+  })
+  return handle
+}
 
 export function createKimDownloadOffload({ root = config.storage.base_path, fetchGrid = fetchKimGrid, signal,
-  createWorker = () => new Worker(ENTRY, { resourceLimits: { maxOldGenerationSizeMb: WORKER_OLD_SPACE_MB, maxYoungGenerationSizeMb: 16 } }) } = {}) {
+  createWorker = () => forkKimDownloadChild() } = {}) {
   let worker = null
   let nextTask = 0
   const tasks = new Map()
@@ -28,13 +55,14 @@ export function createKimDownloadOffload({ root = config.storage.base_path, fetc
 
   const start = () => {
     const current = createWorker()
+    const reply = (message) => { try { current.postMessage(message) } catch {} }
     current.on('message', async (message) => {
       if (message?.type === 'fetch') {
         try {
           const text = await fetchGrid({ ...message.params, signal })
-          current.postMessage({ type: 'fetch_result', id: message.id, text })
+          reply({ type: 'fetch_result', id: message.id, text })
         } catch (error) {
-          current.postMessage({ type: 'fetch_result', id: message.id, error: errorPayload(error) })
+          reply({ type: 'fetch_result', id: message.id, error: errorPayload(error) })
         }
         return
       }

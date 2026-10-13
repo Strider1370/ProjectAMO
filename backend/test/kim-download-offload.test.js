@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import test from 'node:test'
 
-import { createKimDownloadOffload } from '../src/processors/kim-download-offload.js'
+import { createKimDownloadOffload, forkKimDownloadChild } from '../src/processors/kim-download-offload.js'
 
-// 작업 스레드 흉내: 받은 메시지를 sent에 쌓고, 시험이 reply/emit으로 답한다.
+// 자식 프로세스 흉내: 받은 메시지를 sent에 쌓고, 시험이 reply/emit으로 답한다.
 function fakeWorker() {
   const worker = new EventEmitter()
   worker.sent = []
@@ -80,4 +83,34 @@ test('close fails pending tasks and terminates the worker; an aborted run takes 
   assert.equal(worker.terminated, true)
   controller.abort(new Error('cancelled'))
   await assert.rejects(offload.collectTask({ task }), /cancelled/)
+})
+
+test('the child gets its own heap limit on the command line, which wins over NODE_OPTIONS', () => {
+  // 운영 백엔드는 NODE_OPTIONS=--max-old-space-size=1400으로 뜬다. 작업 스레드의 resourceLimits는 이 옵션에 덮였다.
+  const calls = []
+  const child = new EventEmitter()
+  child.exitCode = null
+  child.signalCode = null
+  forkKimDownloadChild({ oldSpaceMb: 320, forkImpl: (...args) => { calls.push(args); return child } })
+  const [entry, , options] = calls[0]
+  assert.match(entry, /kim-download-worker\.js$/)
+  assert.deepEqual(options.execArgv, ['--max-old-space-size=320'])
+  assert.equal(options.serialization, 'advanced')
+})
+
+test('a real child relays its KMA requests to the parent and returns the task result', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kim-download-child-'))
+  const requested = []
+  const offload = createKimDownloadOffload({
+    root,
+    fetchGrid: async (params) => { requested.push(params.name); const error = new Error('HTTP 403'); error.code = 'E403'; throw error },
+  })
+  try {
+    const level = { id: '500hPa', kind: 'pressure', level: 500, uName: 'u', vName: 'v' }
+    await assert.rejects(offload.collectTask({ task: { level, tmfc: '2026101306', hf: 3, credential: 'k', domain: 'ea' } }), (error) => error.code === 'E403')
+    assert.ok(requested.length > 0)
+  } finally {
+    await offload.close()
+    fs.rmSync(root, { recursive: true, force: true })
+  }
 })

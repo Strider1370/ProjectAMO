@@ -154,7 +154,7 @@ export async function collectExpandedRun({
   }
 
   let stopReason = null
-  // 층 받기(파싱·격자·층 저장)는 작업 스레드에서 한다(kim-download-offload.js). 본 스레드가 사이트 요청을 막지 않게 한다.
+  // 층 받기(파싱·격자·층 저장)는 자식 프로세스에서 한다(kim-download-offload.js). 본 스레드가 사이트 요청을 막지 않게 한다.
   // 시험 등에서 collectTask를 넣으면 그대로 쓴다. KIM_DOWNLOAD_OFFLOAD=0이면 예전처럼 본 스레드에서 한다.
   const offload = collectTask === collectKimNwpTask && config.kim_expanded.offload_download
     ? createKimDownloadOffload({ root, fetchGrid, signal }) : null
