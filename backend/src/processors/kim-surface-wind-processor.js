@@ -637,6 +637,20 @@ export function resolveCollectedForecastHours({ tmfc, nowMs = Date.now(), candid
   return [selectNearestForecastHour({ tmfc, nowMs, candidateHours })]
 }
 
+// 한반도 최신 회차가 minTmfc 이상이고 지도에 필요한 변수를 다 갖췄는지(확대 회차가 도는 동안 한반도 수집을 쉬어도 되는지).
+export function hasCompleteKoreaRunSince(minTmfc, root = config.storage.base_path) {
+  const latest = readKimNwpLatest(root)
+  if (!latest?.latestRun || latest.latestRun < minTmfc) return false
+  return hasCompleteKimNwpRun({
+    latest,
+    index: readKimNwpIndex(root),
+    tmfc: latest.latestRun,
+    forecastHours: resolveCollectedForecastHours({ tmfc: latest.latestRun, candidateHours: config.kim_nwp?.forecast_hours || KIM_NWP_FORECAST_HOURS, single: config.kim_nwp?.single_forecast !== false }),
+    levels: KIM_NWP_LEVELS,
+    collectIcing: config.kim_nwp?.collect_icing !== false,
+  })
+}
+
 export async function collectKimComparisonIfEligible({ tmfc, forecastHours, credential, signal, root, airports: selectedAirports, single, collectComparison = collectKimAirportComparison }) {
   if (single || forecastHours.length !== 13) return { skipped: true, reason: 'kim_comparison_requires_13_hours' }
   try {

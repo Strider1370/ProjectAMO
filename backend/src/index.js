@@ -15,8 +15,8 @@ import lightningProcessor from './processors/lightning-processor.js'
 import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
 import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
-import kimSurfaceWindProcessor from './processors/kim-surface-wind-processor.js'
-import { processExpandedCycle } from './processors/kim-expanded-processor.js'
+import kimSurfaceWindProcessor, { hasCompleteKoreaRunSince } from './processors/kim-surface-wind-processor.js'
+import { expandedRunTmfc, processExpandedCycle } from './processors/kim-expanded-processor.js'
 import kimSurfaceChartProcessor from './processors/kim-surface-chart-processor.js'
 import groundForecastProcessor from './processors/ground-forecast-processor.js'
 import environmentProcessor from './processors/environment-processor.js'
@@ -59,7 +59,18 @@ function safeCollectorLog(type, outcome, fields = {}) {
     .join(' ')}`
 }
 
-async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], resultOutcomes, isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console } = {}) {
+// 확대 회차(00·06 UTC)가 도는 동안 한반도 기본 수집과 GKTG·권계면 재확인은 쉰다. 한반도가 그 회차 이상을 이미 다
+// 갖췄을 때만이다(00 UTC 한반도는 따로 받으므로 14:12 수집이 덜 끝났으면 15:12·16:12 재시도가 필요하다).
+// 쉬지 않으면 확대 계산과 같은 순번을 잡아 계산을 밀고, 2026-10-13 21:12 KST에는 옛 00 UTC를 다시 받아 게시했다.
+// 확대 회차가 한반도를 잘라 게시한 뒤 부르는 GKTG·권계면(kim_korea_from_expanded)은 그대로 돈다.
+const KOREA_KIM_TYPES = ['kim_surface_wind', 'kim_gktg', 'kim_tropopause']
+export function koreaYieldsToExpanded({ type, source, lockState = locks, koreaComplete = hasCompleteKoreaRunSince, now = Date.now() }) {
+  if (!KOREA_KIM_TYPES.includes(type) || source === 'kim_korea_from_expanded') return false
+  const cycle = ['00', '06'].find((candidate) => lockState[`kim_expanded_${candidate}`])
+  return Boolean(cycle) && koreaComplete(expandedRunTmfc(cycle, now))
+}
+
+async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], resultOutcomes, isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console, yieldToExpanded = koreaYieldsToExpanded } = {}) {
   if (['nwp_ecmwf','nwp_icon','nwp_gfs'].includes(type) && !isNwpCollectionDue({model:type.slice(4)})) {
     recorder.noteSkippedRun?.(type, 'nwp_complete_or_disabled')
     return {skipped:'nwp_complete_or_disabled'}
@@ -74,6 +85,11 @@ async function runWithLock(type, job, { source = 'manual', apiHubCategories = []
     logger.warn?.(safeCollectorLog(type, 'skipped', { code: 'already_running' }))
     recorder.recordSkip(type, 'already_running', run)
     return { skipped: 'already_running' }
+  }
+  if (yieldToExpanded({ type, source })) {
+    logger.info?.(safeCollectorLog(type, 'skipped', { code: 'kim_expanded_running' }))
+    recorder.recordSkip(type, 'kim_expanded_running', run)
+    return { skipped: 'kim_expanded_running' }
   }
 
   locks[type] = true;

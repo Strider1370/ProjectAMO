@@ -6,6 +6,7 @@ import config from '../src/config.js'
 import { activeCollectorRegistry } from '../src/collector-registry.js'
 import {
   buildInitialCollectionJobs,
+  koreaYieldsToExpanded,
   runWithLock,
 } from '../src/index.js'
 
@@ -108,4 +109,25 @@ test('airport info scheduler runs at KST bulletin release and retry times', () =
   assert.equal(collector.schedule.expression, config.schedule.airport_info_interval)
   assert.equal(collector.schedule.expression, '0,30 6,17 * * *')
   assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Asia/Seoul', recoverMissedExecutions: true })
+})
+
+test('Korea KIM jobs rest while an expanded run is going, once Korea already has that run', () => {
+  const now = Date.parse('2026-10-13T12:12:00Z') // 21:12 KST, 06 UTC 확대 회차 중
+  const asked = []
+  const complete = (minTmfc) => { asked.push(minTmfc); return true }
+  const running = { kim_expanded_06: true }
+  for (const type of ['kim_surface_wind', 'kim_gktg', 'kim_tropopause']) {
+    assert.equal(koreaYieldsToExpanded({ type, source: 'schedule', lockState: running, koreaComplete: complete, now }), true)
+  }
+  assert.deepEqual([...new Set(asked)], ['2026101306'])
+  // 확대 회차가 한반도를 잘라 게시한 뒤 부르는 계산, 한반도가 아직 그 회차를 못 갖춘 경우, 확대 회차가 없을 때는 돈다.
+  assert.equal(koreaYieldsToExpanded({ type: 'kim_gktg', source: 'kim_korea_from_expanded', lockState: running, koreaComplete: complete, now }), false)
+  assert.equal(koreaYieldsToExpanded({ type: 'kim_surface_wind', source: 'schedule', lockState: running, koreaComplete: () => false, now }), false)
+  assert.equal(koreaYieldsToExpanded({ type: 'kim_surface_wind', source: 'schedule', lockState: {}, koreaComplete: complete, now }), false)
+  assert.equal(koreaYieldsToExpanded({ type: 'satellite', source: 'schedule', lockState: running, koreaComplete: complete, now }), false)
+})
+
+test('a resting Korea KIM job is recorded as skipped without running', async () => {
+  const result = await runWithLock('kim_gktg', async () => assert.fail('processor must not run'), { yieldToExpanded: () => true })
+  assert.deepEqual(result, { skipped: 'kim_expanded_running' })
 })
