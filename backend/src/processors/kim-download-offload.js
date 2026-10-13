@@ -10,6 +10,7 @@
 // 자식 프로세스는 명령줄 옵션이 NODE_OPTIONS보다 앞서므로 한도가 그대로 걸린다(GKTG 등 계산 자식과 같은 방식).
 import { fork } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
@@ -23,12 +24,16 @@ const ENTRY = fileURLToPath(new URL('./kim-download-worker.js', import.meta.url)
 const CHILD_OLD_SPACE_MB = Number(process.env.KIM_DOWNLOAD_WORKER_HEAP_MB || 64 + 64 * Math.max(1, config.kim_expanded.concurrency || 4))
 
 // 자식 프로세스를 작업 스레드와 같은 모양(on message/error/exit, postMessage, terminate)으로 감싼다.
-export function forkKimDownloadChild({ forkImpl = fork, oldSpaceMb = CHILD_OLD_SPACE_MB } = {}) {
+// CPU 우선순위는 GKTG 등 계산 자식과 같게 낮춘다. 보통 우선순위면 코어 하나를 두고 다툴 때 약 9:1로 이겨,
+// 2026-10-13 06 UTC 회차에서 받기가 5시각 앞서가는 동안 시각당 계산이 239초에서 302초로 밀렸다
+// (다운로드 처리는 운영 서버에서 시각당 CPU 약 93초). 사이트 응답은 백엔드 본 프로세스가 맡으므로 영향이 없다.
+export function forkKimDownloadChild({ forkImpl = fork, oldSpaceMb = CHILD_OLD_SPACE_MB, setPriority = os.setPriority, nice = config.kim_derived_worker.nice } = {}) {
   const child = forkImpl(ENTRY, [], {
     stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
     execArgv: [`--max-old-space-size=${oldSpaceMb}`],
     serialization: 'advanced',
   })
+  try { setPriority(child.pid, nice) } catch {}
   const handle = new EventEmitter()
   child.on('message', (message) => handle.emit('message', message))
   child.on('error', (error) => handle.emit('error', error))

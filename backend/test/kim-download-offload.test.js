@@ -85,13 +85,16 @@ test('close fails pending tasks and terminates the worker; an aborted run takes 
   await assert.rejects(offload.collectTask({ task }), /cancelled/)
 })
 
-test('the child gets its own heap limit on the command line, which wins over NODE_OPTIONS', () => {
+test('the child gets its own heap limit on the command line (wins over NODE_OPTIONS) and the compute CPU priority', () => {
   // 운영 백엔드는 NODE_OPTIONS=--max-old-space-size=1400으로 뜬다. 작업 스레드의 resourceLimits는 이 옵션에 덮였다.
   const calls = []
   const child = new EventEmitter()
   child.exitCode = null
   child.signalCode = null
-  forkKimDownloadChild({ oldSpaceMb: 320, forkImpl: (...args) => { calls.push(args); return child } })
+  child.pid = 4242
+  const priorities = []
+  forkKimDownloadChild({ oldSpaceMb: 320, nice: 10, setPriority: (...args) => priorities.push(args), forkImpl: (...args) => { calls.push(args); return child } })
+  assert.deepEqual(priorities, [[4242, 10]])
   const [entry, , options] = calls[0]
   assert.match(entry, /kim-download-worker\.js$/)
   assert.deepEqual(options.execArgv, ['--max-old-space-size=320'])
