@@ -114,6 +114,16 @@ export function readKimNwpGridVariables({ root, model, tmfc, hf, levelId, names,
   return readKimDocumentArrays(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId, domain }), names.map(name => `/variables/${name}/values`))
 }
 
+// 층 문서에 든 변수 이름만 읽는다(값 배열은 풀지 않는다). 없거나 읽지 못하면 null.
+// 확대 영역 층 하나를 통째로 풀면 일반 배열로 약 43 MB라, 재시도 때 "이미 다 있나" 확인에는 이것을 쓴다.
+export function readKimNwpGridVariableNames({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
+  try {
+    return Object.keys(readKimNwpGridVariables({ root, model, tmfc, hf, levelId, names: [], domain })?.variables || {})
+  } catch {
+    return null
+  }
+}
+
 export function readKimNwpGridSafe({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
   try {
     return readKimNwpGrid({ root, model, tmfc, hf, levelId, domain })
@@ -152,7 +162,9 @@ export function listKimNwpRuns(root, domain = KIM_DEFAULT_DOMAIN) {
 // onlyComplete: 파생 결과 게시 직후처럼 기본 수집이 다른 회차를 받고 있을 수 있는 때 쓴다. 받는 중인 회차는
 // 끝날 때까지 manifest가 없으므로, 완성된 회차만 지울 수 있게 해 수집 중 폴더를 건드리지 않는다.
 // 영역마다 따로 센다(영역별 저장 폴더).
-export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = false, reason = 'base_published', domain = KIM_DEFAULT_DOMAIN }) {
+// keepOlderComplete=false: latest보다 옛 완성 회차를 예비로 남기지 않는다(확대 영역). 확대 회차는 약 5 GB라, 덜 끝난
+// 회차가 게시될 때 옛 완성 회차를 남기면 다음 회차를 시작할 디스크가 모자란다(2026-10-14 06 UTC가 disk_reserve로 못 돎).
+export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = false, keepOlderComplete = true, reason = 'base_published', domain = KIM_DEFAULT_DOMAIN }) {
   const limit = Number(maxRuns)
   if (!Number.isFinite(limit) || limit <= 0) return
   const runsDir = path.join(resolveKimNwpRoot(root, domain), 'runs')
@@ -161,7 +173,7 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = f
     return manifest?.usable === true && manifest.complete !== false
   })
   const completeSet = new Set(completeRuns)
-  const keep = new Set(completeRuns.slice(0, limit))
+  const keep = new Set(completeRuns.filter((runId) => keepOlderComplete || !latestRunId || runId >= latestRunId).slice(0, limit))
   if (latestRunId) keep.add(latestRunId)
   for (const derivedLatest of [readKimGktgLatest(root, domain), readKimTropopauseLatest(root, domain)]) if (derivedLatest?.runId) keep.add(derivedLatest.runId)
   // ACI는 기본 회차와 같은 회차일 때만 보존한다. 지도는 기본 회차와 다른 ACI를 표시하지 않으므로(aci_base_run_mismatch),

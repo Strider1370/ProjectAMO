@@ -32,6 +32,7 @@ import {
   cleanupKimNwpRuns,
   readKimNwpGrid,
   readKimNwpGridSafe,
+  readKimNwpGridVariableNames,
   readKimNwpIndex,
   readKimNwpLatest,
   readKimNwpManifest,
@@ -521,12 +522,24 @@ export async function collectKimNwpTask({
     levelId: level.id,
     domain,
   }),
+  readExistingVariables = ({ level, tmfc, hf, domain }) => readKimNwpGridVariableNames({
+    root: config.storage.base_path,
+    model: KIM_NWP_MODEL,
+    tmfc,
+    hf,
+    levelId: level.id,
+    domain,
+  }),
   writeGrid = (grid) => writeKimNwpGrid({ root: config.storage.base_path, grid, domain: task.domain }),
 }) {
   if (incrementalRetry) {
-    const existingGrid = readExistingGrid(task)
-    if (hasGridVariables(existingGrid, requiredVariablesForTask(task.level, { collectIcing, collectSpecificHumidity }))) {
-      return { grid: existingGrid, lastError: null, reused: true }
+    // 변수 이름부터 보고, 다 있을 때만 층 전체를 읽는다. 덜 받은 층을 재시도할 때마다 통째로 풀면 동시 4층이
+    // 약 170 MB를 더 써서 2026-10-14 00 UTC 회차에서 다운로드 자식이 힙 한도(320 MB)를 넘겨 죽었다.
+    const required = requiredVariablesForTask(task.level, { collectIcing, collectSpecificHumidity })
+    const names = readExistingVariables(task)
+    if (names && required.every((name) => names.includes(name))) {
+      const existingGrid = readExistingGrid(task)
+      if (hasGridVariables(existingGrid, required)) return { grid: existingGrid, lastError: null, reused: true }
     }
   }
 

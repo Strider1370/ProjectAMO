@@ -318,7 +318,7 @@ async function publishExpandedRun({ root, tmfc, hours, entries, runDerived, publ
   writeKimNwpIndex(root, index, DOMAIN)
   writeKimNwpLatest(root, { type: 'kim_nwp_latest', model: KIM_NWP_MODEL, latestRun: tmfc, latestRunId: runId, indexPath: 'kim_nwp_ea/index.json',
     hours, updated_at: new Date().toISOString(), content_hash: store.canonicalHash(index) }, DOMAIN)
-  cleanupKimNwpRuns({ root, domain: DOMAIN, maxRuns: 1, latestRunId: runId, reason: 'expanded_published' })
+  cleanupKimNwpRuns({ root, domain: DOMAIN, maxRuns: 1, latestRunId: runId, keepOlderComplete: false, reason: 'expanded_published' })
   return { runId, hours, aciPublished }
 }
 

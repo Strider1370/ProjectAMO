@@ -7,7 +7,7 @@ import test from 'node:test'
 import { parseKimGridText } from '../src/parsers/kim-grid-parser.js'
 import { buildKimGridUrl } from '../src/api-client.js'
 import config from '../src/config.js'
-import { readKimNwpIndex, readKimNwpLatest, readKimNwpManifest, writeKimNwpIndex, writeKimNwpLatest, writeKimNwpManifest } from '../src/processors/kim-nwp-store.js'
+import { readKimNwpGridVariableNames, readKimNwpIndex, readKimNwpLatest, readKimNwpManifest, writeKimNwpGrid, writeKimNwpIndex, writeKimNwpLatest, writeKimNwpManifest } from '../src/processors/kim-nwp-store.js'
 import {
   KIM_NWP_ICING_LEVEL_IDS,
   KIM_NWP_LEVELS,
@@ -616,6 +616,7 @@ test('collectKimNwpTask reuses existing complete grid when incremental retry is 
   const result = await collectKimNwpTask({
     task,
     readExistingGrid: () => existingGrid,
+    readExistingVariables: () => Object.keys(existingGrid.variables),
     incrementalRetry: true,
     fetchWind: async () => {
       fetchedWind = true
@@ -656,11 +657,13 @@ test('collectKimNwpTask refetches existing grid when required variables are miss
     ],
   })
   let fetchedWind = false
+  let fullReads = 0
   const writes = []
 
   const result = await collectKimNwpTask({
     task,
-    readExistingGrid: () => existingGrid,
+    readExistingGrid: () => { fullReads++; return existingGrid },
+    readExistingVariables: () => Object.keys(existingGrid.variables),
     incrementalRetry: true,
     collectIcing: false,
     fetchWind: async () => {
@@ -677,6 +680,7 @@ test('collectKimNwpTask refetches existing grid when required variables are miss
   assert.equal(result.grid, freshGrid)
   assert.equal(result.reused, undefined)
   assert.equal(fetchedWind, true)
+  assert.equal(fullReads, 0, 'a partial layer is judged from its variable names without decoding it')
   assert.equal(writes.length, 1)
 })
 
@@ -953,4 +957,25 @@ test('the partial KIM run is published once the missing grid is collected', asyn
     assert.equal(readKimNwpManifest(root, 'KIMG_NE57_2026092106').complete, true)
     assert.equal(readKimNwpManifest(root, servedRunId), null, 'the older run is cleaned up after the new one completes')
   })
+})
+
+test('readKimNwpGridVariableNames lists a stored layer\'s variables, and null when it is missing', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kim-var-names-'))
+  try {
+    const level = KIM_NWP_LEVELS.find((entry) => entry.id === '850hPa')
+    const grid = buildKimNwpGrid({
+      model: 'KIMG/NE57', tmfc: '2026051900', hf: 3, level,
+      components: [
+        { variable: 'u', unit: 'm/s', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [1, 2, 3, 4] },
+        { variable: 'v', unit: 'm/s', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [0, 1, 0, 1] },
+        { variable: 'T', unit: 'K', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [279, 280, 281, 282] },
+      ],
+    })
+    writeKimNwpGrid({ root, grid })
+    const args = { root, model: 'KIMG/NE57', tmfc: '2026051900', hf: 3, levelId: '850hPa' }
+    assert.deepEqual(readKimNwpGridVariableNames(args).sort(), ['T', 'u', 'v'])
+    assert.equal(readKimNwpGridVariableNames({ ...args, hf: 4 }), null)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

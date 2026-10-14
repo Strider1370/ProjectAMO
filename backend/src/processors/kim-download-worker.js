@@ -5,7 +5,7 @@
 import path from 'node:path'
 import { collectKimNwpTask, setKimGridFetcher } from './kim-surface-wind-processor.js'
 import { buildKimNwpIndexEntry, KIM_NWP_MODEL } from './kim-nwp-model.js'
-import { readKimNwpGridSafe, resolveKimNwpGridPath, writeKimNwpGrid } from './kim-nwp-store.js'
+import { readKimNwpGridSafe, readKimNwpGridVariableNames, resolveKimNwpGridPath, writeKimNwpGrid } from './kim-nwp-store.js'
 import { errorPayload, restoreError } from './kim-derived-worker-entry.js'
 
 const send = (message) => { try { process.send(message) } catch {} }
@@ -37,6 +37,7 @@ process.on('message', async (message) => {
     const { grid, lastError, reused } = await collectKimNwpTask({
       task,
       readExistingGrid: ({ level, tmfc, hf, domain }) => readKimNwpGridSafe({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }),
+      readExistingVariables: ({ level, tmfc, hf, domain }) => readKimNwpGridVariableNames({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }),
       writeGrid: (built) => writeKimNwpGrid({ root, grid: built, domain: task.domain }),
     })
     const file = resolveKimNwpGridPath({ root, model: grid.model, tmfc: task.tmfc, hf: task.hf, levelId: grid.level.id, domain: task.domain })

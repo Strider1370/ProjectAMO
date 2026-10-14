@@ -160,3 +160,23 @@ test('cleanupKimNwpRuns keeps previous complete run when latest run is partial',
 
   assert.deepEqual(listKimNwpRuns(root), ['KIMG_NE57_2026051906', 'KIMG_NE57_2026051900'])
 })
+
+test('cleanupKimNwpRuns can drop the older complete run when the latest is partial (expanded domain disk)', () => {
+  const root = tempRoot()
+  const manifests = [
+    { runId: 'KIMG_NE57_2026051900', usable: true, complete: true },
+    { runId: 'KIMG_NE57_2026051906', usable: true, complete: false },
+  ]
+  for (const manifest of manifests) {
+    fs.mkdirSync(path.join(root, 'kim_nwp', 'runs', manifest.runId), { recursive: true })
+    fs.writeFileSync(
+      path.join(root, 'kim_nwp', 'runs', manifest.runId, 'manifest.json'),
+      JSON.stringify({ type: 'kim_nwp_manifest', ...manifest }),
+      'utf8',
+    )
+  }
+
+  cleanupKimNwpRuns({ root, maxRuns: 1, latestRunId: 'KIMG_NE57_2026051906', keepOlderComplete: false })
+
+  assert.deepEqual(listKimNwpRuns(root), ['KIMG_NE57_2026051906'])
+})
