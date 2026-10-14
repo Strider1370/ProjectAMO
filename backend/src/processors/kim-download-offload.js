@@ -18,10 +18,11 @@ import { errorPayload, restoreError } from './kim-derived-worker-entry.js'
 
 const ENTRY = fileURLToPath(new URL('./kim-download-worker.js', import.meta.url))
 
-// 자식 힙 한도(MB). 동시에 받는 층 수만큼 격자를 들고 있으므로 동시 수에 맞춘다(동시 4개 → 320 MB).
+// 자식 힙 한도(MB). 동시에 받는 층 수만큼 격자를 들고 있으므로 동시 수에 맞춘다(동시 4개 → 512 MB).
 // 2026-10-13 재연(8시각 연속, 동시 4개): 한도 1,424 MB에서 다운로드 쪽 힙 중간 330·최대 1,017 MB,
 // 한도 344 MB에서 중간 169·최대 300 MB이고 걸린 시간은 같았다(323초 대 322초).
-const CHILD_OLD_SPACE_MB = Number(process.env.KIM_DOWNLOAD_WORKER_HEAP_MB || 64 + 64 * Math.max(1, config.kim_expanded.concurrency || 4))
+// 처음 건 320 MB는 2026-10-14 00 UTC 회차 +17h에서 두 번 넘쳐 자식이 죽었다(GC 뒤에도 308~318 MB가 살아 있음).
+const CHILD_OLD_SPACE_MB = Number(process.env.KIM_DOWNLOAD_WORKER_HEAP_MB || 128 + 96 * Math.max(1, config.kim_expanded.concurrency || 4))
 
 // 자식 프로세스를 작업 스레드와 같은 모양(on message/error/exit, postMessage, terminate)으로 감싼다.
 // CPU 우선순위는 GKTG 등 계산 자식과 같게 낮춘다. 보통 우선순위면 코어 하나를 두고 다툴 때 약 9:1로 이겨,
