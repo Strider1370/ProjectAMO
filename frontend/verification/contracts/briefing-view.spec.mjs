@@ -37,7 +37,7 @@ async function createBriefing(page) {
   await flOption.or(comparisonOptional).first().waitFor()
   if (await flOption.count()) {
     await flOption.click()
-    await page.getByRole('button', { name: '연직단면도 숨기고 지도 보기', exact: true }).click()
+    await page.getByRole('button', { name: '연직단면도 닫기', exact: true }).click()
   }
   await page.getByRole('button', { name: '브리핑 준비로', exact: true }).click()
   await page.getByRole('button', { name: '브리핑 생성', exact: true }).click()
@@ -65,6 +65,7 @@ test.describe('briefing-view', () => {
     if (testInfo.project.name === 'mobile') {
       await profile.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
       profile = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+      await profile.locator('.vpc-operational-controls > summary').click()
     }
     await profile.locator('.vertical-profile-chart').scrollIntoViewIfNeeded()
     const symbols = profile.getByTestId('profile-advisory-symbol')
@@ -154,7 +155,7 @@ test.describe('briefing-view', () => {
 
     // 연직단면도는 구름·착빙·등온선·바람·권계면·제트·SIGMET/AIRMET이 켜진 채로 열린다.
     await expect(page.locator('.cs-toggle').first()).toBeVisible()
-    for (const label of ['구름·착빙', '등온선', '바람', '권계면·제트', 'SIGMET/AIRMET']) {
+    for (const label of ['구름', '착빙', '등온선', '바람깃', '등풍속선', '권계면·제트', 'SIGMET/AIRMET']) {
       await expect(page.locator('.cs-toggle[aria-pressed="true"]').filter({ hasText: label }).first()).toBeVisible()
     }
     expect(requests.crossSection.bodies.length).toBeGreaterThan(0)
@@ -240,10 +241,11 @@ test.describe('briefing-view', () => {
 
     await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
     const fullscreen = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+    await fullscreen.locator('.vpc-operational-controls > summary').click()
     await expect(fullscreen.getByRole('button', { name: '닫기', exact: true })).toBeVisible()
     await expect(fullscreen.getByRole('button', { name: '이전 예보시간', exact: true })).toBeVisible()
     await expect(fullscreen.getByRole('button', { name: '다음 예보시간', exact: true })).toBeVisible()
-    for (const label of ['구름·착빙', '등온선', '바람', '권계면·제트', '난류', 'SIGMET/AIRMET']) {
+    for (const label of ['구름', '착빙', '등온선', '바람깃', '등풍속선', '권계면·제트', '난류', 'SIGMET/AIRMET']) {
       await expect(fullscreen.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
 
@@ -251,6 +253,7 @@ test.describe('briefing-view', () => {
     await temperature.click()
     await expect(temperature).toHaveAttribute('aria-pressed', 'false')
     await fullscreen.getByRole('button', { name: '닫기', exact: true }).click()
+    await page.locator('.bv-leg-briefing .vpc-operational-controls').evaluate(el => { el.open = true })
     await expect(page.locator('.bv-leg-briefing').getByRole('button', { name: '등온선', exact: true })).toHaveAttribute('aria-pressed', 'false')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   })
@@ -259,7 +262,8 @@ test.describe('briefing-view', () => {
     await createBriefing(page)
     const profile = page.getByRole('region', { name: '연직단면도', exact: true })
     // 모델 구름량 윤곽은 '구름·착빙 ▾' 메뉴의 하위 항목이다(기본 꺼짐).
-    await profile.getByRole('button', { name: '구름·착빙 세부 항목', exact: true }).click()
+    await profile.locator('.vpc-operational-controls').evaluate(el => { el.open = true })
+    await profile.locator('.vpc-operational-options > summary').click()
     const cloudToggle = profile.getByRole('checkbox', { name: '모델 구름량 윤곽', exact: true })
     await expect(cloudToggle).not.toBeChecked()
     await cloudToggle.check()
@@ -275,6 +279,7 @@ test.describe('briefing-view', () => {
       ? await (async () => {
           await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
           const fullscreen = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+    await fullscreen.locator('.vpc-operational-controls > summary').click()
           await expect(fullscreen.getByTestId('kim-cloud-contours')).toBeVisible()
           const fullscreenContours = fullscreen.locator('path.cs-cloud-contour')
           const plotScroll = fullscreen.locator('.vertical-profile-plot-scroll')

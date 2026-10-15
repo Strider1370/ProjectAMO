@@ -52,6 +52,6 @@ export default function CopilotResultView({ bundle, onClose, onPreviewEdit, onAp
       onClose={onClose} onOpenProfile={bundle.verticalProfile ? () => setProfileOpen(true) : undefined}
       onHighlightLeg={onHighlightLeg} externalHighlight={bundle.highlight ?? null} />
     <VerticalProfileWindow profile={bundle.verticalProfile} crossSection={bundle.crossSection} advisories={bundle.advisories}
-      nwpTimeSelection={bundle.request.nwpTimeSelection} isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
+      sourceNote="챗봇 답변에 사용한 보관 자료입니다. 최신 조회가 아니며 예보 시각과 비행 조건을 변경하지 않습니다." nwpTimeSelection={bundle.request.nwpTimeSelection} isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
   </>
 }

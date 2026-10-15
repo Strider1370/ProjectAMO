@@ -51,7 +51,7 @@ async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, s
   await expect(altitude).toBeVisible()
   await altitude.click()
   if (stopAtAltitude) return
-  if (!isMobile) await page.getByRole('button', { name: '연직단면도 숨기고 지도 보기', exact: true }).click()
+  if (!isMobile) await page.getByRole('button', { name: '연직단면도 닫기', exact: true }).click()
   await page.getByRole('button', { name: '브리핑 준비로', exact: true }).click()
   await expect(page.getByRole('region', { name: '브리핑 준비 요약', exact: true })).toBeVisible()
 
@@ -146,13 +146,13 @@ test.describe('route-workflow', () => {
     const profile = page.getByRole('dialog', { name: '연직단면도', exact: true })
     await expect(profile).toBeVisible()
     await expect(profile.getByText('연직단면도', { exact: true })).toBeVisible()
-    for (const label of ['이전 비교 고도', '다음 비교 고도', '이전 예보시간', '다음 예보시간', '닫기', '구름·착빙', '등온선', '바람', '권계면·제트', '난류', 'SIGMET/AIRMET']) {
+    await profile.locator('.vpc-operational-controls > summary').click()
+    await expect(profile.getByRole('group', { name: '비교 고도', exact: true })).toBeVisible()
+    for (const label of ['이전 예보시간', '다음 예보시간', '연직단면도 닫기', '구름', '착빙', '등온선', '바람깃', '등풍속선', '권계면·제트', '난류', 'SIGMET/AIRMET']) {
       await expect(profile.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
-    expect(await profile.locator('.cross-section-toggle-group').evaluateAll((nodes) => nodes.length > 0 && nodes.every((node) => {
-      const style = getComputedStyle(node)
-      return style.display === 'inline-flex' && style.flexWrap === 'nowrap' && node.scrollWidth <= node.clientWidth
-    }))).toBe(true)
+    const dimensions = await profile.evaluate(el => ({scroll:el.scrollWidth,client:el.clientWidth,overflow:[...el.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>el.getBoundingClientRect().right+1).map(n=>n.className).slice(0,10)}))
+    expect(dimensions.scroll, JSON.stringify(dimensions)).toBeLessThanOrEqual(dimensions.client + 1)
   })
 
   test('alternative route edits issue one batch exposure request without another single request', async ({ page }, testInfo) => {

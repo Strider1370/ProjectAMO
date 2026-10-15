@@ -70,6 +70,7 @@ ProjectAMO/
 - `frontend/src/features/airport-model-comparison/` -> 공항 상세 예보 분석. 공항 패널 요약과 `/airport/:icao/models` 화면이 같은 UTC 유효시각 뷰모델을 사용한다. 표·그래프·기온/RH·조건부 TAF·모델별 운고 상태를 표시하고 활성 화면에서만 저장 자료 API를 갱신한다.
 
 - `frontend/src/main.jsx` -> React root bootstrap; imports app entry CSS.
+- `frontend/src/features/vertical-profile-concept/` -> 개발 전용 `/concepts/vertical-profile` 연직단면 창 시안. 기존 메인 지도 위에 운영 API 자료와 운영 `VerticalProfileChart`를 사용하는 개선 창을 띄운다. 예시 경로·저장자료 시각을 명시하고 기존 고도·예보시간·NWP 콜백을 연결한다. 운영 화면과 공통 뷰어를 사용하며 이전 합성 시안은 `?demo=1`로 보존한다.
 - `frontend/src/app/App.jsx` -> app shell state, sidebar/panel composition, selected airport state, and route-level lazy loading for non-main app routes.
 - `frontend/src/app/App.css` -> app shell and layout CSS entry.
 - `frontend/src/app/useWeatherPolling.js` -> exports `useSnapshotPolling`, the shared initial-load + in-flight-guarded snapshot-meta polling lifecycle (used by both the main app and `/monitoring`), plus the default `useWeatherPolling()` main-app profile wrapper (deferred panel-data loading, 60s interval).
@@ -174,7 +175,7 @@ ProjectAMO/
 - `backend/src/briefing/route-planning-provider.js` -> read-only domestic navdata file snapshot, content identity and publication-scoped provider. Checks file identities around capture; old plans keep their captured files, graph and IAP while a new provider can load a new publication. This module starts no server or collector.
 - `frontend/src/features/route-briefing/lib/briefingViewModel.js` -> pure briefing display-transform owner.
 - `frontend/src/features/route-briefing/RouteBriefingPanel.jsx` -> route-check panel UI for IFR/VFR form, route result, VFR altitude editing, and vertical profile controls.
-- `frontend/src/features/route-briefing/VerticalProfileWindow.jsx` -> vertical profile modal shell.
+- `frontend/src/features/route-briefing/VerticalProfileWindow.jsx` -> floating entry for the shared `VerticalProfileViewer.jsx`. Map routes, drawn lines and frozen copilot results use the same movable/resizable window; briefing and organization presentation use the embedded viewer. Editing callbacks remain owned by callers. `profile-ui/` owns shared appearance, navigation and window geometry; production does not import concept fixtures.
 - `frontend/src/features/route-briefing/RouteBriefing.css` -> route panel, VFR waypoint, and vertical profile styles.
 - `frontend/src/features/route-briefing/VerticalProfileChart.jsx` -> SVG route vertical profile chart.
 - `frontend/src/features/route-briefing/BriefingView.jsx` -> pre-flight briefing view: Go/No-go 배너(`BriefingBanner`) + ① 위험 다이제스트(2줄·색바·아이콘·정렬·공항경보 통합) + ② 현재 비교 매트릭스(공항=행, 범주 앞, 바람kt/시정km, 관측시각+SPECI) + ③ 노선(hazard ribbon 아래 `RouteWeatherLegTable` + `VerticalProfileChart` 단면도 + 상층바람 원자료 접기 `buildRawWindsTable`) + ④ 목적지(카테고리 타임라인 막대 + 기간표 + 교체 병렬 + 원문 재구성 접기); 범주 표시는 3레벨 fold(MVFR→IFR). 지도를 route-check 패널 위에 오버레이.

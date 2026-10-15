@@ -131,3 +131,26 @@ export function buildTropopauseProfileLayers({ crossSection, xFor, yFor, altFor,
     jetCores: cores,
   }
 }
+
+// Geometry may be cached in distance / negative-altitude coordinates. Labels
+// must still be placed in pixels so collision and minimum-width rules survive zoom.
+export function projectTropopauseProfileLayers(source, xFor, yFor) {
+  const point = p => ({ ...p, x: xFor(p.x), y: yFor(-p.y) })
+  const chains = source.tropopause.chains.map(chain => chain.map(point))
+  const cores = source.jetCores.map(point)
+  const isotachs = source.isotachs.map(line => ({ ...line, chains: line.chains.map(chain => chain.map(point)) }))
+  return {
+    tropopause: {
+      chains,
+      areas: source.tropopause.areas.map(area => area.map(point)),
+      labels: chains.filter(pts => pts.at(-1).x - pts[0].x > 60).map(pts => {
+        const mid = pts[Math.floor(pts.length / 2)]
+        return { x: mid.x, y: mid.y, text: `TROP ${Math.round(mid.ft / 1000) * 10}` }
+      }),
+      aboveLabel: source.tropopause.aboveLabel ? { ...source.tropopause.aboveLabel, x: xFor(source.tropopause.aboveLabel.x) } : null,
+    },
+    isotachs,
+    isotachLabels: isotachLabels(isotachs, cores),
+    jetCores: cores,
+  }
+}

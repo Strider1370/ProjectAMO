@@ -118,14 +118,7 @@
 .op-waiting { flex: 1; border: 1px solid var(--stroke-2); border-radius: var(--radius-lg); background: var(--bg-1); }
 .op-footer { min-height: 24px; overflow: hidden; color: var(--text-3); font-size: 11px; white-space: nowrap; }
 
-.vertical-profile-linked-band { cursor: pointer; outline: none; }
-.vertical-profile-linked-hit { fill: transparent; }
-.vertical-profile-linked-area { fill: var(--accent); fill-opacity: .05; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .3; }
-.vertical-profile-linked-tick { stroke: var(--accent); stroke-width: 3; opacity: .55; }
-.vertical-profile-linked-band.is-position-only .vertical-profile-linked-area { fill-opacity: 0; }
-.vertical-profile-linked-band.is-active .vertical-profile-linked-area,
-.vertical-profile-linked-band:focus-visible .vertical-profile-linked-area { fill-opacity: .16; opacity: 1; stroke-width: 2.5; }
-.vertical-profile-linked-band.is-active .vertical-profile-linked-tick { stroke-width: 6; opacity: 1; }
+
 
 .op-expanded { position: fixed; inset: 0; z-index: 2000; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; display: flex; flex-direction: column; padding: 12px; background: var(--bg-3); color: var(--text-1); }
 .op-expanded::backdrop { background: rgb(15 23 42 / 45%); }

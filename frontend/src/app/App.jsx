@@ -39,6 +39,7 @@ const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
 const ModelComparisonPage = lazy(() => import('../features/airport-model-comparison/ModelComparisonPage.jsx'))
 const IntroPage = lazy(() => import('../features/intro/IntroPage.jsx'))
+const VerticalProfileConcept = lazy(() => import('../features/vertical-profile-concept/PreviewEntry.jsx'))
 
 function formatTimeByTz(ms, tz) {
   const d = tz === 'KST' ? new Date(ms + 9 * 3600 * 1000) : new Date(ms)
@@ -50,7 +51,7 @@ function formatTimeByTz(ms, tz) {
   return `${year}/${month}/${day} ${hours}:${mins} ${tz}`
 }
 
-function MainAppShell() {
+function MainAppShell({ conceptPreview = false }) {
   const { tz } = useTimeZone()
   const { user, loading: authLoading } = useAuth()
   const [organizationEntryError, setOrganizationEntryError] = useState(null)
@@ -97,7 +98,7 @@ function MainAppShell() {
   const previewMode = new URLSearchParams(window.location.search).get('orgId') === 'preview'
   const tourAirportPoint = useCallback((icao) => mapRef.current?.getAirportPoint(icao) ?? null, [])
   const tourFocusAirport = useCallback((icao) => mapRef.current?.flyToAirport(icao), [])
-  const tour = useTour({ isMobile, isFirstVisit, markSeen, getAirportPoint: tourAirportPoint })
+  const tour = useTour({ isMobile, isFirstVisit: isFirstVisit && !conceptPreview, markSeen, getAirportPoint: tourAirportPoint })
 
   // 온보딩 스텝 전환 시 이전 스텝이 연 것 정리 — 패널 닫아 다음 스텝이 깨끗한 상태에서 하이라이트되게
   // (기상·항공 패널은 같은 클래스라 안 닫으면 다음 스텝 reveal이 잔여 패널을 잡아 버림). 지도를 확대했던
@@ -127,7 +128,7 @@ function MainAppShell() {
   // Auto-open the update board on first visit after a new release (once, on mount).
   // 단, 온보딩 투어가 자동 발동할 참이면 양보한다(첫 방문자는 changelog보다 투어 우선).
   useEffect(() => {
-    if (hasUpdate && !tour.willAutoStart) setActivePanel('updates')
+    if (hasUpdate && !tour.willAutoStart && !conceptPreview) setActivePanel('updates')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -409,6 +410,9 @@ function MainAppShell() {
 }
 
 function App() {
+  if (import.meta.env.DEV && /^\/concepts\/vertical-profile\/?$/.test(window.location.pathname)) {
+    return <TimeZoneProvider><AuthProvider><MainAppShell conceptPreview /><Suspense fallback={null}><VerticalProfileConcept /></Suspense></AuthProvider></TimeZoneProvider>
+  }
   if (/^\/intro\/?$/.test(window.location.pathname)) {
     return <Suspense fallback={null}><IntroPage /></Suspense>
   }

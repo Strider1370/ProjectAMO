@@ -6,7 +6,7 @@ import {
   MessageBar, MessageBarBody, MessageBarTitle,
   Title3, Subtitle2, Body1, Caption1,
 } from '../../shared/ui/fluent.js'
-import VerticalProfileChart from './VerticalProfileChart.jsx'
+import VerticalProfileViewer from './VerticalProfileViewer.jsx'
 import BriefingBanner from './BriefingBanner.jsx'
 import BriefingChangeStrip from '../notifications/BriefingChangeStrip.jsx'
 import BriefingSynopsis from './BriefingSynopsis.jsx'
@@ -24,7 +24,7 @@ import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
 import { buildAmosConsoleModel } from '../../shared/weather/amosViewModel.js'
 import { buildMetarTacSegments, buildMetarViewModel } from '../airport-panel/lib/metarViewModel.js'
 import EnhancedTafTab from '../airport-panel/tabs/TafTab.jsx'
-import { useCrossSectionLayers, CrossSectionToggles, ForecastHourNav } from './crossSectionLayers.jsx'
+import { useCrossSectionLayers } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
 import { deriveNotamTime, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
@@ -79,15 +79,12 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const toggleRole = (role) => setExpandedRoles((m) => ({ ...m, [role]: !m[role] }))
   // 인라인 단면도 레이어 토글 — 해당 현상이 있으면 그 레이어를 기본 ON.
   // 현상 출처: SIGMET/AIRMET 위험기상 + enroute 모델(KTG 난류·KIM 착빙) 둘 다.
-  const hazardCodes = (briefing?.sections?.adverse?.hazards ?? []).map((h) => h.code)
-  const modelKinds = new Set((briefing?.sections?.enroute?.model?.elements ?? []).map((e) => e.kind))
-  const hazHas = (codes) => codes.some((c) => hazardCodes.includes(c))
-  // 구름층 추정·착빙·등온선은 함께 기본 ON. 난류는 해당 현상이 있을 때만.
+  // 공유 차트의 기상 레이어는 자료 유무와 무관하게 기본 선택을 유지한다.
   const [xLayers, toggleXLayer] = useCrossSectionLayers({
     temp: true, wind: true, cloud: false, advisories: true,
-    icing: true, tropopause: true,
+    icing: true, tropopause: true, isotachs: true,
     moisture: true,
-    turbulence: hazHas(['SEV_TURB', 'MOD_TURB']) || modelKinds.has('turbulence'),
+    turbulence: true,
   })
   const onFocusRef = useRef(onFocus)
   onFocusRef.current = onFocus
@@ -472,13 +469,11 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
                 <Subtitle2 as="h4">연직단면도</Subtitle2>
                 <Caption1 className="bv-leg-sub">경로를 따라 자른 고도 단면 · 레이어로 표시 항목을 켜고 끕니다</Caption1>
               </div>
-              <ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />
             </div>
             {verticalProfile && (
               <>
-                <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} legend />
                 <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
-                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} legendInToolbar advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} />
+                  <VerticalProfileViewer embedded profile={verticalProfile} crossSection={crossSection} layers={xLayers} onToggleLayer={toggleXLayer} advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} />
                 </div>
               </>
             )}
@@ -780,11 +775,10 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
               <div className="bv-xfull-toolbar">
                 <div className="bv-xfull-toolbar-main">
                   <span className="bv-xfull-summary">연직단면도</span>
-                  <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} compact inline />
                   <button type="button" className="bv-xfull-close" onClick={() => setXsectionFull(false)} aria-label="닫기">×</button>
                 </div>
               </div>
-              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={pinnedLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} fitHeight metaTrailing={<ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />} />
+              <VerticalProfileViewer embedded fillContainer profile={verticalProfile} crossSection={crossSection} layers={xLayers} onToggleLayer={toggleXLayer} advisories={advisories} highlightRangeNm={pinnedLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} />
             </div>
           </div>
         )}

@@ -44,60 +44,17 @@ test('places the vertical profile right after the ribbons, then legs, then raw w
   assert.ok(rawWinds > legs, 'raw winds last')
 })
 
-// 예보시각 앞뒤 이동은 큰 창에만 있고 브리핑 인라인 단면도에는 없었다 —
-// 같은 조각(ForecastHourNav)을 두 곳이 함께 쓰도록 고정한다.
-test('shares the forecast-hour nav between the profile window and the briefing inline profile', () => {
-  const windowJsx = readFileSync(new URL('./VerticalProfileWindow.jsx', import.meta.url), 'utf8')
-  const shared = readFileSync(new URL('./crossSectionLayers.jsx', import.meta.url), 'utf8')
-  assert.match(shared, /export function ForecastHourNav/)
-  assert.match(windowJsx, /<ForecastHourNav/)
-  assert.match(jsx, /<ForecastHourNav/)
-  // 버튼 JSX가 창 쪽에 복사본으로 남아 있으면 안 된다.
-  assert.doesNotMatch(windowJsx, /aria-label="이전 예보시간"/)
-  assert.doesNotMatch(jsx, /aria-label="이전 예보시간"/)
-})
-
-test('cloud estimate and icing default on together while model cloud contours remain optional', () => {
-  const shared = readFileSync(new URL('./crossSectionLayers.jsx', import.meta.url), 'utf8')
-  assert.match(shared, /\['cloud', '모델 구름량 윤곽'\]/)
-  assert.match(shared, /cloud: false/)
-  assert.match(shared, /icing: true, moisture: true/)
-  assert.match(jsx, /cloud: false/)
-  assert.match(jsx, /icing: true,[\s\S]*moisture: true/)
-  assert.match(profileChartJsx, /data-testid="kim-cloud-contours"/)
-  assert.match(profileChartJsx, /className="cs-cloud-contour"/)
-  assert.match(profileChartJsx, /fill="none"/)
-})
-
-test('keeps the mobile fullscreen profile controls in the shared state flow', () => {
-  const fullscreenStart = jsx.indexOf('{xsectionFull && verticalProfile && (')
-  const fullscreenEnd = jsx.indexOf('\n        )}', fullscreenStart)
-  const fullscreen = jsx.slice(fullscreenStart, fullscreenEnd)
-
-  assert.ok(fullscreenStart >= 0, 'mobile fullscreen branch is present')
-  assert.match(fullscreen, /<CrossSectionToggles layers=\{xLayers\} onToggle=\{toggleXLayer\} compact inline/)
-  assert.match(fullscreen, /metaTrailing=\{<ForecastHourNav crossSection=\{crossSection\} onSelect=\{onSelectForecastHour\} loading=\{crossSectionHourLoading\} \/>\}/)
-  assert.match(fullscreen, /layers=\{xLayers\}/)
-  assert.match(fullscreen, /advisories=\{advisories\}/)
-  assert.match(css, /\.bv-xfull-rotate \{[^}]*height: 100dvw;[^}]*display: flex;[^}]*overflow: hidden;/)
-  assert.match(css, /\.bv-xfull-toolbar-main \{[^}]*grid-template-columns: minmax\(64px, auto\) minmax\(0, 1fr\) 36px;/)
-  assert.match(css, /\.bv-xfull-toolbar-main \.cross-section-toggle-group \{ gap: var\(--space-s\); \}/)
-  assert.match(css, /\.bv-xfull \.cs-toggle,[\s\S]*?min-height: 36px;/)
-})
-
-test('puts layers beside the fullscreen title and time navigation beside TOD and info', () => {
-  assert.match(profileWindowJsx, /className="vertical-profile-mobile-toolbar-main"/)
-  assert.match(profileWindowJsx, /vertical-profile-mobile-title">연직단면도/)
-  assert.match(profileWindowJsx, /vertical-profile-altitude-nav/)
-  assert.ok(profileWindowJsx.indexOf('<CrossSectionToggles layers={layers} onToggle={toggle} compact inline />') < profileWindowJsx.indexOf('{altitudeNav}'), 'altitude navigation is immediately before close after the layer buttons')
-  assert.match(profileWindowJsx, /metaTrailing=\{placement === 'mobile-full' \? forecastHourNav : null\}/)
-  assert.match(profileWindowJsx, /aria-label="닫기">×/)
-  assert.match(profileWindowJsx, /<CrossSectionToggles layers=\{layers\} onToggle=\{toggle\} compact inline/)
-  assert.match(profileWindowCss, /\.vertical-profile-window\.is-mobile-full \.cross-section-toggles\.is-inline \.cross-section-toggle-group \{[^}]*flex-wrap: nowrap;/)
-  assert.match(profileWindowCss, /grid-template-columns: minmax\(64px, auto\) minmax\(0, 1fr\) auto 36px;/)
-  assert.match(profileWindowCss, /\.vertical-profile-window\.is-mobile-full \.cs-toggle \{[^}]*padding: 2px 6px;[^}]*white-space: nowrap;/)
-  assert.match(profileChartJsx, /metaTrailing = null/)
-  assert.match(profileChartJsx, /\{metaTrailing\}/)
+test('all briefing sizes use the shared viewer and keep linked state', () => {
+  const viewer = readFileSync(new URL('./VerticalProfileViewer.jsx', import.meta.url), 'utf8')
+  assert.match(profileWindowJsx, /VerticalProfileViewer/)
+  assert.equal((jsx.match(/<VerticalProfileViewer /g) ?? []).length, 2)
+  assert.match(jsx, /onToggleLayer=\{toggleXLayer\}/)
+  assert.match(jsx, /highlightRangeNm=\{pinnedLeg\}/)
+  assert.match(jsx, /onSelectForecastHour=\{onSelectForecastHour\}/)
+  assert.match(viewer, /if \(embedded \|\| e.ctrlKey/)
+  assert.match(viewer, /statusMessage && <div/)
+  assert.match(viewer, /onSelectLinkedItem=\{onSelectLinkedItem\}/)
+  assert.match(css, /\.bv-xfull-rotate \{[^}]*transform: none;/)
 })
 
 // NAVLOG 한 줄을 가리키면 지도뿐 아니라 연직단면도에도 같은 구간이 표시돼야 한다.

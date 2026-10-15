@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { altitudeAtPressure, buildTropopauseProfileLayers } from './tropopauseProfile.js'
+import { altitudeAtPressure, buildTropopauseProfileLayers, projectTropopauseProfileLayers } from './tropopauseProfile.js'
 
 const altFor = level => level.altFt
 const levels = [500, 400, 300, 250, 200, 150].map((pressure, k) => ({
@@ -78,4 +78,16 @@ test('a jump of more than 5,000 ft splits the tropopause into two separate piece
   assert.equal(layers.tropopause.chains.length, 2)
   assert.equal(layers.tropopause.areas.length, 2)
   assert.deepEqual(layers.tropopause.labels.map(l => l.text), ['TROP 360', 'TROP 510'])
+})
+
+
+test('cached source geometry matches direct rendering across zoom and resize, including pixel label rules', () => {
+  const crossSection = { levels, tropopause: { available: true, samples: [0, 50, 100].map(distanceNm => ({ distanceNm, tropopauseHpa: 250, tropopauseFt: 34000 })) } }
+  const source = buildTropopauseProfileLayers({ crossSection, xFor: n => n, yFor: n => -n, altFor, yMax: 50000 })
+  const rounded = value => JSON.parse(JSON.stringify(value, (_, v) => typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v))
+  for (const scale of [.4, 2, 10]) {
+    const xFor = n => 80 + n * scale, yFor = n => 500 - n * scale / 500
+    const direct = buildTropopauseProfileLayers({ crossSection, xFor, yFor, altFor, yMax: 50000 })
+    assert.deepEqual(rounded(projectTropopauseProfileLayers(source, xFor, yFor)), rounded(direct))
+  }
 })

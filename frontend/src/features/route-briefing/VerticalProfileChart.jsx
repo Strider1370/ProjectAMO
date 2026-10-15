@@ -1,18 +1,25 @@
+import { singleRowMarkers } from './lib/profileMarkerLayout.js'
 import { ICING_PRESENTATION, ICING_OUTLINE_COLOR, ICING_OUTLINE_WIDTH, ICING_BACKGROUND_OPACITY, ICING_DOTS, icingPatternSpacing, BASIC_ISOTHERMS, DETAIL_ISOTHERMS } from '../../shared/weather/cloudIcingPresentation.js'
 import { buildProfileCloudIcing, buildProfileTurbulenceCells } from './lib/cloudIcingProfile.js'
 import ProfileLegend from './ProfileLegend.jsx'
-import { useEffect, useId, useRef, useState } from 'react'
+import { profileCellPaths } from './lib/profileCellPaths.js'
+import ProfileCursor from './ProfileCursor.jsx'
+import { memo, useEffect, useId, useRef, useState, useMemo } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
-import { buildTropopauseProfileLayers } from './lib/tropopauseProfile.js'
+import { buildTropopauseProfileLayers, projectTropopauseProfileLayers } from './lib/tropopauseProfile.js'
 import { buildProfileNoDataAreas } from './lib/profileNoData.js'
 import { formatSurfaceWindChart } from '../weather-overlays/lib/advisoryLayers.js'
 import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
 import ProfileAdvisorySymbol from './ProfileAdvisorySymbol.jsx'
 import { buildCloudContourModel } from './lib/cloudContour.js'
-import { buildNwpTimeRail } from './lib/nwpTimeSelection.js'
+import { buildNwpTimeRail, unavailableNwpOffsets as getUnavailableNwpOffsets } from './lib/nwpTimeSelection.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { buildLinkedProfileBands } from './lib/linkedProfileBands.js'
+
+const CachedCellPaths = memo(function CachedCellPaths({ paths, className }) {
+  return paths.map(cell => <path key={cell.key} className={className} d={cell.d} fill={cell.fill} />)
+})
 
 const M_TO_FT = 3.28084
 
@@ -22,7 +29,7 @@ function formatFt(value) {
 }
 
 function formatFlightLevel(value) {
-  return value >= 10000 ? `FL${Math.round(value / 100)}` : `${Math.round(value).toLocaleString()} ft`
+  return formatFt(value)
 }
 
 function formatNm(value) {
@@ -180,7 +187,17 @@ function WindBarb({ cx, cy, u, v }) {
   )
 }
 
-export default function VerticalProfileChart({
+export default memo(function VerticalProfileChart(props) {
+  if ((props.profile?.axis?.samples?.length ?? 0) < 2) return <div className="vertical-profile-empty">연직단면도 샘플이 부족합니다.</div>
+  if (!props.allowMissingTerrain && !(props.profile?.terrain?.values ?? []).some(v => Number.isFinite(v.elevationM))) {
+    return <div className="vertical-profile-empty">표시할 지형고도 샘플이 없습니다.</div>
+  }
+  return <ProfileChartContent {...props} />
+})
+
+function ProfileChartContent({
+  showComparisonProfiles = true,
+  interactive = false, zoom = 1, scrollElementRef = null, selectedMarkerId = null, onSelectMarker = null,
   profile,
   referenceAltitudeFt = null,
   crossSection = null,
@@ -254,35 +271,27 @@ export default function VerticalProfileChart({
     }))
     .filter((point) => Number.isFinite(point.elevationFt))
 
-  if (terrainPoints.length === 0 && !allowMissingTerrain) {
-    return (
-      <div className="vertical-profile-empty">
-        {'\ud45c\uc2dc\ud560 \uc9c0\ud615\uace0\ub3c4 \uc0d8\ud50c\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.'}
-      </div>
-    )
-  }
-
-  const height = fitHeight && containerHeight >= 240 ? Math.round(containerHeight) : 380
-  const basePadding = { top: 26, right: 58, left: 80 }
+  const height = fitHeight ? Math.max(160, Math.round(containerHeight) || 380) : 380
+  const basePadding = { top: interactive ? 18 : 26, right: 58, left: 80 }
   const maxDistance = Math.max(profile.axis.totalDistanceNm || 0, samples[samples.length - 1].distanceNm || 0.1)
   // 컨테이너 폭을 채우되 항로가 길면 전체 거리를 유지한다. 장거리 항로는 차트 안에서 가로 이동한다.
   const availWidth = Math.max(320, Math.round(containerWidth) || 960)
   const PX_PER_NM = 1.2
-  const width = Math.max(availWidth, Math.round(basePadding.left + basePadding.right + maxDistance * PX_PER_NM))
+  const width = interactive ? basePadding.left + basePadding.right + (availWidth - basePadding.left - basePadding.right) * zoom : Math.max(availWidth, Math.round(basePadding.left + basePadding.right + maxDistance * PX_PER_NM))
   const scrollable = width > availWidth + 1
   const provisionalPlotWidth = width - basePadding.left - basePadding.right
   const provisionalX = (distanceNm) => basePadding.left + (distanceNm / maxDistance) * provisionalPlotWidth
   const visibleMarkers = markers
     .filter((marker) => Number.isFinite(marker.distanceNm) && marker.distanceNm >= 0 && marker.distanceNm <= maxDistance)
     .map((marker, index) => ({ ...marker, key: `${marker.label}-${index}` }))
-  const markerLabels = assignMarkerLanes(visibleMarkers, provisionalX)
+  const markerLabels = interactive ? singleRowMarkers(visibleMarkers, provisionalX, basePadding.left, width - basePadding.right, selectedMarkerId) : assignMarkerLanes(visibleMarkers, provisionalX)
   const markerLaneCount = Math.max(1, ...markerLabels.map((marker) => marker.lane + 1))
   // Frozen results still display their time rules, without exposing edit controls.
   const railEnabled = Boolean((onSetWaypointNwpOffset || nwpTimeSelection) && visibleMarkers.length > 1)
   // 시간선의 44px 클릭 영역과 기존 웨이포인트 이름 블록은 겹치면 안 된다.
   // 이름표는 클릭 영역이 끝나는 바로 다음 행에서 시작한다.
   const waypointLabelBandOffset = railEnabled ? 36 : 0
-  const padding = { ...basePadding, bottom: 36 + markerLaneCount * 16 + (railEnabled ? 28 : 0) }
+  const padding = { ...basePadding, bottom: (interactive ? 22 : 36) + markerLaneCount * 16 + (railEnabled ? 28 : 0) }
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const terrainMaxFt = Math.max(...terrainPoints.map((point) => point.elevationFt), 0)
@@ -358,40 +367,50 @@ export default function VerticalProfileChart({
     yFor,
     activeItemId: activeLinkedItemId,
   })
-  const yTickInterval = yMax <= 10000 ? 2000 : yMax <= 20000 ? 3000 : yMax <= 40000 ? 5000 : 10000
+  const tickTarget = yMax / Math.max(2, Math.floor(plotHeight / 30))
+  const tickPower = 10 ** Math.floor(Math.log10(tickTarget))
+  const yTickInterval = interactive ? [1,2,5,10].find(n=>n*tickPower>=tickTarget)*tickPower : yMax <= 10000 ? 2000 : yMax <= 20000 ? 3000 : yMax <= 40000 ? 5000 : 10000
   const yTicks = Array.from({ length: Math.floor(yMax / yTickInterval) + 1 }, (_, i) => i * yTickInterval)
-    .filter(v => v <= yMax && (!Number.isFinite(selectedCruiseAltitudeFt) || Math.abs(v - selectedCruiseAltitudeFt) > yTickInterval * 0.4))
+    .filter(v => v <= yMax && (!Number.isFinite(selectedCruiseAltitudeFt) || (interactive ? Math.abs(yFor(v) - yFor(selectedCruiseAltitudeFt)) > 16 : Math.abs(v - selectedCruiseAltitudeFt) > yTickInterval * 0.4)))
   const cruiseTick = Number.isFinite(selectedCruiseAltitudeFt) && selectedCruiseAltitudeFt > 0 && selectedCruiseAltitudeFt < yMax
     ? selectedCruiseAltitudeFt
     : null
   const csLevels = crossSection?.levels ?? []
   const ktgRuleSummary = [...new Set((crossSection?.timeRules?.segments ?? []).map((segment) => segment.ktg?.validTime).filter(Boolean))]
   const missingNwpWaypointIds = crossSection?.timeRules?.missingWaypointIds ?? []
-  const unavailableNwpOffsets = crossSection?.timeRules?.unavailableOffsets
-    ?? crossSection?.nwpTimeAvailability?.unavailableOffsets
-    ?? []
+  const unavailableNwpOffsets = getUnavailableNwpOffsets(crossSection, nwpTimeSelection)
   const cldCoverage = crossSection?.coverage?.byVariable?.cld
   const cldLevels = Number.isFinite(cldCoverage?.topPressure)
     ? csLevels.filter((level) => Number(level.pressure) >= Number(cldCoverage.topPressure)) : []
-  const cloudContour = Number.isFinite(cldCoverage?.threshold)
+  const cloudContour = useMemo(() => Number.isFinite(cldCoverage?.threshold)
     ? buildCloudContourModel(cldLevels, cldCoverage.threshold)
-    : { status: 'unavailable', partial: false, threshold: null, chains: [] }
+    : { status: 'unavailable', partial: false, threshold: null, chains: [] }, [crossSection])
   const cloudPaths = layers.cloud ? cloudContour.chains.map((chain) => buildPath(chain.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.altFt) })))).filter(Boolean) : []
   const altFor = (lvl) => Number.isFinite(lvl.altFt) ? lvl.altFt : pressureToFallbackFt(lvl.pressure)
-  const turbulenceCells = layers.turbulence ? buildProfileTurbulenceCells(crossSection?.turbulence).map(cell => ({
-    key: cell.key, x: xFor(cell.fromNm), y: yFor(cell.topFt),
-    w: xFor(cell.toNm) - xFor(cell.fromNm), h: yFor(cell.bottomFt) - yFor(cell.topFt), fill: cell.fill,
-  })) : []
-  const shading = buildProfileCloudIcing(csLevels, xFor, yFor, altFor)
-  const upperAir = buildTropopauseProfileLayers({ crossSection, xFor, yFor, altFor, yMax })
+  // Source geometry is independent of viewport size and zoom. Negative altitude
+  // retains the screen's downward y direction, including cloud cell orientation.
+  const sourceShading = useMemo(() => buildProfileCloudIcing(csLevels, n => n, n => -n, altFor), [crossSection])
+  const cloudCellPaths = useMemo(() => profileCellPaths(sourceShading.cloud), [sourceShading])
+  const turbulencePaths = useMemo(() => profileCellPaths(buildProfileTurbulenceCells(crossSection?.turbulence).map(cell => ({
+    key: cell.key, x: cell.fromNm, y: -cell.topFt,
+    w: cell.toNm - cell.fromNm, h: cell.topFt - cell.bottomFt, fill: cell.fill,
+  }))), [crossSection])
+  const cellTransform = `translate(${xFor(0)} ${yFor(0)}) scale(${plotWidth / maxDistance} ${plotHeight / yMax})`
+  // Icing patterns stay in screen coordinates so dots retain their readable size.
+  const shading = useMemo(() => ({
+    icing: profileCellPaths(sourceShading.icing.map(cell => ({ ...cell, fill: `url(#${svgIdPrefix}-icing-${cell.grade})`, x: xFor(cell.x), y: yFor(-cell.y), w: cell.w * plotWidth / maxDistance, h: cell.h * plotHeight / yMax }))),
+    outlines: sourceShading.outlines,
+  }), [sourceShading, width, height, yMax, maxDistance, padding.bottom])
+  const upperAirGeometry = useMemo(() => buildTropopauseProfileLayers({ crossSection, xFor: n => n, yFor: n => -n, altFor, yMax }), [crossSection, yMax])
+  const upperAir = useMemo(() => projectTropopauseProfileLayers(upperAirGeometry, xFor, yFor), [crossSection, width, height, yMax, maxDistance, padding.bottom])
   // 100·70 hPa 상층 바람이 있으면 자료 상한도 그만큼 올라간다.
-  const noDataAreas = crossSection ? buildProfileNoDataAreas({ levels: [...csLevels, ...(layers.tropopause ? crossSection.tropopause?.upperLevels ?? [] : [])], xFor, yFor, altFor, yMax, plotLeft: padding.left, plotRight: padding.left + plotWidth }) : []
-  const tempIsotherms = (() => {
+  const noDataAreas = crossSection ? buildProfileNoDataAreas({ levels: [...csLevels, ...((layers.tropopause || layers.isotachs) ? crossSection.tropopause?.upperLevels ?? [] : [])], xFor, yFor, altFor, yMax, plotLeft: padding.left, plotRight: padding.left + plotWidth }) : []
+  const tempSegments = useMemo(() => {
     if (!crossSection || csLevels.length < 2) return []
     const sampleCount = csLevels[0]?.values?.length ?? 0
     if (sampleCount < 2) return []
-    const xs = csLevels[0].values.map((v) => xFor(v.distanceNm))
-    const ys = csLevels.map((lvl) => yFor(altFor(lvl)))
+    const xs = csLevels[0].values.map((v) => v.distanceNm)
+    const ys = csLevels.map((lvl) => -altFor(lvl))
     const values = csLevels.flatMap((lvl) => lvl.values.map((v) => v.t))
     const cells = { nx: sampleCount, ny: csLevels.length, values, xs, ys }
     const finiteTs = values.filter(Number.isFinite)
@@ -401,10 +420,13 @@ export default function VerticalProfileChart({
     const result = []
     for (const t of layers.temp ? (layers.temperatureDetail ? DETAIL_ISOTHERMS : BASIC_ISOTHERMS) : []) {
       if (t < minT || t > maxT) continue
-      result.push({ level: t, bold: t === 0, chains: chainSegments(isothermSegments(cells, t)) })
+      result.push({ level: t, bold: t === 0, segments: isothermSegments(cells, t) })
     }
     return result
-  })()
+  }, [crossSection, layers.temp, layers.temperatureDetail])
+  const tempIsotherms = useMemo(() => tempSegments.map(({ segments, ...line }) => ({
+    ...line, chains: chainSegments(segments.map(segment => segment.map(p => ({ x: xFor(p.x), y: yFor(-p.y) })))),
+  })), [tempSegments, width, height, yMax, maxDistance, padding.bottom])
   const isothermlabels = (() => {
     if (!crossSection) return []
     const seen = new Set()
@@ -426,7 +448,7 @@ export default function VerticalProfileChart({
   })()
 
   function startDrag(event) {
-    if (!enableDragScroll || event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return
+    if (!enableDragScroll || event.button !== 0 || event.target.closest('[role=button], button') || event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return
     dragRef.current = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: event.currentTarget.scrollLeft }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -438,12 +460,12 @@ export default function VerticalProfileChart({
   }
 
   function endDrag(event) {
-    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null
+    if (dragRef.current?.pointerId === event.pointerId) { dragRef.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }
   }
   const windBarbs = (() => {
     if (!crossSection || !layers.wind || csLevels.length < 2) return []
-    const MIN_PX = 13
-    const BARB_PX_W = 32
+    const MIN_PX = interactive ? 38 : 13
+    const BARB_PX_W = interactive ? 72 : 32
     // Sort levels ascending by altitude, then thin out levels that are too close in pixel space
     const levelsByAlt = [...csLevels].sort((a, b) => altFor(a) - altFor(b))
     const kept = []
@@ -554,14 +576,14 @@ export default function VerticalProfileChart({
         {metaTrailing}
       </div>}
       <div className="vertical-profile-chart-body" ref={containerRef}>
-      <div className="vertical-profile-plot-scroll" onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div className="vertical-profile-plot-scroll" ref={scrollElementRef} onLostPointerCapture={() => { dragRef.current = null }} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <svg
         className="vertical-profile-plot-svg"
         viewBox={`0 0 ${width} ${height}`}
         width={width}
         height={height}
         style={{ width: `${width}px`, height: `${height}px`, maxWidth: 'none' }}
-        role="img"
+        role={interactive ? 'group' : 'img'}
         aria-label="Vertical profile"
       >
         <defs>
@@ -584,32 +606,30 @@ export default function VerticalProfileChart({
         {noDataAreas.map(area => <g key={area.key} className="cs-no-data"><rect x={area.x} y={area.y} width={area.w} height={area.h} fill={`url(#${svgIdPrefix}-no-data)`} /><title>{area.label}</title>
           {area.w > 120 && area.h > 18 && <text x={area.labelX} y={area.labelY}>{area.label}</text>}</g>)}
         <g clipPath={`url(#${clipId})`}>
-          {turbulenceCells.map((cell) => (
-            <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />
-          ))}
-          {layers.moisture && <g data-testid="kim-cloud-shading" filter={shading.cloud.length > 0 ? `url(#${blurId})` : undefined}>
-            {shading.cloud.map(cell => <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />)}
+          {layers.turbulence && <g transform={cellTransform}><CachedCellPaths paths={turbulencePaths} className="cs-turbulence-cell" /></g>}
+          {layers.moisture && <g data-testid="kim-cloud-shading" filter={cloudCellPaths.length > 0 ? `url(#${blurId})` : undefined}>
+            <g transform={cellTransform}><CachedCellPaths paths={cloudCellPaths} /></g>
           </g>}
           {layers.icing && <g data-testid="kim-icing-patterns">
-            {shading.icing.map(cell => <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={`url(#${svgIdPrefix}-icing-${cell.grade})`} />)}
-            {shading.outlines.map((d, i) => <path key={i} d={d} data-testid="kim-icing-outer-outline" fill="none" stroke={ICING_OUTLINE_COLOR} strokeWidth={ICING_OUTLINE_WIDTH} vectorEffect="non-scaling-stroke" />)}
+            <CachedCellPaths paths={shading.icing} />
+            {shading.outlines.map((d, i) => <path key={i} d={d} transform={cellTransform} data-testid="kim-icing-outer-outline" fill="none" stroke={ICING_OUTLINE_COLOR} strokeWidth={ICING_OUTLINE_WIDTH} vectorEffect="non-scaling-stroke" />)}
           </g>}
           {tempIsotherms.flatMap(({ level, bold, chains }) =>
             chains.map((pts, ci) => (
               <path key={`t${level}-${ci}`} d={catmullRomPath(pts)} className={bold ? 'cs-isotherm cs-isotherm-zero' : 'cs-isotherm'} />
             ))
           )}
-          {layers.tropopause && <g data-testid="upper-air-layers" aria-label="권계면·제트(등풍속선과 제트 핵)">
-            {upperAir.isotachs.map(({ kt, width, major, chains }) => chains.map((pts, ci) => <path key={`iso${kt}-${ci}`} d={catmullRomPath(pts)} className={major ? 'cs-isotach is-major' : 'cs-isotach'} strokeWidth={width}><title>{`풍속 ${kt} kt`}</title></path>))}
-            {upperAir.isotachLabels.map(l => <text key={`isl-${l.text}-${l.x.toFixed(0)}`} className="cs-isotach-label" x={l.x} y={l.y + 4} textAnchor="middle">{l.text}</text>)}
-            {upperAir.tropopause.areas.map((pts, ci) => <path key={`strat-${ci}`} d={`${pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} Z`} className="cs-stratosphere"><title>권계면 위(성층권)</title></path>)}
-            {upperAir.tropopause.chains.map((pts, ci) => <path key={`trop-${ci}`} d={catmullRomPath(pts)} className="cs-tropopause" />)}
-            {upperAir.tropopause.labels.map(l => <text key={`tl-${l.x.toFixed(0)}`} className="cs-tropopause-label" x={l.x} y={l.y - 8} textAnchor="middle">{l.text}</text>)}
-            {upperAir.tropopause.aboveLabel && <text className="cs-tropopause-label" x={upperAir.tropopause.aboveLabel.x} y={padding.top + 12} textAnchor="middle">{upperAir.tropopause.aboveLabel.text}</text>}
-            {upperAir.jetCores.map(core => <g key={`core-${core.x.toFixed(0)}-${core.y.toFixed(0)}`} className="cs-jet-core">
+          {(layers.tropopause || layers.isotachs) && <g data-testid="upper-air-layers" aria-label="권계면·제트(등풍속선과 제트 핵)">
+            {(layers.isotachs === undefined ? layers.tropopause : layers.isotachs) && upperAir.isotachs.map(({ kt, width, major, chains }) => chains.map((pts, ci) => <path key={`iso${kt}-${ci}`} d={catmullRomPath(pts)} className={major ? 'cs-isotach is-major' : 'cs-isotach'} strokeWidth={width}><title>{`풍속 ${kt} kt`}</title></path>))}
+            {(layers.isotachs === undefined ? layers.tropopause : layers.isotachs) && upperAir.isotachLabels.map(l => <text key={`isl-${l.text}-${l.x.toFixed(0)}`} className="cs-isotach-label" x={l.x} y={l.y + 4} textAnchor="middle">{l.text}</text>)}
+            {layers.tropopause && upperAir.tropopause.areas.map((pts, ci) => <path key={`strat-${ci}`} d={`${pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} Z`} className="cs-stratosphere"><title>권계면 위(성층권)</title></path>)}
+            {layers.tropopause && upperAir.tropopause.chains.map((pts, ci) => <path key={`trop-${ci}`} d={catmullRomPath(pts)} className="cs-tropopause" />)}
+            {layers.tropopause && upperAir.tropopause.labels.map(l => <text key={`tl-${l.x.toFixed(0)}`} className="cs-tropopause-label" x={l.x} y={l.y - 8} textAnchor="middle">{l.text.replace(/TROP (\d+)/, (_, fl) => `권계면 ${(Number(fl) * 100).toLocaleString()} ft`)}</text>)}
+            {layers.tropopause && upperAir.tropopause.aboveLabel && <text className="cs-tropopause-label" x={upperAir.tropopause.aboveLabel.x} y={padding.top + 12} textAnchor="middle">권계면 · 자료 상한 위</text>}
+            {layers.tropopause && upperAir.jetCores.map(core => <g key={`core-${core.x.toFixed(0)}-${core.y.toFixed(0)}`} className="cs-jet-core">
               <circle cx={core.x} cy={core.y} r={6} /><text className="cs-jet-core-mark" x={core.x} y={core.y + 3.5} textAnchor="middle">J</text>
-              <rect x={core.x + 10} y={core.y - 22} width={core.text.length * 6.6 + 10} height={18} rx={2} />
-              <text x={core.x + 15} y={core.y - 9}>{core.text}</text><title>{`제트 핵 ${core.text}`}</title>
+              <rect x={core.x + 10} y={core.y - 22} width={170} height={18} rx={2} />
+              <text x={core.x + 15} y={core.y - 9}>{`${core.kt} kt · ${formatFt(core.fl * 100)}`}</text><title>{`제트 핵 ${core.kt} kt · ${formatFt(core.fl * 100)}`}</title>
             </g>)}
           </g>}
           {layers.cloud && cloudPaths.length > 0 && <g data-testid="kim-cloud-contours" aria-label="KIM CLD 구름 윤곽">
@@ -681,29 +701,40 @@ export default function VerticalProfileChart({
           })}
         </g>}
         {markerLabels.map((marker, index) => (
-          <g key={marker.key}>
+          <g key={marker.key} data-marker-id={marker.id} role={interactive ? 'button' : undefined} tabIndex={interactive ? 0 : undefined} aria-label={interactive ? `${marker.label} · ${marker.distanceNm.toFixed(1)} NM` : undefined}
+            onClick={interactive ? () => onSelectMarker?.(marker) : undefined} onKeyDown={interactive ? e => {
+              const index = visibleMarkers.findIndex(m => m.id === marker.id)
+              const next = e.key === 'Home' ? 0 : e.key === 'End' ? visibleMarkers.length - 1 : e.key === 'ArrowRight' ? index + 1 : e.key === 'ArrowLeft' ? index - 1 : null
+              if (next !== null) { e.preventDefault(); onSelectMarker?.(visibleMarkers[Math.max(0, Math.min(visibleMarkers.length - 1, next))]); return }
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectMarker?.(marker) }
+            } : undefined}>
+            {interactive && <rect x={marker.labelX - marker.half} y={padding.top + plotHeight + waypointLabelBandOffset + 4} width={marker.half * 2} height="28" fill="transparent" />}
             <text
               className="vertical-profile-marker-label"
               pointerEvents="none"
-              x={marker.x}
+              x={interactive ? marker.labelX : marker.x}
               y={padding.top + plotHeight + waypointLabelBandOffset + 18 + marker.lane * 16}
-              textAnchor={index === 0 ? 'end' : index === markerLabels.length - 1 ? 'start' : 'middle'}
+              textAnchor={interactive ? 'middle' : index === 0 ? 'end' : index === markerLabels.length - 1 ? 'start' : 'middle'}
             >
-              {fitMarkerLabel(marker.label)}
+              {interactive ? marker.label : fitMarkerLabel(marker.label)}
             </text>
           </g>
         ))}
         <path className="vertical-profile-terrain-area" d={terrainArea} />
         <path className="vertical-profile-terrain-line" d={terrainLine} />
-        {allFlightProfiles.map((candidate) => {
-          const selected = candidate.altitudeFt === selectedCandidateAltitudeFt
+        {[...allFlightProfiles].sort((a, b) => Number(a.altitudeFt === (selectedCandidateAltitudeFt ?? cruiseAltitudeFt)) - Number(b.altitudeFt === (selectedCandidateAltitudeFt ?? cruiseAltitudeFt))).map((candidate) => {
+          const selected = candidate.altitudeFt === (selectedCandidateAltitudeFt ?? cruiseAltitudeFt)
+          if (!showComparisonProfiles && !selected) return null
           const line = buildPath(candidate.points.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.altitudeFt) })))
           return line ? (
+            <g key={candidate.altitudeFt}>
+            {interactive && selected && <path className="vertical-profile-route-halo" d={line} fill="none" stroke="white" strokeWidth={5} />}
             <path
-              key={candidate.altitudeFt}
               className={`vertical-profile-procedure-line${allFlightProfiles.length > 1 ? ' is-candidate' : ''}${selected ? ' is-selected' : ''}`}
               d={line}
-            />
+              data-altitude-ft={candidate.altitudeFt}
+            ><title>{formatFt(candidate.altitudeFt)}</title></path>
+            </g>
           ) : null
         })}
         {Number.isFinite(referenceAltitudeFt) && (
@@ -755,6 +786,7 @@ export default function VerticalProfileChart({
         )}
         {/* SIGMET/AIRMET 기호 — 맨 앞(다른 요소 위)에 평면도와 같은 아이콘으로, 2배 크기. */}
         {advisoryBands.map((band) => <ProfileAdvisorySymbol key={`sym-${band.key}`} band={band} />)}
+        {interactive && <ProfileCursor left={padding.left} top={padding.top} width={plotWidth} height={plotHeight} totalDistanceNm={maxDistance} maxAltitudeFt={yMax} />}
       </svg>
       </div>
       {missingNwpWaypointIds.length > 0 && !nwpMissingNoticeDismissed && <div className="vertical-profile-nwp-missing-notice" role="alert">
@@ -763,7 +795,10 @@ export default function VerticalProfileChart({
       </div>}
       {editingNwpSegment && <div className="vertical-profile-nwp-popover" role="dialog" aria-label={`${editingNwpSegment.startWaypointLabel}부터 NWP 시간 설정`}>
         <strong>{editingNwpSegment.startWaypointLabel}부터 적용</strong>
+        <p className="vertical-profile-nwp-status">기준 {nwpBaseTimeLabel} · 현재 {editingNwpSegment.offsetHours ? `+${editingNwpSegment.offsetHours}h` : '기준 시간'} 적용</p>
+        {unavailableNwpOffsets.length > 0 && <p className="vertical-profile-nwp-status">{Array.from({ length: 12 }, (_, i) => i + 1).every(offset => unavailableNwpOffsets.includes(offset)) ? '기준 시간 이후 수집된 예보자료가 없습니다.' : '흐리게 표시된 시간은 수집된 예보자료가 없습니다.'}</p>}
         <div>{Array.from({ length: 13 }, (_, offsetHours) => <button key={offsetHours} type="button"
+          aria-pressed={offsetHours === editingNwpSegment.offsetHours}
           disabled={unavailableNwpOffsets.includes(offsetHours)}
           title={unavailableNwpOffsets.includes(offsetHours) ? '수집된 NWP 시간 범위 밖' : undefined}
           onClick={() => { onSetWaypointNwpOffset(editingNwpSegment.startWaypointId, offsetHours === 0 ? null : offsetHours); setEditingNwpSegment(null) }}>{offsetHours === 0 ? '기준' : `+${offsetHours}h`}</button>)}</div>

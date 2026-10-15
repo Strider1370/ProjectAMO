@@ -28,3 +28,13 @@ test('time rail labels only the base and actual change points', () => {
     ['DEP', 0, true], ['WP2', 1, true],
   ])
 })
+
+test('missing availability metadata derives exact times without enabling absent forecasts', async () => {
+  const { unavailableNwpOffsets } = await import('./nwpTimeSelection.js')
+  const crossSection = { run: { validTime: '2026-09-10T15:00:00Z' }, availableTimes: [{ validTime: '2026-09-10T12:00:00Z' }, { validTime: '2026-09-10T15:00:00Z' }] }
+  assert.deepEqual(unavailableNwpOffsets(crossSection), Array.from({ length: 12 }, (_, i) => i + 1))
+  const earlier = unavailableNwpOffsets(crossSection, { baseTime: '2026-09-10T12:00:00Z' })
+  assert.equal(earlier.includes(3), false)
+  assert.equal(earlier.includes(1), true)
+  assert.deepEqual(unavailableNwpOffsets({ ...crossSection, timeRules: { unavailableOffsets: [2] } }), [2])
+})

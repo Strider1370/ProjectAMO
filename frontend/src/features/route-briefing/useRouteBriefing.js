@@ -2496,7 +2496,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       })
       if (requestId !== verticalProfileRequestRef.current || !refreshed) return null
       failedNwpTimeRefreshRef.current = null
-      setCrossSection(refreshed.crossSection)
+      setCrossSection({
+        ...refreshed.crossSection,
+        timeRules: refreshed.timeRules ?? refreshed.crossSection?.timeRules,
+        nwpTimeAvailability: refreshed.nwpTimeAvailability ?? refreshed.crossSection?.nwpTimeAvailability,
+      })
       setBriefing((current) => current ? {
         ...current,
         sections: { ...current.sections, enroute: mergeNavlogNwpPatch(current.sections.enroute, refreshed.navlogNwpPatch) },

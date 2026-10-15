@@ -1,0 +1,175 @@
+.vpc-operational { overflow:hidden; }
+.vpc-operational-controls { flex-shrink:0; padding:0 12px; border-bottom:1px solid var(--stroke-2); }
+.vpc-operational-controls > summary { cursor:pointer; min-height:32px; align-content:center; }
+.vpc-operational-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:4px 0; }
+.vpc-operational button, .vpc-operational select { min-height:30px; color:var(--accent); }
+.vpc-operational-nav { display:flex; align-items:center; gap:8px; padding:4px 12px; flex-shrink:0; }
+.vpc-operational-nav span { flex:1; font-size:11px; color:var(--text-3); }
+.vpc-operational-nav button { border:1px solid var(--stroke-1); background:var(--bg-1); border-radius:4px; min-width:32px; }
+.vpc-operational-status { padding:4px 12px; font-size:11px; background:var(--level-amber-bg); color:var(--text-1); flex-shrink:0; max-height:70px; overflow:auto; }
+.vpc-operational-body { flex:1; min-height:160px; overflow:hidden; }
+.vpc-operational .vertical-profile-chart { height:100%; display:flex; flex-direction:column; padding:0; }
+.vpc-operational .vertical-profile-chart-body { flex:1; min-height:0; }
+.vpc-operational .vertical-profile-plot-scroll { height:100%; overflow-x:hidden; touch-action:none; }
+.vpc-operational .vertical-profile-nwp-hint { display:none; }
+.vpc-operational .vertical-profile-axis-overlay { top:0; }
+.vpc-operational .vertical-profile-nwp-popover { z-index:10; }
+.vpc-operational .cs-jet-core rect,.vpc-operational .cs-jet-core text:not(.cs-jet-core-mark) { display:none; }
+.vpc-operational .cs-jet-core:hover rect,.vpc-operational .cs-jet-core:hover text:not(.cs-jet-core-mark) { display:block; }
+.vpc-operational-selection { display:flex; gap:6px; padding:0 12px; align-items:center; flex-shrink:0; }
+.vpc-operational-selection select { max-width:240px; min-width:0; }
+.vpc-operational-legend { flex-shrink:0; padding:4px 12px; font-size:11px; border-top:1px solid var(--stroke-2); }
+.vpc-operational-legend summary { cursor:pointer; }
+.vpc-operational-legend p { margin:4px 0; }
+@media (min-height:650px) and (min-width:800px) {
+  .vpc-operational-controls > summary { display:none; }
+  .vpc-operational-controls > .vpc-operational-toolbar { display:flex; }
+}
+@media (max-height:550px) {
+  .vpc-operational { position:fixed; inset:4px !important; width:calc(100vw - 8px) !important; height:calc(100dvh - 8px) !important; overflow:auto; }
+  .vpc-operational .vpc-window-header { min-height:36px; flex-wrap:nowrap; padding:0 8px; }
+  .vpc-operational-body { flex:1 0 180px; }
+  .vpc-operational-controls > summary { min-height:28px; }
+  .vpc-operational-controls[open] .vpc-operational-toolbar { max-height:120px; overflow:auto; }
+  .vpc-operational-legend[open] { max-height:110px; overflow:auto; }
+  .vpc-operational-selection { min-height:32px; }
+  .vpc-operational .vpc-overview { min-height:24px; }
+  .vpc-operational .vpc-overview-track { height:24px; }
+  .vpc-operational .vpc-overview-selection { top:5px; bottom:5px; }
+  .vpc-operational .vpc-overview-track::before { top:9px; bottom:9px; }
+}
+
+.vpc-preview-loading { position:fixed; z-index:1000; top:25%; left:15%; right:15%; padding:24px; background:var(--bg-1); border:1px solid var(--stroke-1); border-radius:8px; }
+.vpc-operational .vertical-profile-plot-svg { touch-action:none; }
+
+/* Compact concept chrome, with operational controls and source legends retained. */
+.vpc-operational .vpc-operational-nav { padding:0; gap:2px; margin-left:auto; }
+.vpc-operational .vpc-operational-nav button { border:0; background:transparent; }
+.vpc-operational .vpc-operational-nav strong { font-size:12px; color:var(--text-1); }
+.vpc-operational .vpc-operational-nav span { font-size:10px; }
+.vpc-operational-toolbar { gap:6px 16px; padding:5px 0; }
+.vpc-operational .vpc-layer-controls { gap:12px; }
+.vpc-operational .vpc-layer-group { gap:10px; }
+.vpc-operational .vpc-layer-group + .vpc-layer-group { padding-left:12px; }
+.vpc-operational .vpc-layer-controls button { font-size:11px; }
+.vpc-operational .vpc-chart-controls { margin-left:auto; gap:3px; }
+.vpc-operational .vpc-chart-controls label { font-size:11px; color:var(--text-3); white-space:nowrap; }
+.vpc-operational select { background:var(--bg-1); border:1px solid var(--stroke-2); border-radius:5px; padding:3px 6px; font:inherit; color:var(--text-2); }
+.vpc-operational .vpc-fit { width:auto; padding:0 8px; font-size:11px; }
+.vpc-operational-options { position:relative; font-size:11px; color:var(--text-3); }
+.vpc-operational-options summary,.vpc-operational-info summary { cursor:pointer; padding:7px 0; white-space:nowrap; }
+.vpc-operational-options > div,.vpc-operational-info > div { position:absolute; z-index:20; background:var(--bg-1); border:1px solid var(--stroke-1); border-radius:6px; box-shadow:0 6px 20px #0002; padding:12px; width:260px; max-width:calc(100vw - 48px); }
+.vpc-operational-options > div { right:0; top:100%; }
+.vpc-operational-options label { display:flex; align-items:center; gap:6px; min-height:32px; color:var(--text-2); }
+.vpc-operational-footer { display:flex; align-items:center; flex-wrap:wrap; gap:4px 16px; padding:4px 14px; border-top:1px solid var(--stroke-2); flex-shrink:0; font-size:10px; color:var(--text-3); }
+.vpc-operational-footer .profile-legend { display:flex; flex-wrap:wrap; gap:6px 12px; padding:0; margin:0; border:0; font-size:10px; }
+.vpc-operational-footer .profile-legend > span { gap:4px; }
+.vpc-operational-selection { margin-left:auto; padding:0; gap:3px; font-size:10px; }
+.vpc-operational-selection button { background:transparent; border:0; border-radius:4px; width:26px; }
+.vpc-operational-selection select { max-width:180px; border-color:transparent; }
+.vpc-operational-selection label { white-space:nowrap; }
+.vpc-operational-info { position:relative; margin-left:auto; }
+.vpc-operational-info > div { bottom:100%; right:0; line-height:1.6; color:var(--text-2); }
+.vpc-operational-info p { margin:0 0 6px; }
+.vpc-operational .cs-stratosphere { fill:rgba(124,58,237,.035); }
+.vpc-operational .cs-wind-barb { opacity:.55; }
+.vpc-operational .vertical-profile-procedure-line.is-candidate:not(.is-selected) { opacity:.5; stroke-width:1.5; }
+.vpc-operational .vpc-overview { border-top:1px solid var(--stroke-2); }
+@media (max-width:799px) {
+ .vpc-operational .vpc-demo { display:none; }
+ .vpc-operational .vpc-operational-nav { margin-left:0; }
+ .vpc-operational .vpc-layer-group + .vpc-layer-group { padding-left:0; }
+ .vpc-operational-options > div { left:0; right:auto; }
+ .vpc-operational-selection { margin-left:0; flex-wrap:wrap; }
+ .vpc-operational-footer { gap:2px 10px; }
+}
+@media (max-height:550px) {
+ .vpc-operational .vpc-operational-nav { order:initial; width:auto; margin-left:auto; }
+ .vpc-operational .vpc-demo { display:none; }
+ .vpc-operational-footer { padding:2px 10px; }
+}
+.vpc-operational .vertical-profile-chart { border:0; border-radius:0; }
+.vpc-operational .vertical-profile-plot-svg { user-select:none; }
+.vpc-operational .vpc-timezone { font-size:11px; min-width:40px; }
+
+/* Readability at full width: fewer symbols, stronger text, distinct route hierarchy. */
+.vpc-operational .vpc-layer-controls button,
+.vpc-operational .vpc-chart-controls label,
+.vpc-operational .vpc-operational-options,
+.vpc-operational .vpc-operational-selection { font-size:12px; }
+.vpc-operational .vpc-layer-check { width:14px; height:14px; }
+.vpc-operational-footer, .vpc-operational-footer .profile-legend { font-size:11px; }
+.vpc-operational-footer .profile-legend { gap:8px 16px; }
+.vpc-operational-footer .profile-legend > span { gap:6px; }
+.vpc-operational-footer .profile-legend b { gap:4px; }
+.vpc-operational .vertical-profile-axis-label { font-size:11px; font-weight:500; fill:var(--text-2); }
+.vpc-operational .vertical-profile-cruise-axis-label { font-size:13px; }
+.vpc-operational .vertical-profile-marker-label { font-size:12px; }
+.vpc-operational .cs-turbulence-cell { fill-opacity:.3; }
+.vpc-operational .cs-wind-barb { opacity:.75; stroke:#64748b; }
+.vpc-operational .cs-wind-pennant { fill:#64748b; opacity:.75; }
+.vpc-operational .vertical-profile-procedure-line.is-selected { stroke:#2563eb; stroke-width:3; stroke-dasharray:none; }
+.vpc-operational .vertical-profile-reference-line { stroke:#64748b; stroke-width:1; stroke-dasharray:5 5; opacity:.6; }
+.vpc-operational .cs-isotach { stroke-width:1; }
+.vpc-operational .cs-isotach.is-major { stroke-width:1.4; }
+.vpc-operational .vpc-overview-track[aria-disabled="true"] .vpc-overview-selection { top:12px; bottom:12px; border:0; background:var(--stroke-1); }
+.vpc-operational .vpc-overview-caption,.vpc-operational .vpc-overview-count { font-size:11px; }
+@media (max-height:550px) {
+ .vpc-operational .vpc-overview-track[aria-disabled="true"] .vpc-overview-selection { top:10px; bottom:10px; }
+}
+
+.vpc-operational .vertical-profile-cursor line { stroke:#64748b; stroke-width:1; stroke-dasharray:4 4; }
+.vpc-operational .vertical-profile-cursor circle { fill:white; stroke:#2563eb; stroke-width:1.5; }
+.vpc-operational .vertical-profile-cursor rect { fill:#334155; }
+.vpc-operational .vertical-profile-cursor text { fill:white; font-size:12px; font-weight:600; }
+
+/* Shared embedded viewer: keeps panel scrolling and fits the parent layout. */
+.profile-embedded { height:540px; min-width:0; color:var(--text-1); font-family:var(--font-base); font-size:12px; }
+.profile-embedded.is-fill { flex:1; height:100%; min-height:0; }
+.profile-embedded * { box-sizing:border-box; }
+.profile-embedded button,.profile-embedded select { font:inherit; cursor:pointer; }
+.profile-embedded :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.vpc-operational.is-embedded { position:relative; inset:auto !important; width:100% !important; height:100% !important; border-radius:6px; box-shadow:none; overflow:auto; }
+.vpc-operational.is-embedded .vpc-window-header { cursor:default; min-height:36px; border-radius:0; padding:0 10px; }
+.vpc-operational.is-embedded .vpc-operational-nav { width:auto; order:initial; margin-left:0; flex-wrap:wrap; }
+.vpc-operational.is-embedded .vertical-profile-plot-scroll,.vpc-operational.is-embedded .vertical-profile-plot-svg { touch-action:pan-y; }
+.vpc-operational .vertical-profile-meta { flex-shrink:0; font-size:11px; padding:2px 12px; }
+.vpc-operational .vertical-profile-meta:empty { display:none; }
+.vpc-operational .vertical-profile-nwp-missing-notice { flex-shrink:0; }
+.vpc-operational .vertical-profile-chart-body { overflow:hidden; }
+.vpc-operational .vertical-profile-nwp-popover { position:fixed; left:50%; top:50%; bottom:auto; right:auto; width:max-content; height:auto; min-height:0; transform:translate(-50%,-50%); max-width:calc(100vw - 32px); max-height:calc(100dvh - 32px); overflow:auto; }
+.bv-xsection-scroll .vpc-operational svg { min-width:0; }
+.op-profile-panel > .profile-embedded { flex:1; min-height:0; }
+.op-profile-panel .vpc-operational .vertical-profile-chart { height:100%; flex:1; }
+.op-profile-panel .vpc-operational .vertical-profile-chart-body { height:auto; }
+.op-profile-panel .vpc-operational .vertical-profile-plot-svg { height:auto; }
+/* Do not rotate the interaction coordinate system; use the actual device orientation. */
+.bv-xfull-rotate { inset:0; width:100%; height:100%; transform:none; }
+.bv-xfull-toolbar-main { display:flex; justify-content:space-between; }
+@media (max-height:550px) {
+ .vpc-operational.is-embedded .vpc-operational-body { flex:1 0 180px; }
+}
+.vpc-operational .vertical-profile-chart-body { min-height:160px; }
+.vpc-operational .vpc-overview { min-width:0; }
+.vpc-operational .vpc-overview-track { min-width:0; }
+@media (max-height:550px) {
+ .vpc-operational .vpc-operational-body { flex:1 0 220px; }
+ .vpc-operational.is-embedded .vpc-operational-body { flex:1 0 220px; }
+}
+/* Keep resize hit areas inside the window so they do not create scroll overflow. */
+.vpc-operational .vpc-resize.is-e,.vpc-operational .vpc-resize.is-ne { right:0; }
+.vpc-operational .vpc-resize.is-w,.vpc-operational .vpc-resize.is-nw,.vpc-operational .vpc-resize.is-sw { left:0; }
+.vpc-operational .vpc-resize.is-n,.vpc-operational .vpc-resize.is-ne,.vpc-operational .vpc-resize.is-nw { top:0; }
+.vpc-operational .vpc-resize.is-s,.vpc-operational .vpc-resize.is-sw { bottom:0; }
+
+.vpc-operational .vpc-chart-controls .vpc-fit { min-width:44px; width:auto; white-space:nowrap; }
+
+.vpc-altitude-comparison { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:6px 14px; border-bottom:1px solid var(--stroke-2); flex-shrink:0; }
+.vpc-altitude-caption { margin-right:4px; color:var(--text-3); font-size:11px; }
+.vpc-altitude-choice { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:30px; padding:4px 9px; border:1px solid var(--stroke-2); border-radius:5px; background:var(--bg-1); color:var(--text-2); font:inherit; font-size:12px; white-space:nowrap; }
+button.vpc-altitude-choice { cursor:pointer; }
+.vpc-altitude-choice[aria-pressed="true"], .vpc-altitude-choice.is-selected { border-color:#2563eb; color:#2563eb; background:rgba(37,99,235,.08); font-weight:700; }
+button.vpc-altitude-choice:hover:not(:disabled) { border-color:#2563eb; }
+button.vpc-altitude-choice:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+button.vpc-altitude-choice:disabled { cursor:wait; opacity:.6; }
+@media (max-width:799px) { .vpc-altitude-comparison { padding:5px 10px; } .vpc-altitude-choice { min-height:36px; } }

@@ -17,7 +17,7 @@ export const CROSS_SECTION_TOGGLES = [
   ['advisories', 'SIGMET/AIRMET'],
 ]
 
-const DEFAULT_LAYERS = { temp: true, wind: true, icing: true, moisture: true, cloud: false, turbulence: false, tropopause: true, advisories: true }
+const DEFAULT_LAYERS = { temp: true, wind: true, icing: true, moisture: true, cloud: false, turbulence: true, isotachs: true, tropopause: true, advisories: true }
 
 export function useCrossSectionLayers(initial = DEFAULT_LAYERS) {
   const [state, setState] = useState(() => ({ layers: initial, restore: null }))
@@ -68,7 +68,7 @@ function ToggleMenu({ label, items, layers, onToggle, onClose }) {
 
 // keys 주면 그 레이어만 노출(데이터 없는 토글 숨김용). 기본은 전체.
 // legend면 범례를 버튼 줄 오른쪽에 함께 둔다(좁으면 다음 줄로 넘어감). 이때 차트에는 legendInToolbar를 넘겨 중복을 막는다.
-export function CrossSectionToggles({ layers, onToggle, keys, trailing = null, compact = false, inline = false, legend = false }) {
+export function CrossSectionToggles({ layers, onToggle, keys, trailing = null, compact = false, inline = false, legend = false, windLabel = '바람' }) {
   const [open, setOpen] = useState(null)
   const allowed = key => !keys || keys.includes(key)
   const groups = CROSS_SECTION_TOGGLE_GROUPS.map(group => group.map(item => item.children
@@ -87,8 +87,8 @@ export function CrossSectionToggles({ layers, onToggle, keys, trailing = null, c
         {group.map(item => {
           const menu = item.children ?? item.options
           return <span key={item.id} className={`cs-toggle-split${menu ? ' has-menu' : ''}`}>
-            <button type="button" className={`cs-toggle${isOn(item) ? ' is-on' : ''}`} aria-label={item.label} aria-pressed={isOn(item)} onClick={() => toggle(item)}>
-              {compact && item.id === 'advisories' ? <>SIGMET/<br />AIRMET</> : item.label}
+            <button type="button" className={`cs-toggle${isOn(item) ? ' is-on' : ''}`} aria-label={item.key === 'wind' ? windLabel : item.label} aria-pressed={isOn(item)} onClick={() => toggle(item)}>
+              {compact && item.id === 'advisories' ? <>SIGMET/<br />AIRMET</> : item.key === 'wind' ? windLabel : item.label}
             </button>
             {menu && <button type="button" className={`cs-toggle cs-toggle-caret${isOn(item) ? ' is-on' : ''}`} aria-label={`${item.label} 세부 항목`} aria-expanded={open === item.id} onClick={() => setOpen(open === item.id ? null : item.id)}>▾</button>}
             {menu && open === item.id && <ToggleMenu label={item.label} items={menu} layers={layers} onToggle={onToggle} onClose={() => setOpen(null)} />}

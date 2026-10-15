@@ -2080,3 +2080,17 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .profile-legend i.is-box { border: 1.5px dashed; }
 .profile-legend.is-inline { margin-left: auto; padding: 0; border: 0; background: transparent; }
 .cross-section-toggles.is-inline { flex-wrap: nowrap; }
+
+/* Linked annotation bands belong to the shared chart, including embedded views. */
+.vertical-profile-linked-band { cursor: pointer; outline: none; }
+.vertical-profile-linked-hit { fill: transparent; }
+.vertical-profile-linked-area { fill: var(--accent); fill-opacity: .05; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .3; }
+.vertical-profile-linked-tick { stroke: var(--accent); stroke-width: 3; opacity: .55; }
+.vertical-profile-linked-band.is-position-only .vertical-profile-linked-area { fill-opacity: 0; }
+.vertical-profile-linked-band.is-active .vertical-profile-linked-area,
+.vertical-profile-linked-band:focus-visible .vertical-profile-linked-area { fill-opacity: .16; opacity: 1; stroke-width: 2.5; }
+.vertical-profile-linked-band.is-active .vertical-profile-linked-tick { stroke-width: 6; opacity: 1; }
+
+.vertical-profile-nwp-status { margin:6px 0; font-size:11px; color:var(--text-2); }
+.vertical-profile-nwp-popover button:disabled { opacity:.35; color:var(--text-3); background:var(--bg-2); cursor:not-allowed; }
+.vertical-profile-nwp-popover button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:700; }

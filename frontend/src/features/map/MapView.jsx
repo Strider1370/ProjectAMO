@@ -2409,10 +2409,11 @@ const MapView = forwardRef(function MapView({
             candidateAltitudes={(routeBriefing.state.altitudeComparison?.rows ?? [])
               .filter((row) => ['valid', 'input_only'].includes(row.candidateStatus ?? row.status) && row.weatherStatus !== 'weather_unavailable')
               .map((row) => Number(row.altFt ?? row.altitudeFt))}
-            onSelectCandidateAltitude={isMobile ? routeBriefing.actions.selectCruiseAltitude : undefined}
+            onSelectCandidateAltitude={routeBriefing.actions.selectCruiseAltitude}
             onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
             crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
             nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
+            statusMessage={routeBriefing.state.nwpTimeRefreshError}
             onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
             placement={isMobile ? 'mobile-full' : routeBriefing.state.workflowStep === 'altitude' ? 'side' : 'bottom'}
           />

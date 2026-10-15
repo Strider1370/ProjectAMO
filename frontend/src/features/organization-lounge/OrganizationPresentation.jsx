@@ -5,8 +5,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
-import { useCrossSectionLayers, CrossSectionToggles } from '../route-briefing/crossSectionLayers.jsx'
-import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
+import { useCrossSectionLayers } from '../route-briefing/crossSectionLayers.jsx'
+import VerticalProfileViewer from '../route-briefing/VerticalProfileViewer.jsx'
 import { organizationRequest, organizationResourceUrl } from './api.js'
 import PreviewMode from './PreviewMode.jsx'
 import { formatTime } from './components.jsx'
@@ -68,18 +68,15 @@ function ProfilePanel({ bundle, activeItemId, onSelectItem, onExpand, profileLay
   return <section className="op-panel op-profile-panel">
     <PanelTitle title="연직단면도" onExpand={onExpand} />
     {state.limited && <div className="op-limited">자료 일부가 누락되어 위험 없음으로 판단할 수 없습니다.</div>}
-    <CrossSectionToggles layers={profileLayers.layers} onToggle={profileLayers.toggle} keys={bundle.advisories?.length ? undefined : ['temp','moisture','cloud','icing','wind','turbulence']} legend />
-    <VerticalProfileChart
+    <VerticalProfileViewer embedded fillContainer
       profile={bundle.verticalProfile}
       crossSection={bundle.crossSection}
       advisories={bundle.advisories ?? []}
       layers={profileLayers.layers}
-      legendInToolbar
+      onToggleLayer={profileLayers.toggle}
       linkedItems={linkedItems}
       activeLinkedItemId={activeItemId}
       onSelectLinkedItem={onSelectItem}
-      enableDragScroll
-      hideMeta
       allowMissingTerrain
     />
   </section>
@@ -179,7 +176,7 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
   const presentation = useOrganizationPresentation({ orgId, sessionId })
   const [layout, setLayout] = useState('map')
   const [expanded, setExpanded] = useState(null)
-  const [layers, toggle, view] = useCrossSectionLayers({ wind: true, temp: true, moisture: true, icing: true, turbulence: true, cloud: true, advisories: true })
+  const [layers, toggle, view] = useCrossSectionLayers({ wind: true, temp: true, moisture: true, icing: true, turbulence: true, cloud: true, tropopause: true, isotachs: true, advisories: true })
   const profileLayers = { layers, toggle, view }
   const [pinnedItemId, setPinnedItemId] = useState(null)
   const [previewItemId, setPreviewItemId] = useState(null)
