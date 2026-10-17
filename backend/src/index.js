@@ -189,11 +189,14 @@ const processorBindings = {
   wissdom: radarGraphicsProcessor.processWissdom, qpf: radarGraphicsProcessor.processQpf, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
   echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
   kim_surface_chart: kimSurfaceChartProcessor.process,
-  // 06 UTC 한반도 회차를 확대 영역에서 잘라 게시하면 한반도 GKTG·권계면을 이어서 계산한다(기본 수집 뒤와 같다).
+  // 06 UTC 한반도 회차를 확대 영역에서 잘라 게시하면 한반도 권계면을 이어서 계산한다(기본 수집 뒤와 같다). GKTG는 확대 회차
+  // 결과에서 잘라 게시하고(kim-expanded-processor.js), 그게 안 될 때만 예전처럼 한반도에서 계산한다.
   ...Object.fromEntries(['00', '06'].map((cycle) => [`kim_expanded_${cycle}`, ({ signal }) => processExpandedCycle({ cycle, signal,
     onKoreaPublished: async () => {
-      if (config.kim_gktg?.enabled !== false) await runWithLock('kim_gktg', kimGktgJob, { source: 'kim_korea_from_expanded' })
       if (config.kim_tropopause?.enabled !== false) await runWithLock('kim_tropopause', kimTropopauseJob, { source: 'kim_korea_from_expanded' })
+    },
+    onKoreaGktgFallback: async () => {
+      if (config.kim_gktg?.enabled !== false) await runWithLock('kim_gktg', kimGktgJob, { source: 'kim_korea_from_expanded' })
     } })])),
   ground_forecast: groundForecastProcessor.process, environment: environmentProcessor.process, airport_info: airportInfoProcessor.process,
   takeoff_fcst: takeoffForecastProcessor.process, kim_gktg: kimGktgJob, kim_tropopause: kimTropopauseJob, flight_category: flightCategoryProcessor.process,

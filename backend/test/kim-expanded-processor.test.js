@@ -114,6 +114,34 @@ test('a cycle job skips when unusable or short of disk, crops Korea from 06 UTC,
   assert.equal(koreaPublished, 1)
 })
 
+test('06 UTC crops Korea GKTG once both the Korea crop and its hours\' GKTG are ready, and falls back to the Korea calculation otherwise', async t => {
+  const root = temporary(t)
+  const now = KST('2026-10-09', '20:15')
+  const koreaHours = config.kim_nwp.forecast_hours
+  const results = new Map(koreaHours.map(hf => [hf, { hf }]))
+  const run = async ({ computeFirst = false, crop = async () => ({ revision: 'r', entries: [] }), compute = true } = {}) => {
+    const calls = { crop: 0, fallback: 0, hours: null }
+    await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 1e12, cropKorea: () => ({ saved: true }),
+      cropKoreaGktg: async ({ hours, hourResults }) => { calls.crop++; calls.hours = hours; assert.equal(hourResults.length, hours.length); return crop() },
+      onKoreaGktgFallback: async () => { calls.fallback++ },
+      collect: async ({ onHourDownloaded, onGktgComputed, hours }) => {
+        if (computeFirst && compute) await onGktgComputed({ hf: 12, results })
+        for (let hf = 0; hf <= 12; hf++) await onHourDownloaded({ hf, downloaded: Array.from({ length: hf + 1 }, (_, i) => i) })
+        if (!computeFirst && compute) {
+          await onGktgComputed({ hf: 5, results: new Map([...results].filter(([hf]) => hf <= 5)) })
+          await onGktgComputed({ hf: 12, results })
+          await onGktgComputed({ hf: 13, results })
+        }
+        return { published: true, publishedHours: hours.length, planned: hours.length }
+      } })
+    return calls
+  }
+  assert.deepEqual(await run(), { crop: 1, fallback: 0, hours: koreaHours })
+  assert.deepEqual(await run({ computeFirst: true }), { crop: 1, fallback: 0, hours: koreaHours })
+  assert.deepEqual(await run({ crop: async () => { throw new Error('boom') } }), { crop: 1, fallback: 1, hours: koreaHours })
+  assert.deepEqual(await run({ compute: false }), { crop: 0, fallback: 1, hours: null })
+})
+
 test('the memory monitor logs samples and stops new hours after three low readings in a row', async t => {
   const root = temporary(t)
   const readings = [900, 200, 200, 600, 200, 200, 200].map(mib => mib * 1048576)

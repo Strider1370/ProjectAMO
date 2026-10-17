@@ -10,7 +10,7 @@ import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours, decodeComponent, buildKimGktgFieldFromGrid } from './kim-nwp-model.js'
-import { kimRawTextExists, readKimRawText, writeKimRawText } from './kim-doc-store.js'
+import { kimRawTextExists, readKimDocumentCells, readKimRawText, writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain, kimDomainRequest } from './kim-domain.js'
 import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGridVariables, readKimGktgField, readKimGktgLatest, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun, fingerprintKimNwpBase, fingerprintKimGktgOutputs } from './kim-nwp-store.js'
@@ -23,7 +23,7 @@ const sha = value => crypto.createHash('sha256').update(value).digest('hex').sli
 // GKTG 결과와 관계없으므로 넣지 않는다(2026-10-09 MetPy 한 줄 추가로 판이 바뀌어 이미 계산한 결과를 다시 계산했다).
 const gktgRequirements = () => Buffer.from(fs.readFileSync(path.join(engineDir, 'requirements.txt'), 'utf8').split('\n')
   .filter(line => /^(numpy|numba)\b/.test(line.trim())).map(line => line.trim()).join('\n') + '\n')
-const engineRevision = () => sha([...['python_core.py', 'python_port.py', 'python_dynamics.py', 'python_theta.py', 'python_structure.py', 'python_combine.py', 'calibration.json', 'calculate.py', 'input_validation.py', 'products.py'].map(name => fs.readFileSync(path.join(engineDir, name))), gktgRequirements()].reduce((result, value) => Buffer.concat([result, value]), Buffer.from('kim-gktg-field-v1\n')))
+export const engineRevision = () => sha([...['python_core.py', 'python_port.py', 'python_dynamics.py', 'python_theta.py', 'python_structure.py', 'python_combine.py', 'calibration.json', 'calculate.py', 'input_validation.py', 'products.py'].map(name => fs.readFileSync(path.join(engineDir, name))), gktgRequirements()].reduce((result, value) => Buffer.concat([result, value]), Buffer.from('kim-gktg-field-v1\n')))
 const sameGrid = (a, b) => ['nx', 'ny', 'lonMin', 'lonMax', 'latMin', 'latMax'].every(key => a[key] === b[key])
 // calculate.py의 FIELDS·SURFACE와 같은 순서.
 const CUBE_FIELDS = ['u', 'v', 'w', 'T', 'q', 'hgt']
@@ -331,6 +331,48 @@ export function publishComputedGktg({ root = config.storage.base_path, domain = 
   const published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() }, domain, { readFields: false })
   appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), { type: 'gktg_published', hours: forecastHours, revision: published.revision, fields: entries.length, failures: 0, fromComputed: true })
   writeKimGktgAttempt(root, tmfc, { tmfc, outcome: 'complete', expectedHours: forecastHours, fields: entries.length, failures: [], completed_at: new Date().toISOString() }, domain)
+  return published
+}
+
+// 한반도 06 UTC GKTG를 확대 회차 결과에서 잘라 게시한다. 한반도 기본 격자가 확대 회차에서 잘라 온 것이라 입력이 같다.
+// 따로 계산하면 확대 회차 계산 순번을 11~22분 잡고, 한반도용 보조 입력(지표 기압·지형·경계층)을 일반 키로 다시 받다가
+// 기상청 시간 초과로 시각이 빠지곤 했다(2026-10-15·16). 2026-10-16 06 UTC 비교: 경계 20칸 안쪽 값 차이 최대 0.009,
+// 강도 단계 일치 99.4~99.6%(artifacts/kim-gktg-crop-compare). 한반도 단독 계산이 비워 두던 가장자리 10칸도 값이 찬다.
+// hourResults: 확대 회차 시각별 계산(publish=false) 결과, hours와 같은 순서. 하나라도 맞지 않으면 던진다(부른 쪽이 예전처럼 계산).
+export async function publishKoreaGktgFromExpanded({ root = config.storage.base_path, tmfc, hours = config.kim_nwp.forecast_hours, hourResults }) {
+  const engine = engineRevision()
+  if (hourResults?.length !== hours.length || hourResults.some(result => result?.engineRevision !== engine)) throw new Error('kim_gktg_engine_mismatch')
+  const entries = []
+  for (const [index, hf] of hours.entries()) {
+    for (const level of pressures) {
+      await nextTurn()
+      const source = hourResults[index].entries?.find(entry => entry.hf === hf && entry.levelId === level.id)
+      if (!source) throw new Error('kim_gktg_hour_incomplete')
+      const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, names: ['hgt'] })
+      const kr = layer.grid
+      const ea = source.grid
+      const x0 = Math.round((kr.lonMin - ea.lonMin) * 12)
+      const y0 = Math.round((kr.latMin - ea.latMin) * 12)
+      if (Math.abs((ea.lonMax - ea.lonMin) / (ea.nx - 1) * 12 - 1) > 1e-6 || Math.abs((kr.lonMax - kr.lonMin) / (kr.nx - 1) * 12 - 1) > 1e-6
+        || x0 < 0 || y0 < 0 || x0 + kr.nx > ea.nx || y0 + kr.ny > ea.ny) throw new Error('kim_gktg_crop_outside_expanded_grid')
+      const cells = new Array(kr.nx * kr.ny)
+      for (let y = 0; y < kr.ny; y++) for (let x = 0; x < kr.nx; x++) cells[y * kr.nx + x] = (y0 + y) * ea.nx + x0 + x
+      const field = readKimDocumentCells(resolveKimGktgFieldPath({ root, tmfc, hf, levelId: level.id, revision: source.revision, domain: 'ea' }), ['/gktg'], () => cells)
+      if (field.revision !== source.revision || field.inputRevision !== source.inputRevision) throw new Error('kim_gktg_crop_source_mismatch')
+      const gktg = cells.map(cell => field.gktg[cell] ?? null)
+      const revision = sha(`kr-from-ea:${source.revision}`)
+      layer.variables = { hgt: { ...layer.variables.hgt, values: Array.from(layer.variables.hgt.values, v => (Number.isNaN(v) ? null : v)) } }
+      writeKimGktgField(root, buildKimGktgFieldFromGrid(layer, { gktg, revision, inputRevision: source.inputRevision, algorithm: GKTG_ALGORITHM, engineRevision: engine }), 'kr')
+      entries.push({ levelId: level.id, hf, validTime: source.validTime, variables: ['gktg'], hashes: { gktg: revision }, revision, inputRevision: source.inputRevision, grid: kr,
+        path: path.relative(root, resolveKimGktgFieldPath({ root, tmfc, hf, levelId: level.id, revision, domain: 'kr' })) })
+    }
+  }
+  // 기본 격자 지문은 한반도 것으로 둔다. 정기 한반도 GKTG가 "입력·계산 판·결과가 지난 게시와 같다"로 보고 다시 계산하지 않는다.
+  const published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: hours, entries,
+    baseFingerprint: fingerprintKimNwpBase({ root, tmfc, hours, domain: 'kr' }), source: 'expanded_crop', fetched_at: new Date().toISOString() }, 'kr', { readFields: false })
+  appendKimRunEvent(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), { type: 'gktg_published', hours, revision: published.revision, fields: entries.length, failures: 0, source: 'expanded_crop' })
+  writeKimGktgAttempt(root, tmfc, { tmfc, outcome: 'complete', expectedHours: hours, fields: entries.length, failures: [], source: 'expanded_crop', completed_at: new Date().toISOString() }, 'kr')
+  cleanupKimNwpRuns({ root, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId: readKimNwpLatest(root)?.latestRunId, onlyComplete: true, reason: 'gktg_published' })
   return published
 }
 

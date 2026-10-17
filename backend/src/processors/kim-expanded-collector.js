@@ -76,6 +76,9 @@ export async function collectExpandedRun({
   beforeHour = () => null,
   // 시각 하나를 다 받았을 때(계산 전). 06 UTC는 +0~12h가 모이면 한반도 회차를 잘라 게시한다.
   onHourDownloaded = async () => {},
+  // 시각 하나의 GKTG·권계면 계산이 끝났을 때. results는 지금까지 성공한 시각별 GKTG 결과(hf → 결과). 06 UTC는 이것으로
+  // 한반도 GKTG를 잘라 게시한다.
+  onGktgComputed = async () => {},
   // 한 시각 안에서 실패한 층·보조 입력은 이만큼 기다렸다 다시 받는다(일시적인 fetch failed로 시각 전체를 잃지 않게).
   retryDelaysMs = HOUR_RETRY_DELAYS_MS,
 } = {}) {
@@ -129,6 +132,11 @@ export async function collectExpandedRun({
         } catch (error) {
           computedResults[kind].delete(hf)
           result[kind] = String(error.code || error.message).slice(0, 200)
+        }
+      }
+      if (result.kim_gktg === 'ok') {
+        try { await onGktgComputed({ hf, results: computedResults.kim_gktg }) } catch (error) {
+          if (signal?.aborted) throw error
         }
       }
       if (aciEnabled && aciInputs.has(hf)) result.kim_aci = await runAci(hf)

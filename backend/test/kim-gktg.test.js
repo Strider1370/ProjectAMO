@@ -5,8 +5,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { seedGktg } from './gktg-fixture.js'
-import { readKimGktgIndex, readKimGktgLatest, readKimGktgField, publishKimGktgRun, cleanupKimNwpRuns, writeKimGktgField } from '../src/processors/kim-nwp-store.js'
-import { process as collect, decodeGktgInput } from '../src/processors/kim-gktg-processor.js'
+import { readKimGktgIndex, readKimGktgLatest, readKimGktgField, publishKimGktgRun, cleanupKimNwpRuns, writeKimGktgField, writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
+import { KIM_NWP_LEVELS, KIM_NWP_MODEL, addForecastHours } from '../src/processors/kim-nwp-model.js'
+import { process as collect, decodeGktgInput, engineRevision, publishKoreaGktgFromExpanded, GKTG_ALGORITHM } from '../src/processors/kim-gktg-processor.js'
 import { loadGktgCrossSection } from '../src/briefing/gktg-cross-section.js'
 import { summarizeEnrouteModel } from '../src/briefing/enroute-model.js'
 import { resolveApiOperation } from '../src/api-operation-registry.js'
@@ -119,4 +120,38 @@ test('supplement bounds accept the padded single-digit latitude of the expanded 
   assert.equal(supplementBoundsMatch(korea, { lonMin: 119, latMin: 30, lonMax: 136, latMax: 44 }), true)
   assert.equal(supplementBoundsMatch(korea, { lonMin: 100, latMin: 6, lonMax: 145, latMax: 50 }), false)
   assert.equal(supplementBoundsMatch(expanded, { lonMin: 100, latMin: 6, lonMax: 145, latMax: 5 }), false)
+})
+
+test('Korea GKTG cropped from the expanded run keeps the same lon/lat cells, and the regular Korea job then sees it as unchanged', async t => {
+  const root = temporary(t)
+  const tmfc = '2099010106'
+  const step = 1 / 12
+  const kr = { nx: 4, ny: 3, lonMin: 119, latMin: 30, lonMax: 119 + 3 * step, latMax: 30 + 2 * step, dx: 0.083333, dy: 0.083333 }
+  const ea = { nx: 8, ny: 6, lonMin: 118.75, latMin: 29.75, lonMax: 118.75 + 7 * step, latMax: 29.75 + 5 * step, dx: 0.083333, dy: 0.083333 }
+  const levels = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
+  const engine = engineRevision()
+  const eaValues = Array.from({ length: ea.nx * ea.ny }, (_, i) => Math.fround(i / 100))
+  for (const level of levels) {
+    writeKimNwpGrid({ root, domain: 'kr', grid: { type: 'kim_nwp_grid', model: KIM_NWP_MODEL, tmfc, hf: 0, validTime: addForecastHours(tmfc, 0), level, grid: kr,
+      variables: { hgt: { unit: 'm', encoding: 'int16-scaled-json-v1', scale: 1, offset: 0, values: Array(kr.nx * kr.ny).fill(1500) } }, fetched_at: '2099-01-01T06:00:00.000Z' } })
+    writeKimGktgField(root, { type: 'kim_nwp_gktg', product: 'GKTG', model: KIM_NWP_MODEL, grid: ea, time: { tmfc, hf: 0, validTime: addForecastHours(tmfc, 0) }, level,
+      encoding: 'float32-json-v1', scale: 1, offset: 0, units: { gktg: 'm⅔ s⁻¹' }, gktg: eaValues, geopotentialHeight: Array(ea.nx * ea.ny).fill(1500),
+      geopotentialHeightEncoding: { encoding: 'int16-scaled-json-v1', scale: 1, offset: 0, missing: -32768, unit: 'm' },
+      revision: 'c'.repeat(20), inputRevision: 'd'.repeat(20), algorithm: GKTG_ALGORITHM, engineRevision: engine }, 'ea')
+  }
+  const hourResults = [{ engineRevision: engine, entries: levels.map(level => ({ hf: 0, levelId: level.id, validTime: addForecastHours(tmfc, 0), revision: 'c'.repeat(20), inputRevision: 'd'.repeat(20), grid: ea })) }]
+
+  const published = await publishKoreaGktgFromExpanded({ root, tmfc, hours: [0], hourResults })
+  assert.equal(published.entries.length, levels.length)
+  assert.equal(readKimGktgLatest(root).source, 'expanded_crop')
+  const field = readKimGktgField({ root, tmfc, hf: 0, levelId: '850hPa' })
+  assert.deepEqual(field.grid, kr)
+  assert.deepEqual(field.gktg, Array.from({ length: kr.nx * kr.ny }, (_, i) => eaValues[(3 + Math.floor(i / kr.nx)) * ea.nx + 3 + (i % kr.nx)]))
+
+  let calculated = 0
+  const again = await collect({ root, tmfc, forecastHours: [0], calculate: async () => { calculated++; throw new Error('should not recalculate') } })
+  assert.equal(again.unchanged, true)
+  assert.equal(calculated, 0)
+
+  await assert.rejects(publishKoreaGktgFromExpanded({ root, tmfc, hours: [0], hourResults: [{ ...hourResults[0], engineRevision: 'f'.repeat(20) }] }), /kim_gktg_engine_mismatch/)
 })

@@ -6,6 +6,7 @@
 // - 디스크: 시작 전 여유 ≥ 예상 회차 크기 + 3 GiB, 시각마다 3 GiB 아래면 멈춘다.
 // - 06 UTC가 시작되면 아직 이어받던 00 UTC는 새 시각을 받지 않는다.
 // - 06 UTC는 +0~12h가 모이면 한반도 회차를 잘라 게시한다(21:30 KST까지 안 되면 한반도 수집기가 일반 키로 받는다).
+//   그 시각들의 GKTG 계산이 끝나면 한반도 GKTG도 잘라 게시한다. 못 하면 onKoreaGktgFallback(예전처럼 한반도에서 계산)을 부른다.
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -14,6 +15,7 @@ import { collectionResult } from '../collector-execution.js'
 import { MIN_FREE_BYTES } from '../maps/storage-budget.js'
 import { collectExpandedRun, expandedCycle, kstCutoffMs } from './kim-expanded-collector.js'
 import { publishKoreaFromExpanded } from './kim-korea-crop.js'
+import { publishKoreaGktgFromExpanded } from './kim-gktg-processor.js'
 import { startExpandedMonitor } from './kim-expanded-monitor.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { readKimNwpLatest, readKimNwpManifest, buildKimNwpRunId, resolveKimNwpRoot, resolveKimNwpRunDir } from './kim-nwp-store.js'
@@ -84,6 +86,9 @@ export async function processExpandedCycle({
   collect = collectExpandedRun,
   cropKorea = publishKoreaFromExpanded,
   onKoreaPublished = async () => {},
+  cropKoreaGktg = publishKoreaGktgFromExpanded,
+  onKoreaGktgFallback = async () => {},
+  koreaGktgEnabled = config.kim_gktg?.enabled !== false,
   diskFree = freeBytes,
   startMonitor = startExpandedMonitor,
 } = {}) {
@@ -109,6 +114,22 @@ export async function processExpandedCycle({
   const { hours } = expandedCycle(tmfc)
   const koreaHours = config.kim_nwp?.forecast_hours || []
   let korea = null
+  let koreaGktg = null
+  let gktgResults = null
+  // 한반도 회차를 잘라 게시했고 그 시각들의 GKTG 계산이 모두 끝났으면 한반도 GKTG를 잘라 게시한다(한 번만).
+  const tryKoreaGktg = async () => {
+    if (cycle !== '06' || !koreaGktgEnabled || !korea?.saved || koreaGktg || !gktgResults || !koreaHours.every(hf => gktgResults.has(hf))) return
+    koreaGktg = { pending: true }
+    try {
+      const published = await cropKoreaGktg({ root, tmfc, hours: koreaHours, hourResults: koreaHours.map(hf => gktgResults.get(hf)) })
+      koreaGktg = { saved: true, revision: published?.revision }
+      appendKimRunEvent(runDir, { type: 'expanded_korea_gktg', revision: published?.revision || null, fields: published?.entries?.length ?? null })
+    } catch (error) {
+      koreaGktg = { saved: false }
+      appendKimRunEvent(runDir, { type: 'expanded_korea_gktg_failed', error: String(error.code || error.message).slice(0, 200) })
+      await onKoreaGktgFallback({ tmfc })
+    }
+  }
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: 'ea' })
   fs.mkdirSync(path.dirname(lockFile(root, cycle)), { recursive: true })
   fs.writeFileSync(lockFile(root, cycle), `${JSON.stringify({ pid: process.pid, tmfc, startedAt: new Date(now()).toISOString() })}\n`)
@@ -127,7 +148,14 @@ export async function processExpandedCycle({
         if (cycle !== '06' || korea || !koreaHours.every(hf => downloaded.includes(hf))) return
         korea = cropKorea({ root, tmfc, hours: koreaHours })
         appendKimRunEvent(runDir, { type: 'expanded_korea_crop', ...korea })
-        if (korea?.saved) await onKoreaPublished({ tmfc })
+        if (korea?.saved) {
+          await onKoreaPublished({ tmfc })
+          await tryKoreaGktg()
+        }
+      },
+      onGktgComputed: async ({ results }) => {
+        gktgResults = results
+        await tryKoreaGktg()
       },
     })
   } finally {
@@ -136,6 +164,11 @@ export async function processExpandedCycle({
     appendKimRunEvent(runDir, { type: 'expanded_monitor', ...memory })
   }
   result = { ...result, memory }
+  // 회차가 끝나도 한반도 GKTG를 못 잘랐으면(그 시각 계산 실패·중단 등) 예전처럼 한반도에서 계산한다.
+  if (cycle === '06' && koreaGktgEnabled && korea?.saved && !koreaGktg) {
+    appendKimRunEvent(runDir, { type: 'expanded_korea_gktg_missing' })
+    await onKoreaGktgFallback({ tmfc })
+  }
   if (result.stopReason === 'credential_rejected') markExpandedDisabled({ root, reason: 'kim_bulk_credential_rejected', now: now() })
   const outcome = result.published ? (result.publishedHours === hours.length ? 'complete' : 'partial') : 'failed'
   const data = outcome === 'failed' ? null : { publishedHours: result.publishedHours, planned: result.planned }
