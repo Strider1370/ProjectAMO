@@ -4,8 +4,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import config from '../src/config.js'
-import { KIM_NWP_MODEL, addForecastHours } from '../src/processors/kim-nwp-model.js'
-import { readKimNwpIndex, readKimNwpLatest, writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
+import { KIM_NWP_LEVELS, KIM_NWP_MODEL, addForecastHours } from '../src/processors/kim-nwp-model.js'
+import { readKimNwpIndex, readKimNwpLatest, resolveKimNwpRunDir, writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
 import { collectExpandedRun, kstCutoffMs, publishableHours } from '../src/processors/kim-expanded-collector.js'
 
 const TMFC = '2099010106'
@@ -176,4 +176,31 @@ test('GKTG and tropopause are published from the per-hour results; a failed dire
       assert.match(fs.readFileSync(path.join(root, 'kim_nwp_ea', 'runs', `KIMG_NE57_${TMFC}`, 'events.jsonl'), 'utf8'), /"type":"derived_publish_fallback","kind":"kim_gktg"/)
     }
   }
+})
+
+test('an hour not yet uploaded to KMA is waited for without using up the retries; one that never appears is dropped after the wait', async t => {
+  const notUploaded = () => Object.assign(new Error('KIM grid file is not available'), { code: 'KIM_FILE_NOT_AVAILABLE' })
+  const levels = KIM_NWP_LEVELS.length
+  const run = async (missingAttempts) => {
+    const root = temporary(t)
+    const { options } = harness(root)
+    let calls = 0
+    const collectTask = async (args) => {
+      if (args.task.hf === 2 && calls++ < levels * missingAttempts) throw notUploaded()
+      return options.collectTask(args)
+    }
+    const result = await collectExpandedRun({ ...options, collectTask, hours: [0, 1, 2, 3], publish: false, uploadRetryMs: 1, uploadWaitMs: 5 })
+    const events = fs.readFileSync(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: TMFC, domain: 'ea' }), 'events.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
+    return { result, waits: events.filter(e => e.type === 'expanded_hour_waiting').length, retries: events.filter(e => e.type === 'expanded_hour_retry').length }
+  }
+  // 세 번 "아직 없음"이었다가 올라온 시각: 기다린 뒤 받고, 재시도는 쓰지 않는다.
+  const late = await run(3)
+  assert.equal(late.result.downloaded, 4)
+  assert.equal(late.waits, 3)
+  assert.equal(late.retries, 0)
+  // 끝내 안 올라온 시각: 기다림 한도(5회)를 다 쓰고 평소 재시도(2회) 뒤 그 시각만 빠진다.
+  const never = await run(100)
+  assert.equal(never.result.downloaded, 3)
+  assert.equal(never.waits, 5)
+  assert.equal(never.retries, 2)
 })

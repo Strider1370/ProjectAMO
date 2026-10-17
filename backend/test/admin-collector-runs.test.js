@@ -33,7 +33,7 @@ test('timeline returns today’s runs in KST minutes, the schedule for each coll
   assert.deepEqual(today.collectors.metar.runs, [{ at: 600, durationMs: 20_000, outcome: 'succeeded', reason: null }])
   assert.equal(today.collectors.amos.runs[0].reason, 'api_operation_timeout')
   assert.equal(today.collectors.metar.cadence, '5분마다')
-  assert.equal(today.collectors.kim_surface_wind.cadence, '하루 11번')
+  assert.equal(today.collectors.kim_surface_wind.cadence, '20분마다')
   assert.equal(today.collectors.kim_gktg.childProcess, true)
 
   const yesterday = readCollectionTimeline(db, { nowMs: now, dayOffset: 1 })

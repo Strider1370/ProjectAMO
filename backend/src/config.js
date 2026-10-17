@@ -317,6 +317,13 @@ export const kim_expanded = {
   // 부분 회차 게시 기준: 앞에서부터 끊김 없이 이 예보시각까지 받았으면 게시한다(다음 회차 게시 예정 + 1시간).
   publish_min_hour: { '00': 15, '06': 27 },
   stop_requests_kst: process.env.KIM_EXPANDED_STOP_KST || '23:50',
+  // 06 UTC는 정해진 시각을 기다리지 않는다. 17시부터 5분마다(schedule.kim_expanded_06_interval) +0h가 올라왔는지 확인하고
+  // 올라왔으면 바로 시작한다. 확인이 계속 안 되면 이 시각에는 확인 없이 시작한다(예전 고정 시작 시각).
+  start_without_check_kst: { '06': process.env.KIM_EXPANDED_06_FALLBACK_KST || '20:15' },
+  // 시작한 회차가 덜 끝나고 멈췄으면 이만큼 지난 뒤에 다시 시도한다(5분마다 처음부터 다시 확인하지 않게).
+  retry_gap_minutes: Number(process.env.KIM_EXPANDED_RETRY_GAP_MIN || 60),
+  // 받던 중 뒤쪽 예보시각이 아직 안 올라왔으면 실패로 넘기지 않고 이만큼까지 기다린다(2분 간격으로 다시 받는다).
+  hour_upload_wait_minutes: Number(process.env.KIM_EXPANDED_UPLOAD_WAIT_MIN || 40),
 }
 
 // KIM 지상 일기도(등압선·H/L·3시간 강수·지상바람). 기존 KIM 수집과 달리 동아시아 넓은 영역을 받는다.
@@ -479,14 +486,16 @@ export const schedule = {
   kim_gktg_interval: '35 1,2,5,6,7,8,11,12,13,14,17,18,19,20,23 * * *',
   kim_tropopause_interval: '35 1,2,5,6,7,8,11,12,13,14,17,18,19,20,23 * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
-  // 네 분석시각의 KIM 격자는 약 5시간 뒤부터 공개된다. +5h에 시작하고 +6h·+7h에 재시도한다.
-  kim_surface_wind_interval: '12 1,5,6,7,11,12,13,17,18,19,23 * * *',
+  // 분석시각 +3h부터 +7h까지 20분마다 돈다. 수집기가 받기 전에 마지막 예보시각(+12h)이 올라왔는지 작은 요청 한 번으로
+  // 확인하고, 올라왔을 때만 받는다(kim-run-availability.js). 대용량 키 서버 측정(2026-10-17 06 UTC)에서는 +3h10m~+3h20m에
+  // 올라왔다. 예전에는 +5h12m에 시작하고 +6h·+7h에 재시도했다(이 시각들도 그대로 포함된다).
+  kim_surface_wind_interval: '12,32,52 0,1,3-7,9-13,15-19,21-23 * * *',
   // 일기도는 같은 공개 시각대에 돌되 기존 KIM 대형 수집(12분)과 겹치지 않게 분을 뗀다.
   kim_surface_chart_interval: '42 1,5,6,7,11,12,13,17,18,19,23 * * *',
   // 확대 영역(KST, 대용량 키 15~24시): 00 UTC는 공개(약 14:12) 뒤 15:00에 시작하고 17·19시에 빠진 시각을 이어받는다.
   // 06 UTC는 공개(약 20:12) 뒤 20:15에 시작하고 22:15에 이어받는다. 이미 완성된 회차면 바로 끝난다.
   kim_expanded_00_interval: '0 15,17,19 * * *',
-  kim_expanded_06_interval: '15 20,22 * * *',
+  kim_expanded_06_interval: '*/5 17-22 * * *',
   // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
   ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',

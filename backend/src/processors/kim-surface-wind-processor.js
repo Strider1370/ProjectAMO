@@ -49,6 +49,7 @@ import { selectNearestForecastHour } from './kim-forecast-hour.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain, kimDomainRequest } from './kim-domain.js'
 import { koreaSixFromExpanded } from './kim-expanded-processor.js'
+import { kimHourUploaded } from './kim-run-availability.js'
 
 const TYPE = 'kim_surface_wind'
 const MODEL = 'KIMG/NE57'
@@ -683,6 +684,7 @@ export async function process({
   signal,
   collectComparison = collectKimAirportComparison,
   comparisonAirports = airports.filter(airport => MODEL_COMPARISON_AIRPORTS.includes(airport.icao)),
+  checkUploaded = kimHourUploaded,
 } = {}) {
   let lastError = null
 
@@ -733,6 +735,17 @@ export async function process({
         tmfc: candidate.tmfc,
         comparison,
       }
+    }
+    // 받기 전에 마지막 예보시각이 기상청에 올라왔는지 작은 요청 한 번으로 확인한다(10분마다 도는 수집이 아직 안 올라온
+    // 회차를 층마다 요청해 하루 사용량을 쓰지 않게). 안 올라왔거나 확인이 안 되면 이 회차는 다음 수집에 맡긴다.
+    const uploaded = await checkUploaded({ tmfc: candidate.tmfc, hf: Math.max(...forecastHours), credential, signal }).catch((error) => {
+      if (signal?.aborted || error?.name === 'AbortError') throw error
+      lastError = error
+      return false
+    })
+    if (!uploaded) {
+      lastError ||= Object.assign(new Error('kim_nwp_not_uploaded'), { code: 'kim_nwp_not_uploaded' })
+      continue
     }
     const entries = []
     let surfaceGrid = null

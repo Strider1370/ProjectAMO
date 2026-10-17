@@ -7,7 +7,7 @@ import config from '../src/config.js'
 import { KIM_NWP_LEVELS, KIM_NWP_MODEL, addForecastHours } from '../src/processors/kim-nwp-model.js'
 import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
 import { cropGridDocument, publishKoreaFromExpanded } from '../src/processors/kim-korea-crop.js'
-import { expandedAvailability, expandedRunElsewhere, koreaSixFromExpanded, markExpandedDisabled, processExpandedCycle } from '../src/processors/kim-expanded-processor.js'
+import { expandedAvailability, expandedRunElsewhere, expandedStartBlocked, koreaSixFromExpanded, markExpandedDisabled, processExpandedCycle } from '../src/processors/kim-expanded-processor.js'
 import { kstCutoffMs } from '../src/processors/kim-expanded-collector.js'
 import { startExpandedMonitor } from '../src/processors/kim-expanded-monitor.js'
 
@@ -115,12 +115,13 @@ test('a cycle job skips when unusable or short of disk, crops Korea from 06 UTC,
 })
 
 test('06 UTC crops Korea GKTG once both the Korea crop and its hours\' GKTG are ready, and falls back to the Korea calculation otherwise', async t => {
-  const root = temporary(t)
   const now = KST('2026-10-09', '20:15')
   const koreaHours = config.kim_nwp.forecast_hours
   const results = new Map(koreaHours.map(hf => [hf, { hf }]))
   const run = async ({ computeFirst = false, crop = async () => ({ revision: 'r', entries: [] }), compute = true } = {}) => {
     const calls = { crop: 0, fallback: 0, hours: null }
+    // 실행마다 새 저장소: 같은 회차를 다시 시작하면 재시도 간격(retry_gap_minutes) 때문에 건너뛴다.
+    const root = temporary(t)
     await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 1e12, cropKorea: () => ({ saved: true }),
       cropKoreaGktg: async ({ hours, hourResults }) => { calls.crop++; calls.hours = hours; assert.equal(hourResults.length, hours.length); return crop() },
       onKoreaGktgFallback: async () => { calls.fallback++ },
@@ -185,4 +186,47 @@ test('a run already going in another process makes the scheduled run skip; a sta
   await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 1e12, collect })
   assert.equal(collected, 1)
   assert.equal(fs.existsSync(lock), false)
+})
+
+test('06 UTC starts as soon as +0h is on KMA, starts without checking from 20:15, and waits retry_gap_minutes before retrying an unfinished run', async t => {
+  const root = temporary(t)
+  let now = KST('2026-10-09', '18:00')
+  const checks = []
+  let uploaded = false
+  const checkUploaded = async (args) => { checks.push(args); if (uploaded === 'error') throw new Error('fetch failed'); return uploaded }
+  let collected = 0
+  const collect = async ({ hours }) => { collected++; now += 30 * 60_000; return { published: true, publishedHours: hours.length - 1, planned: hours.length } }
+  const tick = () => processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 1e12, checkUploaded, collect })
+
+  assert.equal((await tick()).reason, 'kim_expanded_not_uploaded')
+  assert.deepEqual(checks.map(({ tmfc, hf, credential }) => ({ tmfc, hf, credential })), [{ tmfc: '2026100906', hf: 0, credential: 'bulk-key' }])
+  uploaded = 'error'
+  const failedCheck = await tick()
+  assert.equal(failedCheck.reason, 'kim_expanded_upload_check_failed')
+  assert.equal(failedCheck.collection.outcome, 'empty')
+  assert.equal(collected, 0)
+
+  uploaded = true
+  assert.equal((await tick()).collection.outcome, 'partial')
+  assert.equal(collected, 1)
+  // 덜 끝난 회차(18:30에 끝남): 60분이 지나기 전에는 다시 시작하지 않고, 확인 요청도 보내지 않는다.
+  now += 59 * 60_000
+  const checksBefore = checks.length
+  assert.equal((await tick()).reason, 'kim_expanded_retry_wait')
+  assert.equal(checks.length, checksBefore)
+  now += 60_000
+  await tick()
+  assert.equal(collected, 2)
+
+  // 다른 날: 20:15가 지나면 확인 없이 시작한다. 00 UTC는 확인하지 않는다.
+  const other = temporary(t)
+  checks.length = 0
+  uploaded = false
+  now = KST('2026-10-10', '20:15')
+  await processExpandedCycle({ cycle: '06', root: other, now: () => now, diskFree: () => 1e12, checkUploaded, collect })
+  now = KST('2026-10-10', '15:00')
+  await processExpandedCycle({ cycle: '00', root: other, now: () => now, diskFree: () => 1e12, checkUploaded, collect })
+  assert.equal(checks.length, 0)
+  assert.equal(collected, 4)
+  assert.equal(await expandedStartBlocked({ root: other, cycle: '00', tmfc: '2026101000', now, checkUploaded }), null)
 })

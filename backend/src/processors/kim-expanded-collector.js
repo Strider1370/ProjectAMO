@@ -23,13 +23,15 @@ import { runKimDerivedWorker } from './kim-derived-worker.js'
 import { createKimDownloadOffload } from './kim-download-offload.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { appendKimRunEvent } from './kim-run-events.js'
+import { isKimNotUploaded } from './kim-run-availability.js'
 import store from '../store.js'
 import { prefetchAciSupplements, ACI_ALGORITHM, ACI_SPEC } from './kim-aci-processor.js'
 import { publishKimAciRun, writeKimAciAttempt } from './kim-aci-store.js'
 
 const DOMAIN = 'ea'
 
-// 발표회차 날짜(KST)의 HH:MM KST를 epoch ms로. 00 UTC 회차는 같은 날 15시, 06 UTC는 20:15에 시작해 그날 23:50에 멈춘다.
+// 발표회차 날짜(KST)의 HH:MM KST를 epoch ms로. 00 UTC 회차는 같은 날 15시, 06 UTC는 +0h가 올라오는 대로(늦어도 20:15) 시작해
+// 그날 23:50에 새 요청을 멈춘다.
 // 시각 안 재시도 간격(첫 시도 뒤 2번).
 export const HOUR_RETRY_DELAYS_MS = [15_000, 60_000]
 
@@ -81,6 +83,9 @@ export async function collectExpandedRun({
   onGktgComputed = async () => {},
   // 한 시각 안에서 실패한 층·보조 입력은 이만큼 기다렸다 다시 받는다(일시적인 fetch failed로 시각 전체를 잃지 않게).
   retryDelaysMs = HOUR_RETRY_DELAYS_MS,
+  // 그 시각이 기상청에 아직 없으면 이 간격으로 다시 받고, 시각마다 이만큼까지 기다린다.
+  uploadRetryMs = 120_000,
+  uploadWaitMs = config.kim_expanded.hour_upload_wait_minutes * 60_000,
 } = {}) {
   const { hours: cycleHours, minHour } = expandedCycle(tmfc)
   const hours = plannedHours ?? cycleHours
@@ -186,35 +191,50 @@ export async function collectExpandedRun({
       let pending = levels.map(level => ({ level, tmfc, hf, credential, domain: DOMAIN }))
       let prefetchError = null
       try {
-        for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
-          if (attempt > 0) {
+        // 실패하면 retryDelaysMs 간격으로 다시 받는다. 기상청에 그 시각이 아직 안 올라온 것이면(앞쪽 시각부터 차례로
+        // 올라온다) 재시도 횟수를 쓰지 않고 uploadRetryMs 간격으로 uploadWaitMs까지 기다린다.
+        let attempt = 0
+        let waitedMs = 0
+        let waitForUpload = false
+        while (true) {
+          if (waitForUpload) {
+            appendKimRunEvent(runDir, { type: 'expanded_hour_waiting', hf, waitedMs, failedTasks: pending.length, supplement: Boolean(prefetchError) })
+            await delay(uploadRetryMs, undefined, { signal })
+            waitedMs += uploadRetryMs
+          } else if (attempt > 0) {
             appendKimRunEvent(runDir, { type: 'expanded_hour_retry', hf, attempt, failedTasks: pending.length, supplement: Boolean(prefetchError),
               error: String((prefetchError || lastError)?.code || (prefetchError || lastError)?.message || 'failed').slice(0, 200) })
             await delay(retryDelaysMs[attempt - 1], undefined, { signal })
           }
           const failed = []
+          const errors = []
           await mapKimNwpTasksWithConcurrency(pending, config.kim_expanded.concurrency, async (task) => {
             try {
               const { grid, entry, lastError: taskError } = await runTask({ task })
-              if (taskError) { failed.push(task); lastError = taskError; return }
+              if (taskError) { failed.push(task); errors.push(taskError); lastError = taskError; return }
               hourEntries.push(entry || buildKimNwpIndexEntry(grid, path.relative(root, resolveKimNwpGridPath({ root, model: grid.model, tmfc, hf, levelId: grid.level.id, domain: DOMAIN })).replace(/\\/g, '/')))
             } catch (error) {
               if (signal?.aborted || error?.name === 'AbortError') throw error
               failed.push(task)
+              errors.push(error)
               lastError = error
             }
           })
           pending = failed
           prefetchError = null
-          if (pending.length) continue
-          for (const run of prefetch) {
-            try { await run({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }) } catch (error) {
-              if (signal?.aborted || error?.name === 'AbortError') throw error
-              prefetchError = error
-              break
+          if (!pending.length) {
+            for (const run of prefetch) {
+              try { await run({ root, domain: DOMAIN, tmfc, hf, signal, fetchGrid }) } catch (error) {
+                if (signal?.aborted || error?.name === 'AbortError') throw error
+                prefetchError = error
+                break
+              }
             }
           }
-          if (!prefetchError) break
+          const failure = pending.length ? errors : prefetchError ? [prefetchError] : []
+          if (!failure.length) break
+          waitForUpload = failure.every(isKimNotUploaded) && waitedMs + uploadRetryMs <= uploadWaitMs && now() + uploadRetryMs < stopAt
+          if (!waitForUpload && ++attempt > retryDelaysMs.length) break
         }
       } catch (error) {
         // 취소(abort)는 이 시각을 실패로 두고, 아래 시각 반복에서 cancelled로 끝난다.

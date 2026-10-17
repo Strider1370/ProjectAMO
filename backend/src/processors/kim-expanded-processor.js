@@ -5,6 +5,8 @@
 //   기존처럼 일반 키로 받는다(kim-surface-wind-processor.js가 koreaSixFromExpanded로 판단).
 // - 디스크: 시작 전 여유 ≥ 예상 회차 크기 + 3 GiB, 시각마다 3 GiB 아래면 멈춘다.
 // - 06 UTC가 시작되면 아직 이어받던 00 UTC는 새 시각을 받지 않는다.
+// - 06 UTC는 정해진 시각을 기다리지 않는다. 5분마다 +0h가 기상청에 올라왔는지 확인하고 올라왔으면 바로 시작한다
+//   (start_without_check_kst까지 확인이 안 되면 확인 없이 시작). 시작한 회차가 덜 끝났으면 retry_gap_minutes 뒤에 다시 시도한다.
 // - 06 UTC는 +0~12h가 모이면 한반도 회차를 잘라 게시한다(21:30 KST까지 안 되면 한반도 수집기가 일반 키로 받는다).
 //   그 시각들의 GKTG 계산이 끝나면 한반도 GKTG도 잘라 게시한다. 못 하면 onKoreaGktgFallback(예전처럼 한반도에서 계산)을 부른다.
 import fs from 'node:fs'
@@ -20,6 +22,8 @@ import { startExpandedMonitor } from './kim-expanded-monitor.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { readKimNwpLatest, readKimNwpManifest, buildKimNwpRunId, resolveKimNwpRoot, resolveKimNwpRunDir } from './kim-nwp-store.js'
 import { KIM_NWP_MODEL } from './kim-nwp-model.js'
+import { kimHourUploaded } from './kim-run-availability.js'
+import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 
 // 확대 영역 06 UTC 한 회차(33시각) 최대 크기. 2026-10-09 06 UTC 실측 5.83 GB(기본 격자 + GKTG·권계면 + 지도 이진 파일
 // + ACI + 강수 장)에 날씨에 따른 압축률 차이를 더했다.
@@ -30,6 +34,40 @@ const stopRequested = { '00': false, '06': false }
 const kstDate = (ms) => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)
 const disabledFile = (root) => path.join(resolveKimNwpRoot(root, 'ea'), 'disabled.json')
 const lockFile = (root, cycle) => path.join(resolveKimNwpRoot(root, 'ea'), `run-${cycle}.lock`)
+const attemptFile = (root, cycle) => path.join(resolveKimNwpRoot(root, 'ea'), `attempt-${cycle}.json`)
+
+function readAttempt(root, cycle) {
+  try { return JSON.parse(fs.readFileSync(attemptFile(root, cycle), 'utf8')) } catch { return null }
+}
+
+function writeAttempt(root, cycle, attempt) {
+  try { fs.writeFileSync(attemptFile(root, cycle), `${JSON.stringify(attempt)}\n`) } catch {}
+}
+
+// 확인하고 시작하는 회차(start_without_check_kst가 있는 06 UTC)를 지금 시작하지 않을 이유. 시작하면 null.
+// - 오늘 이미 시작했던 회차: 끝난 지(끝 기록이 없으면 시작한 지) retry_gap_minutes가 지나야 다시 시도한다.
+// - 아직 시작 전: +0h가 기상청에 올라왔을 때만 시작한다. start_without_check_kst가 지나면 확인 없이 시작한다.
+export async function expandedStartBlocked({ root = config.storage.base_path, cycle, tmfc, now = Date.now(), checkUploaded = kimHourUploaded, signal }) {
+  const fallback = config.kim_expanded.start_without_check_kst?.[cycle]
+  if (!fallback) return null
+  const attempt = readAttempt(root, cycle)
+  if (attempt?.tmfc === tmfc) {
+    const lastMs = Date.parse(attempt.endedAt || attempt.startedAt)
+    return now - lastMs < config.kim_expanded.retry_gap_minutes * 60_000 ? 'kim_expanded_retry_wait' : null
+  }
+  if (now >= kstCutoffMs(tmfc, fallback)) return null
+  let credential
+  try {
+    credential = selectKimRunCredential({ tmfc, ...kimBulkCredentialOptions(config, now, { required: true }) })
+  } catch (error) {
+    return error.code || 'kim_bulk_credential_unavailable'
+  }
+  try {
+    return await checkUploaded({ tmfc, hf: 0, credential, signal }) ? null : 'kim_expanded_not_uploaded'
+  } catch {
+    return 'kim_expanded_upload_check_failed'
+  }
+}
 
 // 다른 프로세스(수동 실행 등)가 같은 회차(00·06)를 받는 중이면 그 프로세스 정보. 프로세스가 없으면 남은 잠금은 무시한다.
 export function expandedRunElsewhere(root, cycle, pid = process.pid) {
@@ -91,6 +129,7 @@ export async function processExpandedCycle({
   koreaGktgEnabled = config.kim_gktg?.enabled !== false,
   diskFree = freeBytes,
   startMonitor = startExpandedMonitor,
+  checkUploaded = kimHourUploaded,
 } = {}) {
   const tmfc = expandedRunTmfc(cycle, now())
   const availability = expandedAvailability({ root, now: now() })
@@ -105,6 +144,10 @@ export async function processExpandedCycle({
   const elsewhere = expandedRunElsewhere(root, cycle)
   if (elsewhere) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: 'kim_expanded_running_elsewhere', collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: 'kim_expanded_running_elsewhere' }) }
+  }
+  const blocked = await expandedStartBlocked({ root, cycle, tmfc, now: now(), checkUploaded, signal })
+  if (blocked) {
+    return { type: 'kim_expanded', tmfc, skipped: true, reason: blocked, collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: blocked }) }
   }
   if (diskFree(root) < EXPECTED_RUN_BYTES + MIN_FREE_BYTES) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: 'disk_reserve', collection: collectionResult('failed', null, { reason: 'disk_reserve' }) }
@@ -132,7 +175,9 @@ export async function processExpandedCycle({
   }
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: 'ea' })
   fs.mkdirSync(path.dirname(lockFile(root, cycle)), { recursive: true })
-  fs.writeFileSync(lockFile(root, cycle), `${JSON.stringify({ pid: process.pid, tmfc, startedAt: new Date(now()).toISOString() })}\n`)
+  const startedAt = new Date(now()).toISOString()
+  fs.writeFileSync(lockFile(root, cycle), `${JSON.stringify({ pid: process.pid, tmfc, startedAt })}\n`)
+  writeAttempt(root, cycle, { tmfc, startedAt })
   const monitor = startMonitor({ runDir })
   let result
   let memory
@@ -160,6 +205,7 @@ export async function processExpandedCycle({
     })
   } finally {
     try { if (JSON.parse(fs.readFileSync(lockFile(root, cycle), 'utf8')).pid === process.pid) fs.rmSync(lockFile(root, cycle), { force: true }) } catch {}
+    writeAttempt(root, cycle, { tmfc, startedAt, endedAt: new Date(now()).toISOString() })
     memory = monitor.stop()
     appendKimRunEvent(runDir, { type: 'expanded_monitor', ...memory })
   }

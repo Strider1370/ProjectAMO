@@ -28,6 +28,7 @@ import {
   resolveKimHumidityComponentRequest,
   resolveKimIcingComponentRequests,
   resolveKimSurfaceWindCandidates,
+  process as processKimSurfaceWind,
   selectLegacySurfaceWindGrid,
   shouldPublishKimNwpRun,
   shouldReplaceKimNwpLatest,
@@ -169,8 +170,8 @@ test('resolveKimSurfaceWindCandidates starts with recent synoptic cycles and hf 
   ])
 })
 
-test('KIM NWP scheduler starts at expected publication plus five hours and retries twice', () => {
-  assert.equal(config.schedule.kim_surface_wind_interval, '12 1,5,6,7,11,12,13,17,18,19,23 * * *')
+test('KIM NWP scheduler checks every 20 minutes from analysis +3h to +7h, still covering the old +5h12m start and its retries', () => {
+  assert.equal(config.schedule.kim_surface_wind_interval, '12,32,52 0,1,3-7,9-13,15-19,21-23 * * *')
 })
 
 test('KIM NWP comparison collects F000 through F012', () => {
@@ -978,4 +979,18 @@ test('readKimNwpGridVariableNames lists a stored layer\'s variables, and null wh
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('the Korea collector asks KMA for the last forecast hour first and leaves a run that is not uploaded yet to the next collection', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kim-korea-upload-'))
+  const saved = { base: config.storage.base_path, fetch: globalThis.fetch, key: config.api.kim_nwp_auth_key }
+  config.storage.base_path = root
+  config.api.kim_nwp_auth_key = 'kim-key'
+  globalThis.fetch = async () => { throw new Error('no network in tests') }
+  t.after(async () => { config.storage.base_path = saved.base; config.api.kim_nwp_auth_key = saved.key; globalThis.fetch = saved.fetch; await rm(root, { recursive: true, force: true }) })
+  const checks = []
+  await assert.rejects(processKimSurfaceWind({ candidates: [{ tmfc: '2026101700', hf: 0 }], checkUploaded: async (args) => { checks.push(args); return false } }),
+    (error) => error.code === 'kim_nwp_not_uploaded')
+  assert.deepEqual(checks.map(({ tmfc, hf, credential }) => ({ tmfc, hf, credential })), [{ tmfc: '2026101700', hf: 12, credential: 'kim-key' }])
+  assert.equal(readKimNwpLatest(root), null)
 })
