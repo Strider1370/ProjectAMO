@@ -105,6 +105,10 @@ else
   exit 1
 fi
 
+# 시연 스냅샷이 이번 코드에서도 쓸 수 있는지 본다. 배포를 막지는 않는다(경고만).
+echo "[deploy] checking demo snapshots..."
+node scripts/check-demo-snapshots.mjs || echo "[deploy] 시연 스냅샷 점검 경고 — 관리자 화면 시연 모드에서 확인" >&2
+
 echo "[deploy] recording successful deployment..."
 projectamo_write_success_marker .deployed-at
 

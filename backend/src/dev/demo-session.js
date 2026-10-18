@@ -1,6 +1,6 @@
 import config from '../config.js'
 import store from '../store.js'
-import { quiesceCollections } from '../index.js'
+import { waitForCollectionIdle } from '../index.js'
 import { dataView } from './data-view.js'
 import { inspectSnapshot, nextSnapshotName, saveSnapshot } from './snapshot-store.js'
 
@@ -10,7 +10,9 @@ export function createDemoSession({
   views = dataView,
   snapshots = { inspectSnapshot, nextSnapshotName, saveSnapshot },
   reloadActive = (root) => store.initActiveFromFiles(root),
-  drain = quiesceCollections,
+  // 저장 전에 짧은 수집(METAR·레이더 등)이 파일을 다 쓸 때까지 잠깐 기다린다. 수집을 끊지 않는다. 확대 회차는
+  // 몇 시간씩 돌아 기다리지 않는다(이미 게시한 회차만 담는다). 1분 안에 안 끝나면 그대로 담는다.
+  drain = () => waitForCollectionIdle({ timeoutMs: 60_000, ignore: (type) => type.startsWith('kim_expanded_') }).catch(() => {}),
 } = {}) {
   let transitioning = false
   let pendingCaptures = 0

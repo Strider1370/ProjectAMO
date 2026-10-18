@@ -3,8 +3,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
+import config from '../config.js'
 import { initFromFiles, loadLatest } from '../store.js'
 import { kimDocumentExists } from '../processors/kim-doc-store.js'
+import { EXPANDED_START_FREE_BYTES } from '../processors/kim-expanded-disk.js'
 
 const SNAPSHOT_EXCLUDE = new Set(['snapshots', 'stats']) // 캡처 대상에서 제외(메타/재귀 방지)
 const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫자/-/_ 만 허용
@@ -15,6 +17,18 @@ const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫�
 // 공항 모델 비교는 latest 포인터가 immutable payload를 참조하고, METAR·AMOS는 과거 3시간 비교에 최근 파일도 필요하다.
 // kim_surface_chart도 latest.json이 runs/<runId>/ 밑의 시각별 그림·GeoJSON을 가리킨다.
 const FULL_DIR_TYPES = new Set(['kim_nwp', 'kim_surface_chart', 'ktg', 'radar', 'satellite', 'airport_model_comparison', 'metar', 'amos'])
+// 레이더·위성 폴더에는 오래된 그림이 남아 있다(2026-10 운영 서버에 8월 그림 수백 MB). 기준시각 12시간 전부터의 그림과
+// 메타 파일만 담는다. 화면이 쓰는 3시간 이력보다 넉넉하다.
+const FRAME_TYPES = new Set(['radar', 'satellite'])
+const FRAME_HISTORY_MS = 12 * 3600_000
+// KIM 확대 영역은 회차 하나가 6 GB 가까이 되어 기준시각 앞뒤 예보시각만 담는다(시각당 약 155 MB, 기본 8시각 약 1.3 GB).
+// 이 시각들만 남도록 목록 파일(latest·index·manifest)을 고쳐 써서 시간 막대에 담은 시각만 나온다. 계산용 입력(raw)과
+// 수집 기록(events·monitor)은 화면에 쓰지 않아 뺀다. 창 안에 시각이 하나도 없으면 확대 영역을 담지 않고, 지도는 한반도
+// 회차로 대신 보인다(server.js resolveKimDomain).
+export const KIM_EXPANDED_TYPE = 'kim_nwp_ea'
+export const DEMO_KIM_WINDOW = Object.freeze({ beforeHours: 1, afterHours: 6 })
+const HOUR_SEGMENT = /^hf(\d{3})(?:\.|$)/
+const EXPANDED_SKIP = new Set(['raw', 'events.jsonl', 'monitor.jsonl'])
 // latest.json이 없어서 일반 스캔(listCapturableTypes)에 안 걸리지만 캡처해야 하는 디렉터리.
 const EXTRA_CAPTURE_TYPES = new Set(['radar', 'satellite', 'airport_model_comparison'])
 // 이 자료가 빠지면 복원 뒤 해당 종류만 실황으로 남아 서로 다른 시각의 데이터가 섞인다.
@@ -24,13 +38,18 @@ export const DEMO_REQUIRED_TYPES = Object.freeze([
   'airmet',
   'airport_info',
   'amos',
+  'asos_ceiling',
   'environment',
+  'flight_category_overlay',
   'ground_forecast',
   'kim_nwp',
+  'kim_surface_wind',
+  'kma_special_warning',
   'lightning',
   'metar',
   'metar_overseas',
   'notam',
+  'overseas_forecast',
   'radar',
   'satellite',
   'sigmet',
@@ -39,12 +58,21 @@ export const DEMO_REQUIRED_TYPES = Object.freeze([
   'taf',
   'taf_overseas',
   'takeoff_fcst',
+  'terminal_flights',
   'warning',
 ])
 // 스냅샷 로드 직전 실황을 자동 백업해두는 예약 이름 — 목록에 노출 안 함, "되돌리기" 전용.
 export const RESERVED_LIVE_BACKUP = '_live_backup'
 const ADSB_REFERENCE_TOLERANCE_MS = 30 * 60 * 1000
 const GENERATIONS_DIR = '.generations'
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+  } catch {
+    return null
+  }
+}
 
 export function isValidSnapshotName(name) {
   return typeof name === 'string' && NAME_RE.test(name)
@@ -92,12 +120,114 @@ function listCapturableTypes(basePath) {
   return [...new Set([...withLatestJson, ...extra])]
 }
 
-function copyTypeInto(basePath, type, destDir) {
-  if (FULL_DIR_TYPES.has(type)) {
-    fs.cpSync(path.join(basePath, type), destDir, { recursive: true })
-  } else {
-    fs.mkdirSync(destDir, { recursive: true })
-    fs.copyFileSync(path.join(basePath, type, 'latest.json'), path.join(destDir, 'latest.json'))
+function listFiles(root, rel = '') {
+  const files = []
+  for (const entry of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+    const child = rel ? path.join(rel, entry.name) : entry.name
+    if (entry.isDirectory()) files.push(...listFiles(root, child))
+    else if (entry.isFile()) files.push(child)
+  }
+  return files
+}
+
+function hourOfPath(rel) {
+  for (const segment of rel.split(path.sep)) {
+    const match = HOUR_SEGMENT.exec(segment)
+    if (match) return Number(match[1])
+  }
+  return null
+}
+
+// 확대 영역 최신 회차에서 기준시각 앞뒤(window)에 드는 예보시각.
+export function selectExpandedHours(latest, referenceMs, window = DEMO_KIM_WINDOW) {
+  const tmfc = String(latest?.latestRun || '')
+  if (!/^\d{10}$/.test(tmfc) || !Number.isFinite(referenceMs)) return []
+  const initMs = Date.UTC(+tmfc.slice(0, 4), +tmfc.slice(4, 6) - 1, +tmfc.slice(6, 8), +tmfc.slice(8, 10))
+  return (latest.hours || []).filter((hf) => {
+    const validMs = initMs + hf * 3600_000
+    return validMs >= referenceMs - window.beforeHours * 3600_000 && validMs <= referenceMs + window.afterHours * 3600_000
+  })
+}
+
+// 목록 파일에서 담지 않은 예보시각을 뺀다(hf가 있는 항목, hours·expectedHours·availableHours, index의 시각별 availability).
+export function trimToHours(value, keep) {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => !(item && typeof item === 'object' && Number.isInteger(item.hf)) || keep.has(item.hf))
+      .map((item) => trimToHours(item, keep))
+  }
+  if (!value || typeof value !== 'object') return value
+  const out = {}
+  for (const [key, item] of Object.entries(value)) {
+    if (['hours', 'expectedHours', 'availableHours'].includes(key) && Array.isArray(item)) out[key] = item.filter((hf) => keep.has(hf))
+    else if (key === 'availability' && item && typeof item === 'object') {
+      out[key] = Object.fromEntries(Object.entries(item).map(([level, byHour]) => [level,
+        Object.fromEntries(Object.entries(byHour || {}).filter(([hf]) => !/^\d+$/.test(hf) || keep.has(Number(hf))))]))
+    } else out[key] = trimToHours(item, keep)
+  }
+  // 기본 격자 manifest의 격자 수도 담은 시각 수에 맞춘다.
+  if (value.type === 'kim_nwp_manifest' && Array.isArray(value.hours) && value.hours.length && Number.isFinite(value.expectedGridCount)) {
+    const perHour = value.expectedGridCount / value.hours.length
+    out.expectedGridCount = Math.round(perHour * out.hours.length)
+    out.gridCount = Math.min(value.gridCount ?? out.expectedGridCount, out.expectedGridCount)
+  }
+  return out
+}
+
+function planExpanded(basePath, referenceMs, window) {
+  const dir = path.join(basePath, KIM_EXPANDED_TYPE)
+  const latest = readJson(path.join(dir, 'latest.json'))
+  const hours = selectExpandedHours(latest, referenceMs, window)
+  if (!hours.length || !latest?.latestRunId) return { files: [], expanded: null }
+  const keep = new Set(hours)
+  const runRel = path.join('runs', latest.latestRunId)
+  const files = []
+  for (const rel of ['latest.json', 'index.json']) files.push({ rel, trim: true })
+  if (fs.existsSync(path.join(dir, 'derived'))) {
+    for (const rel of listFiles(dir, 'derived')) files.push({ rel, trim: path.basename(rel) === 'latest.json' })
+  }
+  for (const rel of listFiles(dir, runRel)) {
+    const inside = path.relative(runRel, rel)
+    if (EXPANDED_SKIP.has(inside.split(path.sep)[0])) continue
+    const hf = hourOfPath(inside)
+    if (hf !== null && !keep.has(hf)) continue
+    files.push({ rel, trim: path.basename(rel) === 'manifest.json' })
+  }
+  return {
+    files: files.map((file) => ({ ...file, src: path.join(dir, file.rel), rel: path.join(KIM_EXPANDED_TYPE, file.rel), keep })),
+    expanded: { tmfc: latest.latestRun, hours },
+  }
+}
+
+// 담을 파일 목록. 크기를 먼저 더해 디스크를 확인한 뒤에 복사한다.
+function planType(basePath, type, referenceMs, window) {
+  if (type === KIM_EXPANDED_TYPE) return planExpanded(basePath, referenceMs, window)
+  const dir = path.join(basePath, type)
+  let rels
+  if (FRAME_TYPES.has(type)) {
+    rels = listFiles(dir).filter((rel) => rel.endsWith('.json')
+      || !Number.isFinite(referenceMs) || fs.statSync(path.join(dir, rel)).mtimeMs >= referenceMs - FRAME_HISTORY_MS)
+  } else if (FULL_DIR_TYPES.has(type)) rels = listFiles(dir)
+  else rels = ['latest.json']
+  return { files: rels.map((rel) => ({ src: path.join(dir, rel), rel: path.join(type, rel) })) }
+}
+
+function copyPlannedFile(file, stageBase) {
+  const dest = path.join(stageBase, file.rel)
+  fs.mkdirSync(path.dirname(dest), { recursive: true })
+  if (file.trim) {
+    const value = readJson(file.src)
+    if (value) { fs.writeFileSync(dest, JSON.stringify(trimToHours(value, file.keep))); return }
+  }
+  fs.copyFileSync(file.src, dest)
+}
+
+function freeBytes(target) {
+  try {
+    const stat = fs.statfsSync(target)
+    return stat.bavail * stat.bsize
+  } catch {
+    return Number.POSITIVE_INFINITY
   }
 }
 
@@ -227,24 +357,48 @@ function referenceTimeFor(basePath) {
   return metar?.fetched_at || new Date().toISOString()
 }
 
-export function saveSnapshot(basePath, name, { beforePublish } = {}) {
+// minFreeAfterBytes: 저장한 뒤에도 남아야 하는 디스크 여유. 확대 수집을 쓰면 다음 확대 회차를 시작할 자리(약 8.1 GB)를
+// 남긴다. 모자라면 아무것도 쓰지 않고 snapshot_disk_budget으로 거절한다.
+export function saveSnapshot(basePath, name, {
+  beforePublish,
+  kimWindow = DEMO_KIM_WINDOW,
+  minFreeAfterBytes = config.kim_expanded?.enabled ? EXPANDED_START_FREE_BYTES : 0,
+  diskFree = freeBytes,
+  activePath = path.join(basePath, '.active-data'),
+} = {}) {
   if (!snapshotPath(basePath, name)) throw new Error('invalid_snapshot_name')
+  const referenceTime = referenceTimeFor(basePath)
+  const referenceMs = Date.parse(referenceTime)
+  const saved = []
+  const files = []
+  let kimExpanded = null
+  for (const type of listCapturableTypes(basePath)) {
+    const plan = planType(basePath, type, referenceMs, kimWindow)
+    if (!plan.files.length) continue
+    files.push(...plan.files)
+    saved.push(type)
+    if (plan.expanded) kimExpanded = plan.expanded
+  }
+  const bytes = files.reduce((sum, file) => sum + fs.statSync(file.src).size, 0)
+  const free = diskFree(basePath)
+  if (free - bytes < minFreeAfterBytes) {
+    const error = new Error('snapshot_disk_budget')
+    error.code = 'snapshot_disk_budget'
+    error.detail = { bytes, free, minFreeAfterBytes }
+    throw error
+  }
+
   const generation = newGeneration()
   const generationRoot = snapshotGenerationRoot(basePath, name)
   const generationPath = path.join(generationRoot, generation)
   const stageBase = path.join(generationRoot, `.capture-${generation}`)
   fs.mkdirSync(generationRoot, { recursive: true })
   fs.rmSync(stageBase, { recursive: true, force: true })
-  const saved = []
   try {
-    for (const type of listCapturableTypes(basePath)) {
-      copyTypeInto(basePath, type, path.join(stageBase, type))
-      saved.push(type)
-    }
-    const referenceTime = referenceTimeFor(basePath)
+    for (const file of files) copyPlannedFile(file, stageBase)
     const savedAt = new Date().toISOString()
     const revision = `snapshot:${name}:${generation}`
-    fs.writeFileSync(path.join(stageBase, 'meta.json'), JSON.stringify({ savedAt, referenceTime, generation, revision }, null, 2))
+    fs.writeFileSync(path.join(stageBase, 'meta.json'), JSON.stringify({ savedAt, referenceTime, generation, revision, bytes, kimExpanded, kimWindow }, null, 2))
     beforePublish?.({ stageBase, generation, generationPath })
     fs.renameSync(stageBase, generationPath)
     try {
@@ -253,10 +407,55 @@ export function saveSnapshot(basePath, name, { beforePublish } = {}) {
       fs.rmSync(generationPath, { recursive: true, force: true })
       throw error
     }
-    return { name, saved, referenceTime, savedAt, generation, revision }
+    pruneSnapshotGenerations(basePath, name, { keep: generation, activePath })
+    return { name, saved, referenceTime, savedAt, generation, revision, bytes, kimExpanded }
   } finally {
     fs.rmSync(stageBase, { recursive: true, force: true })
   }
+}
+
+function activeDemoView(activePath) {
+  try {
+    const meta = readJson(path.join(fs.realpathSync(activePath), '.view.json'))
+    return meta?.mode === 'demo' ? meta : null
+  } catch {
+    return null
+  }
+}
+
+// 같은 이름의 이전 generation과 그 시연 view를 지운다(스냅샷 하나가 2 GB 가까이 되어 쌓아 둘 수 없다).
+// 지금 시연 중인 generation은 남긴다. 다음 저장이나 삭제 때 지운다.
+export function pruneSnapshotGenerations(basePath, name, { keep, activePath = path.join(basePath, '.active-data') } = {}) {
+  const active = activeDemoView(activePath)
+  const inUse = new Set([keep, active?.name === name ? active.generation : null].filter(Boolean))
+  const generationRoot = snapshotGenerationRoot(basePath, name)
+  const viewsRoot = path.join(basePath, '.demo-views', name)
+  const removed = []
+  for (const root of [generationRoot, viewsRoot]) {
+    if (!fs.existsSync(root)) continue
+    for (const entry of fs.readdirSync(root)) {
+      if (inUse.has(entry) || entry.startsWith('.capture-')) continue
+      fs.rmSync(path.join(root, entry), { recursive: true, force: true })
+      if (root === generationRoot) removed.push(entry)
+    }
+  }
+  return removed
+}
+
+// 스냅샷을 지운다. 지금 시연 중인 스냅샷은 먼저 시연을 끝내야 지울 수 있다.
+export function deleteSnapshot(basePath, name, { activePath = path.join(basePath, '.active-data') } = {}) {
+  const pointer = snapshotPath(basePath, name)
+  if (!pointer || name === RESERVED_LIVE_BACKUP) throw new Error('invalid_snapshot_name')
+  if (!pathEntryExists(pointer)) return false
+  if (activeDemoView(activePath)?.name === name) {
+    const error = new Error('snapshot_in_use')
+    error.code = 'snapshot_in_use'
+    throw error
+  }
+  fs.rmSync(pointer, { recursive: true, force: true })
+  fs.rmSync(snapshotGenerationRoot(basePath, name), { recursive: true, force: true })
+  fs.rmSync(path.join(basePath, '.demo-views', name), { recursive: true, force: true })
+  return true
 }
 
 // skipBackup: true면 실황을 _live_backup에 백업하지 않고 바로 복원한다. 되돌리기(_live_backup 복원)
@@ -317,6 +516,51 @@ function inspectComparisonPointers(snapshotRoot, blockers, summaries) {
   }
   if (missing) blockers.push(`airport_model_comparison:missing_payloads:${missing}`)
   summaries.airport_model_comparison = { airportCount }
+}
+
+// 확대 영역은 담은 시각만 남긴 목록과 실제 파일이 맞는지 본다. 없으면 지도는 한반도 회차로 대신 보인다.
+function inspectExpanded(snapshotRoot, referenceMs, blockers, warnings, summaries) {
+  const root = path.join(snapshotRoot, KIM_EXPANDED_TYPE)
+  const latest = readJson(path.join(root, 'latest.json'))
+  if (!latest) { warnings.push('kim_nwp_ea:not_in_snapshot_korea_fallback'); return }
+  const hours = Array.isArray(latest.hours) ? latest.hours : []
+  const index = readJson(path.join(root, 'index.json'))
+  if (!hours.length) blockers.push('kim_nwp_ea:no_hours')
+  if (!index) { blockers.push('kim_nwp_ea:missing_index'); return }
+  if (String(index.times?.map((time) => time.hf)) !== String(hours)) blockers.push('kim_nwp_ea:index_hours_mismatch')
+  const runDir = path.join(root, 'runs', String(latest.latestRunId || ''))
+  if (!readJson(path.join(runDir, 'manifest.json'))) blockers.push('kim_nwp_ea:missing_run_manifest')
+  const levels = (index.levels || []).map((level) => level.id)
+  let missingGrids = 0
+  for (const hf of hours) {
+    for (const level of levels) {
+      if (!fs.existsSync(path.join(runDir, 'normalized', `hf${String(hf).padStart(3, '0')}`, level, 'grid.nc'))) missingGrids += 1
+    }
+  }
+  if (missingGrids) blockers.push(`kim_nwp_ea:missing_grids:${missingGrids}`)
+  const keep = new Set(hours)
+  for (const kind of ['gktg', 'tropopause', 'aci']) {
+    const manifest = readJson(path.join(root, 'derived', kind, 'latest.json'))
+    if (!manifest) { warnings.push(`kim_nwp_ea:${kind}_missing`); continue }
+    const entries = manifest.entries || []
+    if (entries.some((entry) => !keep.has(entry.hf))) blockers.push(`kim_nwp_ea:${kind}_hours_outside_snapshot`)
+    if (!hours.every((hf) => entries.some((entry) => entry.hf === hf))) warnings.push(`kim_nwp_ea:${kind}_incomplete`)
+    if (kind === 'gktg') {
+      const missing = entries.filter((entry) => typeof entry.path === 'string' && !kimDocumentExists(path.join(snapshotRoot, entry.path))).length
+      if (missing) blockers.push(`kim_nwp_ea:gktg_missing_fields:${missing}`)
+    }
+    if (kind === 'tropopause') {
+      const missing = entries.filter((entry) => !fs.existsSync(path.join(runDir, 'derived', 'tropopause', `hf${String(entry.hf).padStart(3, '0')}`, `${entry.revision}.nc`))).length
+      if (missing) blockers.push(`kim_nwp_ea:tropopause_missing_fields:${missing}`)
+    }
+  }
+  const tmfc = String(latest.latestRun || '')
+  const initMs = /^\d{10}$/.test(tmfc) ? Date.UTC(+tmfc.slice(0, 4), +tmfc.slice(4, 6) - 1, +tmfc.slice(6, 8), +tmfc.slice(8, 10)) : NaN
+  const validTimes = hours.map((hf) => initMs + hf * 3600_000)
+  if (Number.isFinite(referenceMs) && validTimes.length && (referenceMs < validTimes[0] || referenceMs > validTimes.at(-1))) {
+    warnings.push('kim_nwp_ea:reference_time_outside_hours')
+  }
+  summaries[KIM_EXPANDED_TYPE] = { latestRun: latest.latestRun ?? null, hours }
 }
 
 export function inspectSnapshot(basePath, name) {
@@ -407,6 +651,8 @@ export function inspectSnapshot(basePath, name) {
       blockers.push(`${type}:invalid_latest_json`)
     }
   }
+
+  inspectExpanded(snapshotRoot, Date.parse(meta.referenceTime), blockers, warnings, summaries)
 
   const gktgPointer = path.join(snapshotRoot, 'kim_nwp', 'derived', 'gktg', 'latest.json')
   if (fs.existsSync(gktgPointer)) {

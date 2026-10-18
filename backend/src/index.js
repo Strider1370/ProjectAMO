@@ -143,11 +143,13 @@ export function activeCollectionTypes() {
   return Object.entries(locks).filter(([, active]) => active).map(([type]) => type)
 }
 
-export async function waitForCollectionIdle({ timeoutMs = 120_000, pollMs = 100 } = {}) {
+// ignore: 기다리지 않을 수집(시연 스냅샷 저장은 몇 시간씩 도는 확대 회차를 기다리지 않는다).
+export async function waitForCollectionIdle({ timeoutMs = 120_000, pollMs = 100, ignore = () => false } = {}) {
   const deadline = Date.now() + timeoutMs
-  while (activeCollectionTypes().length > 0) {
+  const active = () => activeCollectionTypes().filter((type) => !ignore(type))
+  while (active().length > 0) {
     if (Date.now() >= deadline) {
-      throw new Error(`collection_drain_timeout:${activeCollectionTypes().join(',')}`)
+      throw new Error(`collection_drain_timeout:${active().join(',')}`)
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs))
   }

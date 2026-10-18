@@ -21,7 +21,7 @@ import { recordDemoEvent, getDemoEvents } from '../dev/demo-mode.js'
 import { getActiveDataContext } from '../dev/data-view.js'
 import { getLastAlertEvaluation } from '../alerts/scheduler.js'
 import { demoSession } from '../dev/demo-session.js'
-import { listSnapshots, inspectSnapshot, isValidSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
+import { deleteSnapshot, listSnapshots, inspectSnapshot, isValidSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
 import config from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
 import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operation-registry.js'
@@ -165,7 +165,25 @@ export function createAdminRouter({ db = null } = {}) {
       res.json({ ok: true, ...savedSnapshot, inspection: inspectSnapshot(config.storage.base_path, savedSnapshot.name) })
     } catch (error) {
       recordDemoEvent('save-failed', error.message)
+      // 디스크가 모자라면 다음 확대 회차를 시작할 자리를 지키려고 저장하지 않는다(snapshot-store.js saveSnapshot).
+      if (error.code === 'snapshot_disk_budget') return res.status(507).json({ error: 'snapshot_disk_budget', ...error.detail })
       res.status(error.message.startsWith('collection_drain_timeout') ? 503 : 500).json({ error: 'snapshot_save_failed' })
+    }
+  })
+
+  // 스냅샷 삭제. 지금 시연 중인 스냅샷은 시연을 끝낸 뒤에 지울 수 있다.
+  router.delete('/snapshot/:name', (req, res) => {
+    const { name } = req.params
+    if (!isValidSnapshotName(name) || name === RESERVED_LIVE_BACKUP) return res.status(400).json({ error: 'invalid_name' })
+    try {
+      const removed = deleteSnapshot(config.storage.base_path, name, { activePath: config.storage.active_path })
+      if (!removed) return res.status(404).json({ error: 'snapshot_not_found' })
+      recordDemoEvent('delete', name)
+      res.json({ ok: true, name })
+    } catch (error) {
+      if (error.code === 'snapshot_in_use') return res.status(409).json({ error: 'snapshot_in_use' })
+      recordDemoEvent('delete-failed', error.message)
+      res.status(500).json({ error: 'snapshot_delete_failed' })
     }
   })
 

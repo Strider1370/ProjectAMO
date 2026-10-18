@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getDemoMode, revertDemoMode, listSnapshots, saveSnapshot, loadSnapshot, getDemoModeLog } from './adminApi.js'
+import { getDemoMode, revertDemoMode, listSnapshots, saveSnapshot, loadSnapshot, deleteSnapshot, getDemoModeLog } from './adminApi.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import './AdminPage.css'
 
@@ -7,6 +7,23 @@ function fmtDateTime(iso, tz) {
   if (!iso) return '—'
   const d = new Date(iso)
   return new Intl.DateTimeFormat('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(d)
+}
+
+const fmtGb = (bytes) => (Number.isFinite(bytes) ? `${(bytes / 1e9).toFixed(1)} GB` : null)
+
+// 스냅샷에 담긴 KIM 확대 영역 예보시각(기준시각 앞뒤 일부만 담는다). 없으면 지도는 한반도 회차로 보인다.
+function snapshotSummary(snap) {
+  const hours = snap.kimExpanded?.hours
+  const kim = hours?.length ? `KIM 확대 +${hours[0]}~+${hours.at(-1)}h(${snap.kimExpanded.tmfc.slice(-2)} UTC)` : 'KIM 한반도만'
+  return [fmtGb(snap.bytes), kim].filter(Boolean).join(' · ')
+}
+
+function failureText(body, fallback) {
+  if (body?.error === 'snapshot_disk_budget') {
+    return `디스크 부족 — 저장하면 ${fmtGb(body.free - body.bytes)}만 남아 다음 확대 KIM 수집에 필요한 ${fmtGb(body.minFreeAfterBytes)}보다 적습니다. 기존 스냅샷을 지우고 다시 저장하세요.`
+  }
+  if (body?.error === 'snapshot_in_use') return '시연 중인 스냅샷은 시연을 끝낸 뒤에 지울 수 있습니다.'
+  return fallback
 }
 
 function readinessText(inspection) {
@@ -17,10 +34,12 @@ function readinessText(inspection) {
   const satellite = blockers.find((item) => item.startsWith('satellite:short_history:'))
   const adsb = blockers.find((item) => item.startsWith('adsb:reference_skew:'))
   const missingCount = blockers.filter((item) => item.startsWith('missing_type:')).length
+  const kim = blockers.find((item) => item.startsWith('kim_nwp_ea:'))
   if (radar) return `레이더 이력 부족 (${radar.split(':').at(-1)})`
   if (satellite) return `위성 이력 부족 (${satellite.split(':').at(-1)})`
   if (adsb) return '항공기 위치 시각 불일치'
   if (missingCount) return `핵심 자료 ${missingCount}종 누락`
+  if (kim) return `KIM 확대 영역 불완전 (${kim.split(':').slice(1).join(':')})`
   return `점검 실패 (${blockers.length}건)`
 }
 
@@ -63,7 +82,7 @@ export default function DemoModePanel() {
     } catch (err) {
       const reason = err.body?.error ?? err.message
       const inspection = err.body?.inspection
-      setMsg({ ok: false, text: inspection ? `${reason}: ${readinessText(inspection)}` : reason })
+      setMsg({ ok: false, text: failureText(err.body, inspection ? `${reason}: ${readinessText(inspection)}` : reason) })
     } finally {
       clearInterval(elapsedTimerRef.current)
       setBusyLabel(null)
@@ -124,15 +143,23 @@ export default function DemoModePanel() {
                       onClick={() => run(`${snap.name} 시연 시작 중`, () => loadSnapshot(snap.name), (d) => `시연 시작: ${d.name} (기준시각 ${fmtDateTime(d.now, tz)} ${tz})`)}>
                       {busy ? '⏳ 처리 중…' : `${i + 1}. ▶ 시연 시작 — 기준시각 ${fmtDateTime(snap.referenceTime, tz)} ${tz} · ${readinessText(snap.inspection)}`}
                     </button>
+                    <button type="button" className="admin-btn-reject" disabled={busy} style={{ marginLeft: 6 }}
+                      onClick={() => { if (window.confirm(`${snap.name} 스냅샷을 지울까요? 되돌릴 수 없습니다.`)) run(`${snap.name} 삭제 중`, () => deleteSnapshot(snap.name), `삭제됨: ${snap.name}`) }}>
+                      삭제
+                    </button>
+                    <div className="admin-empty" style={{ fontSize: 12 }}>{snapshotSummary(snap)}</div>
                   </li>
                 ))}
               </ol>
             )}
           </div>
           <button type="button" className="admin-btn-approve" disabled={busy}
-            onClick={() => run('지금 상태 저장 중', () => saveSnapshot(), (d) => `저장됨: ${d.name} (${d.saved.length}개 항목)`)}>
+            onClick={() => run('지금 상태 저장 중', () => saveSnapshot(), (d) => `저장됨: ${d.name} (${d.saved.length}개 항목 · ${snapshotSummary(d)})`)}>
             {busy ? '⏳ 처리 중…' : '💾 지금 상태를 새 스냅샷으로 저장'}
           </button>
+          <p className="admin-empty" style={{ fontSize: 12 }}>
+            KIM 확대 영역은 기준시각 1시간 전부터 6시간 뒤까지만 담습니다(약 1.3 GB). 다음 확대 수집에 필요한 디스크 여유가 모자라면 저장하지 않습니다.
+          </p>
         </>
       )}
 

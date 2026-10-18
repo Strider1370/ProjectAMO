@@ -48,3 +48,4 @@ export const saveSnapshot = (name) => fetch(`${base}/snapshot/save`, {
 export const loadSnapshot = (name) => fetch(`${base}/snapshot/load`, {
   method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
 }).then(j)
+export const deleteSnapshot = (name) => fetch(`${base}/snapshot/${encodeURIComponent(name)}`, { method: 'DELETE', credentials: 'include' }).then(j)
