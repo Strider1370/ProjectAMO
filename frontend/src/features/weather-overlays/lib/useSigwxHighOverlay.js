@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useDemoNowMs } from '../../../shared/demoMode/useDemoMode.js'
 import { createWafsChartRenderer } from './wafsChartRenderer.js'
 import { wafsChartPalette } from './wafsChartPalette.js'
 import { selectHazardFill } from './wafsHazardFill.js'
@@ -23,7 +24,10 @@ export function useSigwxHighOverlay({ mapRef, isStyleReady, styleRevision, enabl
   const [loaded, setLoaded] = useState(null)
   const [problem, setProblem] = useState(null)
   const [retry, setRetry] = useState(0)
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [clockMs, setNowMs] = useState(() => Date.now())
+  // 지금(시연 중이면 시연 기준시각).
+  const demoNowMs = useDemoNowMs()
+  const nowMs = demoNowMs ?? clockMs
   const [filter, setFilter] = useState(HIGH_DEFAULT_FILTER)
   const [selection, setSelection] = useState(null)
   const renderer = useRef(null)

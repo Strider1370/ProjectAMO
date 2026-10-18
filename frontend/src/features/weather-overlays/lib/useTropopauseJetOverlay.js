@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDemoNowMs } from '../../../shared/demoMode/useDemoMode.js'
 import { fetchKimTropopauseField, fetchKimTropopauseIndex, fetchKimTropopauseRuns } from '../../../api/weatherApi.js'
 import { coordinatesForGrid } from './overlayUtils.js'
 import { createTropopauseJetRenderer } from './tropopauseJetRenderer.js'
@@ -65,7 +66,9 @@ export function useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, e
     return () => controller.abort()
   }, [enabled, listCases])
 
-  const picked = useMemo(() => enabled ? pickTropopauseTime(index?.times, selectedMs) : null, [enabled, index, selectedMs])
+  // 고른 시각이 없으면 지금(시연 중이면 시연 기준시각).
+  const demoNowMs = useDemoNowMs()
+  const picked = useMemo(() => enabled ? pickTropopauseTime(index?.times, selectedMs ?? demoNowMs) : null, [enabled, index, selectedMs, demoNowMs])
   const chosenCase = caseKey ? cases.find(c => `${c.tmfc}:${c.hf}:${c.revision}` === caseKey) ?? null : null
   // 목록이 정한 KIM 영역(한반도 kr·확대 ea). 같은 발표시각이라도 영역이 다르면 다른 결과라 키를 나눈다.
   const time = chosenCase ?? (picked ? { ...picked, tmfc: index.latestRun, domain: index.domain } : null)

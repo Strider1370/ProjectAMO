@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useDemoNowMs } from '../../../shared/demoMode/useDemoMode.js'
 import { fetchKimAciIndex, fetchKimAciField } from '../../../api/weatherApi.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
 import { kimFieldCache } from './kimFieldCache.js'
@@ -22,7 +23,8 @@ export function useKimAci(enabled,selection,{commonActive=false,selectedMs=null,
     fetchKimAciIndex({signal:controller.signal}).then(v=>{if(!controller.signal.aborted){setIndex(v);setProblem(null)}}).catch(e=>{if(!controller.signal.aborted){setProblem(/503/.test(e.message)?'ACI 자료 준비 중':'ACI 목록을 불러오지 못했습니다')}})
     return ()=>controller.abort()
   },[enabled,pinned,hash])
-  const picked=useMemo(()=>pickAciTime(index,selection,{commonActive,selectedMs}),[index,selection?.domain,selection?.tmfc,selection?.hf,commonActive,selectedMs])
+  const demoNowMs=useDemoNowMs() // 고른 시각이 없을 때 기준(시연 중이면 시연 기준시각)
+  const picked=useMemo(()=>pickAciTime(index,selection,{commonActive,selectedMs,now:demoNowMs??Date.now()}),[index,selection?.domain,selection?.tmfc,selection?.hf,commonActive,selectedMs,demoNowMs])
   const time=enabled&&!pinned&&picked?{...picked,domain:index.domain,tmfc:index.latestRun}:null,key=aciSelectionKey(time)
   useEffect(()=>{
     if(!key)return

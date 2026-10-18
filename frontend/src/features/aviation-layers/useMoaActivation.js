@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AVIATION_WFS_LAYERS } from './aviationWfsLayers.js'
 import { matchMoaActivation, moaMatchKey } from './lib/moaActivation.js'
 import { deriveNotamTime } from '../notam/lib/notamViewModel.js'
+import { useDemoNowMs } from '../../shared/demoMode/useDemoMode.js'
 
 // 활성화된 군작전구역을 빗금으로 덧칠한다. 왜 색을 안 바꾸는가:
 // 빨강은 금지/제한/위험구역이 쓰는 색이라, 활성 MOA를 빨갛게 칠하면 "진입 금지"로 읽힌다.
@@ -42,6 +43,8 @@ const KEY_EXPRESSION = [
 ]
 
 export function useMoaActivation(mapRef, isStyleReady, styleRevision, notamData) {
+  // NOTAM 활성 판단 기준: 시연 중이면 시연 기준시각, 아니면 실제 현재 시각.
+  const nowMs = useDemoNowMs()
   const layer = AVIATION_WFS_LAYERS.find((l) => l.id === 'moa')
   const [features, setFeatures] = useState(null)
 
@@ -66,7 +69,7 @@ export function useMoaActivation(mapRef, isStyleReady, styleRevision, notamData)
     }
 
     const items = notamData?.items ?? []
-    const now = Date.now()
+    const now = Number.isFinite(nowMs) ? nowMs : Date.now()
     const active = new Set()
     const conditional = new Set()
     for (const m of matchMoaActivation(items, features)) {
@@ -112,7 +115,7 @@ export function useMoaActivation(mapRef, isStyleReady, styleRevision, notamData)
       map.setFilter(layer.activeLineLayerId, filter)
       map.setPaintProperty(layer.activeLineLayerId, 'line-opacity', opacity)
     }
-  }, [mapRef, isStyleReady, styleRevision, features, notamData, layer])
+  }, [mapRef, isStyleReady, styleRevision, features, notamData, layer, nowMs])
 }
 
 export default useMoaActivation

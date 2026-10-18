@@ -1,6 +1,7 @@
 // KIM 지상 일기도 오버레이 훅. 자료 fetch, 타임라인 시각 선택, 레이어 동기화, 바람 입자를 소유한다.
 // 기존 오버레이 훅과 같은 인자를 받는다 — { mapRef, isStyleReady, styleRevision }.
 import { useEffect, useMemo, useState } from 'react'
+import { useDemoNowMs } from '../../../shared/demoMode/useDemoMode.js'
 import CanvasWindRenderer from './canvasWindRenderer.js'
 import WebGLWindRenderer from './webglWindRenderer.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
@@ -96,7 +97,9 @@ export function useKimSurfaceChart({
 
   const run = useMemo(() => (pinned && !pinnedTmfc ? null : selectSurfaceChartRun(latest, { pinnedTmfc })), [latest, pinned, pinnedTmfc])
   const times = useMemo(() => (visible ? listSurfaceChartTimes(run) : []), [visible, run])
-  const effectiveTargetMs = pinned ? pinnedTargetMs : Number.isFinite(targetMs) ? targetMs : clockMs
+  // 시간 막대에서 고른 시각이 없으면 지금(시연 중이면 시연 기준시각).
+  const demoNowMs = useDemoNowMs()
+  const effectiveTargetMs = pinned ? pinnedTargetMs : Number.isFinite(targetMs) ? targetMs : demoNowMs ?? clockMs
   const frame = useMemo(() => pickSurfaceChartFrame(run, effectiveTargetMs), [run, effectiveTargetMs])
   const urls = useMemo(() => surfaceChartFrameUrls(latest, frame, run), [latest, frame, run])
   // 런마다 영역이 다를 수 있다(확대 회차 런 90~160°E, 기존 수집기 런 95~165°E). 강수 그림은 그 런의 영역에 얹는다.

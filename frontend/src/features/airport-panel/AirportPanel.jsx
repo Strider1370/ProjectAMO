@@ -6,6 +6,7 @@ import { fmtKstShort, formatElevationFt } from './lib/formatters.js'
 import { formatAmosTime } from '../../shared/weather/amosViewModel.js'
 import { computeSunTimes } from '../../shared/weather/helpers.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { useDemoNowMs } from '../../shared/demoMode/useDemoMode.js'
 import MetarTab from './tabs/MetarTab.jsx'
 import { buildMetarViewModel, countMetarHazards } from './lib/metarViewModel.js'
 import EnhancedTafTab from './tabs/TafTab.jsx'
@@ -152,6 +153,8 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const warning = weatherData?.warning?.airports?.[icao] || null
   const warnCount = warning?.warnings?.length || 0
 
+  // 시연 중이면 TAF 배지·NOTAM 유효 판단을 시연 기준시각으로 한다(TAF 탭 자체는 TafTab이 따로 맞춘다).
+  const demoNowMs = useDemoNowMs()
   const metarTime = metar?.header?.observation_time || metar?.header?.issue_time
   const tafValid = taf?.header?.valid_start
     // 한 줄에 들어가도록 연도를 떼고 시간대 표기는 끝에 한 번만 (07-30 17:00 – 07-31 23:00 KST)
@@ -164,7 +167,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const warnBadge = warnCount ? { count: warnCount, severity: 'red' } : null // 공항경보=무조건 적
   const metarViewModel = metar ? buildMetarViewModel({ metar, amosData: amos, icao, airportMeta: airport }) : null
   const metarBadge = metarViewModel ? countMetarHazards(metarViewModel) : null
-  const tafBadge = taf ? countTafHazardPeriods(buildTafViewModel(taf, icao).slots) : null
+  const tafBadge = taf ? countTafHazardPeriods(buildTafViewModel(taf, icao, demoNowMs).slots) : null
 
   // 기상정보 지연 로딩 상태: 요청은 했으나 airportInfo 페이로드가 아직 안 온 상태
   const infoLoading = infoRequested && !weatherData?.airportInfo
@@ -175,7 +178,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, node: <EnhancedTafTab taf={taf} icao={icao} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     isFullFeature && { id: 'model-analysis', label: '상세 예보 분석', node: <AirportModelComparisonSection icao={icao} /> },
-    { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
+    { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} nowMs={demoNowMs} /> },
     isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} tz={tz} /> },
     // 달빛은 위험이 아니라 계획용 참고값 → 위험도 순서상 맨 끝.
     // 국내 공항만(해외는 KST 앵커·고위도 가드가 검증되지 않음). 상류 데이터는 불필요 — 좌표만 쓴다.
