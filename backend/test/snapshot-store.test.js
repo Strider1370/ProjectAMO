@@ -154,8 +154,8 @@ test('inspectSnapshot reports missing reference time and missing radar files', (
   const root = tempRoot()
   try {
     writeJson(path.join(root, 'snapshots', 'demo', 'meta.json'), {})
-    writeJson(path.join(root, 'snapshots', 'demo', 'radar', 'echo_meta.json'), {
-      frames: [{ tm: '202607221900', path: '/data/radar/missing.png' }],
+    writeJson(path.join(root, 'snapshots', 'demo', 'radar', 'hsr', 'hsr_meta.json'), {
+      frames: [{ tm: '202607221900', path: '/data/radar/hsr/missing.webp' }],
     })
     const report = inspectSnapshot(root, 'demo')
     assert.equal(report.ready, false)

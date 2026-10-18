@@ -32,6 +32,7 @@ function harness() {
     nextSnapshotName: () => 'snapshot-1',
   }
   const session = createDemoSession({
+    refreshBeforeCapture: async () => {},
     basePath: '/live',
     activePath: '/active',
     views,
@@ -70,6 +71,7 @@ test('concurrent automatic captures allocate names only inside the serialized ca
   const calls = []
   let sequence = 0
   const session = createDemoSession({
+    refreshBeforeCapture: async () => {},
     basePath: '/live',
     activePath: '/active',
     views: { current: () => ({ mode: 'live' }) },
@@ -94,6 +96,7 @@ test('startDemo refuses an incomplete snapshot before changing the view', async 
   session.startDemo
   const report = { ready: false, blockers: ['radar:short_history:2/36'], warnings: [], types: [] }
   const rejected = createDemoSession({
+    refreshBeforeCapture: async () => {},
     basePath: '/live',
     activePath: '/active',
     views: {
@@ -130,10 +133,10 @@ function populateCompleteDataset(root, marker, referenceTime) {
   }
   const radarFrames = Array.from({ length: 36 }, (_, index) => ({
     tm: `20260722${String(1800 + index * 5).padStart(4, '0')}`,
-    path: `/data/radar/${marker}-${index}.png`,
+    path: `/data/radar/hsr/${marker}-${index}.webp`,
   }))
-  writeJson(path.join(root, 'radar', 'echo_meta.json'), { marker, frames: radarFrames })
-  for (const frame of radarFrames) fs.writeFileSync(path.join(root, 'radar', path.basename(frame.path)), marker)
+  writeJson(path.join(root, 'radar', 'hsr', 'hsr_meta.json'), { marker, frames: radarFrames })
+  for (const frame of radarFrames) fs.writeFileSync(path.join(root, 'radar', 'hsr', path.basename(frame.path)), marker)
 
   const satelliteFrames = Array.from({ length: 18 }, (_, index) => ({
     tm: `20260722${String(1800 + index * 10).padStart(4, '0')}`,
@@ -153,6 +156,7 @@ test('filesystem session leaves live files untouched and immediately returns to 
     const views = createDataViewManager({ basePath: root, activePath })
     views.ensure()
     const session = createDemoSession({
+    refreshBeforeCapture: async () => {},
       basePath: root,
       activePath,
       views,
@@ -182,6 +186,7 @@ test('recapturing an active snapshot name switches data, reference time, and gen
     writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-22T10:00:00.000Z', marker: 'first' })
     const views = createDataViewManager({ basePath: root, activePath, passthrough: [] })
     const session = createDemoSession({
+    refreshBeforeCapture: async () => {},
       basePath: root,
       activePath,
       views,
@@ -209,4 +214,19 @@ test('recapturing an active snapshot name switches data, reference time, and gen
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('capture refreshes ADS-B and waits for short collectors before copying, without aborting them', async () => {
+  const calls = []
+  const session = createDemoSession({
+    refreshBeforeCapture: async () => calls.push('refresh-adsb'),
+    basePath: '/live',
+    activePath: '/active',
+    views: { current: () => ({ mode: 'live', name: null }) },
+    snapshots: { saveSnapshot: (_root, name) => { calls.push(`save:${name}`); return { name, saved: [] } }, nextSnapshotName: () => 'snapshot-1' },
+    reloadActive: () => {},
+    drain: async () => calls.push('drain'),
+  })
+  await session.captureSnapshot()
+  assert.deepEqual(calls, ['refresh-adsb', 'drain', 'save:snapshot-1'])
 })

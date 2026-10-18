@@ -12,7 +12,7 @@ const SNAPSHOT_EXCLUDE = new Set(['snapshots', 'stats']) // 캡처 대상에서 
 const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫자/-/_ 만 허용
 // kim_nwp·ktg는 실제 단면(수직 프로파일) 격자 데이터가 latest.json이 아니라 runs/<runId>/ 밑에 있고,
 // 자동 정리(maxRuns=2)로 6시간 주기로 지워진다 — latest.json만 복사하면 단면 브리핑이 깨지므로 폴더째 복사.
-// radar·satellite도 "latest" 포인터가 latest.json이 아니라 echo_meta.json/sat_meta.json(+rainviewer_meta.json)
+// radar·satellite도 "latest" 포인터가 latest.json이 아니라 hsr/hsr_meta.json 등 제품별 meta·sat_meta.json(+rainviewer_meta.json)
 // 이고, 실제 이미지(PNG/WebP) 여러 장이 그 옆에 같이 있어서 마찬가지로 폴더째 복사해야 함(용량은 각각 수백KB~수MB로 작음).
 // 공항 모델 비교는 latest 포인터가 immutable payload를 참조하고, METAR·AMOS는 과거 3시간 비교에 최근 파일도 필요하다.
 // kim_surface_chart도 latest.json이 runs/<runId>/ 밑의 시각별 그림·GeoJSON을 가리킨다.
@@ -21,6 +21,8 @@ const FULL_DIR_TYPES = new Set(['kim_nwp', 'kim_surface_chart', 'ktg', 'radar', 
 // 메타 파일만 담는다. 화면이 쓰는 3시간 이력보다 넉넉하다.
 const FRAME_TYPES = new Set(['radar', 'satellite'])
 const FRAME_HISTORY_MS = 12 * 3600_000
+// 점검이 보는 그림 목록. 지도 레이더는 HSR(합성 강수강도)을 기본으로 쓴다.
+const FRAME_METADATA = Object.freeze({ radar: 'hsr/hsr_meta.json', satellite: 'sat_meta.json' })
 // KIM 확대 영역은 회차 하나가 6 GB 가까이 되어 기준시각 앞뒤 예보시각만 담는다(시각당 약 155 MB, 기본 8시각 약 1.3 GB).
 // 이 시각들만 남도록 목록 파일(latest·index·manifest)을 고쳐 써서 시간 막대에 담은 시각만 나온다. 계산용 입력(raw)과
 // 수집 기록(events·monitor)은 화면에 쓰지 않아 뺀다. 창 안에 시각이 하나도 없으면 확대 영역을 담지 않고, 지도는 한반도
@@ -581,7 +583,7 @@ export function inspectSnapshot(basePath, name) {
       continue
     }
     if (type === 'radar' || type === 'satellite') {
-      const metadataFile = type === 'radar' ? 'echo_meta.json' : 'sat_meta.json'
+      const metadataFile = FRAME_METADATA[type]
       if (!fs.existsSync(path.join(snapshotRoot, type, metadataFile))) blockers.push(`${type}:metadata_missing`)
     } else if (!fs.existsSync(path.join(snapshotRoot, type, 'latest.json'))) {
       blockers.push(`${type}:latest_missing`)
@@ -618,24 +620,26 @@ export function inspectSnapshot(basePath, name) {
     }
   }
 
-  for (const [type, metaFile] of [['radar', 'echo_meta.json'], ['satellite', 'sat_meta.json']]) {
+  // 지도가 쓰는 레이더(HSR·HCI)와 위성 그림. 옛 레이더 echo_meta.json(2026-08 수집 중단)은 보지 않는다.
+  for (const [type, metaFile, minFrames, required] of [['radar', FRAME_METADATA.radar, 36, true], ['radar', 'hci/hci_meta.json', 0, false], ['satellite', FRAME_METADATA.satellite, 18, true]]) {
     const filePath = path.join(snapshotRoot, type, metaFile)
     if (!fs.existsSync(filePath)) continue
+    const label = required ? type : `${type}:${path.dirname(metaFile)}`
     try {
       const payload = JSON.parse(fs.readFileSync(filePath, 'utf8'))
       const frames = Array.isArray(payload.frames) ? payload.frames : []
       const missing = frames.filter((frame) => !referencedPathExists(snapshotRoot, frame.path)).length
-      if (missing) blockers.push(`${type}:missing_frame_files:${missing}`)
+      if (missing) blockers.push(`${label}:missing_frame_files:${missing}`)
+      if (!required) continue
       summaries[type] = {
-        fetchedAt: payload.fetched_at ?? null,
+        fetchedAt: payload.fetched_at ?? payload.updatedAt ?? payload.updated_at ?? null,
         frameCount: frames.length,
         firstFrame: frames[0]?.tm ?? null,
         lastFrame: frames.at(-1)?.tm ?? null,
       }
-      if (type === 'radar' && frames.length < 36) blockers.push(`radar:short_history:${frames.length}/36`)
-      if (type === 'satellite' && frames.length < 18) blockers.push(`satellite:short_history:${frames.length}/18`)
+      if (frames.length < minFrames) blockers.push(`${type}:short_history:${frames.length}/${minFrames}`)
     } catch {
-      blockers.push(`${type}:invalid_metadata`)
+      blockers.push(`${label}:invalid_metadata`)
     }
   }
 

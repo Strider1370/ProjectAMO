@@ -1,6 +1,7 @@
 import config from '../config.js'
 import store from '../store.js'
 import { waitForCollectionIdle } from '../index.js'
+import adsbProcessor from '../processors/adsb-processor.js'
 import { dataView } from './data-view.js'
 import { inspectSnapshot, nextSnapshotName, saveSnapshot } from './snapshot-store.js'
 
@@ -12,6 +13,8 @@ export function createDemoSession({
   reloadActive = (root) => store.initActiveFromFiles(root),
   // 저장 전에 짧은 수집(METAR·레이더 등)이 파일을 다 쓸 때까지 잠깐 기다린다. 수집을 끊지 않는다. 확대 회차는
   // 몇 시간씩 돌아 기다리지 않는다(이미 게시한 회차만 담는다). 1분 안에 안 끝나면 그대로 담는다.
+  // 항공기 위치는 지도를 보는 사람이 있을 때만 받는다. 저장 직전에 한 번 받아 기준시각과 맞춘다(점검은 30분 차이까지 허용).
+  refreshBeforeCapture = () => adsbProcessor.process().catch(() => {}),
   drain = () => waitForCollectionIdle({ timeoutMs: 60_000, ignore: (type) => type.startsWith('kim_expanded_') }).catch(() => {}),
 } = {}) {
   let transitioning = false
@@ -35,6 +38,7 @@ export function createDemoSession({
   function captureSnapshot(requestedName = null) {
     pendingCaptures += 1
     const capture = captureQueue.then(() => exclusive(async () => {
+      await refreshBeforeCapture()
       await drain()
       const name = requestedName || snapshots.nextSnapshotName(basePath)
       const saved = snapshots.saveSnapshot(basePath, name)
