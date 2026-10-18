@@ -135,6 +135,9 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     return () => io.disconnect()
   }, [icao, isFullFeature, airportInfo, onRequestDeferredWeatherData])
 
+  // 시연 중이면 TAF 배지·NOTAM 유효 판단을 시연 기준시각으로 한다(TAF 탭 자체는 TafTab이 따로 맞춘다).
+  const demoNowMs = useDemoNowMs()
+
   if (!airport) return null
 
   const headerNameKo = AIRPORT_HEADER_NAME_KO[icao] || airport.nameKo || airport.name || icao
@@ -153,8 +156,6 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const warning = weatherData?.warning?.airports?.[icao] || null
   const warnCount = warning?.warnings?.length || 0
 
-  // 시연 중이면 TAF 배지·NOTAM 유효 판단을 시연 기준시각으로 한다(TAF 탭 자체는 TafTab이 따로 맞춘다).
-  const demoNowMs = useDemoNowMs()
   const metarTime = metar?.header?.observation_time || metar?.header?.issue_time
   const tafValid = taf?.header?.valid_start
     // 한 줄에 들어가도록 연도를 떼고 시간대 표기는 끝에 한 번만 (07-30 17:00 – 07-31 23:00 KST)

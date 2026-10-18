@@ -13,6 +13,10 @@ test('AirportPanel calls hooks before returning for no selected airport', () => 
   assert.ok(effectIndex >= 0)
   assert.ok(emptyReturnIndex >= 0)
   assert.ok(effectIndex < emptyReturnIndex)
+  // 빈 패널로 나간 뒤에 부르는 hook이 있으면 공항을 고르는 순간 hook 개수가 바뀌어 화면 전체가 빈다.
+  const componentEnd = source.indexOf('\n}\n', emptyReturnIndex)
+  const afterReturn = source.slice(emptyReturnIndex, componentEnd)
+  assert.deepEqual(afterReturn.match(/\buse[A-Z]\w*\(/g) || [], [])
 })
 
 test('domestic airports carry official elevation in feet', () => {
