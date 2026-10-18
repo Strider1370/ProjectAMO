@@ -3,7 +3,7 @@
 // 여기서 정하는 것(운영안 "관리 방법", 2026-10-08):
 // - 쓸 수 있는지: 설정(enabled)·대용량 키·승인 만료일(KST)·오늘 키가 거부됐는지. 안 되면 수집하지 않고, 한반도 06 UTC는
 //   기존처럼 일반 키로 받는다(kim-surface-wind-processor.js가 koreaSixFromExpanded로 판단).
-// - 디스크: 시작 전 여유 ≥ 예상 회차 크기 + 3 GiB, 시각마다 3 GiB 아래면 멈춘다.
+// - 디스크: 시작 전 여유 ≥ 예상 회차 크기 + 1.5 GiB, 시각마다 1.5 GiB 아래면 멈춘다(EXPANDED_MIN_FREE_BYTES).
 // - 06 UTC가 시작되면 아직 이어받던 00 UTC는 새 시각을 받지 않는다.
 // - 06 UTC는 정해진 시각을 기다리지 않는다. 5분마다 +0h가 기상청에 올라왔는지 확인하고 올라왔으면 바로 시작한다
 //   (start_without_check_kst까지 확인이 안 되면 확인 없이 시작). 시작한 회차가 덜 끝났으면 retry_gap_minutes 뒤에 다시 시도한다.
@@ -14,7 +14,6 @@ import path from 'node:path'
 
 import config from '../config.js'
 import { collectionResult } from '../collector-execution.js'
-import { MIN_FREE_BYTES } from '../maps/storage-budget.js'
 import { collectExpandedRun, expandedCycle, kstCutoffMs } from './kim-expanded-collector.js'
 import { publishKoreaFromExpanded } from './kim-korea-crop.js'
 import { publishKoreaGktgFromExpanded } from './kim-gktg-processor.js'
@@ -28,6 +27,9 @@ import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-cred
 // 확대 영역 06 UTC 한 회차(33시각) 최대 크기. 2026-10-09 06 UTC 실측 5.83 GB(기본 격자 + GKTG·권계면 + 지도 이진 파일
 // + ACI + 강수 장)에 날씨에 따른 압축률 차이를 더했다.
 const EXPECTED_RUN_BYTES = 6.5e9
+// 확대 수집이 남겨 둘 디스크 여유. 다른 저장(지도·자료실)의 기준(3 GiB)보다 낮춰, 시연 스냅샷(약 2 GB)을 둘 자리를 만든다
+// (30 GB 디스크에서 확대 회차 2개가 잠깐 함께 있는 동안에도 한반도·레이더 등 다른 수집이 쓸 여유는 남는다).
+export const EXPANDED_MIN_FREE_BYTES = 1.5 * 1024 ** 3
 const KOREA_FALLBACK_KST = '21:30'
 const stopRequested = { '00': false, '06': false }
 
@@ -149,7 +151,7 @@ export async function processExpandedCycle({
   if (blocked) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: blocked, collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: blocked }) }
   }
-  if (diskFree(root) < EXPECTED_RUN_BYTES + MIN_FREE_BYTES) {
+  if (diskFree(root) < EXPECTED_RUN_BYTES + EXPANDED_MIN_FREE_BYTES) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: 'disk_reserve', collection: collectionResult('failed', null, { reason: 'disk_reserve' }) }
   }
   if (cycle === '06') stopRequested['00'] = true
@@ -186,7 +188,7 @@ export async function processExpandedCycle({
       tmfc, hours, root, signal, now,
       beforeHour: () => {
         if (stopRequested[cycle]) return 'next_cycle_started'
-        if (diskFree(root) < MIN_FREE_BYTES) return 'disk_reserve'
+        if (diskFree(root) < EXPANDED_MIN_FREE_BYTES) return 'disk_reserve'
         return monitor.stopReason()
       },
       onHourDownloaded: async ({ downloaded }) => {

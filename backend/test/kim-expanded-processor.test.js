@@ -230,3 +230,11 @@ test('06 UTC starts as soon as +0h is on KMA, starts without checking from 20:15
   assert.equal(collected, 4)
   assert.equal(await expandedStartBlocked({ root: other, cycle: '00', tmfc: '2026101000', now, checkUploaded }), null)
 })
+
+test('the expanded run keeps a 1.5 GiB disk reserve, leaving room for a demo snapshot', async t => {
+  const root = temporary(t)
+  const now = KST('2026-10-09', '15:00')
+  const collect = async ({ hours }) => ({ published: true, publishedHours: hours.length, planned: hours.length })
+  assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 6.5e9 + 1.5 * 1024 ** 3 - 1, collect })).reason, 'disk_reserve')
+  assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 6.5e9 + 1.5 * 1024 ** 3, collect })).collection.outcome, 'complete')
+})
