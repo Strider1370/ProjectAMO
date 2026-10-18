@@ -602,11 +602,23 @@ export const met_no = {
   user_agent: process.env.MET_NO_USER_AGENT || 'ProjectAMO/1.0 junn1370@gmail.com',
 }
 
+// 시연 전용 백엔드(PROJECTAMO_DEMO_INSTANCE=1): 시연 스냅샷만 보여 준다. 수집·알림·백업·운영 알림을 돌리지 않는다.
+// 운영 백엔드가 관리자 요청으로 띄우고 끈다(dev/demo-instance.js). 웹서버는 시연 쿠키가 있는 요청만 이리로 보낸다.
+export const demo_instance = {
+  enabled: process.env.PROJECTAMO_DEMO_INSTANCE === '1',
+  port: Number(process.env.PROJECTAMO_DEMO_PORT || 3002),
+  cookie: 'projectamo_demo',
+}
+
 export const storage = {
   base_path: resolveDataPath(process.env.DATA_PATH),
   // Collectors always write to base_path. User-facing weather reads follow this
   // atomically replaceable symlink, which points to live data or a demo view.
-  active_path: path.join(resolveDataPath(process.env.DATA_PATH), '.active-data'),
+  active_path: process.env.ACTIVE_DATA_PATH
+    ? path.resolve(process.env.ACTIVE_DATA_PATH)
+    : path.join(resolveDataPath(process.env.DATA_PATH), '.active-data'),
+  // 시연 전용 백엔드(dev/demo-instance.js)가 읽는 자료 위치. 이 브라우저에서만 시연할 때 쓴다.
+  demo_active_path: path.join(resolveDataPath(process.env.DATA_PATH), '.demo-active'),
   max_files_per_category: 10,
   max_files_by_type: {
     metar: 60,
@@ -651,6 +663,7 @@ export default {
   kim_surface_wind,
   kim_expanded,
   kim_surface_chart,
+  demo_instance,
   kim_bulk,
   kim_nwp,
   overseas_nwp,

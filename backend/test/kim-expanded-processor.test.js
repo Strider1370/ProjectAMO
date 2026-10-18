@@ -238,3 +238,19 @@ test('the expanded run keeps a 1.5 GiB disk reserve, leaving room for a demo sna
   assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 6.5e9 + 1.5 * 1024 ** 3 - 1, collect })).reason, 'disk_reserve')
   assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 6.5e9 + 1.5 * 1024 ** 3, collect })).collection.outcome, 'complete')
 })
+
+test('expanded runs do not start while paused for the demo instance', async t => {
+  const { pauseExpandedRuns, resumeExpandedRuns } = await import('../src/processors/kim-expanded-processor.js')
+  const root = temporary(t)
+  const now = KST('2026-10-09', '15:00')
+  let collected = 0
+  const collect = async ({ hours }) => { collected++; return { published: true, publishedHours: hours.length, planned: hours.length } }
+  pauseExpandedRuns('demo_instance_running')
+  t.after(resumeExpandedRuns)
+  const paused = await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 1e12, collect })
+  assert.equal(paused.reason, 'demo_instance_running')
+  assert.equal(paused.collection.outcome, 'empty')
+  resumeExpandedRuns()
+  await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 1e12, collect })
+  assert.equal(collected, 1)
+})

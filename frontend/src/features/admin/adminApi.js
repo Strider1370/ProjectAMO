@@ -49,3 +49,12 @@ export const loadSnapshot = (name) => fetch(`${base}/snapshot/load`, {
   method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
 }).then(j)
 export const deleteSnapshot = (name) => fetch(`${base}/snapshot/${encodeURIComponent(name)}`, { method: 'DELETE', credentials: 'include' }).then(j)
+// 이 브라우저에서만 시연: 시연 서버(운영 백엔드가 띄우는 시연 전용 백엔드)와 이 브라우저의 시연 쿠키.
+export const getDemoInstance = () => fetch(`${base}/demo-instance`, { credentials: 'include' }).then(j)
+export const startDemoInstance = (name) => fetch(`${base}/demo-instance/start`, {
+  method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+}).then(j)
+export const stopDemoInstance = () => fetch(`${base}/demo-instance/stop`, { method: 'POST', credentials: 'include' }).then(j)
+export const setDemoView = (on) => fetch(`${base}/demo-view`, {
+  method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }),
+}).then(j)

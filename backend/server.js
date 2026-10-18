@@ -121,6 +121,8 @@ const snapshotMetaCache = { key: null, value: null, expiresAt: 0 }
 
 app.disable('x-powered-by')
 app.set('trust proxy', true)
+// 시연 쿠키에 따라 같은 주소가 운영·시연 백엔드에서 다르게 온다(dev/demo-instance.js). 브라우저가 서로의 캐시를 쓰지 않게 한다.
+app.use(['/api', '/data'], (_req, res, next) => { res.vary('Cookie'); next() })
 // 보안 헤더. CSP·CORP·COEP는 끔 — 지도 타일/`/data` 이미지의 교차출처 로딩을 깨지 않기 위함(그건 nginx/프론트가 담당).
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }))
 const defaultJsonParser = express.json({ limit: '1mb' })
@@ -884,7 +886,8 @@ function triggerAdsbRefresh() {
 }
 app.get('/api/adsb', async (_req, res) => {
   const age = adsbFileAgeMs()
-  if (age >= ADSB_REFRESH_MS) {
+  // 시연 백엔드는 스냅샷의 항공기 위치를 보여 준다(실황 자료를 새로 받지 않는다).
+  if (age >= ADSB_REFRESH_MS && !config.demo_instance.enabled) {
     const pending = triggerAdsbRefresh()
     if (age >= ADSB_COLD_MS) {
       await Promise.race([pending, new Promise((resolve) => setTimeout(resolve, 8000))])
@@ -1280,6 +1283,8 @@ app.get('/api/demo-mode', (_req, res) => {
     name: context.name,
     now: getEffectiveNow().toISOString(),
     revision: context.revision,
+    // true면 이 브라우저만 시연 중(시연 백엔드가 응답). 다른 방문자는 실황을 본다.
+    thisBrowserOnly: config.demo_instance.enabled,
   })
 })
 app.post('/api/vertical-profile', (req, res) => {
@@ -1442,7 +1447,12 @@ app.post('/api/briefing/nwp-time-refresh', (req, res) => {
 
 export { app, buildRadarGraphicsSnapshotEntry, getCachedSnapshotMeta, readSelectedKimCloudField, readSelectedKimIcingField }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && config.demo_instance.enabled) {
+  // 시연 전용 백엔드(dev/demo-instance.js): 시연 스냅샷만 보여 준다. 수집·알림·백업·운영 알림·자원 기록을 돌리지 않는다.
+  store.initLiveFromFiles(config.storage.base_path)
+  store.initActiveFromFiles(config.storage.active_path)
+  app.listen(PORT, HOST, () => console.log(`[server] Demo backend running on ${HOST}:${PORT} (${getActiveDataContext().name || 'live'})`))
+} else if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => console.log(`[server] Backend running on ${HOST}:${PORT}`))
 
   startSampler(getDb()) // 관리자 콘솔: 60초 리소스 샘플링 시작

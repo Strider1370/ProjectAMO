@@ -27,6 +27,10 @@ import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-cred
 
 const KOREA_FALLBACK_KST = '21:30'
 const stopRequested = { '00': false, '06': false }
+// 시연 서버(dev/demo-instance.js)가 켜져 있는 동안 확대 회차를 시작하지 않는다(서버 메모리 1.9 GB에 둘을 같이 둘 수 없다).
+let pausedReason = null
+export function pauseExpandedRuns(reason) { pausedReason = reason }
+export function resumeExpandedRuns() { pausedReason = null }
 
 const kstDate = (ms) => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)
 const disabledFile = (root) => path.join(resolveKimNwpRoot(root, 'ea'), 'disabled.json')
@@ -131,6 +135,7 @@ export async function processExpandedCycle({
   const tmfc = expandedRunTmfc(cycle, now())
   const availability = expandedAvailability({ root, now: now() })
   if (!availability.available) return { type: 'kim_expanded', tmfc, skipped: true, reason: availability.reason, collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: availability.reason }) }
+  if (pausedReason) return { type: 'kim_expanded', tmfc, skipped: true, reason: pausedReason, collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: pausedReason }) }
   const latest = readKimNwpLatest(root, 'ea')
   const manifest = readKimNwpManifest(root, buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc }), 'ea')
   // 회차 완료는 기본 격자로만 판정한다. ACI가 빠진 시각은 수집기가 회차 끝에서 다시 시도하며, 그 때문에 정기 재시도마다
@@ -182,6 +187,7 @@ export async function processExpandedCycle({
     result = await collect({
       tmfc, hours, root, signal, now,
       beforeHour: () => {
+        if (pausedReason) return pausedReason
         if (stopRequested[cycle]) return 'next_cycle_started'
         if (diskFree(root) < EXPANDED_MIN_FREE_BYTES) return 'disk_reserve'
         return monitor.stopReason()

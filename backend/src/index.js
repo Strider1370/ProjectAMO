@@ -167,6 +167,18 @@ export function abortActiveCollections() {
   return satelliteWorkQueue.cancel(reason)
 }
 
+// 지정한 수집만 중단한다(시연 서버를 켤 때 확대 KIM 회차). 중단한 수집 종류를 돌려준다.
+export function abortCollections(types, reason = new Error('collection_cancelled_for_demo_instance')) {
+  const aborted = []
+  for (const [type, controller] of activeControllers.entries()) {
+    if (types.includes(type) && !controller.signal.aborted) {
+      controller.abort(reason)
+      aborted.push(type)
+    }
+  }
+  return aborted
+}
+
 export async function quiesceCollections(options) {
   await abortActiveCollections()
   await waitForCollectionIdle(options)
@@ -372,4 +384,4 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
 }
 
 export { buildInitialCollectionJobs, main, processorBindings, runWithLock }
-export default { abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, registerCollectorSchedules, runSatelliteCollection, runWithLock, startCollectorWatchdog, waitForCollectionIdle }
+export default { abortActiveCollections, abortCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, registerCollectorSchedules, runSatelliteCollection, runWithLock, startCollectorWatchdog, waitForCollectionIdle }

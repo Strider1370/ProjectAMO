@@ -21,6 +21,7 @@ import { recordDemoEvent, getDemoEvents } from '../dev/demo-mode.js'
 import { getActiveDataContext } from '../dev/data-view.js'
 import { getLastAlertEvaluation } from '../alerts/scheduler.js'
 import { demoSession } from '../dev/demo-session.js'
+import { demoInstance as defaultDemoInstance } from '../dev/demo-instance.js'
 import { deleteSnapshot, listSnapshots, inspectSnapshot, isValidSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
 import config from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
@@ -28,7 +29,9 @@ import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operatio
 import { adminRequestKey, createAdminQueryState, setAdminQueryHeaders } from './query-state.js'
 
 // /api/admin/* — 전체 requireRole('admin'). db 주입 가능(테스트).
-export function createAdminRouter({ db = null } = {}) {
+const DEMO_VIEW_MAX_AGE_MS = 12 * 3600_000
+
+export function createAdminRouter({ db = null, demoInstance = defaultDemoInstance, isDemoBackend = config.demo_instance.enabled } = {}) {
   const router = Router()
   const database = () => db || getDb()
   const queryState = createAdminQueryState()
@@ -208,6 +211,47 @@ export function createAdminRouter({ db = null } = {}) {
         ...(error.report ? { inspection: error.report } : {}),
       })
     }
+  })
+
+  // ── 이 브라우저에서만 시연(dev/demo-instance.js) ──
+  // 시연 서버 켜기·끄기는 운영 백엔드만 한다. 시연 쿠키가 붙은 브라우저의 요청은 웹서버가 시연 백엔드로 보내므로,
+  // 그 브라우저에서는 시연 끄기(쿠키 지우기)만 할 수 있다.
+  const demoCookie = config.demo_instance.cookie
+  const cookieOptions = (req) => ({ path: '/', sameSite: 'lax', httpOnly: true, secure: req.secure })
+  router.get('/demo-instance', (_req, res) => {
+    res.json(isDemoBackend ? { role: 'demo' } : { role: 'main', ...demoInstance.status() })
+  })
+  router.post('/demo-instance/start', async (req, res) => {
+    if (isDemoBackend) return res.status(409).json({ error: 'demo_backend_cannot_control' })
+    const { name } = req.body ?? {}
+    if (!isValidSnapshotName(name) || name === RESERVED_LIVE_BACKUP) return res.status(400).json({ error: 'invalid_name' })
+    try {
+      const result = await demoInstance.start(name)
+      recordDemoEvent('demo-server-start', `${name} — 확대 KIM 중단: ${result.abortedExpanded?.join(', ') || '없음'}`)
+      res.json({ ok: true, role: 'main', ...result })
+    } catch (error) {
+      recordDemoEvent('demo-server-start-failed', `${name}: ${error.code || error.message}`)
+      const status = error.code === 'snapshot_not_found' ? 404 : error.code === 'demo_instance_low_memory' ? 503 : 409
+      res.status(status).json({ error: error.code || 'demo_instance_start_failed', ...(error.report ? { inspection: error.report } : {}),
+        ...(error.available ? { available: error.available, required: error.required } : {}) })
+    }
+  })
+  router.post('/demo-instance/stop', async (_req, res) => {
+    if (isDemoBackend) return res.status(409).json({ error: 'demo_backend_cannot_control' })
+    const result = await demoInstance.stop()
+    recordDemoEvent('demo-server-stop', '시연 서버 종료, 확대 KIM 다시 허용')
+    res.json({ ok: true, role: 'main', ...result })
+  })
+  router.post('/demo-view', (req, res) => {
+    const on = req.body?.on === true
+    if (!on) {
+      res.clearCookie(demoCookie, cookieOptions(req))
+      return res.json({ ok: true, on: false })
+    }
+    if (isDemoBackend) return res.json({ ok: true, on: true })
+    if (!demoInstance.status().running) return res.status(409).json({ error: 'demo_instance_not_running' })
+    res.cookie(demoCookie, '1', { ...cookieOptions(req), maxAge: DEMO_VIEW_MAX_AGE_MS })
+    res.json({ ok: true, on: true })
   })
 
   // 되돌리기 = 스냅샷 로드 전 실황(_live_backup)으로 복원 + 시연 모드 종료(시각 오버라이드도 함께 해제).

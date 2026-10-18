@@ -1,3 +1,13 @@
+# 이 브라우저에서만 시연(backend/src/dev/demo-instance.js): 시연 쿠키가 있는 요청만 시연 백엔드로 보낸다.
+map $cookie_projectamo_demo $projectamo_demo_view {
+  default 0;
+  "1" 1;
+}
+map $cookie_projectamo_demo $projectamo_backend {
+  default http://127.0.0.1:3001;
+  "1" http://127.0.0.1:3002;
+}
+
 limit_req_zone $binary_remote_addr zone=projectamo_api:10m rate=5r/s;
 
 server {
@@ -25,7 +35,7 @@ server {
   location ~ ^/api/me/maps(?:/|$) {
     client_max_body_size 5m;
     limit_req zone=projectamo_api burst=60 nodelay;
-    proxy_pass http://127.0.0.1:3001;
+    proxy_pass $projectamo_backend;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -36,7 +46,7 @@ server {
   location /api/ {
     limit_req zone=projectamo_api burst=60 nodelay;
 
-    proxy_pass http://127.0.0.1:3001;
+    proxy_pass $projectamo_backend;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -59,6 +69,8 @@ server {
   }
 
   location /data/ {
+    if ($projectamo_demo_view) { rewrite ^ /__projectamo_demo$uri last; }
+    add_header Vary "Cookie" always;
     alias /opt/projectamo/shared/data/.active-data/;
     try_files $uri @projectamo_data_backend;
   }
@@ -67,11 +79,15 @@ server {
   # backend/server.js:setGeneratedDataCacheHeaders because this direct alias
   # does not run Express middleware.
   location ~* "^/data/(radar/(?:echo_korea_\d{12}\.png|echotop/echotop_\d{12}\.webp|(?:wissdom/wissdom_\d+_\d{12}|qpf/qpf_\d{12}_p\d+)(?:_legend)?\.webp)|satellite/(?:sat_korea_\d{12}\.(?:png|webp)|convective/(?:ci_\d{12}\.geojson|ctps_\d{12}_(?:all|fl\d{3})\.webp))|sigwx_low/(?:fronts|clouds)_\d{10}\.png|kim_surface_chart/runs/KIMG_NE57_\d{10}/hf\d{3}/(?:(?:isobars|centers|wind)\.json|precip3h\.png))$" {
+    if ($projectamo_demo_view) { rewrite ^ /__projectamo_demo$uri last; }
+    add_header Vary "Cookie" always;
     alias /opt/projectamo/shared/data/.active-data/$1;
     add_header Cache-Control "public, max-age=10800, immutable";
   }
 
   location ~* "^/data/(radar/(?:echo_meta|rainviewer_meta)\.json|radar/(?:hsr/hsr_meta|hci/hci_meta|wissdom/wissdom_meta|qpf/qpf_meta|echotop/echotop_meta)\.json|satellite/(?:sat_meta|convective/convective_meta)\.json|sigwx_low/(fronts_meta|clouds_meta)_\d{10}\.json)$" {
+    if ($projectamo_demo_view) { rewrite ^ /__projectamo_demo$uri last; }
+    add_header Vary "Cookie" always;
     alias /opt/projectamo/shared/data/.active-data/$1;
     add_header Cache-Control "no-cache";
   }
@@ -118,8 +134,27 @@ server {
     try_files $uri /index.html;
   }
 
+  # 시연 쿠키가 있는 /data 요청(위 rewrite)을 시연 백엔드로. 시연 백엔드는 시연 자료 위치에서 내보낸다.
+  location ^~ /__projectamo_demo/ {
+    internal;
+    rewrite ^/__projectamo_demo(/.*)$ $1 break;
+    proxy_pass http://127.0.0.1:3002;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  # 비상용: 시연 서버가 꺼져 있어도 이 브라우저의 시연 쿠키를 지우고 실황으로 돌아온다.
+  location = /demo-off {
+    add_header Set-Cookie "projectamo_demo=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" always;
+    add_header Cache-Control "no-store" always;
+    return 302 /;
+  }
+
   location @projectamo_data_backend {
-    proxy_pass http://127.0.0.1:3001;
+    proxy_pass $projectamo_backend;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
