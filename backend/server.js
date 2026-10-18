@@ -1451,6 +1451,11 @@ if (process.env.NODE_ENV !== 'test' && config.demo_instance.enabled) {
   // 시연 전용 백엔드(dev/demo-instance.js): 시연 스냅샷만 보여 준다. 수집·알림·백업·운영 알림·자원 기록을 돌리지 않는다.
   store.initLiveFromFiles(config.storage.base_path)
   store.initActiveFromFiles(config.storage.active_path)
+  // 띄운 운영 백엔드가 없어지면(재시작·강제 종료) 같이 끝난다. 남으면 메모리를 차지하고 다음 시연 서버가 포트를 못 연다.
+  const parentPid = process.ppid
+  setInterval(() => {
+    if (process.ppid !== parentPid) { console.log('[server] Demo backend: parent backend gone, exiting'); process.exit(0) }
+  }, 5_000).unref()
   app.listen(PORT, HOST, () => console.log(`[server] Demo backend running on ${HOST}:${PORT} (${getActiveDataContext().name || 'live'})`))
 } else if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => console.log(`[server] Backend running on ${HOST}:${PORT}`))
