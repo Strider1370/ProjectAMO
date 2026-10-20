@@ -3,12 +3,10 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import VerticalProfileViewer from '../VerticalProfileViewer.jsx'
 import { useCrossSectionLayers } from '../crossSectionLayers.jsx'
 import HazardRibbon from './HazardRibbon.jsx'
-import { DOCK_MAX_RATIO, RIBBON_LABEL_WIDTH_PX, dockHeightPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
+import { RIBBON_LABEL_WIDTH_PX, profileHeightPx, profileMaxPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
 
-const MIN_HEIGHT = 220
-
-// 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 위쪽 손잡이로 높이를 바꾼다.
-// 접힘·높이는 다음 브리핑에도 그대로(브라우저 기억). 지도가 절반 아래로 줄지 않게 높이는 화면의 50%까지.
+// 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 위쪽 손잡이로 단면도 높이를 바꾼다.
+// 독 높이는 내용대로 — 위험 막대를 접으면 독이 줄 뿐 단면도가 커지지 않는다. 접힘·단면 높이는 브라우저에 기억.
 // 단면도 그림의 가로축(0NM~끝)을 재서 위험 막대 가로축을 같은 세로선에 맞춘다.
 export default function BriefingDock({ ribbon, verticalProfile, crossSection, advisories, nwpTimeSelection, onSetWaypointNwpOffset, onSelectForecastHour, crossSectionHourLoading, selectedId, onSelect, onHeightChange }) {
   const [dock, setDock] = useState(readDockState)
@@ -34,7 +32,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   }, [onHeightChange])
 
   const profileOpen = profileOpenFor(dock, window.innerHeight)
-  const heightPx = dockHeightPx(dock, window.innerHeight)
+  const heightPx = profileHeightPx(dock, window.innerHeight)
   const total = verticalProfile?.axis?.totalDistanceNm
   const zoomed = Boolean(profileRange && total && (profileRange[0] > 0.5 || profileRange[1] < total - 0.5))
 
@@ -69,8 +67,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
     event.preventDefault()
     const startY = event.clientY
     const startHeight = heightPx
-    const maxHeight = window.innerHeight * DOCK_MAX_RATIO
-    const move = (e) => setDock((d) => ({ ...d, heightPx: Math.round(Math.min(maxHeight, Math.max(MIN_HEIGHT, startHeight + startY - e.clientY))) }))
+    const move = (e) => setDock((d) => ({ ...d, profileHeightPx: Math.round(Math.min(profileMaxPx(window.innerHeight), startHeight + startY - e.clientY)) }))
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -79,7 +76,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
     event.preventDefault()
     const step = event.key === 'ArrowUp' ? 20 : -20
-    setDock((d) => ({ ...d, heightPx: Math.min(window.innerHeight * DOCK_MAX_RATIO, Math.max(MIN_HEIGHT, dockHeightPx(d, window.innerHeight) + step)) }))
+    setDock((d) => ({ ...d, profileHeightPx: Math.min(profileMaxPx(window.innerHeight), profileHeightPx(d, window.innerHeight) + step) }))
   }
   const toggle = (key) => setDock((d) => ({ ...d, [key]: key === 'profileOpen' ? !profileOpenFor(d, window.innerHeight) : !d[key] }))
   const fold = (open, onClick, label) => (
@@ -91,9 +88,9 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   const profileFold = fold(profileOpen, () => toggle('profileOpen'), '연직단면도')
 
   return (
-    <section ref={dockRef} className={`mb-dock${profileOpen ? ' has-profile' : ''}`} style={{ '--mb-label-w': `${labelWidth}px`, ...(profileOpen ? { height: heightPx } : {}) }} aria-label="경로상 위험과 연직단면도">
+    <section ref={dockRef} className={`mb-dock${profileOpen ? ' has-profile' : ''}`} style={{ '--mb-label-w': `${labelWidth}px` }} aria-label="경로상 위험과 연직단면도">
       {profileOpen && (
-        <div className="mb-dock-handle" role="separator" aria-orientation="horizontal" aria-label="독 높이 조절" tabIndex={0}
+        <div className="mb-dock-handle" role="separator" aria-orientation="horizontal" aria-label="연직단면도 높이 조절" tabIndex={0}
           aria-valuenow={heightPx} onPointerDown={startResize} onKeyDown={resizeByKey}><span /></div>
       )}
       <div className="mb-dock-section is-ribbon">
@@ -112,7 +109,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
       </div>
       <div className="mb-dock-section is-profile">
         {profileOpen && verticalProfile ? (
-          <div className="mb-profile-body">
+          <div className="mb-profile-body" style={{ height: heightPx }}>
             <VerticalProfileViewer embedded fillContainer compact compactTitle={profileTitle} compactActions={profileFold} plotPaddingLeft={labelWidth}
               profile={verticalProfile} crossSection={crossSection} layers={layers} onToggleLayer={toggleLayer}
               advisories={advisories} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset}

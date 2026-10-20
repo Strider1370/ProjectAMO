@@ -164,16 +164,20 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         {sourceNote && <p>{sourceNote}</p>}
         <p>{coverageNotes.join(' · ')}</p><p>고도는 원자료 기준입니다. 자료가 없는 영역은 별도로 표시합니다.</p>
       </>
-  // 지도형 브리핑 독: 시각·레이어·확대·범례를 머리 한 줄에 모으고, 미니맵(위험 막대가 대신)·범례 줄·비교 고도 줄은 뺀다.
+  // 지도형 브리핑 독: 시각·레이어·확대를 머리 한 줄에 펼쳐 두고, 범례는 그림 왼쪽 칸(고도 눈금 왼쪽)에 세로로.
+  // 미니맵(위험 막대가 대신)·범례 줄·비교 고도 줄은 뺀다.
   const compactHeader = compact && <header className="vpc-compact-header">
       {compactTitle}
       {timeControl}
-      <details className="vpc-compact-pop"><summary>레이어</summary><div className="vpc-compact-pop-body">{layerControls}</div></details>
+      {layerControls}
       {zoomControls}
-      <details className="vpc-compact-pop is-legend"><summary>범례</summary><div className="vpc-compact-pop-body"><ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>{sourceInfo}</div></details>
       <span className="vpc-compact-spacer"/>
       {compactActions}
     </header>
+  const compactLegend = compact && <div className="vpc-compact-legend">
+      <ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>
+      <details className="vpc-compact-info"><summary>자료 정보</summary><div>{sourceInfo}</div></details>
+    </div>
   return <div className={embedded ? `profile-embedded${fillContainer ? ' is-fill' : ''}` : 'vpc-overlay'}><section className={`vpc-window vpc-operational${embedded ? ' is-embedded' : ''}`} role={embedded ? 'group' : 'dialog'} aria-label="연직단면도"
     style={embedded ? undefined : {left:floating.rect.x, top:floating.rect.y, width:floating.rect.width, height:floating.rect.height}}>
     {compactHeader}
@@ -199,6 +203,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     {statusMessage && <div className="vpc-operational-status" role="status">{statusMessage}{retry && <button onClick={retry}>다시 시도</button>}</div>}
     {missingLayers.length > 0 && <div className="vpc-operational-status" role="status">자료 없음: {missingLayers.join(', ')}</div>}
     <div className="vpc-operational-body">
+      {compactLegend}
       <VerticalProfileChart profile={normalizedProfile} crossSection={crossSection} referenceAltitudeFt={effectiveAltitude} advisories={advisories}
         layers={chartLayers.current.value} legendInToolbar selectedCandidateAltitudeFt={selectedCandidateAltitudeFt} candidateAltitudes={candidateAltitudes}
         nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={crossSectionHourLoading ? undefined : onSetWaypointNwpOffset} allowMissingTerrain={allowMissingTerrain} fitHeight

@@ -14,23 +14,17 @@ export function writeBriefingView(view, storage = globalThis.localStorage) {
 }
 
 const DOCK_KEY = 'projectamo.briefingDock'
-// heightPx null = 아직 손대지 않음 → 화면 높이의 34%(1080에서 약 370: 위험 막대 4줄 + 단면 머리 1줄 + 그림 약 200).
-// 지도형인데 지도가 안 보이던 것(독 70%) 때문에 최대 50%로 묶는다 — 끌어 올려도 지도가 절반 이상 남는다.
+// 기억하는 것은 단면도 높이(profileHeightPx). 위험 막대를 접으면 독이 그만큼 줄고 단면도는 커지지 않는다.
 // profileOpen null = 아직 고르지 않음 → 화면 높이 900 이상이면 펼침(768 같은 낮은 화면은 단면 그림이 안 들어간다).
-export const DEFAULT_DOCK = { ribbonOpen: true, profileOpen: null, heightPx: null }
+// profileHeightPx null = 손대지 않음 → 독 전체가 화면의 약 34%(1080에서 단면 약 240px)가 되게.
+// 위험 막대 + 단면은 화면의 50%를 넘지 않는다 — 지도가 항상 절반 이상 남게.
+export const DEFAULT_DOCK = { ribbonOpen: true, profileOpen: null, profileHeightPx: null }
 export const PROFILE_OPEN_MIN_HEIGHT = 900
-export function profileOpenFor(dock, viewportHeight) {
-  return typeof dock.profileOpen === 'boolean' ? dock.profileOpen : viewportHeight >= PROFILE_OPEN_MIN_HEIGHT
-}
-export const DEFAULT_DOCK_RATIO = 0.34
+export const RIBBON_BLOCK_PX = 130 // 위험 막대 제목 + 4줄 + 여백(대략)
+const DEFAULT_DOCK_RATIO = 0.34
 export const DOCK_MAX_RATIO = 0.5
-export function dockHeightPx(dock, viewportHeight) {
-  return Number.isFinite(dock.heightPx) ? Math.min(dock.heightPx, Math.round(viewportHeight * DOCK_MAX_RATIO)) : Math.round(viewportHeight * DEFAULT_DOCK_RATIO)
-}
+const PROFILE_MIN_PX = 160
 
-// 위험 막대 이름 칸 폭 = 단면도 왼쪽 여백(두 가로축을 맞춘다). 144로 줄이면 "시정·운고 AIR"·"난류 MOD SIG" 칩이 잘려
-// 모든 폭에서 176을 쓴다.
-export const RIBBON_LABEL_WIDTH_PX = 176
 export function readDockState(storage = globalThis.localStorage) {
   try {
     const saved = JSON.parse(storage?.getItem(DOCK_KEY) ?? 'null')
@@ -38,13 +32,27 @@ export function readDockState(storage = globalThis.localStorage) {
     return {
       ribbonOpen: saved.ribbonOpen !== false,
       profileOpen: typeof saved.profileOpen === 'boolean' ? saved.profileOpen : null,
-      heightPx: Number.isFinite(saved.heightPx) ? saved.heightPx : DEFAULT_DOCK.heightPx,
+      profileHeightPx: Number.isFinite(saved.profileHeightPx) ? saved.profileHeightPx : null,
     }
   } catch { return DEFAULT_DOCK }
 }
 export function writeDockState(state, storage = globalThis.localStorage) {
   try { storage?.setItem(DOCK_KEY, JSON.stringify(state)) } catch { /* 기억만 못 할 뿐 */ }
 }
+export function profileOpenFor(dock, viewportHeight) {
+  return typeof dock.profileOpen === 'boolean' ? dock.profileOpen : viewportHeight >= PROFILE_OPEN_MIN_HEIGHT
+}
+export function profileMaxPx(viewportHeight) {
+  return Math.max(PROFILE_MIN_PX, Math.round(viewportHeight * DOCK_MAX_RATIO) - RIBBON_BLOCK_PX)
+}
+export function profileHeightPx(dock, viewportHeight) {
+  const max = profileMaxPx(viewportHeight)
+  if (Number.isFinite(dock.profileHeightPx)) return Math.min(max, Math.max(PROFILE_MIN_PX, dock.profileHeightPx))
+  return Math.min(max, Math.max(PROFILE_MIN_PX, Math.round(viewportHeight * DEFAULT_DOCK_RATIO) - RIBBON_BLOCK_PX))
+}
+
+// 위험 막대 이름 칸 폭 = 단면도 왼쪽 칸(범례 약 160 + 고도 눈금 약 80). 같은 폭이라 두 가로축이 정렬된다.
+export const RIBBON_LABEL_WIDTH_PX = 240
 
 export const LEVEL_KO = { SEV: '심한', MOD: '보통' }
 const PHASE_KO = { climb: '상승', cruise: '순항', descent: '강하' }

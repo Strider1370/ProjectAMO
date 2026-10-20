@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  dockHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
+  profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
   segmentText, sourceChips, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
 } from './mapBriefingModel.js'
 
@@ -14,8 +14,8 @@ test('remembers the chosen briefing view and dock state, falling back when stora
   writeBriefingView('document', storage)
   assert.equal(readBriefingView(storage), 'document')
   assert.equal(readBriefingView(broken), 'map')
-  writeDockState({ ribbonOpen: false, profileOpen: true, heightPx: 300 }, storage)
-  assert.deepEqual(readDockState(storage), { ribbonOpen: false, profileOpen: true, heightPx: 300 })
+  writeDockState({ ribbonOpen: false, profileOpen: true, profileHeightPx: 300 }, storage)
+  assert.deepEqual(readDockState(storage), { ribbonOpen: false, profileOpen: true, profileHeightPx: 300 })
   assert.deepEqual(readDockState(broken), DEFAULT_DOCK)
 })
 
@@ -25,12 +25,12 @@ test('profile starts folded on low screens until the user chooses', () => {
   assert.equal(profileOpenFor({ ...DEFAULT_DOCK, profileOpen: true }, 768), true)
 })
 
-test('dock height follows the viewport until the user resizes it', () => {
-  assert.equal(dockHeightPx(DEFAULT_DOCK, 1080), 367)
-  assert.equal(dockHeightPx(DEFAULT_DOCK, 768), 261)
-  assert.equal(dockHeightPx({ ...DEFAULT_DOCK, heightPx: 300 }, 768), 300)
-  // 예전에 기억된 큰 높이(최대 70%)도 50%로 묶어 지도가 절반 아래로 줄지 않게.
-  assert.equal(dockHeightPx({ ...DEFAULT_DOCK, heightPx: 700 }, 1000), 500)
+test('profile height keeps the whole dock near a third of the screen and under half', () => {
+  assert.equal(profileHeightPx(DEFAULT_DOCK, 1080), 237)
+  assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 300 }, 1080), 300)
+  // 위험 막대 + 단면이 화면 50%를 넘지 않는다(1080 → 단면 최대 410).
+  assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 900 }, 1080), 410)
+  assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 50 }, 1080), 160)
 })
 
 const row = (extra) => ({ key: 'turbulence', label: '난류', status: 'found', model: [], frames: [], ...extra })
