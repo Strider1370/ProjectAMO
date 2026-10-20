@@ -67,6 +67,14 @@
 
 **확인**: 컴포넌트 단위 테스트(줄 높이·칩 문구·접기 상태 기억), 브라우저 계약 `map-briefing.spec.mjs`(데스크톱 1920 하나: 기본·문서형 전환·막대/단면 따로 접기). 문서형 기존 계약 회귀.
 
+**실제로 한 것 (계획과 달라진 점)** — 자세한 결정은 spec §2.2.
+- 4번 "위쪽 손잡이로 높이 조절, 높이 기억"은 만들었다가 뺐다. 대신 독 전체 접기 탭. 단면 높이는 화면 30%(최소 280) 고정.
+- 4번 "연직단면도를 그대로 넣는다"는 지도형에 한해 압축 모드로 바꿨다(머리 한 줄, 범례 가운데, 레이어는 왼쪽 칸, 미니맵·범례 줄·비교 고도 줄 없음). `VerticalProfileViewer`에 `compact`·`compactTitle`·`compactActions`·`compactLegendExtra`·`plotPaddingLeft`·`onRangeChange`, `VerticalProfileChart`에 `plotPaddingLeft`·`compactRail`·`showWaypointRail` 추가.
+- 5번 위험 막대: 막대 글자 없음, 범례 색 통일, 빈 줄 숨김, AIRMET 제외, 자료 없음 빗금, SIGMET 구간별 틀. "폭 1280~1919는 라벨 열 144"는 칩이 잘려 모든 폭 240으로.
+- 2단계 자료도 함께 바꿨다: `hazard-ribbon.js` 빈 줄 제외·AIRMET 제외·`missing`·`partial`, `hazard-section.js` `routeRunsNm`, `geo-time-match.js` `routeRunsInGeometry`, `enroute-model.js` `missing`·착빙 300hPa 위 = 없음.
+- 계획에 없던 것: 독을 뜬 카드로, 시간 막대 28px, 현재 시각 줄 숨김, 재생 버튼 숨김, 범례·기본지도·확대 버튼 위치, 시간 조절 창 위치(문서형 포함).
+- 커밋: faec3ff9 · d53c025f · ba707a8f · ac4656b8 · 341fc5a8 · 728ef38c · bc3fdc77 · 7b2fbbcd · f39fe499 · 15eb168c · c0aeb656 · 59baef15 · d29e2499 · f93cc9c7 · c89631f3 · a65ed7e4 · eeb79d9c.
+
 ## 4단계 — 지도 연동
 
 1. **경로 위 위험 색 띠**: 내 고도 모델 구간을 `rangeCoordinates`(`legHighlight.js`)로 잘라 경로선 위에 SEV 빨강·MOD 노랑·태풍 보라로 그린다.
