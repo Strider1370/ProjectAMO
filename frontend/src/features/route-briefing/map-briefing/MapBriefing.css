@@ -66,9 +66,6 @@
 .mb-dock-tab:hover { color: var(--text-1); background: var(--level-gray-bg); }
 .mb-dock-tab.is-collapsed { bottom: 28px; height: 28px; }
 .mb-dock-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.mb-dock-handle { position: absolute; top: 0; z-index: 4; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; width: 72px; height: 14px; cursor: ns-resize; touch-action: none; }
-.mb-dock-handle span { width: 40px; height: 4px; border-radius: var(--radius-circular); background: var(--stroke-strong); }
-.mb-dock-handle:focus-visible { outline: 2px solid var(--accent); border-radius: var(--radius-sm); }
 .mb-dock-section { padding: 0 var(--space-l); }
 .mb-dock-section.is-ribbon { flex: none; padding-top: var(--space-xs); padding-bottom: var(--space-s); }
 .mb-dock-section.is-profile { flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--stroke-2); padding: 0; }

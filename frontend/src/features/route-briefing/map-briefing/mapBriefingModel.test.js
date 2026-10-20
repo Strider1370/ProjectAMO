@@ -14,8 +14,11 @@ test('remembers the chosen briefing view and dock state, falling back when stora
   writeBriefingView('document', storage)
   assert.equal(readBriefingView(storage), 'document')
   assert.equal(readBriefingView(broken), 'map')
-  writeDockState({ ribbonOpen: false, profileOpen: true, profileHeightPx: 300, collapsed: true }, storage)
-  assert.deepEqual(readDockState(storage), { ribbonOpen: false, profileOpen: true, profileHeightPx: 300, collapsed: true })
+  writeDockState({ ribbonOpen: false, profileOpen: true, collapsed: true }, storage)
+  assert.deepEqual(readDockState(storage), { ribbonOpen: false, profileOpen: true, collapsed: true })
+  // 예전에 손잡이로 저장한 높이는 읽지 않는다(손잡이를 뺐으므로).
+  storage.setItem('projectamo.briefingDock', JSON.stringify({ profileHeightPx: 600 }))
+  assert.deepEqual(readDockState(storage), DEFAULT_DOCK)
   assert.deepEqual(readDockState(broken), DEFAULT_DOCK)
 })
 
@@ -26,13 +29,9 @@ test('profile starts folded on low screens until the user chooses', () => {
 })
 
 test('profile height leaves room for the chart and keeps the dock under half the screen', () => {
-  assert.equal(profileHeightPx(DEFAULT_DOCK, 1080), 324)
-  assert.equal(profileHeightPx(DEFAULT_DOCK, 1000), 300)
-  assert.equal(profileHeightPx(DEFAULT_DOCK, 900), 280)
-  assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 300 }, 1080), 300)
-  // 위험 막대 + 단면이 화면 50%를 넘지 않는다(1080 → 단면 최대 410).
-  assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 900 }, 1080), 410)
-  assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 50 }, 1080), 160)
+  assert.equal(profileHeightPx(1080), 324)
+  assert.equal(profileHeightPx(1000), 300)
+  assert.equal(profileHeightPx(900), 280)
 })
 
 const row = (extra) => ({ key: 'turbulence', label: '난류', status: 'found', model: [], frames: [], ...extra })

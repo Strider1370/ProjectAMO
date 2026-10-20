@@ -3,9 +3,9 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import VerticalProfileViewer from '../VerticalProfileViewer.jsx'
 import { useCrossSectionLayers } from '../crossSectionLayers.jsx'
 import HazardRibbon from './HazardRibbon.jsx'
-import { RIBBON_LABEL_WIDTH_PX, profileHeightPx, profileMaxPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
+import { RIBBON_LABEL_WIDTH_PX, profileHeightPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
 
-// 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 위쪽 손잡이로 단면도 높이를 바꾼다.
+// 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 윗변 탭으로 독 전체를 접는다.
 // 독 높이는 내용대로 — 위험 막대를 접으면 독이 줄 뿐 단면도가 커지지 않는다. 접힘·단면 높이는 브라우저에 기억.
 // 단면도 그림의 가로축(0NM~끝)을 재서 위험 막대 가로축을 같은 세로선에 맞춘다.
 export default function BriefingDock({ ribbon, verticalProfile, crossSection, advisories, nwpTimeSelection, onSetWaypointNwpOffset, onSelectForecastHour, crossSectionHourLoading, selectedId, onSelect, onHeightChange }) {
@@ -33,7 +33,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   }, [onHeightChange, dock.collapsed])
 
   const profileOpen = profileOpenFor(dock, window.innerHeight)
-  const heightPx = profileHeightPx(dock, window.innerHeight)
+  const heightPx = profileHeightPx(window.innerHeight)
   const total = verticalProfile?.axis?.totalDistanceNm
   const zoomed = Boolean(profileRange && total && (profileRange[0] > 0.5 || profileRange[1] < total - 0.5))
 
@@ -63,29 +63,13 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
     return () => observer.disconnect()
   }, [measure, verticalProfile, crossSection, dock.ribbonOpen])
 
-  const startResize = (event) => {
-    if (event.button !== 0) return
-    event.preventDefault()
-    const startY = event.clientY
-    const startHeight = heightPx
-    const move = (e) => setDock((d) => ({ ...d, profileHeightPx: Math.round(Math.min(profileMaxPx(window.innerHeight), startHeight + startY - e.clientY)) }))
-    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }
-  const resizeByKey = (event) => {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
-    event.preventDefault()
-    const step = event.key === 'ArrowUp' ? 20 : -20
-    setDock((d) => ({ ...d, profileHeightPx: Math.min(profileMaxPx(window.innerHeight), profileHeightPx(d, window.innerHeight) + step) }))
-  }
   const toggle = (key) => setDock((d) => ({ ...d, [key]: key === 'profileOpen' ? !profileOpenFor(d, window.innerHeight) : !d[key] }))
   const fold = (open, onClick, label) => (
     <button type="button" className="mb-fold-btn" aria-expanded={open} onClick={onClick} aria-label={`${label} ${open ? '접기' : '펼치기'}`}>
       {open ? '접기' : '펼치기'} {open ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
     </button>
   )
-  // 독 전체 접기 탭: 펼쳤을 때는 독 윗변 가운데(높이 손잡이 위), 접으면 시간 막대 바로 위에 남는다(문서형 접기 탭과 같은 역할).
+  // 독 전체 접기 탭: 펼쳤을 때는 독 윗변 가운데, 접으면 시간 막대 바로 위에 남는다(문서형 접기 탭과 같은 역할).
   const collapseTab = (
     <button type="button" className={`mb-dock-tab${dock.collapsed ? ' is-collapsed' : ''}`} aria-expanded={!dock.collapsed}
       aria-label={dock.collapsed ? '경로상 위험·연직단면도 펼치기' : '경로상 위험·연직단면도 접기'}
@@ -101,10 +85,6 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
     <>
     {collapseTab}
     <section ref={dockRef} className={`mb-dock${profileOpen ? ' has-profile' : ''}`} style={{ '--mb-label-w': `${labelWidth}px` }} aria-label="경로상 위험과 연직단면도">
-      {profileOpen && (
-        <div className="mb-dock-handle" role="separator" aria-orientation="horizontal" aria-label="연직단면도 높이 조절" tabIndex={0}
-          aria-valuenow={heightPx} onPointerDown={startResize} onKeyDown={resizeByKey}><span /></div>
-      )}
       <div className="mb-dock-section is-ribbon">
         <header className="mb-ribbon-head">
           <h3 className="mb-dock-title">경로상 위험</h3>
