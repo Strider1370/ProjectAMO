@@ -11,7 +11,7 @@ function constraintLabel(constraints) {
     if (Number.isFinite(floor) && Number.isFinite(ceiling)) return `이 항로는 ${formatAltitude(floor)}~${formatAltitude(ceiling)} 사이 고도만 비교할 수 있습니다`
     if (Number.isFinite(floor)) return `이 항로는 ${formatAltitude(floor)} 이상 고도만 비교할 수 있습니다`
     if (Number.isFinite(ceiling)) return `이 항로는 ${formatAltitude(ceiling)} 이하 고도만 비교할 수 있습니다`
-    return '이 항로는 고도 제한 없이 비교할 수 있습니다'
+    return '이 항로는 상·하한 고도 제한이 없습니다 (고도 방향 규칙은 적용)'
   }
   if (constraints?.status === 'partial') return 'AIP 고도 제약 데이터 일부 없음'
   if (constraints?.status === 'conflicting') return '경로 구간별 고도 계열 확인 필요'

@@ -509,6 +509,22 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const selectedRouteDesign = routeDesigns.find((design) => design.id === selectedRouteDesignId)
   const selectedAltitudeRow = altitudeComparison?.rows?.find((row) => Number(row.altFt ?? row.altitudeFt) === Number(cruiseAltitudeFt))
   const selectedHazards = selectedAltitudeRow?.hazards ?? []
+  // 방향 규칙 밖 고도는 브리핑 준비로 넘어가기 전에 한 번 더 확인받는다(경고 후 같은 버튼 다시 누름).
+  const offRuleAltitude = (selectedAltitudeRow?.candidateStatus ?? selectedAltitudeRow?.status) === 'input_invalid'
+  const [offRuleConfirmedFt, setOffRuleConfirmedFt] = useState(null)
+  const offRuleArmed = offRuleAltitude && offRuleConfirmedFt === Number(cruiseAltitudeFt)
+  const continueFromAltitude = () => {
+    if (offRuleAltitude && !offRuleArmed) { setOffRuleConfirmedFt(Number(cruiseAltitudeFt)); return }
+    continueToBriefing({ fitRoute: true })
+  }
+  // 비교하지 않았거나 자료가 없는 고도를 "위험 없음"으로 읽히게 두지 않는다.
+  const selectedAltitudeHazardText = !selectedAltitudeRow
+    ? '이 고도는 고도 비교에서 확인되지 않음'
+    : selectedAltitudeRow.weatherStatus === 'unavailable'
+      ? '이 고도는 비교 대상이 아니어서 확인되지 않음'
+      : selectedHazards.length
+        ? `주의 기상 ${selectedHazards.map((hazard) => phenomenonLabelKo(hazard.label)).join(' · ')}`
+        : '이 고도에 걸리는 SIGMET·AIRMET 없음'
   const procedureSummary = [selectedSid?.label, selectedStar?.label, selectedIap?.label].filter(Boolean).join(' · ')
   // 세부경로: routeResult에 legs 키는 없다. 수동 편집 경로는 manualLegs(DCT 포함 전 구간),
   // 자동 계획 경로는 navpointIds + segments(항공로 구간)로 들고 있다. 지점 사슬은
@@ -587,7 +603,12 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           <span className="k">교체공항</span>
           <span>
             <span className="v">{alternateAirport || '선택 안 함'}</span>
-            <span className="s">{selectedHazards.length ? `주의 기상 ${selectedHazards.map((hazard) => phenomenonLabelKo(hazard.label)).join(' · ')}` : '선택 고도에서 추가 위험기상 없음'}</span>
+          </span>
+        </div>
+        <div className="rb-prep-row">
+          <span className="k">고도 위험</span>
+          <span>
+            <span className="v">{selectedAltitudeHazardText}</span>
           </span>
         </div>
       </div>
@@ -986,7 +1007,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   ) : workflowStep === 'altitude' ? (
     <div className="route-check-actions is-step">
       <button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button>
-      <button type="button" className="route-check-search-button" onClick={() => continueToBriefing({ fitRoute: true })} disabled={!workflowAvailability.briefing}>브리핑 준비로</button>
+      {offRuleArmed && <p className="rb-alert-banner" role="alert">{`${Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Number(cruiseAltitudeFt).toLocaleString()} ft`}은 이 항로의 고도 방향 규칙에 맞지 않습니다. 이 고도로 진행하려면 한 번 더 누르세요.`}</p>}
+      <button type="button" className="route-check-search-button" onClick={continueFromAltitude} disabled={!workflowAvailability.briefing}>{offRuleArmed ? '이 고도로 진행' : '브리핑 준비로'}</button>
     </div>
   ) : null
 

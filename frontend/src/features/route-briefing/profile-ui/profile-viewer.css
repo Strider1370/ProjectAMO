@@ -108,7 +108,10 @@
 .vpc-operational .cs-turbulence-cell { fill-opacity:.3; }
 .vpc-operational .cs-wind-barb { opacity:.75; stroke:#64748b; }
 .vpc-operational .cs-wind-pennant { fill:#64748b; opacity:.75; }
-.vpc-operational .vertical-profile-procedure-line.is-selected { stroke:#2563eb; stroke-width:3; stroke-dasharray:none; }
+/* 고도 비교 후보 중 선택된 선도 브리핑 단면과 같은 파랑. RouteBriefing.css의 옛 주황
+   .is-candidate.is-selected와 우선순위가 같아 CSS 로딩 순서에 따라 주황이 이기던 것을 막는다. */
+.vpc-operational .vertical-profile-procedure-line.is-selected,
+.vpc-operational .vertical-profile-procedure-line.is-candidate.is-selected { stroke:#2563eb; stroke-width:3; stroke-dasharray:none; opacity:1; }
 .vpc-operational .vertical-profile-reference-line { stroke:#64748b; stroke-width:1; stroke-dasharray:5 5; opacity:.6; }
 .vpc-operational .cs-isotach { stroke-width:1; }
 .vpc-operational .cs-isotach.is-major { stroke-width:1.4; }

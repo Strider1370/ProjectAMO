@@ -11,13 +11,19 @@ function contain(rect) {
   const height = clamp(rect.height, Math.min(window.innerWidth < 720 ? 700 : 500, b.height), b.height)
   return { width, height, x: clamp(rect.x, b.left, b.left + b.width - width), y: clamp(rect.y, b.top, b.top + b.height - height) }
 }
-function initialRect() {
+function initialRect(placement) {
   const b = bounds(), width = b.width - (window.innerWidth > 719 ? 40 : 0), height = Math.min(600, b.height * .78)
+  // 'side': 고도 비교 중에는 왼쪽 경로 패널의 비교 결과를 가리지 않게 패널 오른쪽에서 연다.
+  const panelRight = placement === 'side' ? document.querySelector('.route-check-panel')?.getBoundingClientRect().right : null
+  if (Number.isFinite(panelRight) && b.left + b.width - (panelRight + 12) >= Math.min(580, b.width)) {
+    const x = panelRight + 12
+    return contain({ x, y: b.top + (b.height - height) / 2, width: b.left + b.width - x, height })
+  }
   return contain({ x: b.left + (b.width - width) / 2, y: b.top + (b.height - height) / 2, width, height })
 }
 
-export default function useFloatingWindow() {
-  const [rect, setRect] = useState(initialRect)
+export default function useFloatingWindow(placement) {
+  const [rect, setRect] = useState(() => initialRect(placement))
   const [maximized, setMaximized] = useState(false)
   const [moving, setMoving] = useState(false)
   const [, redraw] = useState(0)

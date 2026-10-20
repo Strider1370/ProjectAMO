@@ -22,8 +22,8 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null }) {
-  const floating = useFloatingWindow()
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement }) {
+  const floating = useFloatingWindow(placement)
   const { tz, setTz } = useTimeZone()
   const [localLayers, localToggle] = useCrossSectionLayers(INITIAL_LAYERS)
   const layers = externalLayers ?? localLayers
