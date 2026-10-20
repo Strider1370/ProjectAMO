@@ -7,6 +7,8 @@ import { frameTag, modelChip, pctOf, rowEmptyText, segmentText, sourceChips } fr
 export default function HazardRibbon({ ribbon, profileRange = null, selectedId = null, onSelect, hiddenRows = [], onToggleRow, trackInset = null }) {
   const total = ribbon?.totalDistanceNm || 0
   if (!ribbon || !(total > 0)) return <p className="mb-ribbon-empty">경로상 위험 자료가 없습니다.</p>
+  // 걸리는 것이 없는 줄은 서버가 뺀다. 모두 빠지면 한 줄로 알린다.
+  if (!ribbon.rows.length) return <p className="mb-ribbon-empty">내 비행 고도에 MOD 이상 수치예보·경로에 걸린 SIGMET 없음</p>
   const [rangeStart, rangeEnd] = profileRange ?? [0, total]
   const zoomed = profileRange && (rangeStart > 0.5 || rangeEnd < total - 0.5)
   const insetStyle = trackInset ? { '--mb-label-w': `${trackInset.left}px`, '--mb-track-right': `${Math.max(0, trackInset.right)}px` } : undefined

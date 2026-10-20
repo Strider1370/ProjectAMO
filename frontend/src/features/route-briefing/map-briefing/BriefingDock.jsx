@@ -96,8 +96,8 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
       <div className="mb-dock-section is-ribbon">
         <header className="mb-ribbon-head">
           <h3 className="mb-dock-title">경로상 위험</h3>
-          <span className="mb-info" tabIndex={0} role="img" aria-label="막대 = 수치예보(내 비행 고도 · MOD 이상), 틀 = 예보관 발표 SIGMET/AIRMET, 가로축 = 경로 전체"
-            title="막대 = 수치예보(내 비행 고도 · MOD 이상) · 틀 = 예보관 발표 SIGMET/AIRMET · 가로축 = 경로 전체"><Info size={13} aria-hidden="true" /></span>
+          <span className="mb-info" tabIndex={0} role="img" aria-label="막대 = 수치예보(내 비행 고도 · MOD 이상), 틀 = 예보관 발표 SIGMET·태풍, 가로축 = 경로 전체. 걸리는 것이 없는 현상은 줄을 표시하지 않음"
+            title="막대 = 수치예보(내 비행 고도 · MOD 이상) · 틀 = 예보관 발표 SIGMET·태풍 · 가로축 = 경로 전체 · 걸리는 것이 없는 현상은 줄을 표시하지 않음"><Info size={13} aria-hidden="true" /></span>
           {fold(dock.ribbonOpen, () => toggle('ribbonOpen'), '경로상 위험')}
         </header>
         {dock.ribbonOpen && (

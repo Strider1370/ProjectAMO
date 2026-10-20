@@ -1,13 +1,14 @@
 // 지도형 브리핑의 위험 막대 자료. 화면은 이 값만 그리고 판정은 여기서 한다.
-// 줄 = 현상(난류·착빙·대류 + 해당 시 태풍·시정/운고). 한 줄 안에
+// 줄 = 현상(난류·착빙·대류·태풍). 한 줄 안에
 //   model  : 수치예보가 내 비행 고도(상승·순항·강하 프로파일)에서 MOD 이상인 구간
-//   frames : 예보관 발표(SIGMET·AIRMET·태풍)가 경로에 걸린 구간. mine = 내 고도와 겹침
+//   frames : 예보관 발표(SIGMET·태풍)가 경로에 걸린 구간. mine = 내 고도와 겹침
+// 걸리는 것이 없는 줄은 빼서 지도 자리를 남긴다. 단, 난류·착빙 모델 자료가 없는 줄은 남긴다 —
+// 빼면 "위험 없음"과 구별되지 않는다. AIRMET(시정·운고 포함)은 막대에 넣지 않는다(2026-10-20 결정).
 const ROWS = [
-  { key: 'turbulence', label: '난류', always: true },
-  { key: 'icing', label: '착빙', always: true },
-  { key: 'convection', label: '대류', always: true },
-  { key: 'typhoon', label: '태풍', always: false },
-  { key: 'visibility', label: '시정·운고', always: false },
+  { key: 'turbulence', label: '난류', showUnavailable: true },
+  { key: 'icing', label: '착빙', showUnavailable: true },
+  { key: 'convection', label: '대류', showUnavailable: false },
+  { key: 'typhoon', label: '태풍', showUnavailable: false },
 ]
 
 const ROW_BY_CODE = {
@@ -16,14 +17,10 @@ const ROW_BY_CODE = {
   TS: 'convection', EMBD_TS: 'convection', OBSC_TS: 'convection', FRQ_TS: 'convection', SQL_TS: 'convection',
   ISOL_TS: 'convection', OCNL_TS: 'convection', CB: 'convection', GR: 'convection',
   TC: 'typhoon',
-  SFC_VIS: 'visibility', SFC_WIND: 'visibility', IFR: 'visibility', MT_OBSC: 'visibility',
 }
 
 function rowForCode(code) {
-  const key = String(code ?? '').toUpperCase()
-  if (ROW_BY_CODE[key]) return ROW_BY_CODE[key]
-  if (key.includes('CLD')) return 'visibility' // BKN/OVC CLD 운고 AIRMET
-  return null // VA 등 막대에 넣지 않는 현상
+  return ROW_BY_CODE[String(code ?? '').toUpperCase()] ?? null // VA·시정·운고 등은 막대에 넣지 않는다
 }
 
 const MODEL_LEVEL = { '중': 'MOD', '심': 'SEV' }
@@ -115,16 +112,16 @@ function frameFor(ctx, hazard) {
   }
 }
 
-// 패널 요약에 올릴 순위: 모델 SEV·SIGMET·태풍(내 고도) > 모델 MOD·AIRMET(내 고도).
+// 패널 요약에 올릴 순위: 모델 SEV·SIGMET·태풍(내 고도) > 모델 MOD.
 function summaryRank(item) {
   if (item.kind === 'model') return item.level === 'SEV' ? 3 : 2
-  return item.source === 'AIRMET' ? 2 : 3
+  return 3
 }
 
 function buildSummary(rows) {
   const candidates = rows.flatMap((row) => [
     ...row.model.map((segment) => ({ ...segment, kind: 'model', row: row.key, label: row.label })),
-    ...row.frames.filter((frame) => frame.mine).map((frame) => ({ ...frame, kind: 'frame', row: row.key, label: row.label, sourceLabel: frame.label, level: frame.source === 'AIRMET' ? 'MOD' : 'SEV' })),
+    ...row.frames.filter((frame) => frame.mine).map((frame) => ({ ...frame, kind: 'frame', row: row.key, label: row.label, sourceLabel: frame.label, level: 'SEV' })),
   ])
   const unavailable = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.status === 'unavailable').map((row) => row.key)
   if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, unavailable }
@@ -161,7 +158,7 @@ export function buildHazardRibbon({ enrouteModel = null, convection = null, haza
 
   const framesByRow = new Map()
   for (const hazard of hazards) {
-    if (hazard.airportScope) continue // 공항경보는 공항 카드 몫
+    if (hazard.airportScope || hazard.source === 'AIRMET') continue // 공항경보는 공항 카드 몫, AIRMET은 막대에서 뺌
     const row = rowForCode(hazard.code)
     const frame = row ? frameFor(ctx, hazard) : null
     if (!frame) continue
@@ -170,11 +167,12 @@ export function buildHazardRibbon({ enrouteModel = null, convection = null, haza
   }
 
   const rows = ROWS
-    .filter((row) => row.always || framesByRow.has(row.key))
+    .filter((row) => framesByRow.has(row.key) || modelByRow[row.key]?.segments.length
+      || (row.showUnavailable && modelByRow[row.key]?.status === 'unavailable'))
     .map((row) => ({
       key: row.key,
       label: row.label,
-      // 모델이 없는 줄(태풍·시정/운고)은 null — 화면이 "확인 불가"로 그리지 않게.
+      // 모델이 없는 줄(태풍)은 null — 화면이 "확인 불가"로 그리지 않게.
       status: modelByRow[row.key]?.status ?? null,
       model: modelByRow[row.key]?.segments ?? [],
       frames: (framesByRow.get(row.key) ?? []).sort((a, b) => a.startNm - b.startNm),

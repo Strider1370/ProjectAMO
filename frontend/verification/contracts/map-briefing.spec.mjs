@@ -14,8 +14,9 @@ test.describe('map-briefing', () => {
     await expect(panel.getByText('RKSS → RKPK')).toBeVisible()
     const ribbon = page.getByRole('group', { name: '경로상 위험 막대' })
     await expect(ribbon).toBeVisible()
-    for (const label of ['난류', '착빙', '대류']) await expect(ribbon.getByText(label, { exact: true })).toBeVisible()
-    // 픽스처는 모델 단면이 없으므로 "확인 불가"(짧게 '불가')로 그린다 — "없음"으로 읽히지 않게.
+    // 픽스처는 모델 단면이 없다: 난류·착빙은 "확인 불가"(짧게 '불가') 줄로 남고, 걸린 것이 없는 대류 줄은 빠진다.
+    for (const label of ['난류', '착빙']) await expect(ribbon.getByText(label, { exact: true })).toBeVisible()
+    await expect(ribbon.getByText('대류', { exact: true })).toHaveCount(0)
     await expect(ribbon.getByText('불가', { exact: true }).first()).toBeVisible()
     await expect(page.getByRole('group', { name: '연직단면도' })).toBeVisible()
     // 위험 막대 가로축이 아래 단면도 그림의 0NM~끝과 같은 세로선에 온다.

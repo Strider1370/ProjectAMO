@@ -22,9 +22,16 @@ const enrouteModel = {
 }
 const sigmet = (code, startNm, endNm, encounter, extra = {}) => ({ source: 'SIGMET', code, label: code, encounter, routeIntervalNm: { startNm, endNm }, bandFt: { lowFt: 14000, highFt: 20000 }, ...extra })
 
-test('builds always-on rows with model segments, names, phases and passing times', () => {
+test('keeps only rows with something on them, plus turbulence/icing whose model data is missing', () => {
+  // 착빙 MOD 이상 없음·대류 자료 없음 → 줄을 빼서 지도 자리를 남긴다.
   const ribbon = buildHazardRibbon({ ...base, enrouteModel, convection: { status: 'unavailable', intervals: [] } })
-  assert.deepEqual(ribbon.rows.map((row) => [row.key, row.status]), [['turbulence', 'found'], ['icing', 'none'], ['convection', 'unavailable']])
+  assert.deepEqual(ribbon.rows.map((row) => [row.key, row.status]), [['turbulence', 'found']])
+  const missing = buildHazardRibbon({ ...base, enrouteModel: { ...enrouteModel, status: { turbulence: 'found', icing: 'unavailable' } } })
+  assert.deepEqual(missing.rows.map((row) => [row.key, row.status]), [['turbulence', 'found'], ['icing', 'unavailable']])
+})
+
+test('builds model segments with names, phases and passing times', () => {
+  const ribbon = buildHazardRibbon({ ...base, enrouteModel, convection: { status: 'unavailable', intervals: [] } })
   const [cruise, approach] = ribbon.rows[0].model
   assert.equal(cruise.level, 'SEV')
   assert.equal(cruise.phase, 'cruise')
@@ -37,7 +44,7 @@ test('builds always-on rows with model segments, names, phases and passing times
   assert.equal(ribbon.windApplied, false)
 })
 
-test('assigns SIGMET/AIRMET/typhoon frames to phenomenon rows and skips airport warnings and VA', () => {
+test('assigns SIGMET/typhoon frames to phenomenon rows and skips AIRMET, airport warnings and VA', () => {
   const hazards = [
     sigmet('SEV_ICE', 100, 200, 'nearby'),
     sigmet('EMBD_TS', 150, 220, 'on'),
@@ -48,12 +55,12 @@ test('assigns SIGMET/AIRMET/typhoon frames to phenomenon rows and skips airport 
   ]
   const ribbon = buildHazardRibbon({ ...base, enrouteModel, hazards })
   const byKey = Object.fromEntries(ribbon.rows.map((row) => [row.key, row]))
-  assert.deepEqual(ribbon.rows.map((row) => row.key), ['turbulence', 'icing', 'convection', 'typhoon', 'visibility'])
+  assert.deepEqual(ribbon.rows.map((row) => row.key), ['turbulence', 'icing', 'convection', 'typhoon'])
   assert.equal(byKey.icing.frames[0].mine, false)
   assert.equal(byKey.convection.frames[0].mine, true)
   assert.equal(byKey.typhoon.status, null)
-  assert.equal(byKey.visibility.frames[0].source, 'AIRMET')
-  assert.equal(ribbon.rows.flatMap((row) => row.frames).length, 4)
+  assert.equal(ribbon.rows.flatMap((row) => row.frames).length, 3)
+  assert.ok(ribbon.rows.flatMap((row) => row.frames).every((frame) => frame.source !== 'AIRMET'))
 })
 
 test('summary picks the strongest hazard at my altitude, else clear or unknown', () => {

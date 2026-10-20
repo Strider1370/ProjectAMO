@@ -211,7 +211,8 @@ test('composeBriefing merges departure and arrival when they are the same airpor
 test('enroute ribbon puts the SIGMET icing frame on the icing row and marks model rows unavailable without data', () => {
   const b = composeBriefing(request, data)
   const ribbon = b.sections.enroute.ribbon
-  assert.deepEqual(ribbon.rows.map((row) => row.key), ['turbulence', 'icing', 'convection'])
+  // 대류 자료 없음 → 줄 없음. 난류·착빙은 자료가 없어도 "확인 불가"로 남는다.
+  assert.deepEqual(ribbon.rows.map((row) => row.key), ['turbulence', 'icing'])
   const icing = ribbon.rows.find((row) => row.key === 'icing')
   assert.equal(icing.frames.length, 1)
   assert.equal(icing.frames[0].mine, true) // FL060–120 band covers 9000ft
