@@ -221,6 +221,8 @@ function ProfileChartContent({
   fitHeight = false,
   // 지도형 브리핑: 위험 막대 이름 칸과 같은 폭으로 왼쪽 여백을 맞춰 두 가로축을 정렬한다.
   plotPaddingLeft = null,
+  // 지점별 예보시각 조절 줄(점·선). 지도형 브리핑 독에서는 높이를 아끼려고 끈다 — 지점 이름은 남는다.
+  showWaypointRail = true,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -289,7 +291,7 @@ function ProfileChartContent({
   const markerLabels = interactive ? singleRowMarkers(visibleMarkers, provisionalX, basePadding.left, width - basePadding.right, selectedMarkerId) : assignMarkerLanes(visibleMarkers, provisionalX)
   const markerLaneCount = Math.max(1, ...markerLabels.map((marker) => marker.lane + 1))
   // Frozen results still display their time rules, without exposing edit controls.
-  const railEnabled = Boolean((onSetWaypointNwpOffset || nwpTimeSelection) && visibleMarkers.length > 1)
+  const railEnabled = Boolean(showWaypointRail && (onSetWaypointNwpOffset || nwpTimeSelection) && visibleMarkers.length > 1)
   // 시간선의 44px 클릭 영역과 기존 웨이포인트 이름 블록은 겹치면 안 된다.
   // 이름표는 클릭 영역이 끝나는 바로 다음 행에서 시작한다.
   const waypointLabelBandOffset = railEnabled ? 36 : 0

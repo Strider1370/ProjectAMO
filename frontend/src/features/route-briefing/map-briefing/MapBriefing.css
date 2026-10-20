@@ -46,10 +46,10 @@
 .mb-end { display: block; width: 100%; padding: var(--space-s) var(--space-l) var(--space-m); border: 0; background: none; color: var(--text-3); font: inherit; cursor: pointer; }
 .mb-end:hover { color: var(--text-1); text-decoration: underline; }
 
-/* 독: 위험 막대 + 연직단면도. 시간 막대 띠(38px) 바로 위에 붙인다 — 띠 위의 빈 50px에 지도가 비쳐 보이던 틈을 없앤다. */
+/* 독: 위험 막대 + 연직단면도. 시간 막대 띠(브리핑 중 28px) 바로 위에 붙인다 — 띠 위의 빈 50px에 지도가 비쳐 보이던 틈을 없앤다. */
 .mb-dock {
   --mb-label-w: 176px; --mb-track-right: 0px; --mb-typhoon: #6d28d9; --mb-airmet: #92400e;
-  position: absolute; left: 0; right: 0; bottom: 38px; z-index: 7;
+  position: absolute; left: 0; right: 0; bottom: 28px; z-index: 7;
   display: flex; flex-direction: column; min-height: 0;
   background: var(--bg-1); border-top: 1px solid var(--stroke-2); box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
   color: var(--text-1); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
@@ -153,6 +153,10 @@
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
 .map-view-wrapper[data-map-briefing='true'] .active-route-chip,
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__play { display: none; }
-.map-view-wrapper[data-map-briefing='true'] .map-bottom-control-dock { bottom: calc(38px + var(--mb-dock-h, 0px) + var(--space-s)); }
-.map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(40px + var(--mb-dock-h, 0px)); }
+.map-view-wrapper[data-map-briefing='true'] .map-bottom-control-dock { bottom: calc(28px + var(--mb-dock-h, 0px) + var(--space-s)); }
+/* 시간 막대 띠를 38 → 28px로(눈금·글자를 위로 당김). */
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__viewport,
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__playhead { height: 28px; }
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__tick-label { top: 9px; font-size: 10.5px; }
+.map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(30px + var(--mb-dock-h, 0px)); }
 .map-view-wrapper[data-map-briefing='true'] .mapboxgl-ctrl-bottom-right { bottom: var(--mb-dock-h, 0px); }

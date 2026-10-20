@@ -47,6 +47,10 @@ optgroup {
   --active-sidebar-width: var(--sidebar-expanded);
 }
 
+/* 지도형 브리핑 중에는 맨 아래 시각 줄을 숨기고 그 높이를 지도·독에 준다. */
+.app.is-map-briefing { --app-bottom-bar: 0px; }
+.app.is-map-briefing .utc-bar { display: none; }
+
 .map-shell {
   margin-left: var(--active-sidebar-width);
   width: calc(100vw - var(--active-sidebar-width));

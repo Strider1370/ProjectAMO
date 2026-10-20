@@ -248,7 +248,7 @@ function MainAppShell({ conceptPreview = false }) {
   }
 
   return (
-    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''} ${mobileTask === 'map' && !selectedAirport ? 'map-controls-visible' : ''}`}>
+    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''} ${mobileTask === 'map' && !selectedAirport ? 'map-controls-visible' : ''}${mapBriefingActive ? ' is-map-briefing' : ''}`}>
       {previewMode && <PreviewMode compact />}
       <Sidebar
         activePanel={activePanel}
