@@ -165,6 +165,24 @@ test('routes infrared, WISSDOM, and QPF through the 200ms raster transition', ()
     { sourceId: 'kma-qpf-overlay', transitionMs: 200, visible: true },
   ])
   assert.equal(calls[0].opacity, 1)
+  // 가시영상이 없을 때 적외영상은 레이더 아래로 들어간다(맨 위에 붙어 레이더를 덮지 않게).
+  assert.equal(calls[0].beforeLayerId, 'kma-radar-overlay')
+})
+
+test('infrared goes under the visible satellite layer when it exists', () => {
+  const calls = []
+  const map = createMockMap()
+  map.addLayer({ id: 'gk2a-visible-overlay', type: 'raster', source: 'gk2a-visible-overlay' })
+  syncRasterAndSigwxLayers(map, {
+    satelliteFrame: { path: '/ir.webp', bounds: [[30, 120], [40, 130]] },
+    radarFrame: null,
+    selectedSigwxFrontMeta: null,
+    selectedSigwxCloudMeta: null,
+    sigwxLowMapData: null,
+    visibility: { satellite: true, radar: false, radarHsr: true, radarOverseas: false, sigwx: false },
+  }, {
+    syncRaster: (_map, options) => calls.push(options),
+  })
   assert.equal(calls[0].beforeLayerId, 'gk2a-visible-overlay')
 })
 

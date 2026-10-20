@@ -548,7 +548,9 @@ export function syncRasterAndSigwxLayers(map, model, { syncRaster = syncRasterFr
     layerId: SATELLITE_LAYER,
     frame: model.satelliteFrame,
     opacity: 1,
-    beforeLayerId: 'gk2a-visible-overlay',
+    // 적외영상은 가시영상 아래, 가시영상이 없으면 레이더 아래. 기준 레이어가 없으면 맨 위에
+    // 붙어 레이더를 덮었다(가시영상을 한 번 켜야 정상으로 보이던 문제).
+    beforeLayerId: map.getLayer?.('gk2a-visible-overlay') ? 'gk2a-visible-overlay' : RADAR_LAYER,
     visible: Boolean(model.visibility.satellite && model.satelliteFrame),
     transitionMs: 200,
   })
