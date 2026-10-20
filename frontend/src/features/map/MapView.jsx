@@ -165,6 +165,7 @@ const RouteBriefingPanel = lazy(() => import('../route-briefing/RouteBriefingPan
 const VerticalProfileWindow = lazy(() => import('../route-briefing/VerticalProfileWindow.jsx'))
 const CopilotResultView = lazy(() => import('../route-briefing/CopilotResultView.jsx'))
 const BriefingView = lazy(() => import('../route-briefing/BriefingView.jsx'))
+const SaveBriefingDialog = lazy(() => import('../route-briefing/SaveBriefingDialog.jsx'))
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -394,6 +395,7 @@ const MapView = forwardRef(function MapView({
   onOpenRoutePanel,
   onOpenMetPanel,
   onOpenMyMapPanel,
+  onRequestLogin,
   enableWindOverlay = true,
   metLayerIds = null,
   showRadarWindControl = true,
@@ -543,16 +545,11 @@ const MapView = forwardRef(function MapView({
   // 브리핑 저장 — 이름을 묻고 저장한 뒤 결과를 알린다. 저장 직후가 이 기능이 어디 있는지
   // 알려줄 유일한 자리다(메뉴를 아무리 잘 놓아도 안 찾아보면 못 찾는다).
   // 게스트는 저장하지 않는다 — 브리핑은 알림 감시 대상이고 알림은 계정에 매인다.
-  async function handleSaveBriefing() {
-    if (!authUser) { window.alert('브리핑을 저장하려면 로그인하세요.'); return }
-    const name = window.prompt('브리핑 이름', routeBriefing.actions.suggestedBriefingName())
-    if (name == null) return
-    const result = await routeBriefing.actions.saveCurrentBriefing(name.trim() || routeBriefing.actions.suggestedBriefingName())
-    if (result.ok) {
-      window.alert('저장했습니다 — 왼쪽 아래 프로필 > 저장한 브리핑에서 다시 열 수 있습니다.')
-    } else if (result.reason === 'save_failed') {
-      window.alert('저장하지 못했습니다. 저장한 브리핑이 5개라면 계정에서 하나를 지우고 다시 시도하세요.')
-    }
+  // 비로그인이면 앱 로그인 창을 바로 띄우고, 로그인 상태면 앱 안의 이름 입력 창을 연다.
+  const [saveBriefingOpen, setSaveBriefingOpen] = useState(false)
+  function handleSaveBriefing() {
+    if (!authUser) { onRequestLogin?.(); return }
+    setSaveBriefingOpen(true)
   }
   const effectiveLightningReferenceTimeMs = demoMode ? demoNowMs : lightningReferenceTimeMs
   const notamFc = useMemo(() => notamToFeatureCollection(notamData, demoNowMs), [notamData, demoNowMs])
@@ -2392,6 +2389,16 @@ const MapView = forwardRef(function MapView({
           <House size={18} aria-hidden="true" />
           <span>기본 지도</span>
         </button>
+      )}
+
+      {saveBriefingOpen && (
+        <Suspense fallback={null}>
+          <SaveBriefingDialog
+            defaultName={routeBriefing.actions.suggestedBriefingName()}
+            onSave={(name) => routeBriefing.actions.saveCurrentBriefing(name)}
+            onClose={() => setSaveBriefingOpen(false)}
+          />
+        </Suspense>
       )}
 
       {routeBriefing.state.verticalProfileWindowOpen && !copilotResult.bundle && (

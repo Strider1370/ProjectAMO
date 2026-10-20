@@ -295,6 +295,7 @@ function MainAppShell({ conceptPreview = false }) {
           onOpenNotamPanel={() => setActivePanel('notam')}
           onOpenRoutePanel={() => setActivePanel('route-check')}
           onOpenMetPanel={() => setActivePanel('met')}
+          onRequestLogin={() => setAuthOpen(true)}
           onOpenMyMapPanel={() => { setMobileTask('map'); setActivePanel('my-map') }}
         />
       </main>
