@@ -9,7 +9,6 @@ import { windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
-  buildIfrDistanceBreakdown,
 } from './lib/routeBriefingModel.js'
 import { Button, Field, Dropdown, Combobox, Option, Input, SpinButton, TabList, Tab, Badge, MessageBar, MessageBarBody, DatePicker, TimePicker, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem, Divider, Dialog, DialogSurface, DialogTitle, DialogBody, DialogContent, makeStyles, tokens } from '../../shared/ui/fluent.js'
 import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.js'
@@ -1003,7 +1002,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     if (routeResult.flightRule === 'VFR' && vfrWaypoints.length >= 2) {
       peekDistance = `${calcVfrDistance(vfrWaypoints).toFixed(1)} NM`
     } else if (routeResult.flightRule === 'IFR') {
-      peekDistance = `${buildIfrDistanceBreakdown({ routeResult, selectedSid, selectedStar, selectedIap }).totalDistanceNm} NM`
+      peekDistance = `${Number(derived.plannedDistanceNm).toFixed(1)} NM`
     }
   }
   const peekSummary = (

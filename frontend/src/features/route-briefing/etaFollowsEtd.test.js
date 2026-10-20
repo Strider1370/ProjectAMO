@@ -16,7 +16,7 @@ test('ETA is only pinned when the user edited it', () => {
   assert.doesNotMatch(hook, /const (search|next)Eta = eta \|\| computeEtaIso/)
   assert.match(hook, /\(etaUserEdited && eta\) \|\| computeEtaIso/)
   // ETD·TAS·거리가 바뀌면 고정 전에는 다시 계산된다.
-  assert.match(hook, /\[etaUserEdited, etd, tasKt, plannedEtaDistanceNm\]/)
+  assert.match(hook, /\[etaUserEdited, etd, tasKt, plannedDistanceNm\]/)
   // 되돌리기는 고정 자체를 풀어야 이후 변경을 따라간다.
   assert.match(hook, /clearEtaOverride = \(\) => \{ setEtaUserEdited\(false\)/)
   assert.match(panel, /clearEtaOverride\(\)/)

@@ -9,6 +9,7 @@ import { hazardMapLayers } from './lib/hazardLayers.js'
 import { formatRouteString } from './lib/routePlanner.js'
 import { buildRouteComparison, exposureNm, mergeExposureNm, phenomenonLabelKo } from './lib/routeComparison.js'
 import { formatFlightDuration } from './lib/etaCalc.js'
+import { plannedRouteDistanceNm } from '../../../../shared/route-planning/appliedGeometry.js'
 import HazardIcon from './lib/HazardIcon.jsx'
 
 function exposureLabel(hazard) {
@@ -54,7 +55,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
   )
   const appliedRouteString = selectedDesign?.routeString || formatRouteString(selectedDesign?.routeResult) || ''
   const baseDesign = designs.find((design) => design.kind === 'base' || design.id === 'base')
-  const baseDistance = Number(baseDesign?.routeResult?.totalDistanceNm ?? baseDesign?.routeResult?.distanceNm)
+  const baseDistance = plannedRouteDistanceNm(baseDesign ?? {})
   const baseDuration = formatFlightDuration(baseDistance, tasKt)
   const baseHazards = routeExposure?.hazards ?? []
   const baseTotalHazardExposureNm = Math.round(mergeExposureNm(baseHazards))
@@ -124,7 +125,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
       </div>}
       {designs.filter((design) => design.kind === 'alternative').map((design) => {
         const selected = design.id === selectedDesignId
-        const distance = design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm
+        const distance = plannedRouteDistanceNm(design)
         const duration = formatFlightDuration(distance, tasKt)
         const comparison = comparisonById.get(design.id)
         const hazards = [...(design.routeExposure?.hazards ?? [])].sort((a, b) => exposureNm(b) - exposureNm(a))

@@ -87,13 +87,13 @@ function routeBriefingResult(result, timezone) {
     notamCount: data.notamCount, detailSections: data.detailSections } }, timezone)
 }
 
-// Two plan distances look alike; name them so the answer quotes the right one.
-// ETA from TAS uses the route-text distance only (shared/route-planning/planRoute.js).
+// 답에는 SID·STAR를 포함한 전체 거리 하나만 준다. ETA도 이 거리/TAS로 계산한다
+// (shared/route-planning/planRoute.js). 공항↔첫/끝 지점 직선 거리는 짧아서 혼동만 준다.
 function planRouteResult(result, timezone) {
   const { distanceNm, geometryDistanceNm, ...data } = result.data
   const round = (value) => Math.round(value)
   const distance = Number.isFinite(geometryDistanceNm)
-    ? `전체 ${round(geometryDistanceNm)}NM(SID·STAR·접근 포함)${Number.isFinite(distanceNm) ? `, 이 중 경로 문자열 구간 ${round(distanceNm)}NM(ETA 추정에 사용)` : ''}`
+    ? `전체 ${round(geometryDistanceNm)}NM(SID·STAR·접근 포함, ETA 추정에 사용)`
     : Number.isFinite(distanceNm) ? `경로 문자열 구간 ${round(distanceNm)}NM` : null
   return modelContext(markStandingCaveats({ ...result, data: { ...data, ...(distance ? { distance } : {}) } }), timezone)
 }

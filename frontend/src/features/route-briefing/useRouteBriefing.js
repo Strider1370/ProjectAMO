@@ -5,7 +5,7 @@ import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavdata, loadNavpoints, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
 import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString } from './lib/manualRouteInput.js'
-import { calcVfrDistance, inlineImportedProcedureGeometry } from './lib/routePreview.js'
+import { inlineImportedProcedureGeometry } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
@@ -16,6 +16,7 @@ import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
 import { defaultBriefingName } from './lib/briefingName.js'
 import { saveRoute } from './lib/routeStore.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
+import { plannedRouteDistanceNm } from '../../../../shared/route-planning/appliedGeometry.js'
 import { prepareRouteDraft, buildEditorPreview as buildSharedEditorPreview, buildAppliedRouteInputs } from './lib/routePlanning.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
 import { buildAppliedCopilotContext } from './lib/copilotContext.js'
@@ -35,7 +36,6 @@ import {
   FIR_IN_AIRPORT,
   buildBoundaryFixOptions,
   buildIapCandidates,
-  buildIfrDistanceBreakdown,
   buildInitialVfrWaypoints,
   buildVfrWaypointsFromRouteResult,
   buildRoutePreviewModel,
@@ -233,12 +233,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const setEta = (next) => { setEtaUserEdited(true); setEtaState(next) }
   const clearEtaOverride = () => { setEtaUserEdited(false); setEtaState(null) }
   const initialCopilotConditions = useRef({ cruiseAltitudeFt, tasKt })
-  const plannedEtaDistanceNm = routeResult?.totalDistanceNm ?? routeResult?.distanceNm ?? null
-  useEffect(() => {
-    if (etaUserEdited) return
-    const next = computeEtaIso(etd, plannedEtaDistanceNm, tasKt)
-    if (next) setEtaState(next)
-  }, [etaUserEdited, etd, tasKt, plannedEtaDistanceNm])
   const [briefing, setBriefing] = useState(null)
   const [briefingLoading, setBriefingLoading] = useState(false)
   const [briefingError, setBriefingError] = useState(null)
@@ -278,6 +272,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const appliedVfrWaypoints = useMemo(() => routeResult?.flightRule === 'VFR'
     ? buildVfrWaypointsFromRouteResult(routeResult, airports)
     : [], [airports, routeResult])
+  // 총 거리(SID·STAR 포함 경로선 길이). 브리핑 생성·ETA·입력 화면 거리 표시가 같이 쓴다.
+  const plannedDistanceNm = useMemo(() => {
+    if (!routeResult) return 0
+    return plannedRouteDistanceNm({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap }) ?? 0
+  }, [routeResult, appliedVfrWaypoints, selectedSid, selectedStar, selectedIap])
+  useEffect(() => {
+    if (etaUserEdited) return
+    const next = computeEtaIso(etd, plannedDistanceNm, tasKt)
+    if (next) setEtaState(next)
+  }, [etaUserEdited, etd, tasKt, plannedDistanceNm])
   const draftVfrWaypoints = useMemo(() => routeDraftResult?.flightRule === 'VFR'
     ? buildVfrWaypointsFromRouteResult(routeDraftResult, airports)
     : [], [airports, routeDraftResult])
@@ -1225,7 +1229,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     if (!result || result.flightRule !== 'IFR') return result
 
     const requestId = ++routeExposureRequestRef.current
-    const routeGeometry = result.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
+    // 비교·위험 노출도 브리핑과 같은 선(SID·STAR 포함)으로 — 원래 선만 쓰면 거리가 짧게 나온다.
+    const routeGeometry = getCurrentRouteLineString({ routeResult: result, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) {
       const base = createRouteDesign({
         routeForm: { ...routeForm, routeType: effectiveRouteType },
@@ -1243,7 +1248,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
-    const searchEta = (etaUserEdited && eta) || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
+    const searchEta = (etaUserEdited && eta) || computeEtaIso(etdIso, plannedRouteDistanceNm({ routeModel, routeResult: result }), tasKt) || null
     setEtaState(searchEta)
 
     try {
@@ -1471,14 +1476,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       return null
     }
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: draft.preview })
-    const nextEta = computeEtaIso(etd, draft.preview.totalDistanceNm ?? draft.preview.distanceNm, tasKt)
+    const nextEta = computeEtaIso(etd, plannedRouteDistanceNm({ routeModel, routeResult: draft.preview }), tasKt)
     const updated = createRouteDesign({ ...design, routeResult: draft.preview, routeModel, routeExposure: { trigger: 'unavailable', hazards: [] }, enroute: draft.enroute, routeString: draft.rawText, undoStack: [...design.undoStack.slice(-19), snapshotRouteDesign(design)], draftEditor: null, pendingEdit: null })
     const nextDesigns = routeDesigns.map((item) => item.id === updated.id ? updated : item)
     setRouteDesigns(nextDesigns)
     try {
       const routes = nextDesigns.map((item) => {
         const geometry = item.routeModel?.routeGeometry ?? (item.id === updated.id ? routeGeometry : null)
-        return geometry ? { id: item.id, routeGeometry: geometry, routeModel: item.routeModel, etd, eta: computeEtaIso(etd, item.routeResult?.totalDistanceNm ?? item.routeResult?.distanceNm, tasKt) } : null
+        return geometry ? { id: item.id, routeGeometry: geometry, routeModel: item.routeModel, etd, eta: computeEtaIso(etd, plannedRouteDistanceNm(item), tasKt) } : null
       }).filter(Boolean)
       const batch = await fetchRouteExposureBatch({ routes })
       if (requestId !== routeExposureRequestRef.current) return updated
@@ -1711,7 +1716,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           routeGeometry: geometry,
           routeModel: design.routeModel,
           etd,
-          eta: computeEtaIso(etd, design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm, tasKt),
+          eta: computeEtaIso(etd, plannedRouteDistanceNm(design), tasKt),
         } : null
       }).filter(Boolean)
       const batch = await fetchRouteExposureBatch({ routes })
@@ -2180,7 +2185,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       const routeGeometry = getCurrentRouteLineString({ routeResult: preview.result, selectedSid: procedures.sid, selectedStar: procedures.star, selectedIap })
       const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
       const etdIso = Number.isFinite(Date.parse(saved.etd)) ? new Date(saved.etd).toISOString().replace('.000Z', 'Z') : null
-      const savedEta = saved.eta || computeEtaIso(etdIso, preview.result.totalDistanceNm, saved.tasKt) || null
+      const savedEta = saved.eta || computeEtaIso(etdIso, plannedRouteDistanceNm({ routeModel, routeResult: preview.result }), saved.tasKt) || null
       const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: savedEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
       if (resetVersion !== routeResetVersionRef.current) return
       clearRouteDisplay()
@@ -2214,7 +2219,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           const alternativePreview = await buildEditorPreview(createRouteEditor({ routeForm: alternativeForm, procedures: alternativeProcedures, enroute: alternative.enroute, rawText: alternative.routeString }), alternative.routeString)
           const geometry = getCurrentRouteLineString({ routeResult: alternativePreview.result, selectedSid: alternativeProcedures.sid, selectedStar: alternativeProcedures.star, selectedIap: alternativeIap })
           const model = buildCommonRouteModel({ routeGeometry: geometry, routeResult: alternativePreview.result })
-          const alternativeEta = computeEtaIso(etdIso, alternativePreview.result.totalDistanceNm, saved.tasKt)
+          const alternativeEta = computeEtaIso(etdIso, plannedRouteDistanceNm({ routeModel: model, routeResult: alternativePreview.result }), saved.tasKt)
           const alternativeExposure = await fetchRouteExposure({ routeGeometry: geometry, routeModel: model, etd: etdIso, eta: alternativeEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
           return createRouteDesign({ ...alternative, kind: 'alternative', routeForm: alternativeForm, procedures: alternativeProcedures, routeResult: alternativePreview.result, routeModel: model, routeExposure: alternativeExposure, enroute: alternativePreview.editor.enroute, routeString: alternativePreview.editor.rawText })
         } catch { return null }
@@ -2222,7 +2227,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       if (resetVersion !== routeResetVersionRef.current) return
       let designs = [baseDesign, ...alternatives.filter(Boolean)]
       try {
-        const batch = await fetchRouteExposureBatch({ routes: designs.map((design) => ({ id: design.id, routeGeometry: design.routeModel.routeGeometry, routeModel: design.routeModel, etd: etdIso, eta: computeEtaIso(etdIso, design.routeResult.totalDistanceNm ?? design.routeResult.distanceNm, saved.tasKt) })) })
+        const batch = await fetchRouteExposureBatch({ routes: designs.map((design) => ({ id: design.id, routeGeometry: design.routeModel.routeGeometry, routeModel: design.routeModel, etd: etdIso, eta: computeEtaIso(etdIso, plannedRouteDistanceNm(design), saved.tasKt) })) })
         designs = designs.map((design) => {
           const exposureResult = batch.results.find((result) => result.id === design.id)
           return exposureResult ? { ...design, routeExposure: { ...exposureResult, snapshot: batch.snapshot } } : design
@@ -2361,7 +2366,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       vfrWaypoints: routeResult.flightRule === 'VFR' ? buildVfrWaypointsFromRouteResult(routeResult, airports) : [],
     })
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
-    const nextEta = (etaUserEdited && eta) || computeEtaIso(etd, routeResult.totalDistanceNm ?? routeResult.distanceNm, tasKt) || null
+    const nextEta = (etaUserEdited && eta) || computeEtaIso(etd, plannedRouteDistanceNm({ routeModel, routeResult }), tasKt) || null
 
     lastVfrKeyRef.current = `${form.departureAirport ?? ''}>${form.arrivalAirport ?? ''}`
     importedRouteApplyPendingRef.current = true
@@ -2618,16 +2623,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const refreshed = await reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection: selection, tmfc: crossSection?.run?.tmfc, hf })
     if (refreshed) setNwpTimeSelection(selection)
   }
-
-  // Planned total distance (IFR total incl SID/STAR/IAP; VFR waypoint-summed).
-  // Shared by 브리핑 생성 and the live ETA readout in the form.
-  const plannedDistanceNm = useMemo(() => {
-    if (!routeResult) return 0
-    return routeForm.flightRule === 'VFR'
-      ? calcVfrDistance(appliedVfrWaypoints)
-      : (buildIfrDistanceBreakdown({ routeResult, selectedSid, selectedStar, selectedIap })?.totalDistanceNm
-          || Number(routeResult?.distanceNm) || 0)
-  }, [routeResult, routeForm.flightRule, appliedVfrWaypoints, selectedSid, selectedStar, selectedIap])
 
   // dep→arr magnetic course (for the VFR cruising-altitude hint). Hint only.
   const magCourseDeg = useMemo(() => {

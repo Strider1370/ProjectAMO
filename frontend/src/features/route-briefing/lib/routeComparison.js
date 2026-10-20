@@ -1,10 +1,11 @@
 import { computeEtaIso } from './etaCalc.js'
+import { plannedRouteDistanceNm } from '../../../../../shared/route-planning/appliedGeometry.js'
 import { augmentRouteWithProcedures } from './routePreview.js'
 
 const round = (value) => Math.round(value)
 
 function routeDistance(design) {
-  return Number(design?.routeResult?.totalDistanceNm ?? design?.routeResult?.distanceNm)
+  return plannedRouteDistanceNm(design ?? {}) ?? NaN
 }
 
 export function windLabel(componentKt) {

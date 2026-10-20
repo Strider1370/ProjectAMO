@@ -2,7 +2,7 @@ import { createRoutePlanner } from './routePlanner.js'
 import { recommendProcedures } from './recommendProcedures.js'
 import { createRouteEditor } from './routeEditor.js'
 import { buildEditorPreview } from './editorPreview.js'
-import { getCurrentRouteLineString } from './appliedGeometry.js'
+import { getCurrentRouteLineString, plannedRouteDistanceNm } from './appliedGeometry.js'
 import { buildCommonRouteModel } from '../route-model.js'
 import { buildVerticalProfileRequest } from './verticalProfileRequest.js'
 import { computeEtaIso } from './etaCalc.js'
@@ -38,7 +38,7 @@ export function buildAppliedRouteInputs({
   const routeGeometry = getCurrentRouteLineString({ routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints })
   const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
   const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
-  const nextEta = eta || computeEtaIso(etdIso, routeResult.totalDistanceNm ?? routeResult.distanceNm, tasKt) || null
+  const nextEta = eta || computeEtaIso(etdIso, plannedRouteDistanceNm({ routeModel, routeResult }), tasKt) || null
   return {
     routeGeometry, routeModel, etd: etdIso, eta: nextEta,
     profileRequest: buildVerticalProfileRequest({

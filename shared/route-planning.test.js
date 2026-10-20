@@ -7,6 +7,8 @@ import { createRoutePlanner } from './route-planning/routePlanner.js'
 import { planRoute } from './route-planning/planRoute.js'
 import { buildEditorPreview } from './route-planning/editorPreview.js'
 import { createRouteEditor } from './route-planning/routeEditor.js'
+import { plannedRouteDistanceNm } from './route-planning/appliedGeometry.js'
+import { computeEtaIso } from './route-planning/etaCalc.js'
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/route-planning-baseline.json', import.meta.url)))
 const root = new URL('../frontend/public/data/navdata/', import.meta.url)
@@ -34,6 +36,16 @@ for (const { input, expected } of fixture.cases) {
     assert.equal(result.assumptions.operationalClearance, false)
   })
 }
+
+test('ETA uses the flown line with SID/STAR, not the straight airport legs', async () => {
+  const { input } = fixture.cases[0]
+  const result = await planRoute(input, createNavdataProvider({ readJson }))
+  const flownNm = result.routeModel.routeAxis.totalDistanceNm
+  assert.ok(flownNm > result.routeResult.totalDistanceNm)
+  assert.equal(plannedRouteDistanceNm({ routeModel: result.routeModel, routeResult: result.routeResult }), flownNm)
+  assert.equal(plannedRouteDistanceNm({ routeResult: result.routeResult, selectedSid: result.editor.procedures.sid, selectedStar: result.editor.procedures.star, selectedIap: result.selectedIap }), flownNm)
+  assert.equal(result.eta, computeEtaIso(result.etd, flownNm, input.tasKt))
+})
 
 test('provider shares file loads across procedures, IAP and concurrent graph callers; rejected reads retry', async () => {
   const counts = new Map()

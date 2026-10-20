@@ -31,6 +31,13 @@ function buildRouteAxis(coordinates) {
   return { totalDistanceNm: vertices.at(-1).distanceNm, vertices }
 }
 
+// 실제로 그려서 브리핑하는 경로선(SID·STAR 포함)의 길이. 거리·ETA의 단일 기준.
+export function routeLineDistanceNm(routeGeometry) {
+  const coordinates = routeGeometry?.coordinates
+  if (routeGeometry?.type !== 'LineString' || !Array.isArray(coordinates) || coordinates.length < 2) return null
+  return buildRouteAxis(coordinates).totalDistanceNm
+}
+
 function directedSegmentGeometries(routeResult) {
   return (routeResult?.previewGeojson?.features ?? [])
     .filter((feature) => feature?.properties?.role === 'route-segment-line')
