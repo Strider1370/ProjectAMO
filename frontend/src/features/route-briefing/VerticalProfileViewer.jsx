@@ -60,20 +60,23 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     }
   }, [selected])
   const normalizedProfile = useMemo(() => ({ ...profile, markers }), [profile, markers])
+  // 그림 좌우 여백(VerticalProfileChart basePadding: 왼쪽 80 또는 plotPaddingLeft, 오른쪽 58). 확대·스크롤 위치 계산에 쓴다.
+  const padLeft = Number.isFinite(plotPaddingLeft) ? plotPaddingLeft : 80
+  const padX = padLeft + 58
   const updateRange = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
-    const full = Math.max(1, el.scrollWidth - 138), visible = Math.max(1, el.clientWidth - 138)
+    const full = Math.max(1, el.scrollWidth - padX), visible = Math.max(1, el.clientWidth - padX)
     const start = clamp(el.scrollLeft / full * total, 0, total)
     const end = Math.min(total, start + visible / full * total)
     setRange(previous => previous[0] === start && previous[1] === end ? previous : [start, end])
-  }, [total])
+  }, [total, padX])
   useEffect(() => { setZoom(1); setSelected(null); if (scrollRef.current) scrollRef.current.scrollLeft = 0 }, [total])
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (el && anchor.current) {
       const { fraction, pixel } = anchor.current
-      el.scrollLeft = fraction * Math.max(1, el.scrollWidth - 138) - pixel
+      el.scrollLeft = fraction * Math.max(1, el.scrollWidth - padX) - pixel
       anchor.current = null
     }
     updateRange()
@@ -81,17 +84,18 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
   const changeZoom = useCallback((factor, pixel) => {
     const el = scrollRef.current
     if (!el) return
-    const p = pixel ?? Math.max(1, el.clientWidth - 138) / 2
-    anchor.current = { fraction: (el.scrollLeft + p) / Math.max(1, el.scrollWidth - 138), pixel: p }
+    const p = pixel ?? Math.max(1, el.clientWidth - padX) / 2
+    anchor.current = { fraction: (el.scrollLeft + p) / Math.max(1, el.scrollWidth - padX), pixel: p }
     setZoom(z => clamp(z * factor, 1, Math.max(1, total / 45)))
-  }, [total])
+  }, [total, padX])
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     let wheelFrame = null, wheelFactor = 1, wheelPixel = 0
     const wheel = e => {
-      if (embedded || e.ctrlKey || e.metaKey || !e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
-      const pixel = e.clientX - el.getBoundingClientRect().left - 80
+      // 문서형 안에 끼운 단면은 휠이 문서 스크롤이라 확대하지 않는다. 지도형 독(compact)은 문서 스크롤이 없어 확대한다.
+      if ((embedded && !compact) || e.ctrlKey || e.metaKey || !e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      const pixel = e.clientX - el.getBoundingClientRect().left - padLeft
       if (pixel < 0) return
       e.preventDefault(); e.stopPropagation()
       wheelFactor *= Math.exp(-clamp(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 200 : 1), -240, 240) * .0025)
@@ -106,19 +110,19 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     const resize = new ResizeObserver(scroll); resize.observe(el)
     el.addEventListener('wheel', wheel, { passive:false }); el.addEventListener('scroll', scroll)
     return () => { cancelAnimationFrame(wheelFrame); resize.disconnect(); el.removeEventListener('wheel',wheel); el.removeEventListener('scroll',scroll); cancelAnimationFrame(frame.current); frame.current = null }
-  }, [profile, changeZoom, updateRange, embedded])
+  }, [profile, changeZoom, updateRange, embedded, compact, padLeft])
   const selectMarker = useCallback(marker => {
     focusSelected.current = !!document.activeElement?.closest('.vertical-profile-plot-svg')
     setSelected(marker)
     const el = scrollRef.current
     if (el) {
-      const x = marker.distanceNm / total * Math.max(1, el.scrollWidth - 138)
-      if (x < el.scrollLeft || x > el.scrollLeft + el.clientWidth - 138) el.scrollLeft = x - (el.clientWidth - 138) / 2
+      const x = marker.distanceNm / total * Math.max(1, el.scrollWidth - padX)
+      if (x < el.scrollLeft || x > el.scrollLeft + el.clientWidth - padX) el.scrollLeft = x - (el.clientWidth - padX) / 2
     }
-  }, [total])
+  }, [total, padX])
   const setRangeFromOverview = next => {
     const el = scrollRef.current
-    if (el) el.scrollLeft = next[0] / total * Math.max(1, el.scrollWidth - 138)
+    if (el) el.scrollLeft = next[0] / total * Math.max(1, el.scrollWidth - padX)
   }
   const missingLayers = [
     [layers.wind, 'wind', '바람깃'], [layers.icing, 'icing', '착빙'], [layers.moisture, 'moisture', '구름'], [layers.temp, 'T', '등온선'],
