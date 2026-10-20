@@ -1,9 +1,11 @@
 import { WindBarb } from '../../shared/ui/WeatherIcon.jsx'
 import { forecastSummary } from './modelComparisonDetail.js'
 
+// 화살표는 바람이 불어가는 쪽을 가리킨다(풍향+180°) — METAR·TAF 카드와 같은 규칙.
 function WindCell({ cell }) {
   const rounded = Number.isFinite(cell.value) ? Math.round(cell.value / 5) * 5 : 0
-  return <><strong className="mc-wind-value">{Number.isFinite(cell.value) && <WindBarb barbKey={rounded ? `barb_${rounded}` : 'calm'} rotation={Number.isFinite(cell.direction) ? cell.direction : 0} className="mc-wind-barb" />}{cell.text}</strong><small>{cell.subtext}</small></>
+  const showArrow = Number.isFinite(cell.value) && Number.isFinite(cell.direction)
+  return <><strong className="mc-wind-value">{showArrow && <WindBarb barbKey={rounded ? `barb_${rounded}` : 'calm'} rotation={(cell.direction + 180) % 360} className="mc-wind-barb" />}{cell.text}</strong><small>{cell.subtext}</small></>
 }
 function CeilingCell({ cell }) {
   return <>{Array.isArray(cell.clouds) && cell.clouds.length > 0 ? <details className="mc-cell-disclosure"><summary aria-label={cell.text}><strong>{cell.text}</strong></summary><small>전/저/중/상 {cell.clouds.map(v => Number.isFinite(v) ? `${Math.round(v)}%` : v && typeof v === 'object' ? (v.amount || v.coverage || '—') : '—').join(' · ')}</small></details> : <strong>{cell.text}</strong>}</>
