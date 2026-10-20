@@ -9,7 +9,6 @@ import {
 import VerticalProfileViewer from './VerticalProfileViewer.jsx'
 import BriefingBanner from './BriefingBanner.jsx'
 import BriefingChangeStrip from '../notifications/BriefingChangeStrip.jsx'
-import BriefingSynopsis from './BriefingSynopsis.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import DataProvenance from '../../shared/ui/DataProvenance.jsx'
@@ -69,7 +68,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const [xsectionFull, setXsectionFull] = useState(false)
   const [showLayerChips, setShowLayerChips] = useState(false)
   const [expandedRoles, setExpandedRoles] = useState({})
-  const [notamGroupOpen, setNotamGroupOpen] = useState({}) // ⑤ 공항별 NOTAM "더 보기" 펼침(role별)
+  const [notamGroupOpen, setNotamGroupOpen] = useState({}) // ④ 공항별 NOTAM "더 보기" 펼침(role별)
   const [collapsed, setCollapsed] = useState(false) // 패널 접기 — 지도를 보려고 오른쪽으로 슬라이드아웃(닫기와 달리 브리핑 유지)
   const [expanded, setExpanded] = useState(false)
   const [pinnedLeg, setPinnedLeg] = useState(null) // NAVLOG에서 클릭해 고정한 구간
@@ -106,14 +105,13 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
 
   const hasEnroute = Boolean(briefing?.sections?.enroute)
   const hasNotam = (briefing?.routeNotams ?? []).length > 0
-  const destNum = hasNotam ? '⑥' : '⑤' // NOTAM(⑤)이 노선과 목적지 사이에 들어오면 목적지는 ⑥
+  const destNum = hasNotam ? '⑤' : '④' // NOTAM(④)이 노선과 목적지 사이에 들어오면 목적지는 ⑤
   const steps = briefing
     ? [
         { id: 'adverse', label: '① 위험' },
         { id: 'current', label: '② 현재' },
-        ...(!frozenNotice ? [{ id: 'synopsis', label: '③ 개황' }] : []),
-        ...(hasEnroute ? [{ id: 'enroute', label: '④ 노선' }] : []),
-        ...(hasNotam ? [{ id: 'notam', label: '⑤ NOTAM' }] : []),
+        ...(hasEnroute ? [{ id: 'enroute', label: '③ 노선' }] : []),
+        ...(hasNotam ? [{ id: 'notam', label: '④ NOTAM' }] : []),
         { id: 'destination', label: `${destNum} 목적지` },
       ]
     : []
@@ -155,7 +153,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   ))
   const weatherIncomplete = organizationWeatherIncomplete || Boolean(frozenNotice)
   const mapLayerIds = [...new Set(hazardMapLayers(briefing).map(id => ['temp', 'cloud', 'icing'].includes(id) ? 'cloudIcing' : id))]
-  const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // ④ 상층바람 원자료 표
+  const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // ③ 상층바람 원자료 표
   const airports = sections.current.airports
   const activeAirportObj = airports.find((a) => a.role === activeAirport) ?? airports[0]
   const metarTacSegments = (a) => {
@@ -419,7 +417,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const enroute = sections.enroute && (
     <section data-bvid="enroute" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">④ 노선·공역</Subtitle2>
+        <Subtitle2 as="h3">③ 노선·공역</Subtitle2>
         <Body1>계획고도 <b style={{ fontVariantNumeric: 'tabular-nums' }}>{sections.enroute.plannedCruiseAltitudeFt}ft</b></Body1>
         {sections.enroute.encounters.length === 0
           ? <Body1 style={{ color: 'var(--text-3)' }}>{weatherIncomplete ? '예보 범위와 누락 자료를 확인해야 합니다. 계획고도의 위험 여부를 확정할 수 없습니다.' : '계획고도에서 조우하는 위험 없음'}</Body1>
@@ -556,7 +554,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     <section data-bvid="notam" className="bv-section">
       <Card>
         <div className="bv-haz-head">
-          <Subtitle2 as="h3">⑤ 경로·공항 NOTAM</Subtitle2>
+          <Subtitle2 as="h3">④ 경로·공항 NOTAM</Subtitle2>
           <Caption1 style={{ color: 'var(--text-3)' }}>
             {routeNotams.length}건{routeConflicts.length ? ` · 저촉 ${routeConflicts.length}` : ''}
           </Caption1>
@@ -765,7 +763,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
         {!organizationContext && !frozenNotice && <BriefingChangeStrip />}
             <BriefingBanner banner={weatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
-            {nav}{board}{layerAction}{adverse}{currentDesktop}{!frozenNotice && <BriefingSynopsis />}{enroute}{notamSection}{destination}
+            {nav}{board}{layerAction}{adverse}{currentDesktop}{enroute}{notamSection}{destination}
             {!organizationContext && !frozenNotice && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
           </div>
         </MobileSheet>
@@ -815,7 +813,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
         {frozenNotice}
         {!organizationContext && !frozenNotice && <BriefingChangeStrip />}
         <BriefingBanner banner={weatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
-        {nav}{board}{layerAction}{adverse}{currentDesktop}{!frozenNotice && <BriefingSynopsis />}{enroute}{notamSection}{destination}
+        {nav}{board}{layerAction}{adverse}{currentDesktop}{enroute}{notamSection}{destination}
         {!organizationContext && !frozenNotice && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
       </div>
     </div>

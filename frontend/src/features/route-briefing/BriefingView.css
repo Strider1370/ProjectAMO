@@ -314,33 +314,7 @@
   .bv-leg-disclaimer { max-width: 280px; text-align: right; }
 }
 
-/* ③ 개황 — 일기도 뷰어 */
-.bv-syn-fold { margin: 0; }
-.bv-syn-fold-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); cursor: pointer; list-style: none; }
-.bv-syn-fold-summary::-webkit-details-marker { display: none; }
-.bv-syn-fold-summary::after { content: '⌄'; color: var(--text-3); font-size: var(--fs-400); transition: transform 160ms ease; }
-.bv-syn-fold[open] .bv-syn-fold-summary::after { transform: rotate(180deg); }
-.bv-syn-fold-body { margin-top: var(--space-m); }
-.bv-syn-types, .bv-syn-levels { display: flex; align-items: center; gap: var(--space-snudge); flex-wrap: wrap; margin-top: var(--space-s); }
-.bv-chip { font-size: var(--fs-300); padding: var(--space-xs) var(--space-m); border-radius: var(--radius-lg); background: var(--bg-3); color: var(--text-2); border: none; cursor: pointer; font-family: inherit; }
-.bv-chip:hover:not(.bv-chip-on):not(.bv-chip-dis) { background: var(--bg-4); }
-.bv-chip-on { background: var(--accent); color: #fff; font-weight: var(--fw-semibold); }
-.bv-chip-dis { background: var(--bg-2); color: var(--text-disabled); cursor: not-allowed; }
-.bv-syn-slider { margin: var(--space-m) 0 var(--space-xs); }
-.bv-syn-track { position: relative; height: 6px; background: var(--bg-5); border-radius: var(--radius-circular); }
-.bv-syn-track span { position: absolute; left: 0; height: 6px; background: #cbd5e1; border-radius: var(--radius-circular); }
-.bv-syn-track i { position: absolute; top: -5px; width: 16px; height: 16px; margin-left: -8px; background: var(--accent); border: 2px solid var(--bg-1); border-radius: 50%; }
-.bv-syn-ticks { display: flex; justify-content: space-between; font-size: var(--fs-200); color: var(--text-3); margin-top: var(--space-snudge); }
-.bv-syn-ticks .on { color: var(--accent); font-weight: var(--fw-semibold); }
-.bv-syn-chartwrap { position: relative; margin-top: var(--space-s); }
-.bv-syn-chart { width: 100%; display: block; border-radius: var(--radius-md); background: var(--bg-2); cursor: zoom-in; min-height: 200px; }
-.bv-syn-sample { position: absolute; top: var(--space-s); left: var(--space-s); font-size: var(--fs-100); font-weight: var(--fw-semibold); color: #fff; background: rgba(192,41,31,.82); padding: 2px var(--space-s); border-radius: var(--radius-sm); }
-.bv-syn-placeholder { display: flex; align-items: center; justify-content: center; min-height: 200px; background: var(--bg-2); border: 0.5px dashed var(--stroke-1); border-radius: var(--radius-md); color: var(--text-3); }
-.bv-syn-summary { font-size: var(--fs-300); margin-top: var(--space-s); }
-.bv-syn-lb { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; padding: var(--space-xl); cursor: zoom-out; }
-.bv-syn-lb img { max-width: 100%; max-height: 100%; border-radius: var(--radius-md); }
-
-/* ④ 상층바람·기온 원자료 (접기 — 네이티브 details) */
+/* ③ 상층바람·기온 원자료 (접기 — 네이티브 details) */
 .bv-rawwinds { margin-top: var(--space-s); border-top: 0.5px solid var(--stroke-2); padding-top: var(--space-s); }
 .bv-rawwinds > summary { cursor: pointer; font-size: var(--fs-300); font-weight: var(--fw-medium); color: var(--accent); list-style: revert; }
 .bv-rawwinds > summary .dim { color: var(--text-disabled); font-weight: var(--fw-regular); }

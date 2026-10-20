@@ -145,7 +145,7 @@ test.describe('briefing-view', () => {
     await expect(firstLegRow.locator('.bv-leg-direction')).toHaveCount(0)
     // 한 칸에 쌓인 두 값은 가로선으로 갈라 둔다.
     await expect(firstLegRow.locator('.bv-leg-stack > * + *').first()).toHaveCSS('border-top-style', 'solid')
-    // 위험기상 칸은 기상만 싣는다 — NOTAM은 ⑤ 경로·공항 NOTAM 섹션 몫이다.
+    // 위험기상 칸은 기상만 싣는다 — NOTAM은 ④ 경로·공항 NOTAM 섹션 몫이다.
     await expect(page.locator('.bv-main-navlog-table [data-label="위험기상"]').filter({ hasText: /NOTAM/ })).toHaveCount(0)
     await expect(page.getByText('ETA 또는 연료 계산은 포함하지 않습니다.', { exact: true })).toBeVisible()
     // 표/카드 전환은 뷰포트가 아니라 패널 컨테이너 폭(@container briefing)이 정한다.
@@ -308,7 +308,7 @@ test.describe('briefing-view', () => {
 
     // 누르면 ⑤ 섹션으로 이동한다
     await page.getByRole('button', { name: /불꽃놀이 실시/ }).click()
-    await expect(page.getByRole('heading', { name: '⑤ 경로·공항 NOTAM', exact: true })).toBeInViewport()
+    await expect(page.getByRole('heading', { name: '④ 경로·공항 NOTAM', exact: true })).toBeInViewport()
   })
 
   test('switches between full briefing and map-together views for a local navdata route', async ({ page }, testInfo) => {
