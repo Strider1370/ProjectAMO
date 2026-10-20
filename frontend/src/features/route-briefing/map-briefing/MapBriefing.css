@@ -124,16 +124,16 @@
 .mb-track { position: relative; border-radius: var(--radius-sm); background: var(--bg-2); }
 .mb-track.is-unavailable { background: repeating-linear-gradient(135deg, var(--bg-2) 0 6px, var(--bg-3) 6px 12px); }
 .mb-track-empty { position: absolute; left: var(--space-s); top: 50%; transform: translateY(-50%); color: var(--text-3); white-space: nowrap; }
-.mb-seg { position: absolute; top: 4px; bottom: 4px; z-index: 1; overflow: hidden; padding: 0 6px; border: 0; border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-align: left; white-space: nowrap; cursor: pointer; }
-.mb-seg.is-end { text-align: right; }
+/* 수치예보: 글자 없이 강도 색으로 줄을 칠한다. 예보관 틀이 그 위를 덮는다. */
+.mb-seg { position: absolute; top: 2px; bottom: 2px; z-index: 1; padding: 0; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
 .mb-seg.is-sev { background: var(--level-red); color: #fff; }
 .mb-seg.is-mod { background: var(--turb-mod); color: #1f2937; }
-.mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 2; }
-.mb-frame { position: absolute; top: 0; bottom: 0; padding: 0; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
+.mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
+.mb-frame { position: absolute; top: 0; bottom: 0; z-index: 2; padding: 0; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
 .mb-frame.is-mine { border-style: solid; border-width: 2px; }
 .mb-frame.is-airmet { border-color: var(--mb-airmet); }
 .mb-frame.is-typhoon { border-color: var(--mb-typhoon); }
-.mb-frame-tag { position: absolute; top: 50%; left: 3px; z-index: 2; overflow: hidden; max-width: calc(100% - 6px); padding: 0 4px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.9); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; transform: translateY(-50%); pointer-events: none; }
+.mb-frame-tag { position: absolute; top: 50%; left: 3px; overflow: hidden; max-width: calc(100% - 6px); padding: 0 4px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.9); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; transform: translateY(-50%); pointer-events: none; }
 .mb-frame.is-airmet .mb-frame-tag { color: var(--mb-airmet); }
 .mb-frame.is-typhoon .mb-frame-tag { color: var(--mb-typhoon); }
 .mb-range-window {

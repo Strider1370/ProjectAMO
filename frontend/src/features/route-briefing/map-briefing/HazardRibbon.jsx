@@ -1,8 +1,8 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { frameTag, modelChip, pctOf, rowEmptyText, segmentText, sourceChips } from './mapBriefingModel.js'
+import { frameTag, modelChip, pctOf, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
 
-// 위험 막대: 현상별 줄(높이 22 고정). 꽉 찬 막대 = 수치예보(내 비행 고도·MOD 이상), 테두리 틀 = 예보관 발표
-// (이름표는 틀 안쪽 왼쪽). 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
+// 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 강도 색으로 줄을 칠하고,
+// 예보관 발표 틀(이름표는 틀 안쪽 왼쪽)을 그 위에 덮어 그린다 — 겹친 곳은 배경색으로 모델 위험이 있음을 보인다. 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
 // 같은 세로선에 맞춘다. 단면도가 확대돼 있으면 보이는 구간을 테두리 창으로 겹쳐 그린다.
 export default function HazardRibbon({ ribbon, profileRange = null, selectedId = null, onSelect, hiddenRows = [], onToggleRow, trackInset = null }) {
   const total = ribbon?.totalDistanceNm || 0
@@ -36,6 +36,17 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
             </div>
             <div className={`mb-track${row.status === 'unavailable' && !row.model.length ? ' is-unavailable' : ''}`}>
               {!hidden && empty && <span className="mb-track-empty">{empty}</span>}
+              {!hidden && row.model.map((segment, index) => {
+                const left = pctOf(segment.startNm, total)
+                const width = Math.max(0.6, pctOf(segment.endNm, total) - left)
+                const id = `${row.key}:model:${index}`
+                const title = segmentTitle(row.label, segment)
+                return (
+                  <button key={id} type="button" className={`mb-seg is-${segment.level.toLowerCase()}${selectedId === id ? ' is-selected' : ''}`}
+                    style={{ left: `${left}%`, width: `${width}%` }} aria-label={title} title={title}
+                    onClick={() => onSelect?.({ id, row, kind: 'model', item: segment })} />
+                )
+              })}
               {!hidden && row.frames.map((frame, index) => {
                 const left = pctOf(frame.startNm, total)
                 const width = Math.max(0.6, pctOf(frame.endNm, total) - left)
@@ -46,18 +57,6 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                     style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${tag} · ${frame.startNm}–${frame.endNm}NM`} title={tag}
                     onClick={() => onSelect?.({ id, row, kind: 'frame', item: frame })}>
                     <span className="mb-frame-tag">{tag}</span>
-                  </button>
-                )
-              })}
-              {!hidden && row.model.map((segment, index) => {
-                const left = pctOf(segment.startNm, total)
-                const width = Math.max(0.6, pctOf(segment.endNm, total) - left)
-                const id = `${row.key}:model:${index}`
-                return (
-                  <button key={id} type="button" className={`mb-seg is-${segment.level.toLowerCase()}${left + width > 92 ? ' is-end' : ''}${selectedId === id ? ' is-selected' : ''}`}
-                    style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${row.label} ${segment.level} ${segment.from ?? ''}→${segment.to ?? ''} ${segment.startNm}–${segment.endNm}NM`}
-                    onClick={() => onSelect?.({ id, row, kind: 'model', item: segment })}>
-                    {segmentText(segment, width)}
                   </button>
                 )
               })}

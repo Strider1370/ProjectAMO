@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
-  segmentText, sourceChips, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
+  segmentTitle, sourceChips, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
 } from './mapBriefingModel.js'
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) } }
@@ -59,12 +59,9 @@ test('frame tags and bands read like the mockup', () => {
   assert.equal(frameTag({ source: 'TYPHOON', label: '태풍 강풍 반경', mine: true }), '태풍 태풍 강풍 반경 · 전 고도 · 내 고도')
 })
 
-test('segment text drops to the level when narrow and says 전 고도 for convection', () => {
-  assert.equal(segmentText({ level: 'SEV', phase: 'cruise', altitudeFt: { from: 25000, to: 25000 } }, 40), 'SEV · FL250')
-  assert.equal(segmentText({ level: 'MOD', phase: 'descent', altitudeFt: { from: 4000, to: 2000 } }, 10), 'MOD · 4,000ft→2,000ft')
-  assert.equal(segmentText({ level: 'MOD', phase: null, altitudeFt: null }, 10), 'MOD · 전 고도')
-  assert.equal(segmentText({ level: 'MOD' }, 3), 'MOD')
-  assert.equal(segmentText({ level: 'MOD' }, 1), '')
+test('model segment tooltip carries level, altitude and route instead of bar text', () => {
+  assert.equal(segmentTitle('난류', { level: 'SEV', phase: 'cruise', altitudeFt: { from: 25000, to: 25000 }, from: 'BOPTA', to: 'DALSU', startNm: 42, endNm: 180 }), '수치예보 난류 SEV · FL250 · BOPTA→DALSU 42–180NM')
+  assert.equal(segmentTitle('대류', { level: 'MOD', altitudeFt: null, startNm: 10, endNm: 20 }), '수치예보 대류 MOD · 전 고도 · 10–20NM')
 })
 
 test('empty row text separates none from unavailable', () => {

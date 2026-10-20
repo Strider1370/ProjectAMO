@@ -114,14 +114,13 @@ export function frameTag(frame) {
   return `${src} ${name} · ${band} · ${frame.mine ? '내 고도' : '다른 고도'}`.replace(/\s+/g, ' ').trim()
 }
 
-// 막대 글자: 넓으면 "SEV · FL250"(대류는 "전 고도"), 좁으면 강도만.
-export function segmentText(segment, widthPct) {
-  if (widthPct < 2.5) return '' // 글자가 잘리는 짧은 막대는 색만(강도는 왼쪽 칩과 aria-label에)
-  if (widthPct < 4) return segment.level
+// 수치예보 막대는 글자 없이 색만 — 강도·구간·고도는 툴팁(그리고 aria-label)으로.
+export function segmentTitle(rowLabel, segment) {
   const altitude = segment.altitudeFt
     ? (segment.phase === 'cruise' ? formatAltitudeFt(segment.altitudeFt.to) : `${formatAltitudeFt(segment.altitudeFt.from)}→${formatAltitudeFt(segment.altitudeFt.to)}`)
     : '전 고도'
-  return `${segment.level} · ${altitude}`
+  const route = segment.from && segment.to ? ` ${segment.from}→${segment.to}` : ''
+  return `수치예보 ${rowLabel} ${segment.level} · ${altitude} ·${route} ${segment.startNm}–${segment.endNm}NM`.replace(/\s+/g, ' ').trim()
 }
 
 export function rowEmptyText(row) {
