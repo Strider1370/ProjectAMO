@@ -447,9 +447,11 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
   }
 
   if (!map.getSource(def.sourceId)) {
+    // promoteId: 발표 id(문자열)로 feature-state를 걸어 단면도·위험 막대에서 가리킨 발표를 강조한다.
     map.addSource(def.sourceId, {
       type: 'geojson',
       data: featureData,
+      promoteId: 'id',
     })
   }
 
@@ -470,7 +472,7 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       slot: 'top',
       paint: {
         'fill-color': def.color,
-        'fill-opacity': kind.startsWith('sigmet') ? 0.16 : 0.12,
+        'fill-opacity': ['case', ['boolean', ['feature-state', 'highlight'], false], 0.38, kind.startsWith('sigmet') ? 0.16 : 0.12],
       },
       filter: ['any', ['==', ['geometry-type'], 'Polygon'], ['==', ['geometry-type'], 'MultiPolygon']],
     })
@@ -485,7 +487,7 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       paint: {
         'line-color': def.color,
         'line-opacity': 0.9,
-        'line-width': kind.startsWith('sigmet') ? 2.4 : 2,
+        'line-width': ['case', ['boolean', ['feature-state', 'highlight'], false], 4.5, kind.startsWith('sigmet') ? 2.4 : 2],
         'line-dasharray': kind.startsWith('sigmet') ? [1, 0] : [2, 1.5],
       },
     })
@@ -580,4 +582,18 @@ export function setAdvisoryVisibility(map, kind, isVisible) {
       map.setLayoutProperty(layerId, 'visibility', visibility)
     }
   }
+}
+
+// 단면도 상자·위험 막대 틀에서 가리킨 발표(id)의 지도 면을 강조한다. null이면 강조를 푼다.
+// 같은 id가 국내·해외·AIRMET 어느 소스에 있든 찾아 건다(없는 소스는 건너뜀).
+const highlightedAdvisory = new WeakMap()
+export function setAdvisoryHighlight(map, id) {
+  // 같은 id라도 다시 건다 — 스타일이 바뀌면 소스가 새로 생겨 상태가 지워진다.
+  const previous = highlightedAdvisory.get(map)
+  for (const def of Object.values(ADVISORY_LAYER_DEFS)) {
+    if (!map.getSource(def.sourceId)) continue
+    if (previous) map.setFeatureState({ source: def.sourceId, id: previous }, { highlight: false })
+    if (id) map.setFeatureState({ source: def.sourceId, id }, { highlight: true })
+  }
+  highlightedAdvisory.set(map, id ?? null)
 }

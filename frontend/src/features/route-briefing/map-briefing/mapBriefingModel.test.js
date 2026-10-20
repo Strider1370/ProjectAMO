@@ -3,7 +3,11 @@ import assert from 'node:assert/strict'
 import {
   profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
   segmentTitle, sourceChips, hazardSwatchStyle, hazardChipStyle, frameShortTag, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
+  hazardLineColor, TYPHOON_LINE_COLOR, selectionDetail, frameAdvisoryId, focusTarget, layerToastText, pickRibbonTarget,
 } from './mapBriefingModel.js'
+import { GKTG_BANDS } from '../../../../../shared/gktg.js'
+import { ACI_BANDS } from '../../../../../shared/aci.js'
+import { ICING_PRESENTATION } from '../../../shared/weather/cloudIcingPresentation.js'
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) } }
 const broken = { getItem() { throw new Error('blocked') }, setItem() { throw new Error('blocked') } }
@@ -98,4 +102,67 @@ test('chips use a flat fill with readable text and narrow frames get a short tag
 test('summary does not claim no hazard when part of the route has no model data', () => {
   const callout = summaryCallout({ status: 'clear', unavailable: [], partial: ['turbulence'] })
   assert.deepEqual([callout.tone, callout.title], ['unknown', '확인된 구간에서 MOD 이상 위험 없음'])
+})
+
+test('경로 위 색 띠 색은 위험 막대와 같은 원천(GKTG·착빙·대류), 태풍은 보라', () => {
+  assert.equal(hazardLineColor('turbulence', 'SEV'), `rgba(${GKTG_BANDS[3].rgba.slice(0, 3).join(', ')}, 1)`)
+  assert.equal(hazardLineColor('icing', 'MOD'), ICING_PRESENTATION[2].fillColor)
+  assert.equal(hazardLineColor('convection', 'SEV'), ACI_BANDS[3].color)
+  assert.equal(hazardLineColor('typhoon', 'TC'), TYPHOON_LINE_COLOR)
+  assert.equal(hazardLineColor('turbulence', 'LGT'), null)
+})
+
+const descentSegment = { level: 'MOD', startNm: 300, endNm: 318, from: 'TOD', to: 'RKPC', passFrom: '2026-10-20T12:20:00Z', passTo: '2026-10-20T12:24:00Z', altitudeFt: { from: 4000, to: 2000 }, phase: 'descent' }
+const sigmetFrame = { source: 'SIGMET', sourceId: 'RKSI-C01-2026-10-20T111700Z', code: 'SEV_TURB', label: 'SEV TURB', bandFt: { lowFt: 16000, highFt: 30000 }, mine: true, startNm: 40, endNm: 120, from: 'BOPTA', to: 'SOLEN', passFrom: '2026-10-20T11:40:00Z', passTo: '2026-10-20T11:52:00Z', validFrom: '2026-10-20T11:17:00Z', validTo: '2026-10-20T13:00:00Z' }
+
+test('팝오버: 강하 구간 모델 위험은 고도 슬라이더 안내, 자료 회차·유효 시각', () => {
+  const detail = selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'model', item: descentSegment }, {
+    runs: { ktg: { tmfc: '2026102000', validTime: '2026-10-20T12:00:00Z' } }, formatTime: (iso) => iso.slice(11, 16), tzLabel: 'UTC',
+  })
+  assert.equal(detail.source, 'KIM GKTG · 모델')
+  assert.equal(detail.mine, true)
+  assert.equal(detail.route, 'TOD → RKPC')
+  assert.equal(detail.pass, '12:20–12:24 UTC · 4분')
+  assert.equal(detail.altitude, '4,000ft→2,000ft · 강하')
+  assert.equal(detail.note, '이 위험은 4,000–2,000ft · 고도 슬라이더로 확인')
+  assert.equal(detail.data, 'KIM GKTG · 10/20 00Z 회차 · 유효 12:00 UTC')
+})
+
+test('팝오버: SIGMET 틀은 발표 고도대·유효 시각, 순항 모델 위험에는 고도 안내가 없다', () => {
+  const frame = selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'frame', item: sigmetFrame }, { formatTime: (iso) => iso.slice(11, 16) })
+  assert.equal(frame.source, 'SIGMET · 예보관 발표')
+  assert.equal(frame.altitude, 'FL160–300')
+  assert.equal(frame.data, '유효 11:17–13:00')
+  const cruise = selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'model', item: { ...descentSegment, altitudeFt: { from: 25000, to: 25000 }, phase: 'cruise' } })
+  assert.equal(cruise.altitude, 'FL250 · 순항')
+  assert.equal(cruise.note, null)
+})
+
+test('발표 id: SIGMET 틀은 원본 id로 단면 상자·지도 면과 잇고, 태풍은 잇지 않는다', () => {
+  assert.equal(frameAdvisoryId(sigmetFrame), 'RKSI-C01-2026-10-20T111700Z')
+  assert.equal(frameAdvisoryId({ source: 'TYPHOON', sourceId: '2026-21-3' }), null)
+})
+
+test('"이 구간으로": 모델은 구간 가운데 고도·시각, 내 고도 발표는 순항고도, 다른 고도 발표는 고도대 가운데', () => {
+  assert.deepEqual(focusTarget({ kind: 'model', item: descentSegment }), { timeMs: Date.parse('2026-10-20T12:22:00Z'), altitudeFt: 3000 })
+  assert.equal(focusTarget({ kind: 'frame', item: sigmetFrame }, { cruiseAltitudeFt: 25000 }).altitudeFt, 25000)
+  assert.equal(focusTarget({ kind: 'frame', item: { ...sigmetFrame, mine: false } }, { cruiseAltitudeFt: 9000 }).altitudeFt, 23000)
+  assert.equal(focusTarget({ kind: 'model', item: { ...descentSegment, altitudeFt: null, phase: null } }).altitudeFt, null)
+})
+
+test('켠 레이어 안내: KIM 기압면 레이어만 고도를 붙이고, 구름·착빙 묶음은 이름 하나로', () => {
+  assert.deepEqual(layerToastText(['turbulence'], { levelLabel: 'FL250', timeLabel: '21:00 KST' }), { layers: '난류(KIM GKTG)', detail: 'FL250 · 21:00 KST' })
+  assert.deepEqual(layerToastText(['cloudIcing', 'icing'], { levelLabel: 'FL240', timeLabel: '21:00 KST' }), { layers: '구름·착빙(KIM)', detail: 'FL240 · 21:00 KST' })
+  assert.deepEqual(layerToastText(['sigmet'], { levelLabel: 'FL250', timeLabel: '21:00 KST' }), { layers: 'SIGMET(국내)', detail: '21:00 KST' })
+  assert.equal(layerToastText([]), null)
+})
+
+test('틀이 모델 막대를 덮어도 가운데는 모델, 테두리·이름표는 틀, 모델이 없는 곳은 틀', () => {
+  const row = { model: [{ startNm: 27, endNm: 171 }], frames: [{ startNm: 73, endNm: 222 }] }
+  assert.deepEqual(pickRibbonTarget(row, 100), { kind: 'model', index: 0 })
+  assert.deepEqual(pickRibbonTarget(row, 100, { edge: true }), { kind: 'frame', index: 0 })
+  assert.deepEqual(pickRibbonTarget(row, 100, { tagFrameIndex: 0 }), { kind: 'frame', index: 0 })
+  assert.deepEqual(pickRibbonTarget(row, 200), { kind: 'frame', index: 0 })
+  assert.deepEqual(pickRibbonTarget(row, 40, { edge: true }), { kind: 'model', index: 0 })
+  assert.equal(pickRibbonTarget(row, 300), null)
 })

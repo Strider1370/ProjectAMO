@@ -142,6 +142,9 @@
 .mb-track-empty { position: absolute; left: var(--space-s); top: 50%; transform: translateY(-50%); color: var(--text-3); white-space: nowrap; }
 /* 수치예보: 글자 없이 강도 색으로 줄을 칠한다. 예보관 틀이 그 위를 덮는다. */
 .mb-seg { position: absolute; top: 2px; bottom: 2px; z-index: 1; min-width: 4px; padding: 0; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+/* 마우스는 줄(트랙)이 위치로 대상을 고른다 — 틀이 모델 막대를 덮어도 둘 다 누를 수 있게. 버튼은 키보드 초점용. */
+.mb-seg, .mb-frame { pointer-events: none; }
+.mb-track:has(.mb-seg, .mb-frame) { cursor: pointer; }
 /* 모델 자료가 없는 구간: 단면도 "자료 없음"과 같은 빗금. */
 .mb-gap { position: absolute; top: 2px; bottom: 2px; z-index: 0; border-radius: var(--radius-sm); background: repeating-linear-gradient(135deg, var(--bg-2) 0 4px, var(--stroke-1) 4px 5px); }
 .mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
@@ -181,3 +184,40 @@
 .mb-frame-tag .is-short { display: none; }
 @container (max-width: 220px) { .mb-frame-tag .is-full { display: none; } .mb-frame-tag .is-short { display: inline; } }
 @container (max-width: 56px) { .mb-frame-tag { display: none; } }
+
+/* 단면도에서 가리킨 SIGMET과 같은 발표의 틀 */
+.mb-frame.is-linked { z-index: 3; border-width: 3px; background: rgba(220, 38, 38, 0.12); }
+
+/* 막대·틀 상세 팝오버: 누른 칸 바로 위(화면 기준 고정 위치) */
+.mb-popover {
+  position: fixed; z-index: 30; width: 360px; display: flex; flex-direction: column; gap: var(--space-s);
+  padding: var(--space-m) var(--space-l); border-radius: var(--radius-lg); background: var(--bg-1); color: var(--text-1);
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.25); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
+}
+.mb-popover::after { content: ""; position: absolute; left: var(--mb-pop-arrow, 50%); bottom: -7px; width: 14px; height: 14px; background: var(--bg-1); transform: translateX(-50%) rotate(45deg); }
+.mb-pop-head { display: flex; align-items: center; gap: var(--space-s); }
+.mb-pop-head strong { font-size: var(--fs-400); }
+.mb-pop-head .mb-icon-btn { margin-left: auto; }
+.mb-pop-level { padding: 1px 6px; border-radius: var(--radius-sm); background: var(--level-red); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); }
+.mb-pop-level.is-tc { background: var(--mb-typhoon, #6d28d9); }
+.mb-pop-src { padding: 0 6px; border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
+.mb-pop-enc { align-self: flex-start; padding: 2px 8px; border-radius: var(--radius-md); background: var(--bg-3); color: var(--text-2); font-size: var(--fs-100); font-weight: var(--fw-bold); }
+.mb-pop-enc.is-mine { background: var(--level-red-bg); color: var(--level-red); }
+.mb-pop-list { display: grid; grid-template-columns: 36px 1fr; gap: 4px var(--space-m); margin: 0; }
+.mb-pop-list dt { color: var(--text-3); }
+.mb-pop-list dd { margin: 0; font-variant-numeric: tabular-nums; }
+.mb-pop-dim { color: var(--text-3); font-size: var(--fs-100); }
+.mb-pop-note { margin: 0; padding: var(--space-xs) var(--space-s); border-left: 3px solid var(--accent); background: var(--bg-2); color: var(--text-2); }
+.mb-pop-go { align-self: flex-start; padding: 5px 12px; border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent); color: #fff; font: inherit; font-weight: var(--fw-semibold); cursor: pointer; }
+.mb-pop-go:hover { filter: brightness(1.08); }
+
+/* 막대를 눌러 레이어를 켰다는 안내: 지도 위쪽, 패널이 열려 있으면 그 오른쪽 */
+.mb-toast {
+  position: absolute; top: 72px; left: 20px; z-index: 9; display: flex; align-items: center; gap: var(--space-m);
+  padding: 8px 14px; border-radius: var(--radius-md); background: #111827; color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
+}
+.mb-toast.is-beside-panel { left: calc(20px + 288px + 16px); }
+.mb-toast b { color: #fde68a; }
+.mb-toast button { padding: 2px 8px; border: 1px solid #6b7280; border-radius: var(--radius-sm); background: transparent; color: #e5e7eb; font: inherit; font-size: var(--fs-100); cursor: pointer; }
+.mb-toast button:hover { background: rgba(255, 255, 255, 0.1); }

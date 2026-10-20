@@ -39,3 +39,15 @@ export function hazardMapLayers(briefing) {
 
   return [...layers]
 }
+
+// 지도형 브리핑 위험 막대 한 칸(모델 막대·발표 틀) → 켤 MET 레이어. 문서형의 hazardMapLayers와 달리
+// 누른 것 하나에 해당하는 레이어만 고른다(레이더·낙뢰는 켜지 않음). 착빙은 구름·착빙 묶음을 켠 뒤
+// 그 안의 착빙까지 켜져 있어야 보이므로 둘 다 낸다.
+const RIBBON_MODEL_LAYERS = { turbulence: ['turbulence'], icing: ['cloudIcing', 'icing'], convection: ['aciExperiment'] }
+export function ribbonItemLayers(rowKey, kind, item) {
+  if (kind === 'model') return RIBBON_MODEL_LAYERS[rowKey] ?? []
+  if (item?.source === 'TYPHOON') return ['typhoon']
+  if (item?.source === 'SIGMET') return [item.overseas ? 'sigmet_intl' : 'sigmet']
+  if (item?.source === 'AIRMET') return ['airmet']
+  return []
+}

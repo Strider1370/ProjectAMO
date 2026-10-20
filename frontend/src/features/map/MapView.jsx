@@ -169,6 +169,7 @@ const CopilotResultView = lazy(() => import('../route-briefing/CopilotResultView
 const BriefingView = lazy(() => import('../route-briefing/BriefingView.jsx'))
 const SaveBriefingDialog = lazy(() => import('../route-briefing/SaveBriefingDialog.jsx'))
 const MapBriefingView = lazy(() => import('../route-briefing/map-briefing/MapBriefingView.jsx'))
+import { useBriefingMapLink } from '../route-briefing/map-briefing/useBriefingMapLink.js'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -515,6 +516,8 @@ const MapView = forwardRef(function MapView({
   const [briefingView, setBriefingViewState] = useState(readBriefingView)
   const setBriefingView = (view) => { writeBriefingView(view); setBriefingViewState(view) }
   const [mapBriefingDockHeight, setMapBriefingDockHeight] = useState(0)
+  const [briefingNewMetCount, setBriefingNewMetCount] = useState(0) // 위험 막대를 눌러 켠 레이어 수 — 기상정보 패널을 열면 지움
+  useEffect(() => { if (activePanel === 'met') setBriefingNewMetCount(0) }, [activePanel])
   const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs, enabled: enableRouteBriefing })
   const { user: authUser } = useAuth()
   const copilotLive = useRef(null)
@@ -801,6 +804,15 @@ const MapView = forwardRef(function MapView({
       : highlightedLeg ? legHighlightCoordinates(routeResult?.previewGeojson, highlightedLeg) : []
     syncLegHighlight(map, coordinates, { pinned: Boolean(highlightedLeg?.pinned) })
   }, [highlightedLeg, routeResult, isStyleReady, styleRevision])
+
+  // 지도형 브리핑 ↔ 지도(경로 위 위험 색 띠, 막대 구간 강조, SIGMET 면 강조, "이 구간으로"). 로직은 map-briefing/에.
+  const briefingMapLink = useBriefingMapLink({
+    mapRef, isStyleReady, styleRevision, active: mapBriefingActive,
+    ribbon: routeBriefing.state.briefing?.sections?.enroute?.ribbon ?? null, previewGeojson: routeResult?.previewGeojson,
+    cruiseAltitudeFt: routeBriefing.state.briefing?.sections?.enroute?.plannedCruiseAltitudeFt ?? null,
+    fitPadding: fitPaddingFor, setTimelineMs: setWeatherTimelineSelectedMs,
+    nwpSelection, setNwpSelection, sliderLevels, sliderTimes,
+  })
 
   useEffect(() => {
     const map = mapRef.current
@@ -2025,8 +2037,8 @@ const MapView = forwardRef(function MapView({
   if (showRadarWindControl && radarWindOverlay.requestedVisible) activeMetLabels.push('레이더 바람장')
   const metActiveCount = activeMetLabels.length
   useEffect(() => {
-    onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount, traffic: trafficVisible ? 1 : 0 })
-  }, [aviationActiveCount, metActiveCount, trafficVisible, onLayerCountsChange])
+    onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount, metNew: mapBriefingActive ? briefingNewMetCount : 0, traffic: trafficVisible ? 1 : 0 })
+  }, [aviationActiveCount, metActiveCount, briefingNewMetCount, mapBriefingActive, trafficVisible, onLayerCountsChange])
 
   // Map init is declared before every overlay hook, so destroying the Mapbox
   // instance in that effect's cleanup races later cleanup and pending image
@@ -2433,6 +2445,16 @@ const MapView = forwardRef(function MapView({
             onEdit={() => { routeBriefing.actions.setBriefing(null); onOpenRoutePanel?.() }}
             onEnd={() => { routeBriefing.actions.setBriefing(null); routeBriefing.actions.goToWorkflowStep('settings'); onOpenRoutePanel?.() }}
             onDockHeightChange={setMapBriefingDockHeight}
+            metVisibility={metVisibility}
+            mapStatus={briefingMapLink.mapStatus}
+            timelineMs={weatherTimelineSelectedMs}
+            onLayersOn={(ids) => { ids.forEach((id) => setLayerOn(id, 'met')); setBriefingNewMetCount((count) => count + ids.length) }}
+            onLayersOff={(ids) => {
+              setMetVisibility((prev) => ids.reduce((next, id) => (next[id] ? getNextMetVisibility(next, id, { lowPower }) : next), prev))
+              setBriefingNewMetCount(0)
+            }}
+            onMapFocus={briefingMapLink.setFocus}
+            onGoTo={briefingMapLink.goTo}
           />
         </Suspense>
       )}

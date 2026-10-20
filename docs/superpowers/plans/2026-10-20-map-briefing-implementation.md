@@ -87,6 +87,16 @@
 
 **확인**: `hazardLayers.test.js` 확장, 지도 연동 단위 테스트(구간 → 좌표, 막대 → 레이어), 브라우저 계약에 "막대 누름" 하나 추가. 레이어가 실제로 그려지는 모습은 사용자 확인으로 넘긴다.
 
+**실제로 한 것 (2026-10-21, 계획과 달라진 점)**
+- 색 띠: `map-briefing/briefingMapLayers.js`. 모델 구간 + 태풍 틀만(SIGMET 틀은 띠 없음), 경로선 아래 폭 11·불투명 .6, SEV가 MOD 위. 색은 `hazardLineColor`(위험 막대와 같은 GKTG·착빙·대류 원천, 태풍 보라). 막대 거리는 경로선 길이 비율로 맞춘다(`ribbonRangeCoordinates`). 눈 아이콘으로 숨긴 줄은 띠도 숨김.
+- 미리보기·고정 강조는 NAVLOG 강조와 같은 파란 선(별도 소스). 누르면 "시작 X"·"끝 Y" 이름표.
+- **틀이 모델 막대를 덮어 겹친 곳의 막대를 누를 수 없던 문제**: 마우스는 줄이 위치로 고른다(`pickRibbonTarget` — 틀 이름표·위아래 테두리 = 틀, 가운데 = 모델 막대, 없으면 틀). 막대·틀 버튼은 키보드용으로 남기고 툴팁은 줄에 옮겨 단다.
+- 레이어 켜기: `hazardLayers.js` `ribbonItemLayers`(착빙은 `cloudIcing`+`icing`, SIGMET 틀은 `sigmet`/`sigmet_intl`). 계획의 AIRMET은 막대에서 빠져(3단계) 해당 없음. 레이더·낙뢰는 켜지 않는다. 안내는 지도에 실제 그려지는 기압면·예보 시각을 쓴다(5단계 전이라 순항고도가 아닐 수 있음). 8초 뒤 사라지고 [끄기]는 켠 것만 끈다. 기상정보 배지는 새로 켠 레이어가 있으면 갈색으로 강조, 기상정보를 열면 해제.
+- 팝오버: `HazardPopover.jsx`, 내용은 `selectionDetail`. "이 구간으로"는 지도 맞춤 + 시간 = 통과 가운데 시각 + 고도 = 가장 가까운 기압면(`pressureLevelModel.js` `nearestPressureLevelForAltitude`; 모델 = 구간 가운데 고도, 내 고도 SIGMET = 순항고도, 다른 고도 = 발표 고도대 가운데).
+- SIGMET 강조: 단면 상자에 마우스(겹치면 가장 작은 상자) → 같은 발표 상자 전부 강조·나머지 흐림, 위험 막대 틀 강조, 지도 면 강조(`advisoryLayers.js` `promoteId: 'id'` + feature-state `highlight`). 문서형 단면도는 단면 안 강조만(지도 면 연동은 지도형만).
+- MapView에는 `useBriefingMapLink` 호출과 콜백만 추가.
+- 브라우저 계약 2개(막대 누름·SIGMET 마우스 올림)는 아직 없음 — 아래 status 참고.
+
 ## 5단계 — 고도 슬라이더와 시간 막대
 
 1. **고도 슬라이더**(`NwpSliderBar`/`PressureLevelSlider`/`LevelSliderPanel`): 브리핑 중에는 KIM 레이어가 꺼져 있어도 보이게 하고, 기본 손잡이 = 순항고도에 가장 가까운 기압면. 축 위에 모델 위험(칠함, 내 고도 꽉 참·다른 고도 빗금)·예보관 발표(테두리, 실선/점선), 비행 범위 상자, 축 밖 "태풍·전 고도"/"대류·전 고도", 말풍선 "FL250 → 지도 FL265(350hPa) · 난류 SEV". 기압면 위치에 FL을 맞추는 계산은 `pressureLevelModel.js`에 둔다.

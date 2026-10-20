@@ -8,6 +8,7 @@ import {
   advisorySymbolUrl,
   advisoryItemsToFeatureCollection,
   advisoryItemsToLabelFeatureCollection,
+  setAdvisoryHighlight,
 } from './advisoryLayers.js'
 
 function createMap() {
@@ -187,4 +188,22 @@ test('surface wind AIRMET carries the wind speed itself, not the phenomenon moti
   assert.equal(data.features[0].properties.motionLabel, '')
   assert.equal(data.features[1].properties.windLabel, '')
   assert.equal(data.features[1].properties.chartLine1, 'VIS 5000M FG/BR')
+})
+
+test('가리킨 발표 id의 지도 면만 강조하고, 바꾸거나 풀면 앞의 강조를 지운다', () => {
+  const map = createMap()
+  const states = []
+  map.setFeatureState = (target, state) => states.push([target.source, target.id, state.highlight])
+  const item = { id: 'RKSI-C01-2026-10-20T111700Z', phenomenon_code: 'SEV_TURB', geometry: { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 36]]] } }
+  const features = advisoryItemsToFeatureCollection({ items: [item] }, 'sigmet')
+  assert.equal(features.features[0].id, item.id)
+  addAdvisoryLayers(map, 'sigmet', features, advisoryItemsToLabelFeatureCollection({ items: [item] }, 'sigmet'))
+  // 발표 id(문자열)로 상태를 걸 수 있게 소스가 id 속성을 올린다.
+  assert.equal(map.getSource(ADVISORY_LAYER_DEFS.sigmet.sourceId).promoteId, 'id')
+  assert.deepEqual(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.fillLayerId).paint['fill-opacity'][1][1], ['feature-state', 'highlight'])
+
+  setAdvisoryHighlight(map, item.id)
+  assert.deepEqual(states, [['kma-sigmet-advisories', item.id, true]])
+  setAdvisoryHighlight(map, null)
+  assert.deepEqual(states.at(-1), ['kma-sigmet-advisories', item.id, false])
 })

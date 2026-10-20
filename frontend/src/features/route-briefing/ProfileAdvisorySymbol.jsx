@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
 
-export default function ProfileAdvisorySymbol({ band }) {
+export default function ProfileAdvisorySymbol({ band, dimmed = false }) {
   const url = advisorySymbolUrl(band.kind, band.code)
   const [failedUrl, setFailedUrl] = useState(null)
   const cx = band.x + band.w / 2
@@ -13,7 +13,7 @@ export default function ProfileAdvisorySymbol({ band }) {
     : band.label
 
   return (
-    <g data-testid="profile-advisory-symbol" data-phenomenon={band.code}
+    <g data-testid="profile-advisory-symbol" data-phenomenon={band.code} opacity={dimmed ? 0.25 : undefined}
       role="img" aria-label={`${band.kind.startsWith('sigmet') ? 'SIGMET' : 'AIRMET'} ${band.label}${band.windLabel ? ` ${band.windLabel}` : ''}`}>
       <title>{`${band.label}${band.windLabel ? ` ${band.windLabel}` : ''}`}</title>
       {showImage && <image href={url} x={cx - size / 2} y={cy - size / 2}

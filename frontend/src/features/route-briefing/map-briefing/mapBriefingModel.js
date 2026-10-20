@@ -199,3 +199,112 @@ export function frameShortTag(frame) {
   if (frame.source === 'TYPHOON') return '태풍'
   return `SIG ${phenomenonKo(frame.code) ?? frame.code ?? ''}`.trim()
 }
+
+// 지도 경로 위 위험 색 띠 색 = 위험 막대 색(같은 원천). 선이라 무늬 대신 착빙은 바탕색, 태풍은 보라.
+export const TYPHOON_LINE_COLOR = '#6d28d9'
+export function hazardLineColor(rowKey, level) {
+  if (rowKey === 'typhoon') return TYPHOON_LINE_COLOR
+  const grade = LEVEL_GRADE[level]
+  if (!grade) return null
+  if (rowKey === 'turbulence') return turbulenceColor(grade, 1)
+  if (rowKey === 'icing') return ICING_PRESENTATION[grade].fillColor
+  if (rowKey === 'convection') return ACI_BANDS[grade].color
+  return null
+}
+
+const MODEL_SOURCE = { turbulence: 'KIM GKTG', icing: 'KIM 착빙', convection: 'KIM 대류영역(실험)' }
+const MODEL_RUN = { turbulence: 'ktg', icing: 'kim', convection: 'aci' }
+
+// "2026102000" → "10/20 00Z"
+function formatRunCycle(tmfc) {
+  const match = /^\d{4}(\d{2})(\d{2})(\d{2})/.exec(String(tmfc ?? ''))
+  return match ? `${match[1]}/${match[2]} ${match[3]}Z` : null
+}
+
+// 막대·틀 상세 팝오버 내용. formatTime(iso) → 'HH:mm', tzLabel → 'KST'.
+export function selectionDetail(selection, { runs = {}, formatTime = (iso) => iso, tzLabel = '' } = {}) {
+  if (!selection?.item) return null
+  const { row, kind, item } = selection
+  const typhoon = item.source === 'TYPHOON'
+  const level = kind === 'model' ? item.level : typhoon ? 'TC' : 'SEV'
+  const minutes = minutesBetween(item.passFrom, item.passTo)
+  const tz = tzLabel ? ` ${tzLabel}` : ''
+  const detail = {
+    level,
+    title: kind === 'model' ? row.label : (typhoon ? (item.label ?? '태풍') : (phenomenonKo(item.code) ?? item.label ?? row.label)),
+    source: kind === 'model' ? `${MODEL_SOURCE[row.key] ?? 'KIM'} · 모델` : (typhoon ? '태풍 정보' : `${item.source}${item.overseas ? '(해외)' : ''} · 예보관 발표`),
+    // 수치예보 막대는 내 비행 고도 단면에서 뽑은 것이라 항상 "만남".
+    mine: kind === 'model' ? true : Boolean(item.mine),
+    route: item.from && item.to ? `${item.from} → ${item.to}` : null,
+    rangeNm: `${item.startNm}–${item.endNm}NM`,
+    pass: item.passFrom && item.passTo ? `${formatTime(item.passFrom)}–${formatTime(item.passTo)}${tz}${minutes ? ` · ${minutes}분` : ''}` : null,
+    altitude: null,
+    note: null,
+    data: null,
+  }
+  if (kind === 'model') {
+    const from = formatAltitudeFt(item.altitudeFt?.from), to = formatAltitudeFt(item.altitudeFt?.to)
+    const altitude = !item.altitudeFt ? '전 고도' : item.phase === 'cruise' || from === to ? to : `${from}→${to}`
+    detail.altitude = item.phase ? `${altitude} · ${PHASE_KO[item.phase]}` : altitude
+    // 상승·강하 중 위험은 순항고도로 그려진 지도 레이어에 안 보일 수 있다. 고도는 바꾸지 않고 안내만.
+    if (item.phase && item.phase !== 'cruise' && from && to) {
+      const [low, high] = item.altitudeFt.from <= item.altitudeFt.to ? [from, to] : [to, from]
+      const range = item.phase === 'descent' ? `${high}–${low}` : `${low}–${high}`
+      detail.note = `이 위험은 ${range.replace(/ft–/, '–')} · 고도 슬라이더로 확인`
+    }
+    const run = runs?.[MODEL_RUN[row.key]]
+    const cycle = formatRunCycle(run?.tmfc)
+    const valid = run?.validTime ? `유효 ${formatTime(run.validTime)}${tz}` : null
+    detail.data = [MODEL_SOURCE[row.key], cycle && `${cycle} 회차`, valid].filter(Boolean).join(' · ') || null
+  } else {
+    detail.altitude = typhoon ? '전 고도' : formatBand(item.bandFt)
+    detail.data = item.validFrom && item.validTo ? `유효 ${formatTime(item.validFrom)}–${formatTime(item.validTo)}${tz}` : null
+  }
+  return detail
+}
+
+// 위험 막대 틀 ↔ 단면 상자 ↔ 지도 면을 잇는 발표 id(SIGMET 원본 id). 태풍 틀은 단면·지도 면이 없어 null.
+export function frameAdvisoryId(frame) {
+  return frame?.source === 'SIGMET' || frame?.source === 'AIRMET' ? (frame.sourceId ?? null) : null
+}
+
+// "지도·슬라이더를 이 구간으로": 시간 = 구간 통과 가운데 시각, 고도 = 모델 구간 가운데 고도 /
+// 내 고도 발표는 순항고도 / 다른 고도 발표는 발표 고도대 가운데. 고도 없는 대류·태풍은 시간만.
+export function focusTarget(selection, { cruiseAltitudeFt = null } = {}) {
+  const item = selection?.item
+  if (!item) return null
+  const from = Date.parse(item.passFrom), to = Date.parse(item.passTo)
+  const timeMs = Number.isFinite(from) && Number.isFinite(to) ? Math.round((from + to) / 2) : null
+  let altitudeFt = null
+  if (selection.kind === 'model' && item.altitudeFt) altitudeFt = (item.altitudeFt.from + item.altitudeFt.to) / 2
+  else if (selection.kind === 'frame' && item.source !== 'TYPHOON') {
+    if (item.mine && Number.isFinite(cruiseAltitudeFt)) altitudeFt = cruiseAltitudeFt
+    else if (Number.isFinite(item.bandFt?.highFt)) altitudeFt = ((item.bandFt.lowFt ?? 0) + item.bandFt.highFt) / 2
+  }
+  return { timeMs, altitudeFt: Number.isFinite(altitudeFt) ? Math.round(altitudeFt) : null }
+}
+
+// 막대를 눌러 켠 레이어 안내: "난류(KIM GKTG) 레이어를 켰습니다 · FL250 · 21:00 KST".
+// 고도는 KIM 기압면 레이어(난류·구름·착빙)를 켰을 때만 — SIGMET·태풍·대류는 고도 없이 그려진다.
+const TOAST_LAYER_LABEL = { turbulence: '난류(KIM GKTG)', cloudIcing: '구름·착빙(KIM)', icing: '착빙(KIM)', aciExperiment: '대류영역(실험)', sigmet: 'SIGMET(국내)', sigmet_intl: 'SIGMET(해외)', airmet: 'AIRMET', typhoon: '태풍' }
+const LEVELED_LAYERS = new Set(['turbulence', 'cloudIcing', 'icing'])
+export function layerToastText(ids, { levelLabel = null, timeLabel = null } = {}) {
+  if (!ids?.length) return null
+  // 구름·착빙 묶음과 그 안의 착빙을 함께 켰으면 묶음 이름 하나로.
+  const shown = ids.includes('cloudIcing') ? ids.filter((id) => id !== 'icing') : ids
+  const layers = shown.map((id) => TOAST_LAYER_LABEL[id] ?? id).join(' · ')
+  const level = ids.some((id) => LEVELED_LAYERS.has(id)) ? levelLabel : null
+  return { layers, detail: [level, timeLabel].filter(Boolean).join(' · ') }
+}
+
+// 위험 막대 한 줄에서 마우스가 가리키는 칸. 틀이 모델 막대를 덮고 있어 둘 다 누를 수 있게 위치로 고른다:
+// 틀 이름표 위·틀 위아래 테두리 → 틀, 가운데 → 그 거리의 모델 막대(없으면 틀). 반환: { kind, index } | null.
+export function pickRibbonTarget(row, nm, { edge = false, tagFrameIndex = -1 } = {}) {
+  if (tagFrameIndex >= 0) return { kind: 'frame', index: tagFrameIndex }
+  const inside = (item) => nm >= item.startNm && nm <= item.endNm
+  const model = row.model.findIndex(inside)
+  const frame = row.frames.findIndex(inside)
+  if (frame >= 0 && (edge || model < 0)) return { kind: 'frame', index: frame }
+  if (model >= 0) return { kind: 'model', index: model }
+  return null
+}

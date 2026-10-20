@@ -315,8 +315,9 @@ function MainAppShell({ conceptPreview = false }) {
           onToggle={togglePanel}
           aviationCount={layerCounts.aviation}
           metCount={layerCounts.met}
-        />
+          metNewCount={layerCounts.metNew}
           mapBriefing={mapBriefingActive}
+        />
       )}
       {isMobile && mobileTask === 'more' && !selectedAirport && (
         <MobileMoreMenu

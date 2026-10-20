@@ -8,10 +8,11 @@ import { RIBBON_LABEL_WIDTH_PX, hazardSwatchStyle, profileHeightPx, profileOpenF
 // 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 윗변 탭으로 독 전체를 접는다.
 // 독 높이는 내용대로 — 위험 막대를 접으면 독이 줄 뿐 단면도가 커지지 않는다. 접힘·단면 높이는 브라우저에 기억.
 // 단면도 그림의 가로축(0NM~끝)을 재서 위험 막대 가로축을 같은 세로선에 맞춘다.
-export default function BriefingDock({ ribbon, verticalProfile, crossSection, advisories, nwpTimeSelection, onSetWaypointNwpOffset, onSelectForecastHour, crossSectionHourLoading, selectedId, onSelect, onHeightChange }) {
+// 줄 숨김(눈 아이콘)은 지도 색 띠에도 적용돼 MapBriefingView가 갖는다.
+export default function BriefingDock({ ribbon, verticalProfile, crossSection, advisories, nwpTimeSelection, onSetWaypointNwpOffset, onSelectForecastHour, crossSectionHourLoading,
+  selectedId, onSelect, onHover, highlightAdvisoryId = null, onHoverAdvisory, hiddenRows = [], onToggleRow, onHeightChange }) {
   const [dock, setDock] = useState(readDockState)
   const [profileRange, setProfileRange] = useState(null)
-  const [hiddenRows, setHiddenRows] = useState([])
   const [trackInset, setTrackInset] = useState(null) // { left, right } px — 위험 막대 가로축이 단면도 그림과 맞도록
   const dockRef = useRef(null)
   const ribbonRef = useRef(null)
@@ -98,8 +99,8 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
         </header>
         {dock.ribbonOpen && (
           <div ref={ribbonRef}>
-            <HazardRibbon ribbon={ribbon} profileRange={profileOpen ? profileRange : null} selectedId={selectedId} onSelect={onSelect} trackInset={trackInset}
-              hiddenRows={hiddenRows} onToggleRow={(key) => setHiddenRows((rows) => rows.includes(key) ? rows.filter((r) => r !== key) : [...rows, key])} />
+            <HazardRibbon ribbon={ribbon} profileRange={profileOpen ? profileRange : null} selectedId={selectedId} onSelect={onSelect} onHover={onHover} trackInset={trackInset}
+              highlightAdvisoryId={highlightAdvisoryId} hiddenRows={hiddenRows} onToggleRow={onToggleRow} />
           </div>
         )}
       </div>
@@ -109,7 +110,8 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
             <VerticalProfileViewer embedded fillContainer compact compactTitle={profileTitle} compactActions={profileFold} compactLegendExtra={legendExtra} plotPaddingLeft={labelWidth}
               profile={verticalProfile} crossSection={crossSection} layers={layers} onToggleLayer={toggleLayer}
               advisories={advisories} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset}
-              onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} onRangeChange={setProfileRange} />
+              onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} onRangeChange={setProfileRange}
+              highlightAdvisoryId={highlightAdvisoryId} onHoverAdvisory={onHoverAdvisory} />
           </div>
         ) : (
           <header className="mb-dock-head">

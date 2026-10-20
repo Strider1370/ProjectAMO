@@ -16,6 +16,7 @@ import { buildNwpTimeRail, unavailableNwpOffsets as getUnavailableNwpOffsets } f
 import { formatBriefingTime } from './lib/briefingTime.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { buildLinkedProfileBands } from './lib/linkedProfileBands.js'
+import { advisoryBandState, advisoryIdAt } from './lib/profileAdvisoryFocus.js'
 
 const CachedCellPaths = memo(function CachedCellPaths({ paths, className }) {
   return paths.map(cell => <path key={cell.key} className={className} d={cell.d} fill={cell.fill} />)
@@ -233,7 +234,11 @@ function ProfileChartContent({
   showWaypointRail = true,
   // 지도형 독: 시간선을 그림 바로 아래에 붙이고 지점 이름을 그 밑으로 당겨, 시간선을 끈 것과 같은 높이로.
   compactRail = false,
+  // SIGMET·AIRMET 상자 강조: 밖(위험 막대 틀)에서 가리킨 발표 id, 상자를 가리키면 onHoverAdvisory(id|null).
+  highlightAdvisoryId = null,
+  onHoverAdvisory = null,
 }) {
+  const [hoveredAdvisoryId, setHoveredAdvisoryId] = useState(null)
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
   // 단면도가 두 개(패널·크게 보기) 떠도 서로의 clipPath/filter를 참조하지 않도록 id를 인스턴스마다 나눈다.
@@ -533,6 +538,7 @@ function ProfileChartContent({
           if (clampedUpper > clampedLower && xRight > xLeft) {
             bands.push({
               key: `adv-${item.mapKey ?? item.id ?? bands.length}-${runStart}`,
+              advisoryId: item.id ?? item.mapKey ?? null,
               x: xLeft,
               y: yFor(clampedUpper),
               w: xRight - xLeft,
@@ -550,6 +556,23 @@ function ProfileChartContent({
     }
     return bands
   })()
+  const advisoryFocusId = hoveredAdvisoryId ?? highlightAdvisoryId
+  // 상자 경계를 넘을 때만 상태를 바꾼다(포인터 이동마다 단면 전체를 다시 그리지 않게).
+  const hoverAdvisoryAt = (event) => {
+    if (!advisoryBands.length || event.pointerType === 'touch') return
+    const matrix = event.currentTarget.getScreenCTM?.()
+    if (!matrix) return
+    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+    const id = advisoryIdAt(advisoryBands, point.x, point.y)
+    if (id === hoveredAdvisoryId) return
+    setHoveredAdvisoryId(id)
+    onHoverAdvisory?.(id)
+  }
+  const leaveAdvisory = () => {
+    if (hoveredAdvisoryId == null) return
+    setHoveredAdvisoryId(null)
+    onHoverAdvisory?.(null)
+  }
 
   return (
     <div className="vertical-profile-chart">
@@ -603,6 +626,9 @@ function ProfileChartContent({
         style={{ width: `${width}px`, height: `${height}px`, maxWidth: 'none' }}
         role={interactive ? 'group' : 'img'}
         aria-label="Vertical profile"
+        data-advisory-focus={advisoryFocusId ?? undefined}
+        onPointerMove={advisoryBands.length ? hoverAdvisoryAt : undefined}
+        onPointerLeave={advisoryBands.length ? leaveAdvisory : undefined}
       >
         <defs>
           {ICING_PRESENTATION.slice(1).map(p => {
@@ -654,19 +680,25 @@ function ProfileChartContent({
             {cloudPaths.map((path, index) => <path key={`cld-${index}`} d={path} className="cs-cloud-contour" fill="none"><title>{`KIM CLD ${cloudContour.threshold} 구름 윤곽`}</title></path>)}
           </g>}
           {windBarbs.map((wb) => <WindBarb key={wb.key} cx={wb.cx} cy={wb.cy} u={wb.u} v={wb.v} />)}
-          {advisoryBands.map((band) => (
-            <rect
-              key={band.key}
-              data-testid="profile-advisory-boundary"
-              x={band.x} y={band.y} width={band.w} height={band.h}
-              fill="none"
-              stroke={band.color}
-              strokeWidth={2.5}
-              vectorEffect="non-scaling-stroke"
-              strokeDasharray="6,4"
-              opacity={1}
-            />
-          ))}
+          {advisoryBands.map((band) => {
+            const state = advisoryBandState(band, advisoryFocusId)
+            return (
+              <rect
+                key={band.key}
+                data-testid="profile-advisory-boundary"
+                data-advisory-id={band.advisoryId ?? undefined}
+                data-focus={state ?? undefined}
+                x={band.x} y={band.y} width={band.w} height={band.h}
+                fill={state === 'focus' ? band.color : 'none'}
+                fillOpacity={state === 'focus' ? 0.1 : undefined}
+                stroke={band.color}
+                strokeWidth={state === 'focus' ? 4 : 2.5}
+                vectorEffect="non-scaling-stroke"
+                strokeDasharray={state === 'focus' ? undefined : '6,4'}
+                opacity={state === 'dim' ? 0.2 : 1}
+              />
+            )
+          })}
         </g>
         {isothermlabels.map(({ level, y, bold }) => (
           <text
@@ -803,7 +835,7 @@ function ProfileChartContent({
           </g>
         )}
         {/* SIGMET/AIRMET 기호 — 맨 앞(다른 요소 위)에 평면도와 같은 아이콘으로, 2배 크기. */}
-        {advisoryBands.map((band) => <ProfileAdvisorySymbol key={`sym-${band.key}`} band={band} />)}
+        {advisoryBands.map((band) => <ProfileAdvisorySymbol key={`sym-${band.key}`} band={band} dimmed={advisoryBandState(band, advisoryFocusId) === 'dim'} />)}
         {interactive && <ProfileCursor left={padding.left} top={padding.top} width={plotWidth} height={plotHeight} totalDistanceNm={maxDistance} maxAltitudeFt={yMax} />}
       </svg>
       </div>

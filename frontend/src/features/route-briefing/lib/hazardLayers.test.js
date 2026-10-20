@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { MET_LAYERS } from '../../weather-overlays/lib/weatherOverlayLayers.js'
-import { hazardMapLayers } from './hazardLayers.js'
+import { hazardMapLayers, ribbonItemLayers } from './hazardLayers.js'
 
 const briefing = (hazards = [], modelKinds = [], routeNotams = []) => ({
   routeNotams,
@@ -69,4 +69,22 @@ test('반환 id는 모두 실제 MET 레이어 id (드리프트 방지)', () => 
     ['icing', 'turbulence'],
   ))
   for (const id of all) assert.ok(valid.has(id), `MET 레이어에 없는 id: ${id}`)
+})
+
+test('위험 막대 한 칸 → 켤 레이어(모델 줄별·발표 출처별), 모두 MET_LAYERS에 있다', () => {
+  const known = new Set(MET_LAYERS.map((layer) => layer.id))
+  const cases = [
+    [['turbulence', 'model', { level: 'SEV' }], ['turbulence']],
+    [['icing', 'model', { level: 'MOD' }], ['cloudIcing', 'icing']],
+    [['convection', 'model', { level: 'MOD' }], ['aciExperiment']],
+    [['turbulence', 'frame', { source: 'SIGMET' }], ['sigmet']],
+    [['turbulence', 'frame', { source: 'SIGMET', overseas: true }], ['sigmet_intl']],
+    [['typhoon', 'frame', { source: 'TYPHOON' }], ['typhoon']],
+  ]
+  for (const [args, expected] of cases) {
+    const ids = ribbonItemLayers(...args)
+    assert.deepEqual(ids, expected, args.join(' '))
+    for (const id of ids) assert.ok(known.has(id), `MET_LAYERS에 없음: ${id}`)
+  }
+  assert.deepEqual(ribbonItemLayers('visibility', 'model', {}), [])
 })

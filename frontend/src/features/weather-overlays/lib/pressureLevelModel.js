@@ -31,3 +31,17 @@ export function pressureLevelPosition(level, levels) {
 export function isMajorPressureLevel(level) {
   return [1000, 850, 700, 500, 400, 250, 150].includes(Number(level?.value))
 }
+
+// 고도(ft)에 가장 가까운 기압면. levels는 슬라이더 항목({ id: '350hPa', value: 350 }) — 표준대기 고도로 비교한다.
+export function nearestPressureLevelForAltitude(levels, altitudeFt) {
+  if (!Number.isFinite(altitudeFt)) return null
+  let best = null
+  let bestDelta = Infinity
+  for (const level of levels ?? []) {
+    const feet = standardAltitudeFtForPressure(level?.value)
+    if (!Number.isFinite(feet)) continue
+    const delta = Math.abs(feet - altitudeFt)
+    if (delta < bestDelta) { bestDelta = delta; best = level }
+  }
+  return best
+}

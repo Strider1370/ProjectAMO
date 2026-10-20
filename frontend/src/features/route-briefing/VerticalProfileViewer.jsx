@@ -22,7 +22,7 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null }) {
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null, highlightAdvisoryId = null, onHoverAdvisory = null }) {
   const floating = useFloatingWindow(placement)
   const { tz, setTz } = useTimeZone()
   const [localLayers, localToggle] = useCrossSectionLayers(INITIAL_LAYERS)
@@ -211,7 +211,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         layers={chartLayers.current.value} legendInToolbar selectedCandidateAltitudeFt={selectedCandidateAltitudeFt} candidateAltitudes={candidateAltitudes}
         nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={crossSectionHourLoading ? undefined : onSetWaypointNwpOffset} allowMissingTerrain={allowMissingTerrain} fitHeight
         highlightRangeNm={highlightRangeNm} linkedItems={linkedItems} activeLinkedItemId={activeLinkedItemId} onSelectLinkedItem={onSelectLinkedItem}
-        hideMeta={compact} plotPaddingLeft={plotPaddingLeft} compactRail={compact}
+        hideMeta={compact} plotPaddingLeft={plotPaddingLeft} compactRail={compact} highlightAdvisoryId={highlightAdvisoryId} onHoverAdvisory={onHoverAdvisory}
         showComparisonProfiles interactive zoom={zoom} scrollElementRef={scrollRef} selectedMarkerId={selected?.id} onSelectMarker={selectMarker} enableDragScroll />
     </div>
     {!compact && <RouteOverview total={total} range={range} onRange={setRangeFromOverview} waypointCount={markers.length}/>}

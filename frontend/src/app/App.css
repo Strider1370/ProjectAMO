@@ -134,6 +134,13 @@ optgroup {
   border-color: var(--accent);
 }
 
+/* 지도형 브리핑에서 위험 막대를 눌러 새로 켠 레이어가 있을 때 — 기상정보를 열면 사라진다. */
+.mobile-map-layer-count.is-new {
+  background: var(--level-amber);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.25);
+}
+
 @media (min-width: 720px) {
   .mobile-map-layer-btns {
     flex-direction: row;

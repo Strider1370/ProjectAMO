@@ -7,7 +7,8 @@ const OWN_PANELS = ['aviation', 'met', 'map-profile']
 
 // 지도형 브리핑 중(mapBriefing)에는 연직단면도 버튼 대신 브리핑 버튼(브리핑 패널 켜기/끄기)을 둔다.
 // 단면도는 지도 아래 독에 이미 있고, 브리핑 패널은 이 버튼들 아래에 열린다.
-export default function MapInfoControls({ activePanel, onToggle, aviationCount = 0, metCount = 0, mobile = false, mapBriefing = false }) {
+// metNewCount: 위험 막대를 눌러 새로 켠 기상 레이어 수 — 기상정보를 열어 볼 때까지 개수 배지를 강조한다.
+export default function MapInfoControls({ activePanel, onToggle, aviationCount = 0, metCount = 0, metNewCount = 0, mobile = false, mapBriefing = false }) {
   const ownPanels = mapBriefing ? [...OWN_PANELS, 'route-check'] : OWN_PANELS
   return (
     <>
@@ -30,7 +31,9 @@ export default function MapInfoControls({ activePanel, onToggle, aviationCount =
         >
           <Cloud size={20} strokeWidth={2} />
           <span>기상정보</span>
-          {metCount > 0 && <span className="mobile-map-layer-count">{metCount}</span>}
+          {metCount > 0 && (
+            <span className={`mobile-map-layer-count${metNewCount > 0 ? ' is-new' : ''}`} title={metNewCount > 0 ? `브리핑에서 새로 켠 레이어 ${metNewCount}개` : undefined}>{metCount}</span>
+          )}
         </button>
         {mapBriefing ? (
           <button
