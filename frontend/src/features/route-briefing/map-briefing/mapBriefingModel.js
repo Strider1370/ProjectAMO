@@ -19,7 +19,8 @@ const DOCK_KEY = 'projectamo.briefingDock'
 // profileHeightPx null = 손대지 않음 → 단면도 = 화면의 30%(최소 280: 머리 줄·지점 이름을 빼고 그림 약 200px).
 // 독 전체를 34%로 맞추던 때는 1000 화면에서 단면 그림이 약 90px로 쪼그라들었다.
 // 위험 막대 + 단면은 화면의 50%를 넘지 않는다 — 지도가 항상 절반 이상 남게.
-export const DEFAULT_DOCK = { ribbonOpen: true, profileOpen: null, profileHeightPx: null }
+// collapsed = 독 전체(위험 막대·단면) 접힘 — 시간 막대 위 탭만 남는다.
+export const DEFAULT_DOCK = { ribbonOpen: true, profileOpen: null, profileHeightPx: null, collapsed: false }
 export const PROFILE_OPEN_MIN_HEIGHT = 900
 export const RIBBON_BLOCK_PX = 130 // 위험 막대 제목 + 4줄 + 여백(대략)
 const DEFAULT_PROFILE_RATIO = 0.3
@@ -35,6 +36,7 @@ export function readDockState(storage = globalThis.localStorage) {
       ribbonOpen: saved.ribbonOpen !== false,
       profileOpen: typeof saved.profileOpen === 'boolean' ? saved.profileOpen : null,
       profileHeightPx: Number.isFinite(saved.profileHeightPx) ? saved.profileHeightPx : null,
+      collapsed: saved.collapsed === true,
     }
   } catch { return DEFAULT_DOCK }
 }

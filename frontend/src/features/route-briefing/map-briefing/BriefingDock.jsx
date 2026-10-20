@@ -25,11 +25,12 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   useEffect(() => { writeDockState(dock) }, [dock])
   useEffect(() => {
     const el = dockRef.current
-    if (!el || !onHeightChange) return undefined
+    if (!onHeightChange) return undefined
+    if (!el) { onHeightChange(0); return undefined }
     const observer = new ResizeObserver(() => onHeightChange(el.getBoundingClientRect().height))
     observer.observe(el)
     return () => { observer.disconnect(); onHeightChange(0) }
-  }, [onHeightChange])
+  }, [onHeightChange, dock.collapsed])
 
   const profileOpen = profileOpenFor(dock, window.innerHeight)
   const heightPx = profileHeightPx(dock, window.innerHeight)
@@ -84,10 +85,21 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
       {open ? '접기' : '펼치기'} {open ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
     </button>
   )
+  // 독 전체 접기 탭: 펼쳤을 때는 독 윗변 가운데(높이 손잡이 위), 접으면 시간 막대 바로 위에 남는다(문서형 접기 탭과 같은 역할).
+  const collapseTab = (
+    <button type="button" className={`mb-dock-tab${dock.collapsed ? ' is-collapsed' : ''}`} aria-expanded={!dock.collapsed}
+      aria-label={dock.collapsed ? '경로상 위험·연직단면도 펼치기' : '경로상 위험·연직단면도 접기'}
+      onClick={() => setDock((d) => ({ ...d, collapsed: !d.collapsed }))}>
+      {dock.collapsed ? <><ChevronUp size={14} aria-hidden="true" /><span>경로상 위험 · 연직단면도</span></> : <ChevronDown size={14} aria-hidden="true" />}
+    </button>
+  )
+  if (dock.collapsed) return collapseTab
   const profileTitle = <h3 className="mb-dock-title">연직단면도</h3>
   const profileFold = fold(profileOpen, () => toggle('profileOpen'), '연직단면도')
 
   return (
+    <>
+    {collapseTab}
     <section ref={dockRef} className={`mb-dock${profileOpen ? ' has-profile' : ''}`} style={{ '--mb-label-w': `${labelWidth}px` }} aria-label="경로상 위험과 연직단면도">
       {profileOpen && (
         <div className="mb-dock-handle" role="separator" aria-orientation="horizontal" aria-label="연직단면도 높이 조절" tabIndex={0}
@@ -124,5 +136,6 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
         )}
       </div>
     </section>
+    </>
   )
 }

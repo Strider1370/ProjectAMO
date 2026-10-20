@@ -14,8 +14,8 @@ test('remembers the chosen briefing view and dock state, falling back when stora
   writeBriefingView('document', storage)
   assert.equal(readBriefingView(storage), 'document')
   assert.equal(readBriefingView(broken), 'map')
-  writeDockState({ ribbonOpen: false, profileOpen: true, profileHeightPx: 300 }, storage)
-  assert.deepEqual(readDockState(storage), { ribbonOpen: false, profileOpen: true, profileHeightPx: 300 })
+  writeDockState({ ribbonOpen: false, profileOpen: true, profileHeightPx: 300, collapsed: true }, storage)
+  assert.deepEqual(readDockState(storage), { ribbonOpen: false, profileOpen: true, profileHeightPx: 300, collapsed: true })
   assert.deepEqual(readDockState(broken), DEFAULT_DOCK)
 })
 

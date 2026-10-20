@@ -45,12 +45,17 @@ test.describe('map-briefing', () => {
 
   test('folds the ribbon and the profile separately and remembers it', async ({ page }) => {
     await createBriefing(page, { view: 'map' })
-    await page.getByRole('button', { name: '연직단면도 접기' }).click()
+    await page.getByRole('button', { name: '연직단면도 접기', exact: true }).click()
     await expect(page.getByRole('group', { name: '연직단면도' })).toHaveCount(0)
     await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
-    await page.getByRole('button', { name: '경로상 위험 접기' }).click()
+    await page.getByRole('button', { name: '경로상 위험 접기', exact: true }).click()
     await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toHaveCount(0)
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('projectamo.briefingDock')))
     expect(saved).toMatchObject({ ribbonOpen: false, profileOpen: false })
+    // 독 전체 접기: 탭 하나만 남고, 누르면 원래대로.
+    await page.getByRole('button', { name: '경로상 위험·연직단면도 접기' }).click()
+    await expect(page.getByRole('region', { name: '경로상 위험과 연직단면도' })).toHaveCount(0)
+    await page.getByRole('button', { name: '경로상 위험·연직단면도 펼치기' }).click()
+    await expect(page.getByRole('region', { name: '경로상 위험과 연직단면도' })).toBeVisible()
   })
 })

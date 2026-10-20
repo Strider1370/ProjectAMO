@@ -55,6 +55,17 @@
   background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--radius-lg); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
   color: var(--text-1); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
 }
+/* 독 전체 접기 탭: 독 윗변 가운데에서 위로 튀어나온 탭. 접으면 시간 막대 바로 위에 "▴ 경로상 위험 · 연직단면도"로 남는다. */
+.mb-dock-tab {
+  position: absolute; left: 50%; bottom: calc(28px + 12px + var(--mb-dock-h, 0px) - 1px); z-index: 8; transform: translateX(-50%);
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 56px; height: 20px; padding: 0 var(--space-m);
+  border: 1px solid var(--stroke-2); border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--bg-1); box-shadow: 0 -2px 6px rgba(15, 23, 42, 0.08); color: var(--text-2);
+  font: inherit; font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200); font-weight: var(--fw-semibold); cursor: pointer;
+}
+.mb-dock-tab:hover { color: var(--text-1); background: var(--level-gray-bg); }
+.mb-dock-tab.is-collapsed { bottom: 28px; height: 28px; }
+.mb-dock-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mb-dock-handle { position: absolute; top: 0; z-index: 4; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; width: 72px; height: 14px; cursor: ns-resize; touch-action: none; }
 .mb-dock-handle span { width: 40px; height: 4px; border-radius: var(--radius-circular); background: var(--stroke-strong); }
 .mb-dock-handle:focus-visible { outline: 2px solid var(--accent); border-radius: var(--radius-sm); }
