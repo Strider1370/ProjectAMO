@@ -55,7 +55,7 @@
 
 **확인**: `hazard-ribbon.test.js`(현상→줄 배정, 내 고도/다른 고도, 구간 이름, 통과 시각, 자료 없음), `enroute-model` 상태 테스트, `enroute-convection` 테스트(경계값 0.5·0.75, 영역 밖·자료 없음). 기존 `briefing-composer` 테스트 통과.
 
-## 3단계 — 지도형 화면 틀과 독
+## 3단계 — 지도형 화면 틀과 독 — 완료
 
 새 폴더 `frontend/src/features/route-briefing/map-briefing/`. `MapView.jsx`(2,557줄)에는 붙이는 자리와 지도 연동 콜백만 넣는다.
 

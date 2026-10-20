@@ -51,6 +51,8 @@ import SigwxHighLegend from '../weather-overlays/SigwxHighLegend.jsx'
 import { useTropopauseJetOverlay } from '../weather-overlays/lib/useTropopauseJetOverlay.js'
 import TropopauseJetLegend from '../weather-overlays/TropopauseJetLegend.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
+import useMinWidth from '../route-briefing/map-briefing/useMinWidth.js'
+import { MAP_BRIEFING_MIN_WIDTH, readBriefingView, writeBriefingView } from '../route-briefing/map-briefing/mapBriefingModel.js'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
 import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
 import { nwpAvailabilityEntries } from '../weather-overlays/lib/timelineRailModel.js'
@@ -166,6 +168,7 @@ const VerticalProfileWindow = lazy(() => import('../route-briefing/VerticalProfi
 const CopilotResultView = lazy(() => import('../route-briefing/CopilotResultView.jsx'))
 const BriefingView = lazy(() => import('../route-briefing/BriefingView.jsx'))
 const SaveBriefingDialog = lazy(() => import('../route-briefing/SaveBriefingDialog.jsx'))
+const MapBriefingView = lazy(() => import('../route-briefing/map-briefing/MapBriefingView.jsx'))
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -396,6 +399,7 @@ const MapView = forwardRef(function MapView({
   onOpenMetPanel,
   onOpenMyMapPanel,
   onRequestLogin,
+  onMapBriefingChange,
   enableWindOverlay = true,
   metLayerIds = null,
   showRadarWindControl = true,
@@ -506,6 +510,11 @@ const MapView = forwardRef(function MapView({
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
+  // 지도형 브리핑: 폭 1280 이상에서 기본. "문서형 보기"를 고르면 기억해 두고 기존 BriefingView를 연다.
+  const wideForMapBriefing = useMinWidth(MAP_BRIEFING_MIN_WIDTH)
+  const [briefingView, setBriefingViewState] = useState(readBriefingView)
+  const setBriefingView = (view) => { writeBriefingView(view); setBriefingViewState(view) }
+  const [mapBriefingDockHeight, setMapBriefingDockHeight] = useState(0)
   const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs, enabled: enableRouteBriefing })
   const { user: authUser } = useAuth()
   const copilotLive = useRef(null)
@@ -518,6 +527,10 @@ const MapView = forwardRef(function MapView({
     mapEditing: myMapControlRef.current?.mode === 'edit' }) }), [])
   const copilotResult = useCopilotResult({ ownerId: authUser?.id, routeState: routeBriefing.state, activePanel,
     ready: isStyleReady, canOpen: () => myMapControlRef.current?.mode !== 'edit' })
+  // 기관 브리핑(고정 자료)과 기상이 결과 화면은 지금처럼 문서형으로 둔다.
+  const mapBriefingActive = Boolean(enableRouteBriefing && !isMobile && wideForMapBriefing && briefingView === 'map'
+    && routeBriefing.state.briefing && !copilotResult.bundle && routeBriefing.state.briefingContext?.kind !== 'organization')
+  useEffect(() => { onMapBriefingChange?.(mapBriefingActive) }, [mapBriefingActive, onMapBriefingChange])
   const organizationAuthRef = useRef(authUser?.id ?? null)
   useEffect(() => {
     const previous = organizationAuthRef.current
@@ -770,9 +783,12 @@ const MapView = forwardRef(function MapView({
     const rightPanel = doc?.querySelector('.briefing-view')
     const rw = rightPanel ? Math.round(rightPanel.getBoundingClientRect().width) : 0
     if (rw > 0) pad.right = cap(rw)
-    const leftPanel = doc?.querySelector('.route-check-panel')
+    const leftPanel = doc?.querySelector('.route-check-panel') ?? doc?.querySelector('.mb-panel')
     const lw = leftPanel ? Math.round(leftPanel.getBoundingClientRect().width) : 0
     if (lw > 0) pad.left = cap(lw)
+    // 지도형 브리핑: 아래 독(위험 막대·단면도)과 시간 막대에 가리지 않게.
+    const dock = doc?.querySelector('.mb-dock')
+    if (dock) pad.bottom = Math.min(Math.round(dock.getBoundingClientRect().height) + 88 + base, (container?.clientHeight || 800) - 160)
     return pad
   }
 
@@ -883,7 +899,7 @@ const MapView = forwardRef(function MapView({
     ).filter((c) => Number.isFinite(c?.[0]) && Number.isFinite(c?.[1]))
     if (coords.length === 0) return undefined
     const fitForBriefingPanel = () => {
-      if (!map.getContainer().ownerDocument.querySelector('.briefing-view')) return false
+      if (!map.getContainer().ownerDocument.querySelector('.briefing-view, .mb-dock')) return false
       setShowKoreaHome(true)
       map.fitBounds(boundsFromCoords(coords), { padding: fitPaddingFor(60), maxZoom: 8, duration: 600 })
       return true
@@ -2037,7 +2053,8 @@ const MapView = forwardRef(function MapView({
       data-mobile-layer-panel={activePanel === 'aviation' || activePanel === 'met' ? 'true' : undefined}
       data-mobile-task={mobileTask}
       data-route-briefing-map-mode={activePanel === 'route-check' && routeBriefingMapMode ? 'true' : 'false'}
-      style={{ '--legend-popover-height': `${weatherLegendPanelHeight}px` }}
+      data-map-briefing={mapBriefingActive ? 'true' : undefined}
+      style={{ '--legend-popover-height': `${weatherLegendPanelHeight}px`, '--mb-dock-h': `${mapBriefingDockHeight}px` }}
     >
       <div ref={mapContainerRef} className="map-view" />
 
@@ -2054,7 +2071,7 @@ const MapView = forwardRef(function MapView({
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
-      {showActiveWeatherSummary && activePanel === null && metActiveCount > 0 && (
+      {showActiveWeatherSummary && activePanel === null && !mapBriefingActive && metActiveCount > 0 && (
         <button type="button" className="active-weather-summary" onClick={onOpenMetPanel}
           title={activeMetLabels.join(' · ')} aria-label={`기상 ${metActiveCount}개 켜짐: ${activeMetLabels.join(', ')}. 기상정보 열기`}>
           <strong>기상 {metActiveCount}개 켜짐</strong>
@@ -2138,7 +2155,8 @@ const MapView = forwardRef(function MapView({
         />}
       </div>
 
-      {showAdvisoryBadges && (
+      {/* 지도형 브리핑 중에는 SIGMET·AIRMET이 위험 막대에 있으므로 상단 칩을 숨긴다. */}
+      {showAdvisoryBadges && !mapBriefingActive && (
         <AdvisoryBadges
           badgeItems={advisoryBadgeItems}
           warnedAirports={warnedAirports}
@@ -2321,9 +2339,10 @@ const MapView = forwardRef(function MapView({
               )}
             </>
           )}
-          {routeBriefing.state.briefing && (
+          {routeBriefing.state.briefing && !mapBriefingActive && (
             <Suspense fallback={null}>
               <BriefingView
+                onMapView={wideForMapBriefing && !isMobile && routeBriefing.state.briefingContext?.kind !== 'organization' ? () => setBriefingView('map') : null}
                 briefing={routeBriefing.state.briefing}
                 verticalProfile={routeBriefing.state.verticalProfile}
                 crossSection={routeBriefing.state.crossSection}
@@ -2389,6 +2408,33 @@ const MapView = forwardRef(function MapView({
           <House size={18} aria-hidden="true" />
           <span>기본 지도</span>
         </button>
+      )}
+
+      {mapBriefingActive && (
+        <Suspense fallback={null}>
+          <MapBriefingView
+            briefing={routeBriefing.state.briefing}
+            panelOpen={activePanel === 'route-check'}
+            distanceNm={routeBriefing.derived.plannedDistanceNm}
+            tasKt={routeBriefing.state.tasKt}
+            verticalProfile={routeBriefing.state.verticalProfile}
+            crossSection={routeBriefing.state.crossSection}
+            advisories={[
+              ...sigmetItems.map((item) => ({ ...item, kind: 'sigmet' })),
+              ...airmetItems.map((item) => ({ ...item, kind: 'airmet' })),
+            ]}
+            nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
+            onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
+            onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
+            crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
+            onClosePanel={onClosePanel}
+            onDocumentView={() => { setBriefingView('document'); onOpenRoutePanel?.() }}
+            onSave={handleSaveBriefing}
+            onEdit={() => { routeBriefing.actions.setBriefing(null); onOpenRoutePanel?.() }}
+            onEnd={() => { routeBriefing.actions.setBriefing(null); routeBriefing.actions.goToWorkflowStep('settings'); onOpenRoutePanel?.() }}
+            onDockHeightChange={setMapBriefingDockHeight}
+          />
+        </Suspense>
       )}
 
       {saveBriefingOpen && (

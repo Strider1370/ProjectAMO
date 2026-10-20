@@ -22,7 +22,7 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement }) {
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange }) {
   const floating = useFloatingWindow(placement)
   const { tz, setTz } = useTimeZone()
   const [localLayers, localToggle] = useCrossSectionLayers(INITIAL_LAYERS)
@@ -33,6 +33,10 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
   if (!chartLayers.current || chartLayers.current.source !== layers || chartLayers.current.isotachs !== isotachs) chartLayers.current = { source: layers, isotachs, value: { ...layers, isotachs } }
   const [zoom, setZoom] = useState(1)
   const [range, setRange] = useState([0, profile?.axis?.totalDistanceNm || 1])
+  // 지도형 브리핑 위험 막대가 "단면에 보이는 구간" 창을 그리도록 보이는 범위를 밖으로 알린다.
+  const onRangeChangeRef = useRef(onRangeChange)
+  onRangeChangeRef.current = onRangeChange
+  useEffect(() => { onRangeChangeRef.current?.(range) }, [range])
   const [selected, setSelected] = useState(null)
   const focusSelected = useRef(false)
   const scrollRef = useRef(null), anchor = useRef(null), frame = useRef(null)

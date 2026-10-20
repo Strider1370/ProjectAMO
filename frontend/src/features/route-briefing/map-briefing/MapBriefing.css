@@ -1,0 +1,124 @@
+/* 지도형 브리핑. 기준 1920×1080(패널 288 · 라벨 열 176), 1280~1919는 264 · 144.
+   위치는 .map-view-wrapper 기준. 독은 시간 막대(높이 88) 바로 위에 붙는다. */
+.mb-panel {
+  --mb-typhoon: #6d28d9;
+  position: absolute; top: 72px; left: 20px; z-index: 8; width: 288px;
+  max-height: calc(100% - 72px - var(--mb-dock-h, 0px) - 100px); overflow-y: auto;
+  background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); color: var(--text-1);
+  font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
+}
+.mb-panel-top { display: flex; align-items: center; justify-content: space-between; padding: var(--space-m) var(--space-l) 0; }
+.mb-eyebrow { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
+.mb-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text-2); cursor: pointer; }
+.mb-icon-btn:hover { background: var(--bg-3); }
+.mb-panel-route { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-s) var(--space-l) 0; }
+.mb-panel-route strong { font-size: 24px; line-height: 1.2; letter-spacing: 0.01em; }
+.mb-rule { padding: 1px 6px; border-radius: var(--radius-sm); background: var(--accent); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); }
+.mb-rule.is-vfr { background: var(--level-green); }
+.mb-panel-sub { margin: 2px var(--space-l) 0; color: var(--text-3); }
+.mb-panel-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: var(--space-m) var(--space-l) 0; padding: var(--space-s) 0; border-radius: var(--radius-md); background: var(--bg-2); }
+.mb-panel-stats div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mb-panel-stats div + div { border-left: 1px solid var(--stroke-2); }
+.mb-panel-stats dt { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
+.mb-panel-stats dd { margin: 0; font-size: var(--fs-500); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.mb-panel-line { margin: var(--space-s) var(--space-l) 0; color: var(--text-2); text-align: center; font-variant-numeric: tabular-nums; }
+.mb-callout { display: flex; align-items: center; gap: var(--space-s); width: calc(100% - 2 * var(--space-l)); margin: var(--space-m) var(--space-l) 0; padding: var(--space-s) var(--space-m); border: 0; border-radius: var(--radius-md); text-align: left; font: inherit; cursor: pointer; }
+.mb-callout:disabled { cursor: default; }
+.mb-callout-badge { flex: none; min-width: 32px; padding: 6px 4px; border-radius: var(--radius-md); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); text-align: center; }
+.mb-callout-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mb-callout-text b { font-size: var(--fs-300); }
+.mb-callout-text span { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.mb-callout.is-sev { background: var(--level-red-bg); }
+.mb-callout.is-sev .mb-callout-badge { background: var(--level-red); }
+.mb-callout.is-sev b { color: var(--level-red); }
+.mb-callout.is-mod { background: var(--level-amber-bg); }
+.mb-callout.is-mod .mb-callout-badge { background: var(--level-amber); }
+.mb-callout.is-clear { background: var(--level-green-bg); }
+.mb-callout.is-clear .mb-callout-badge { background: var(--level-green); }
+.mb-callout.is-unknown { background: var(--level-gray-bg); }
+.mb-callout.is-unknown .mb-callout-badge { background: var(--level-gray); }
+.mb-panel-actions { display: flex; gap: var(--space-s); margin: var(--space-m) var(--space-l) 0; padding-top: var(--space-m); border-top: 1px solid var(--stroke-2); }
+.mb-btn { flex: none; padding: 6px var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-1); font: inherit; font-weight: var(--fw-semibold); cursor: pointer; }
+.mb-btn.is-primary { flex: 1; border-color: var(--accent); background: var(--accent); color: #fff; }
+.mb-btn:hover { filter: brightness(0.96); }
+.mb-end { display: block; width: 100%; padding: var(--space-s) var(--space-l) var(--space-m); border: 0; background: none; color: var(--text-3); font: inherit; cursor: pointer; }
+.mb-end:hover { color: var(--text-1); text-decoration: underline; }
+
+/* 독: 위험 막대 + 연직단면도 */
+.mb-dock {
+  --mb-label-w: 176px; --mb-typhoon: #6d28d9; --mb-airmet: #92400e;
+  position: absolute; left: 0; right: 0; bottom: 86px; z-index: 7;
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--bg-1); border-top: 1px solid var(--stroke-2); box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
+  color: var(--text-1); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
+}
+.mb-dock-handle { position: absolute; top: -7px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; width: 72px; height: 14px; cursor: ns-resize; touch-action: none; }
+.mb-dock-handle span { width: 40px; height: 4px; border-radius: var(--radius-circular); background: var(--stroke-strong); }
+.mb-dock-handle:focus-visible { outline: 2px solid var(--accent); border-radius: var(--radius-sm); }
+.mb-dock-section { padding: 0 var(--space-l); }
+.mb-dock-section.is-ribbon { flex: none; padding-top: var(--space-s); padding-bottom: var(--space-s); }
+.mb-dock-section.is-profile { flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--stroke-2); padding-top: var(--space-xs); }
+.mb-dock:not(.has-profile) .mb-dock-section.is-profile { flex: none; padding-bottom: var(--space-xs); }
+.mb-dock-head { display: flex; align-items: center; gap: var(--space-m); min-height: 28px; }
+.mb-dock-head h3 { margin: 0; font-size: var(--fs-300); font-weight: var(--fw-bold); }
+.mb-dock-sub { overflow: hidden; color: var(--text-3); text-overflow: ellipsis; white-space: nowrap; }
+.mb-fold-btn { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; padding: 2px var(--space-s); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-2); font: inherit; cursor: pointer; }
+.mb-profile-body { flex: 1; min-height: 0; overflow: hidden; }
+.mb-ribbon-empty { margin: var(--space-s) 0; color: var(--text-3); }
+
+.mb-ribbon { position: relative; display: flex; flex-direction: column; gap: 4px; margin-top: var(--space-xs); }
+.mb-row { display: grid; grid-template-columns: var(--mb-label-w) 1fr; align-items: stretch; min-height: var(--mb-row-h); }
+.mb-row-label { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: var(--space-s); }
+.mb-eye { display: inline-flex; padding: 2px; border: 0; background: none; color: var(--text-3); cursor: pointer; }
+.mb-row.is-hidden .mb-row-name { color: var(--text-3); }
+.mb-row-dot { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--mb-row-color, var(--text-3)); }
+.mb-row.is-turbulence { --mb-row-color: var(--level-red); }
+.mb-row.is-icing { --mb-row-color: #2563eb; }
+.mb-row.is-convection { --mb-row-color: #ea580c; }
+.mb-row.is-typhoon { --mb-row-color: var(--mb-typhoon); }
+.mb-row.is-visibility { --mb-row-color: var(--mb-airmet); }
+.mb-row-name { flex: none; font-weight: var(--fw-semibold); white-space: nowrap; }
+.mb-row-chips { display: flex; gap: 4px; margin-left: auto; white-space: nowrap; }
+.mb-chip, .mb-src-chip { padding: 0 5px; border-radius: var(--radius-sm); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 16px; }
+.mb-chip.is-sev { background: var(--level-red); color: #fff; }
+.mb-chip.is-mod { background: var(--turb-mod); color: #1f2937; }
+.mb-chip.is-none { color: var(--text-3); }
+.mb-chip.is-unknown { background: var(--level-gray-bg); color: var(--text-2); }
+.mb-src-chip { border: 1px dashed currentColor; color: var(--level-red); }
+.mb-src-chip.is-air { color: var(--mb-airmet); }
+.mb-src-chip.is-tc { color: var(--mb-typhoon); }
+.mb-src-chip.is-mine { border-style: solid; }
+
+.mb-track { position: relative; border-radius: var(--radius-sm); background: var(--bg-2); }
+.mb-track.is-unavailable { background: repeating-linear-gradient(135deg, var(--bg-2) 0 6px, var(--bg-3) 6px 12px); }
+.mb-track-empty { position: absolute; left: var(--space-s); top: 50%; transform: translateY(-50%); color: var(--text-3); white-space: nowrap; }
+.mb-seg { position: absolute; top: 3px; bottom: 3px; overflow: hidden; padding: 0 6px; border: 0; border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 1; text-align: left; white-space: nowrap; cursor: pointer; }
+.mb-seg.is-under-tag { top: auto; bottom: 3px; height: 14px; }
+.mb-seg.is-end { text-align: right; }
+.mb-seg.is-sev { background: var(--level-red); color: #fff; }
+.mb-seg.is-mod { background: var(--turb-mod); color: #1f2937; }
+.mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 2; }
+.mb-frame { position: absolute; top: 14px; bottom: 2px; padding: 0; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
+.mb-frame.is-mine { border-style: solid; border-width: 2px; }
+.mb-frame.is-airmet { border-color: var(--mb-airmet); }
+.mb-frame.is-typhoon { border-color: var(--mb-typhoon); }
+.mb-frame-tag { position: absolute; bottom: 100%; left: 4px; overflow: hidden; max-width: calc(100% + 240px); padding: 0 4px; background: var(--bg-1); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.mb-frame.is-airmet .mb-frame-tag { color: var(--mb-airmet); }
+.mb-frame.is-typhoon .mb-frame-tag { color: var(--mb-typhoon); }
+.mb-range-window {
+  position: absolute; top: -18px; bottom: -2px; pointer-events: none;
+  left: calc(var(--mb-label-w) + (100% - var(--mb-label-w)) * var(--mb-range-from));
+  width: calc((100% - var(--mb-label-w)) * var(--mb-range-span));
+  border: 1.5px solid var(--text-1); border-radius: var(--radius-sm); background: rgba(15, 23, 42, 0.04);
+}
+.mb-range-window span { position: absolute; top: 0; left: 4px; color: var(--text-1); font-size: var(--fs-100); font-weight: var(--fw-bold); white-space: nowrap; }
+
+@media (max-width: 1919px) {
+  .mb-panel { width: 264px; }
+  .mb-dock { --mb-label-w: 144px; }
+}
+
+/* 지도형 브리핑 중에는 독 위로 지도 컨트롤을 올린다. */
+.map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
+.map-view-wrapper[data-map-briefing='true'] .active-route-chip { display: none; }

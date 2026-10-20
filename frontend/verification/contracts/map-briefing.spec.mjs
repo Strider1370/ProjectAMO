@@ -1,0 +1,48 @@
+import { test, expect } from '../fixtures.mjs'
+import { createBriefing } from '../briefing-flow.mjs'
+
+// 지도형 브리핑(폭 1280 이상 기본): 패널·위험 막대·연직단면도 독, 문서형 전환, 따로 접기.
+test.describe('map-briefing', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', '지도형은 폭 1280 이상 데스크톱만')
+  })
+
+  test('opens the map briefing with panel, hazard ribbon and profile dock, and switches to the document view', async ({ page }) => {
+    await createBriefing(page, { view: 'map' })
+    const panel = page.getByRole('complementary', { name: '비행 전 브리핑' })
+    await expect(panel).toBeVisible()
+    await expect(panel.getByText('RKSS → RKPK')).toBeVisible()
+    const ribbon = page.getByRole('group', { name: '경로상 위험 막대' })
+    await expect(ribbon).toBeVisible()
+    for (const label of ['난류', '착빙', '대류']) await expect(ribbon.getByText(label, { exact: true })).toBeVisible()
+    // 픽스처는 모델 단면이 없으므로 "확인 불가"(짧게 '불가')로 그린다 — "없음"으로 읽히지 않게.
+    await expect(ribbon.getByText('불가', { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole('group', { name: '연직단면도' })).toBeVisible()
+
+    // 상단 버튼: 연직단면도 대신 브리핑(패널 켜기/끄기). 패널을 닫아도 독은 남는다.
+    await expect(page.getByRole('button', { name: '연직단면도', exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: '브리핑 패널' }).click()
+    await expect(panel).toHaveCount(0)
+    await expect(ribbon).toBeVisible()
+    await page.getByRole('button', { name: '브리핑 패널' }).click()
+    await expect(panel).toBeVisible()
+
+    // 문서형 ↔ 지도형
+    await panel.getByRole('button', { name: '문서형 보기' }).click()
+    await expect(page.locator('.briefing-view')).toBeVisible()
+    await expect(ribbon).toHaveCount(0)
+    await page.getByRole('button', { name: '지도형 보기' }).click()
+    await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
+  })
+
+  test('folds the ribbon and the profile separately and remembers it', async ({ page }) => {
+    await createBriefing(page, { view: 'map' })
+    await page.getByRole('button', { name: '연직단면도 접기' }).click()
+    await expect(page.getByRole('group', { name: '연직단면도' })).toHaveCount(0)
+    await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
+    await page.getByRole('button', { name: '경로상 위험 접기' }).click()
+    await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toHaveCount(0)
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('projectamo.briefingDock')))
+    expect(saved).toMatchObject({ ribbonOpen: false, profileOpen: false })
+  })
+})

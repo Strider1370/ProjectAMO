@@ -1,0 +1,149 @@
+// 지도형 브리핑 화면 계산(그리기와 분리). 판정은 서버의 sections.enroute.ribbon이 하고,
+// 여기서는 위치·문구·높이만 만든다.
+import { phenomenonKo } from '../../../shared/weather/phenomenonKo.js'
+
+export const MAP_BRIEFING_MIN_WIDTH = 1280
+const VIEW_KEY = 'projectamo.briefingView'
+
+// 고른 보기(map | document)를 브라우저에 기억한다. 저장소가 막혀 있어도 기본값으로 동작.
+export function readBriefingView(storage = globalThis.localStorage) {
+  try { return storage?.getItem(VIEW_KEY) === 'document' ? 'document' : 'map' } catch { return 'map' }
+}
+export function writeBriefingView(view, storage = globalThis.localStorage) {
+  try { storage?.setItem(VIEW_KEY, view === 'document' ? 'document' : 'map') } catch { /* 기억만 못 할 뿐 */ }
+}
+
+const DOCK_KEY = 'projectamo.briefingDock'
+// heightPx null = 아직 손대지 않음 → 화면 높이의 46%(1080에서 약 500, 시안 8처럼 지도 약 절반).
+// 고정 500이면 768 화면에서 패널과 지도가 거의 가려졌다.
+// profileOpen null = 아직 고르지 않음 → 화면 높이 900 이상이면 펼침(768 같은 낮은 화면은 단면 그림이 안 들어간다).
+export const DEFAULT_DOCK = { ribbonOpen: true, profileOpen: null, heightPx: null }
+export const PROFILE_OPEN_MIN_HEIGHT = 900
+export function profileOpenFor(dock, viewportHeight) {
+  return typeof dock.profileOpen === 'boolean' ? dock.profileOpen : viewportHeight >= PROFILE_OPEN_MIN_HEIGHT
+}
+export const DEFAULT_DOCK_RATIO = 0.46
+export function dockHeightPx(dock, viewportHeight) {
+  return Number.isFinite(dock.heightPx) ? Math.min(dock.heightPx, Math.round(viewportHeight * 0.7)) : Math.round(viewportHeight * DEFAULT_DOCK_RATIO)
+}
+export function readDockState(storage = globalThis.localStorage) {
+  try {
+    const saved = JSON.parse(storage?.getItem(DOCK_KEY) ?? 'null')
+    if (!saved || typeof saved !== 'object') return DEFAULT_DOCK
+    return {
+      ribbonOpen: saved.ribbonOpen !== false,
+      profileOpen: typeof saved.profileOpen === 'boolean' ? saved.profileOpen : null,
+      heightPx: Number.isFinite(saved.heightPx) ? saved.heightPx : DEFAULT_DOCK.heightPx,
+    }
+  } catch { return DEFAULT_DOCK }
+}
+export function writeDockState(state, storage = globalThis.localStorage) {
+  try { storage?.setItem(DOCK_KEY, JSON.stringify(state)) } catch { /* 기억만 못 할 뿐 */ }
+}
+
+export const LEVEL_KO = { SEV: '심한', MOD: '보통' }
+const PHASE_KO = { climb: '상승', cruise: '순항', descent: '강하' }
+const SOURCE_CHIP = { SIGMET: 'SIG', AIRMET: 'AIR', TYPHOON: 'TC' }
+
+export function pctOf(nm, totalNm) {
+  if (!(totalNm > 0) || !Number.isFinite(nm)) return 0
+  return Math.min(100, Math.max(0, (nm / totalNm) * 100))
+}
+
+export function formatAltitudeFt(ft) {
+  if (!Number.isFinite(ft)) return null
+  if (ft <= 0) return 'SFC'
+  // 국내 전이고도 14,000ft까지는 ft, 그 위는 FL — 고도 비교 화면(formatAltitude)과 같은 기준.
+  return ft > 14000 ? `FL${String(Math.round(ft / 100)).padStart(3, '0')}` : `${Math.round(ft).toLocaleString('en-US')}ft`
+}
+
+// SIGMET·AIRMET 고도대는 발표처럼 10,000ft 위를 FL로 쓴다(FL140–200, SFC–10,000ft).
+function formatBandAltitude(ft) {
+  if (!Number.isFinite(ft)) return null
+  if (ft <= 0) return 'SFC'
+  return ft > 10000 ? `FL${String(Math.round(ft / 100)).padStart(3, '0')}` : `${Math.round(ft).toLocaleString('en-US')}ft`
+}
+
+export function formatBand(bandFt) {
+  if (!bandFt) return '고도 미상'
+  const low = formatBandAltitude(bandFt.lowFt) ?? 'SFC'
+  const high = formatBandAltitude(bandFt.highFt)
+  if (!high) return low
+  // 둘 다 FL이면 "FL140–200", 아니면 "SFC–FL320"·"SFC–10,000ft".
+  return low.startsWith('FL') && high.startsWith('FL') ? `${low}–${high.slice(2)}` : `${low}–${high}`
+}
+
+// 줄 왼쪽 상태 칩: 모델 결과(SEV/MOD/없음/불가). 모델이 없는 줄(태풍·시정/운고)은 null.
+export function modelChip(row) {
+  if (row.status == null) return null
+  if (row.status === 'unavailable') return { text: '불가', tone: 'unknown', title: '모델 자료 없음 · 확인 불가' }
+  if (row.status === 'none' || !row.model.length) return { text: '없음', tone: 'none', title: '모델 MOD 이상 없음' }
+  const level = row.model.some((segment) => segment.level === 'SEV') ? 'SEV' : 'MOD'
+  return { text: level, tone: level.toLowerCase(), title: `모델 ${level}` }
+}
+
+// 발표 칩: 출처별 하나. 내 고도와 겹치는 발표가 하나라도 있으면 실선.
+export function sourceChips(row) {
+  const bySource = new Map()
+  for (const frame of row.frames) {
+    const text = SOURCE_CHIP[frame.source] ?? frame.source
+    bySource.set(text, (bySource.get(text) ?? false) || frame.mine)
+  }
+  return [...bySource].map(([text, mine]) => ({ text, mine }))
+}
+
+export function frameTag(frame) {
+  const src = frame.source === 'TYPHOON' ? '태풍' : frame.source
+  const name = frame.source === 'TYPHOON' ? (frame.label ?? '') : (phenomenonKo(frame.code) ?? frame.label ?? frame.code ?? '')
+  const band = frame.source === 'TYPHOON' ? '전 고도' : formatBand(frame.bandFt)
+  return `${src} ${name} · ${band} · ${frame.mine ? '내 고도' : '다른 고도'}`.replace(/\s+/g, ' ').trim()
+}
+
+// 막대 글자: 넓으면 "SEV · FL250"(대류는 "전 고도"), 좁으면 강도만.
+export function segmentText(segment, widthPct) {
+  if (widthPct < 2.5) return '' // 글자가 잘리는 짧은 막대는 색만(강도는 왼쪽 칩과 aria-label에)
+  if (widthPct < 4) return segment.level
+  const altitude = segment.altitudeFt
+    ? (segment.phase === 'cruise' ? formatAltitudeFt(segment.altitudeFt.to) : `${formatAltitudeFt(segment.altitudeFt.from)}→${formatAltitudeFt(segment.altitudeFt.to)}`)
+    : '전 고도'
+  return `${segment.level} · ${altitude}`
+}
+
+// 줄 높이: 틀(이름표 자리)이 있으면 36, 막대만 24, 아무것도 없으면 20.
+export function rowHeightPx(row) {
+  if (row.frames.length) return 36
+  return row.model.length ? 24 : 20
+}
+
+export function rowEmptyText(row) {
+  if (row.model.length || row.frames.length) return null
+  if (row.status === 'unavailable') return '단면 자료 없음 · 확인 불가'
+  return '모델 MOD 이상 없음'
+}
+
+function minutesBetween(fromIso, toIso) {
+  const ms = Date.parse(toIso) - Date.parse(fromIso)
+  return Number.isFinite(ms) ? Math.max(1, Math.round(ms / 60000)) : null
+}
+
+// 패널 요약 한 줄. formatTime(iso) → 'HH:mm'.
+export function summaryCallout(summary, formatTime = (iso) => iso) {
+  if (!summary || summary.status === 'unknown') {
+    return { tone: 'unknown', badge: '?', title: '난류·착빙 확인 불가', detail: '모델 자료 없음 · SIGMET·AIRMET만 확인' }
+  }
+  if (summary.status === 'clear') {
+    return { tone: 'clear', badge: 'OK', title: '내 고도에서 MOD 이상 위험 없음', detail: summary.unavailable?.length ? '일부 모델 자료 없음' : '수치예보·SIGMET·AIRMET 기준' }
+  }
+  const top = summary.top
+  const phase = top.phase ? `${PHASE_KO[top.phase]} 중 ` : ''
+  const minutes = minutesBetween(top.passFrom, top.passTo)
+  const source = top.kind === 'frame' ? `${top.source} ` : ''
+  const route = top.from && top.to ? `${top.from}→${top.to}` : `${top.startNm}–${top.endNm}NM`
+  const time = top.passFrom && top.passTo ? ` · ${formatTime(top.passFrom)}–${formatTime(top.passTo)}` : ''
+  return {
+    tone: top.level === 'SEV' ? 'sev' : 'mod',
+    badge: top.level,
+    title: `${phase}${source}${LEVEL_KO[top.level] ?? ''} ${top.label}${minutes ? ` ${minutes}분` : ''}`.replace(/\s+/g, ' ').trim(),
+    detail: `${route}${time}`,
+  }
+}

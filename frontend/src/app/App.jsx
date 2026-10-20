@@ -71,6 +71,7 @@ function MainAppShell({ conceptPreview = false }) {
   const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0, traffic: 0 })
   const [searchOpen, setSearchOpenRaw] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  const [mapBriefingActive, setMapBriefingActive] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const mapRef = useRef(null)
   const requestNavigation = useCallback((next) => {
@@ -296,6 +297,7 @@ function MainAppShell({ conceptPreview = false }) {
           onOpenRoutePanel={() => setActivePanel('route-check')}
           onOpenMetPanel={() => setActivePanel('met')}
           onRequestLogin={() => setAuthOpen(true)}
+          onMapBriefingChange={setMapBriefingActive}
           onOpenMyMapPanel={() => { setMobileTask('map'); setActivePanel('my-map') }}
         />
       </main>
@@ -314,6 +316,7 @@ function MainAppShell({ conceptPreview = false }) {
           aviationCount={layerCounts.aviation}
           metCount={layerCounts.met}
         />
+          mapBriefing={mapBriefingActive}
       )}
       {isMobile && mobileTask === 'more' && !selectedAirport && (
         <MobileMoreMenu
