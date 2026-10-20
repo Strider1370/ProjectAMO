@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지도형 브리핑 시안</title>
+<style>
+/* 앱 토큰(frontend/src) 값을 그대로 사용: text-1/2/3, level-*, turb-*, accent */
+:root {
+  --bg: #f5f5f5; --surface: #ffffff; --line: #e0e0e0;
+  --text-1: #242424; --text-2: #424242; --text-3: #616161;
+  --accent: #334155; --accent-bg: #eef2f7;
+  --red: #c0291f; --red-bg: #f7dcd9;
+  --amber: #92400e; --amber-bg: #fdecc8;
+  --green: #166534; --green-bg: #dcefe2;
+  --gray: #475569; --gray-bg: #eef2f7;
+  --turb-light: #64D264; --turb-mod: #FFC300; --turb-sev: #FF3737;
+  --ice: #3b82f6; --ice-bg: #dbeafe;
+  --map-sea: #cfe3f0; --map-land: #eef0e6; --route: #1d4ed8;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-1); font: 14px/1.55 "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 32px 20px 80px; display: flex; flex-direction: column; gap: 40px; }
+h1 { font-size: 24px; margin: 0; }
+h2 { font-size: 19px; margin: 0; padding-bottom: 8px; border-bottom: 2px solid var(--text-1); }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; }
+.muted { color: var(--text-3); }
+.small { font-size: 12px; }
+section { display: flex; flex-direction: column; gap: 16px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text-1); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+/* ---------- 배치안 ---------- */
+.layout-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; }
+@media (max-width: 900px) { .layout-card { grid-template-columns: 1fr; } }
+.screen { aspect-ratio: 16 / 9; width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: grid; background: var(--bg); position: relative; font-size: 11px; }
+.region { position: relative; overflow: hidden; min-width: 0; min-height: 0; }
+.region .tag { position: absolute; left: 6px; top: 6px; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-weight: 600; font-size: 11px; z-index: 2; }
+.r-map { background: var(--map-sea); }
+.r-map svg, .r-prof svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.r-panel { background: var(--surface); border-right: 1px solid var(--line); padding: 28px 8px 8px; display: flex; flex-direction: column; gap: 4px; }
+.r-prof { background: var(--surface); }
+.mini-row { display: flex; gap: 4px; align-items: center; font-size: 10px; white-space: nowrap; overflow: hidden; }
+.mini-row i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.float { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 3; }
+.note h3 { margin-bottom: 6px; }
+.note ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.good { color: var(--green); } .bad { color: var(--red); }
+
+/* ---------- 주의 정보 공통 ---------- */
+.hz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; align-items: start; }
+.hz-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.hz-card > header { display: flex; flex-direction: column; gap: 2px; }
+.panel-frame { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 10px; max-width: 340px; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.switches { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.sw { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); display: inline-flex; gap: 4px; align-items: center; }
+.sw.on { background: var(--accent-bg); border-color: var(--accent); }
+.sw b { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.sev { font-size: 10.5px; font-weight: 700; padding: 0 5px; border-radius: 3px; white-space: nowrap; }
+.sev.SEV { color: #fff; background: var(--red); }
+.sev.MOD { color: #3a2a00; background: var(--turb-mod); }
+.sev.LGT { color: var(--green); background: var(--green-bg); }
+.src { font-size: 10px; color: var(--text-3); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; white-space: nowrap; }
+.src.off { color: var(--red); border-color: var(--red); }
+.alt { font-family: var(--mono); font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.time { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.other { opacity: .55; }
+.pros { font-size: 12.5px; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+
+/* R1 타임라인 */
+.tl { position: relative; padding-left: 64px; display: flex; flex-direction: column; gap: 6px; }
+.tl::before { content: ""; position: absolute; left: 50px; top: 4px; bottom: 4px; width: 2px; background: var(--line); }
+.tl-phase { position: relative; font-size: 10.5px; font-weight: 700; color: var(--text-3); letter-spacing: .06em; margin-top: 4px; }
+.tl-phase span { position: absolute; left: -64px; width: 44px; text-align: right; }
+.tl-item { position: relative; border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; }
+.tl-item .t { position: absolute; left: -64px; top: 6px; width: 44px; text-align: right; }
+.tl-item::before { content: ""; position: absolute; left: -18px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--gray)); border: 2px solid var(--surface); }
+.tl-item .l1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-weight: 600; font-size: 12.5px; }
+.tl-item .l2 { font-size: 11.5px; color: var(--text-2); display: flex; gap: 8px; flex-wrap: wrap; }
+.tl-item.other { border-style: dashed; }
+
+/* R2 간트 */
+.gantt { display: grid; grid-template-columns: 54px 1fr; gap: 4px 6px; font-size: 11px; align-items: center; }
+.g-axis { grid-column: 2; position: relative; height: 34px; border-bottom: 1px solid var(--line); }
+.g-axis .ph { position: absolute; top: 0; height: 14px; font-size: 9.5px; font-weight: 700; color: var(--text-3); border-left: 1px solid var(--line); padding-left: 2px; }
+.g-axis .tk { position: absolute; bottom: 2px; font-family: var(--mono); font-size: 9.5px; color: var(--text-3); transform: translateX(-50%); }
+.g-label { text-align: right; font-weight: 600; color: var(--text-2); }
+.g-track { position: relative; height: 20px; background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%); border-radius: 3px; }
+.g-bar { position: absolute; top: 2px; height: 16px; border-radius: 3px; font-size: 9.5px; font-weight: 700; color: #fff; padding: 0 4px; overflow: hidden; white-space: nowrap; line-height: 16px; }
+.g-bar.other { background: transparent !important; border: 1.5px dashed var(--c); color: var(--c); opacity: 1; line-height: 13px; }
+.g-now { position: absolute; top: -40px; bottom: 0; width: 0; border-left: 2px solid var(--accent); }
+
+/* R3 영향 우선 */
+.grp-title { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--text-3); display: flex; justify-content: space-between; }
+.hit { border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 4px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+.hit .name { font-weight: 700; font-size: 13.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.hit .when { text-align: right; }
+.hit .where { grid-column: 1 / -1; font-size: 11.5px; color: var(--text-2); }
+.near { font-size: 11.5px; display: flex; gap: 6px; align-items: center; padding: 3px 2px; color: var(--text-2); flex-wrap: wrap; }
+.apt { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.apt > div { border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px; }
+.apt .cat { font-weight: 700; font-size: 12px; }
+
+/* R4 표 */
+.tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.tbl th { text-align: left; font-size: 10px; color: var(--text-3); font-weight: 600; padding: 4px; border-bottom: 1px solid var(--line); }
+.tbl td { padding: 5px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl tr.other td { opacity: .55; }
+.tbl td:nth-child(2), .tbl th:nth-child(2) { white-space: nowrap; }
+.tbl-wrap { overflow-x: auto; }
+
+.principles { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }
+.principles ol { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:6px">
+  <span class="muted small">브레인스토밍 시안 · 2026-10-20 · 와이어프레임 수준</span>
+  <h1>지도형 브리핑 시안</h1>
+  <p class="muted">예시 자료: 2026-10-20 실제 운영 화면의 RKSI → RKPC, ETD 09:45 KST, FL250, 330NM(SID·STAR 포함), ETA 10:29 KST.</p>
+</header>
+
+<!-- ================= 1. 배치안 ================= -->
+<section>
+  <h2>1. 세 요소 배치안</h2>
+  <p class="muted">지도·연직단면도·위험 패널. 모든 안에서 지도 아래에는 시간 막대(ETD~ETA 강조), 지도 오른쪽에는 고도 슬라이더(지상~순항고도 강조 + 위험 고도대 띠)가 붙습니다.</p>
+  <div class="row">
+    <div class="tabs" role="group" aria-label="배치안">
+      <button type="button" data-layout="A" aria-pressed="true">A. 지도 위 · 단면도 아래</button>
+      <button type="button" data-layout="B" aria-pressed="false">B. 단면도를 세워 지도 옆에</button>
+      <button type="button" data-layout="C" aria-pressed="false">C. 경로 방향 따라 자동 전환</button>
+      <button type="button" data-layout="D" aria-pressed="false">D. 지도 전체 + 떠 있는 패널·서랍</button>
+    </div>
+    <div class="tabs" role="group" aria-label="경로 방향">
+      <button type="button" data-route="ns" aria-pressed="true">남북형 경로 (인천→제주)</button>
+      <button type="button" data-route="ew" aria-pressed="false">동서형 경로 (인천→하네다)</button>
+    </div>
+  </div>
+  <div class="layout-card">
+    <div class="screen" id="screen"></div>
+    <div class="note" id="layout-note"></div>
+  </div>
+</section>
+
+<!-- ================= 2. 주의 정보 표시안 ================= -->
+<section>
+  <h2>2. 왼쪽 패널 · 주의 정보 표시안</h2>
+  <p class="muted">같은 자료를 네 가지로 그렸습니다. 위에는 종류별 스위치, 아래에는 시간순 목록(A안 결정 사항). 점선·흐린 항목은 "경로는 지나지만 내 고도·시각과는 다른" 위험입니다.</p>
+  <div class="hz-grid">
+
+    <article class="hz-card">
+      <header><h3>R1. 세로 타임라인</h3><span class="muted small">비행 단계(상승·순항·강하) 위에 사건을 시간순으로 매답니다</span></header>
+      <div class="panel-frame"><div class="switches" data-sw></div><div class="tl" id="r1"></div></div>
+      <div class="pros"><span class="good">좋음</span><span>"언제 무엇을 만나나"가 이야기처럼 읽힘. 시간 막대와 순서가 같음.</span><span class="bad">아쉬움</span><span>길게 이어지는 위험(난류 18분)이 점 하나로 보여 길이가 안 드러남. 항목이 많으면 길어짐.</span></div>
+    </article>
+
+    <article class="hz-card">
+      <header><h3>R2. 간트 막대</h3><span class="muted small">가로축 = 시간 막대와 같은 ETD~ETA. 종류마다 한 줄, 지속 시간만큼 막대</span></header>
+      <div class="panel-frame"><div class="switches" data-sw></div><div class="gantt" id="r2"></div></div>
+      <div class="pros"><span class="good">좋음</span><span>겹침과 지속 시간이 한눈에. 지도 아래 시간 막대와 1:1로 대응. 공간이 작음.</span><span class="bad">아쉬움</span><span>지점명·고도 같은 세부는 막대를 눌러야 보임. 처음 보는 사람에겐 차트 읽기 부담.</span></div>
+    </article>
+
+    <article class="hz-card">
+      <header><h3>R3. 영향 우선 카드</h3><span class="muted small">"내 경로·고도에서 만남" → "주변 참고" → "공항" 순으로 나눔</span></header>
+      <div class="panel-frame" id="r3"></div>
+      <div class="pros"><span class="good">좋음</span><span>판단에 필요한 것부터 크게. 다른 고도 위험은 한 줄로 줄어 소음이 적음. "위험 없음" 오해(F1·F2)를 구조로 막음.</span><span class="bad">아쉬움</span><span>시간 순서가 그룹마다 끊김. 분류 기준(내 고도인가)이 틀리면 중요한 것이 아래로 숨음.</span></div>
+    </article>
+
+    <article class="hz-card">
+      <header><h3>R4. 한 줄 표</h3><span class="muted small">시각·단계·위험·강도·고도·구간을 고정 열로</span></header>
+      <div class="panel-frame"><div class="switches" data-sw></div><div class="tbl-wrap"><table class="tbl" id="r4"></table></div></div>
+      <div class="pros"><span class="good">좋음</span><span>운항관리사에게 익숙한 표. 정렬·복사·인쇄가 쉬움(문서형 보기와 공유).</span><span class="bad">아쉬움</span><span>패널 폭(300px대)에서는 열이 빽빽함. 무엇이 중요한지 눈에 덜 띔.</span></div>
+    </article>
+  </div>
+
+  <div class="principles">
+    <h3>주의 정보를 읽히게 만드는 기준 (안과 무관하게 공통)</h3>
+    <ol>
+      <li><b>첫 판단은 "내 비행에 걸리나"</b>: 경로·시각·고도가 모두 겹치면 "만남", 경로만 겹치고 고도가 다르면 "주변", 공항은 따로. 색보다 이 구분이 먼저 보여야 합니다.</li>
+      <li><b>강도는 색과 글자를 함께</b>: SEV·MOD·LGT 칩. 색만으로 구분하지 않습니다(색약, 흑백 인쇄).</li>
+      <li><b>위치는 NM 대신 지점 이름</b>: "42–180NM"보다 "BOPTA~MANGI". 거리는 보조 정보로.</li>
+      <li><b>시각은 시작~끝 범위</b>: 길게 이어지는 위험은 지속 시간이 판단에 중요합니다(난류 18분 vs 1분).</li>
+      <li><b>출처를 작게라도 항상</b>: SIGMET·AIRMET(공식)과 모델 예보를 구분. 공식 경보는 테두리 색으로 한 단계 강조.</li>
+      <li><b>행을 누르면 지도·두 슬라이더·단면도가 그 시각·고도로 이동</b>: 목록이 지도를 조작하는 리모컨이 됩니다.</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ---------------- 예시 자료 (2026-10-20 운영 화면) ----------------
+// mine: 내 고도·시각과 겹침, other: 경로는 지나지만 고도가 다름
+const ETD = 9 * 60 + 45, ETA = 10 * 60 + 29
+const HZ = [
+  { type: 'turb', name: '난류', sev: 'SEV', src: 'KIM GKTG', t0: '09:51', t1: '10:09', phase: '순항', alt: 'FL250', where: 'YD130 ~ MANGI', mine: true },
+  { type: 'ice', name: '착빙', sev: 'LGT', src: 'KIM', t0: '09:54', t1: '09:59', phase: '순항', alt: 'FL250', where: 'BOPTA ~ BEDES', mine: true },
+  { type: 'ice', name: '착빙', sev: 'SEV', src: 'SIGMET', official: true, t0: '09:58', t1: '10:14', phase: '순항', alt: 'FL140–200', where: 'MOXID ~ NULDI 아래', mine: false },
+  { type: 'vis', name: '지표시정', sev: 'MOD', src: 'AIRMET', official: true, t0: '09:59', t1: '10:14', phase: '순항', alt: 'SFC–10000', where: '전남·제주 해상', mine: false },
+  { type: 'ice', name: '착빙', sev: 'LGT', src: 'KIM', t0: '10:07', t1: '10:13', phase: '순항', alt: 'FL250', where: 'DALSU ~ NULDI', mine: true },
+  { type: 'ice', name: '착빙', sev: 'LGT', src: 'KIM', t0: '10:19', t1: '10:21', phase: '강하', alt: 'FL140–100', where: 'DOTOL2P (PC621~PC624)', mine: true },
+  { type: 'turb', name: '난류', sev: 'MOD', src: 'KIM GKTG', t0: '10:27', t1: '10:28', phase: '접근', alt: '4000–2000', where: 'YUMIN ~ RWY07 접근', mine: true },
+  { type: 'notam', name: '활주로 폐쇄 예정', sev: 'MOD', src: 'NOTAM', official: true, t0: '10:29', t1: '10:29', phase: '도착', alt: 'RKPC', where: 'RWY 07/25 CLSD (시각 미정) · 선택 STAR RWY 07', mine: true },
+]
+const TYPE = {
+  turb: { label: '난류', color: '#FF3737' }, ice: { label: '착빙', color: '#3b82f6' },
+  vis: { label: '시정', color: '#92400e' }, notam: { label: 'NOTAM', color: '#475569' },
+}
+const SEVC = { SEV: '#c0291f', MOD: '#d97706', LGT: '#166534' }
+const min = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m }
+const pct = (s) => ((min(s) - ETD) / (ETA - ETD)) * 100
+const srcTag = (h) => `<span class="src${h.official ? ' off' : ''}">${h.src}</span>`
+const range = (h) => h.t0 === h.t1 ? h.t0 : `${h.t0}–${h.t1}`
+
+// 공통 스위치
+document.querySelectorAll('[data-sw]').forEach((el) => {
+  el.innerHTML = Object.entries(TYPE).map(([k, v]) => `<span class="sw on"><b style="background:${v.color}"></b>${v.label} ${HZ.filter((h) => h.type === k).length}</span>`).join('') + '<span class="sw on"><b style="background:#166534"></b>공항기상</span>'
+})
+
+// R1 타임라인
+{
+  let html = '', lastPhase = ''
+  HZ.forEach((h) => {
+    if (h.phase !== lastPhase) { html += `<div class="tl-phase"><span>${h.phase}</span>&nbsp;</div>`; lastPhase = h.phase }
+    html += `<div class="tl-item${h.mine ? '' : ' other'}" style="--c:${SEVC[h.sev]}">
+      <span class="t time">${h.t0}</span>
+      <div class="l1"><span class="sev ${h.sev}">${h.sev}</span>${h.name}${srcTag(h)}${h.mine ? '' : '<span class="src">다른 고도</span>'}</div>
+      <div class="l2"><span>${h.where}</span><span class="alt">${h.alt}</span>${h.t0 !== h.t1 ? `<span class="time">~${h.t1}</span>` : ''}</div>
+    </div>`
+  })
+  document.getElementById('r1').innerHTML = html
+}
+
+// R2 간트
+{
+  const phases = [['상승', '09:45'], ['순항', '09:53'], ['강하', '10:16'], ['접근', '10:25']]
+  let html = '<div></div><div class="g-axis">' +
+    phases.map(([p, t]) => `<span class="ph" style="left:${pct(t)}%">${p}</span>`).join('') +
+    ['09:45', '10:00', '10:15', '10:29'].map((t) => `<span class="tk" style="left:${Math.min(97, Math.max(3, pct(t)))}%">${t}</span>`).join('') + '</div>'
+  Object.entries(TYPE).forEach(([k, v]) => {
+    const items = HZ.filter((h) => h.type === k)
+    html += `<div class="g-label">${v.label}</div><div class="g-track">` + items.map((h) => {
+      const l = pct(h.t0), w = Math.max(3.5, pct(h.t1) - l)
+      return `<span class="g-bar${h.mine ? '' : ' other'}" style="--c:${SEVC[h.sev]};background:${SEVC[h.sev]};left:${Math.min(l, 96.5)}%;width:${w}%" title="${range(h)} ${h.where} ${h.alt}">${h.sev}${w > 14 ? ' ' + h.alt : ''}</span>`
+    }).join('') + '</div>'
+  })
+  html += `<div></div><div class="small muted" style="padding-top:4px">점선 = 다른 고도 · 막대를 누르면 지도·슬라이더가 그 시각으로 이동</div>`
+  document.getElementById('r2').innerHTML = html
+}
+
+// R3 영향 우선
+{
+  const mine = HZ.filter((h) => h.mine && h.type !== 'notam')
+  const other = HZ.filter((h) => !h.mine)
+  const sevRank = { SEV: 0, MOD: 1, LGT: 2 }
+  mine.sort((a, b) => sevRank[a.sev] - sevRank[b.sev] || min(a.t0) - min(b.t0))
+  document.getElementById('r3').innerHTML = `
+    <div class="switches">${Object.entries(TYPE).map(([k, v]) => `<span class="sw on"><b style="background:${v.color}"></b>${v.label}</span>`).join('')}</div>
+    <div class="grp-title"><span>내 경로·고도에서 만남</span><span>${mine.length}</span></div>
+    ${mine.map((h) => `<div class="hit" style="--c:${SEVC[h.sev]}">
+      <div class="name"><span class="sev ${h.sev}">${h.sev}</span>${h.name}${srcTag(h)}</div>
+      <div class="when time">${range(h)}</div>
+      <div class="where">${h.phase} · ${h.where} · <span class="alt">${h.alt}</span></div></div>`).join('')}
+    <div class="grp-title" style="margin-top:4px"><span>주변 참고 · 다른 고도</span><span>${other.length}</span></div>
+    ${other.map((h) => `<div class="near"><span class="sev ${h.sev}">${h.sev}</span>${h.name}${srcTag(h)}<span class="alt">${h.alt}</span><span class="time">${range(h)}</span></div>`).join('')}
+    <div class="grp-title" style="margin-top:4px"><span>공항 · 해당 시각</span></div>
+    <div class="apt">
+      <div><span class="muted small">출발 RKSI · 09:45</span><span class="cat" style="color:var(--green)">VFR</span><span class="alt">CAVOK 040/08</span></div>
+      <div><span class="muted small">도착 RKPC · 10:29</span><span class="cat" style="color:var(--green)">VFR</span><span class="alt">TAF 6000 -RA</span><span style="color:var(--red);font-size:11px;font-weight:600">RWY 07/25 폐쇄 예정 · 선택 STAR RWY 07</span></div>
+    </div>`
+}
+
+// R4 표
+document.getElementById('r4').innerHTML = '<thead><tr><th>시각</th><th>단계</th><th>위험</th><th>고도</th><th>구간</th></tr></thead><tbody>' +
+  HZ.map((h) => `<tr class="${h.mine ? '' : 'other'}"><td class="time">${range(h)}</td><td>${h.phase}</td><td><span class="sev ${h.sev}">${h.sev}</span> ${h.name}<br>${srcTag(h)}</td><td class="alt">${h.alt}</td><td>${h.where}</td></tr>`).join('') + '</tbody>'
+
+// ---------------- 배치안 ----------------
+let layout = 'A', route = 'ns'
+const ROUTE = {
+  // 지도 안 경로 좌표(0~100 박스 기준)
+  ns: { pts: [[46, 8], [44, 30], [45, 50], [44, 70], [42, 84], [47, 92]], from: 'RKSI', to: 'RKPC', land: 'M30 0 L70 0 L66 40 L58 78 L40 78 L34 40 Z M38 88 L52 88 L52 96 L38 96 Z' },
+  ew: { pts: [[8, 46], [24, 50], [42, 56], [60, 60], [78, 54], [92, 48]], from: 'RKSI', to: 'RJTT', land: 'M0 20 L22 20 L28 70 L10 80 L0 80 Z M60 70 L100 30 L100 70 L70 90 Z' },
+}
+function mapSvg(r, vertSlider = true) {
+  const R = ROUTE[r]
+  const line = R.pts.map((p) => p.join(',')).join(' ')
+  const s = R.pts[0], e = R.pts.at(-1)
+  // 위험 영역: SIGMET 다각형과 난류 칸
+  const sig = r === 'ns' ? '30,38 62,34 60,72 34,74' : '36,40 70,40 72,72 40,74'
+  const turb = r === 'ns' ? '<rect x="38" y="16" width="14" height="40" fill="#FF3737" opacity=".28"/>' : '<rect x="18" y="42" width="40" height="18" fill="#FF3737" opacity=".28"/>'
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+    <path d="${R.land}" fill="var(--map-land)" stroke="#c9ccbd" stroke-width=".4"/>
+    ${turb}
+    <polygon points="${sig}" fill="none" stroke="#c0291f" stroke-width=".6" stroke-dasharray="2 1"/>
+    <polyline points="${line}" fill="none" stroke="var(--route)" stroke-width="1.2" vector-effect="non-scaling-stroke" style="stroke-width:2.5px"/>
+    <circle cx="${s[0]}" cy="${s[1]}" r="1.6" fill="#166534"/><circle cx="${e[0]}" cy="${e[1]}" r="1.6" fill="#166534"/>
+  </svg>
+  <div style="position:absolute;left:calc(${s[0]}% + 6px);top:calc(${s[1]}% - 8px);background:#fff;border:1px solid var(--line);border-radius:3px;padding:1px 4px;font-size:9px;font-family:var(--mono)">${R.from} VFR 040/08</div>
+  <div style="position:absolute;left:calc(${e[0]}% + 6px);top:calc(${e[1]}% - 14px);background:#fff;border:1px solid var(--line);border-radius:3px;padding:1px 4px;font-size:9px;font-family:var(--mono)">${R.to} 6000 -RA</div>
+  <div style="position:absolute;left:8px;right:${vertSlider ? 26 : 8}px;bottom:6px;height:12px;background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:3px">
+    <div style="position:absolute;left:30%;width:28%;top:0;bottom:0;background:#33415533;border-left:2px solid var(--accent);border-right:2px solid var(--accent)"></div>
+    <span style="position:absolute;left:31%;top:-1px;font-size:8px">ETD~ETA</span></div>
+  ${vertSlider ? `<div style="position:absolute;right:6px;top:24px;bottom:24px;width:12px;background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:3px">
+    <div style="position:absolute;left:0;right:0;bottom:0;height:55%;background:#33415533;border-top:2px solid var(--accent)"></div>
+    <div style="position:absolute;left:0;right:0;bottom:30%;height:14%;background:#3b82f699"></div></div>` : ''}`
+}
+function profSvg(rotated) {
+  // 기본: 가로=거리, 세로=고도. rotated: 세로=거리(위→아래), 가로=고도
+  const path = rotated ? 'M5,4 L60,18 L60,78 L5,96' : 'M4,95 L18,40 L78,40 L96,95'
+  const sig = rotated ? '<rect x="30" y="30" width="22" height="34" fill="none" stroke="#c0291f" stroke-dasharray="2 1" stroke-width=".6"/>' : '<rect x="30" y="48" width="34" height="22" fill="none" stroke="#c0291f" stroke-dasharray="2 1" stroke-width=".6"/>'
+  const turb = rotated ? '<rect x="52" y="12" width="20" height="36" fill="#FF3737" opacity=".28"/>' : '<rect x="12" y="28" width="36" height="20" fill="#FF3737" opacity=".28"/>'
+  const ice = rotated ? '<rect x="36" y="20" width="14" height="10" fill="#3b82f6" opacity=".35"/>' : '<rect x="20" y="50" width="10" height="14" fill="#3b82f6" opacity=".35"/>'
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${turb}${ice}${sig}
+    <path d="${path}" fill="none" stroke="var(--route)" vector-effect="non-scaling-stroke" style="stroke-width:2px"/></svg>`
+}
+function panelHtml() {
+  return '<span class="tag">위험 패널</span>' + HZ.slice(0, 7).map((h) =>
+    `<div class="mini-row${h.mine ? '' : ' other'}"><i style="background:${SEVC[h.sev]}"></i><span class="time" style="font-size:9.5px">${h.t0}</span>${h.name} ${h.sev}</div>`).join('')
+}
+const NOTES = {
+  A: { title: 'A. 지도 위 · 단면도 아래', fit: { ns: false, ew: true },
+    body: '단면도를 지도 아래 가로 띠로 둡니다. 단면도 가로축(거리)이 지도 경로 방향과 같은 동서형 경로에서 눈이 위아래로 바로 이어집니다.',
+    pros: ['동서형 경로에서 지도와 단면도의 같은 지점이 세로로 정렬', '단면도가 넓어 고도 정보가 잘 보임', '지금 앱(하단 시간 막대)과 구조가 비슷'],
+    cons: ['남북형 경로에서는 지도 경로(세로)와 단면도(가로)가 어긋남', '지도 높이가 줄어듦'] },
+  B: { title: 'B. 단면도를 세워 지도 옆에', fit: { ns: true, ew: false },
+    body: '단면도를 90° 돌려 세로축=거리(위가 출발), 가로축=고도로 그립니다. 남북형 경로에서 지도 경로와 단면도가 나란히 위에서 아래로 흐릅니다.',
+    pros: ['남북형 경로에서 지도와 단면도의 같은 지점이 가로로 정렬', '지도 높이를 온전히 씀', '국내 노선 대부분(서울↔제주·부산)이 남북형'],
+    cons: ['세운 단면도는 조종사에게 낯섦(고도가 가로)', '동서형 경로에서는 오히려 어긋남', '단면도 차트를 회전 대응하도록 다시 만들어야 함'] },
+  C: { title: 'C. 경로 방향 따라 자동 전환', fit: { ns: true, ew: true },
+    body: '경로를 감싸는 상자의 가로세로 비로 A(동서형)와 B(남북형)를 자동 선택합니다. 사용자가 고정할 수도 있습니다.',
+    pros: ['어떤 경로든 지도와 단면도가 정렬', '사용자가 고를 필요 없음'],
+    cons: ['경로마다 화면 구조가 바뀌어 익숙해지기 어려움', 'A·B 두 배치를 모두 만들고 유지해야 함', '대각선 경로(서울→부산)는 기준이 애매'] },
+  D: { title: 'D. 지도 전체 + 떠 있는 패널·서랍', fit: { ns: true, ew: true },
+    body: '지도를 화면 전체에 두고, 위험 패널은 왼쪽 위 떠 있는 카드(접기 가능), 단면도는 아래에서 올라오는 서랍(높이 조절)으로 둡니다.',
+    pros: ['지도가 가장 큼', '지금 앱의 패널·하단 구조와 가장 가까워 구현 부담이 적음', '필요할 때만 펼쳐 겹침을 줄임'],
+    cons: ['패널과 서랍이 지도를 가림', '"한 번에 다 보기"보다는 "펼쳐 보기"에 가까움', '경로 방향과 단면도 정렬 문제는 A와 같음'] },
+}
+function render() {
+  const el = document.getElementById('screen')
+  const vert = layout === 'B' || (layout === 'C' && route === 'ns')
+  const L = layout === 'C' ? (route === 'ns' ? 'B' : 'A') : layout
+  if (L === 'A') {
+    el.style.gridTemplate = '"p m" 62% "p f" 38% / 22% 78%'
+    el.innerHTML = `<div class="region r-panel" style="grid-area:p">${panelHtml()}</div>
+      <div class="region r-map" style="grid-area:m"><span class="tag">지도</span>${mapSvg(route)}</div>
+      <div class="region r-prof" style="grid-area:f;border-top:1px solid var(--line)"><span class="tag">연직단면도 (가로=거리)</span>${profSvg(false)}</div>`
+  } else if (L === 'B') {
+    el.style.gridTemplate = '"p m f" 100% / 22% 50% 28%'
+    el.innerHTML = `<div class="region r-panel" style="grid-area:p">${panelHtml()}</div>
+      <div class="region r-map" style="grid-area:m"><span class="tag">지도</span>${mapSvg(route)}</div>
+      <div class="region r-prof" style="grid-area:f;border-left:1px solid var(--line)"><span class="tag">단면도 (세로=거리)</span>${profSvg(true)}</div>`
+  } else {
+    el.style.gridTemplate = '"m" 100% / 100%'
+    el.innerHTML = `<div class="region r-map" style="grid-area:m"><span class="tag" style="left:auto;right:30px">지도 (전체)</span>${mapSvg(route)}
+      <div class="float r-panel" style="left:8px;top:8px;width:22%;height:52%;border-right:1px solid var(--line)">${panelHtml()}</div>
+      <div class="float r-prof" style="left:8px;right:26px;bottom:24px;height:30%"><span class="tag">단면도 서랍 ▲▼</span>${profSvg(false)}</div></div>`
+  }
+  const n = NOTES[layout]
+  const fit = n.fit[route]
+  document.getElementById('layout-note').innerHTML = `<h3>${n.title}</h3>
+    <p>${n.body}</p>
+    <p class="small" style="margin-top:8px;font-weight:600;color:${fit ? 'var(--green)' : 'var(--red)'}">${route === 'ns' ? '남북형' : '동서형'} 경로에서: ${fit ? '지도와 단면도가 정렬됨' : '지도와 단면도 방향이 어긋남'}${layout === 'C' ? ` (지금 ${vert ? 'B' : 'A'} 배치)` : ''}</p>
+    <ul>${n.pros.map((p) => `<li class="good"><span style="color:var(--text-1)">${p}</span></li>`).join('')}${n.cons.map((c) => `<li class="bad"><span style="color:var(--text-1)">${c}</span></li>`).join('')}</ul>`
+}
+document.querySelectorAll('[data-layout]').forEach((b) => b.addEventListener('click', () => {
+  layout = b.dataset.layout; document.querySelectorAll('[data-layout]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render()
+}))
+document.querySelectorAll('[data-route]').forEach((b) => b.addEventListener('click', () => {
+  route = b.dataset.route; document.querySelectorAll('[data-route]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render()
+}))
+render()
+</script>
+</body>
+</html>

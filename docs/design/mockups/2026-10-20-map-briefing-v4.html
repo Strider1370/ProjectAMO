@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지도형 브리핑 상세 시안 4</title>
+<style>
+/* 지도형 브리핑 상세 시안 4 · 1920×1080
+   세로 배치: 지도(0–684) → 단면 독(684–1024) → 시간 막대(1024–1080). 앱 토큰 값 사용. */
+:root {
+  --surface: #ffffff; --surface-2: #f7f8fa; --line: #e6e8ec; --line-2: #d0d4da;
+  --text-1: #1f2329; --text-2: #3f4650; --text-3: #6b7280;
+  --accent: #334155; --accent-2: #475569; --accent-bg: #eef2f7;
+  --red: #c0291f; --red-bg: #fdecea; --amber: #92400e; --amber-bg: #fff4dc; --amber-line: #f2c46b;
+  --green: #166534; --green-bg: #e3f3e8;
+  --sev: #e5372f; --mod: #FFC300; --mod-ink: #3a2a00; --ice: #2563eb;
+  --sea: #d6e6f2; --land: #f1f2ea; --land-line: #cfd2c4; --route: #1d4ed8;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 6px 18px rgba(16,24,40,.12);
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #d9dde3; color: var(--text-1); font: 14px/1.45 "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; }
+
+.toolbar { position: sticky; top: 0; z-index: 50; background: #111827; color: #fff; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.toolbar b { font-size: 15px; }
+.toolbar button { font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid #4b5563; background: transparent; color: #e5e7eb; cursor: pointer; }
+.toolbar button[aria-pressed="true"] { background: #fff; color: #111827; border-color: #fff; }
+.toolbar .sep { width: 1px; height: 22px; background: #4b5563; }
+.stage { padding: 20px; }
+.fit { width: 100%; max-width: 1920px; margin: 0 auto; }
+.screen { width: 1920px; height: 1080px; position: relative; background: var(--sea); overflow: hidden; transform-origin: 0 0; box-shadow: 0 6px 30px rgba(0,0,0,.25); }
+
+.rail { position: absolute; left: 0; top: 0; bottom: 0; width: 56px; background: #f8fafc; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 18px; z-index: 30; }
+.rail i { width: 22px; height: 22px; border-radius: 6px; background: #cbd5e1; display: block; }
+.rail i.on { background: var(--accent); box-shadow: 0 0 0 6px var(--accent-bg); }
+
+.map { position: absolute; left: 56px; top: 0; width: 1864px; height: 684px; }
+.map svg.base { position: absolute; inset: 0; }
+
+/* ---------- ① 패널 ---------- */
+.panel { position: absolute; left: 20px; top: 20px; width: 304px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); z-index: 10; overflow: hidden; }
+.p-head { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 10px; }
+.p-top { display: flex; justify-content: space-between; align-items: center; }
+.eyebrow { font-size: 12px; font-weight: 600; color: var(--text-3); letter-spacing: .02em; }
+.icon-btn { width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--text-3); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn:hover { background: var(--surface-2); }
+.route { display: flex; flex-direction: column; gap: 2px; }
+.route .r1 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+.route .r1 .arw { color: var(--text-3); font-weight: 400; }
+.route .r2 { font-size: 13px; color: var(--text-3); }
+.rule { font-size: 11px; font-weight: 800; color: #fff; background: var(--accent); border-radius: 5px; padding: 2px 6px; letter-spacing: .04em; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface-2); border-radius: 10px; padding: 10px 4px; }
+.stats div { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.stats div + div { border-left: 1px solid var(--line); }
+.stats .k { font-size: 11px; color: var(--text-3); font-weight: 600; }
+.stats .v { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.sub { font-size: 12px; color: var(--text-3); text-align: center; }
+
+.callout { margin: 0 18px; border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; background: var(--red-bg); }
+.callout .sev-dot { grid-row: 1 / 3; width: 32px; height: 32px; border-radius: 8px; background: var(--sev); color: #fff; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.callout b { font-size: 14px; color: #8f1d16; }
+.callout span { font-size: 12px; color: var(--text-2); }
+.callout.na { background: #f1f2f4; }
+.callout.na .sev-dot { background: #9ca3af; }
+.callout.na b { color: var(--text-1); }
+
+.group { padding: 14px 18px 4px; }
+.g-h { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--text-3); margin-bottom: 4px; }
+.hz { display: grid; grid-template-columns: 22px 10px 1fr auto; gap: 10px; align-items: center; height: 34px; margin: 0 -8px; padding: 0 8px; border-radius: 8px; cursor: pointer; }
+.hz:hover { background: var(--surface-2); }
+.hz .eye { color: var(--accent-2); display: inline-flex; }
+.hz .sw { width: 10px; height: 10px; border-radius: 3px; }
+.hz .nm { font-size: 14px; font-weight: 600; }
+.hz.off .nm, .hz.off .st { opacity: .4; }
+.st { font-size: 12px; font-weight: 700; }
+.st.SEV { color: #fff; background: var(--sev); border-radius: 5px; padding: 1px 7px; }
+.st.MOD { color: var(--mod-ink); background: var(--mod); border-radius: 5px; padding: 1px 7px; }
+.st.none { color: var(--text-3); font-weight: 600; }
+.st.ref { color: var(--text-3); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.st.ref::before { content: ""; width: 14px; height: 8px; border: 1.5px dashed var(--text-3); border-radius: 2px; }
+.st.na { color: var(--text-2); background: #e5e7eb; border-radius: 5px; padding: 1px 7px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 10px; }
+.tchip { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.tchip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.p-foot { border-top: 1px solid var(--line); padding: 12px 18px 14px; display: flex; gap: 8px; }
+.btn { height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.btn.pri { flex: 1; justify-content: center; background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
+.pill { position: absolute; left: 20px; top: 20px; z-index: 10; background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 8px 0 18px; font-size: 14px; }
+.pill b { font-size: 16px; }
+
+/* 기존 상단 요소 */
+.adv { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 6; }
+.adv span { background: #fde8e7; color: var(--red); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.adv span.am { background: var(--amber-bg); color: var(--amber); }
+.tsbar { position: absolute; right: 92px; top: 18px; background: rgba(255,255,255,.96); border-radius: 10px; box-shadow: var(--shadow); padding: 8px 12px; font-size: 12px; z-index: 6; display: grid; grid-template-columns: auto auto; gap: 2px 14px; color: var(--text-2); }
+
+/* ---------- ⑤ 공항 카드 ---------- */
+.apt { position: absolute; width: 300px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); z-index: 8; overflow: hidden; }
+.a-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; }
+.a-role { font-size: 11px; font-weight: 700; color: var(--text-3); background: var(--surface-2); border-radius: 5px; padding: 2px 6px; }
+.a-icao { font-size: 18px; font-weight: 800; letter-spacing: .02em; }
+.a-name { font-size: 13px; color: var(--text-3); flex: 1; }
+.cat { font-size: 12px; font-weight: 800; border-radius: 6px; padding: 2px 8px; }
+.cat.VFR { background: var(--green-bg); color: var(--green); }
+.a-past { background: var(--amber-bg); border-top: 1px solid var(--amber-line); border-bottom: 1px solid var(--amber-line); padding: 6px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--amber); }
+.a-past button { border: 0; background: transparent; color: var(--amber); font-weight: 800; text-decoration: underline; cursor: pointer; font-size: 12px; }
+.blk { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.blk + .blk { border-top: 1px solid var(--line); }
+.blk.past { background: #fffaf0; }
+.b-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); }
+.b-meta .kind { font-weight: 800; color: var(--text-2); letter-spacing: .03em; }
+.b-meta .gap { flex: 1; }
+.step { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.step button { width: 26px; height: 24px; border: 0; background: var(--surface); cursor: pointer; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; }
+.step button + button { border-left: 1px solid var(--line-2); }
+.step button:disabled { color: #c9cdd3; cursor: default; }
+.wx { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 14px; align-items: baseline; }
+.wx .key { font-weight: 800; }
+.wx .dim { color: var(--text-3); font-size: 13px; }
+.eta-tag { font-family: inherit; font-size: 11px; font-weight: 800; color: var(--route); background: #e8eefc; border-radius: 5px; padding: 1px 6px; }
+.more { border: 0; background: transparent; padding: 0; color: var(--accent-2); font-size: 12px; font-weight: 700; cursor: pointer; align-self: flex-start; }
+.a-notam { display: flex; gap: 8px; align-items: flex-start; background: var(--red-bg); padding: 8px 14px; font-size: 12px; color: #8f1d16; font-weight: 600; }
+.a-notam svg { flex: none; margin-top: 1px; }
+.taf { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+.taf td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.taf td:first-child { color: var(--text-3); white-space: nowrap; width: 1%; }
+.taf tr.eta td { background: #eef3ff; }
+.taf tr.eta td:first-child { box-shadow: inset 3px 0 0 var(--route); color: var(--route); font-weight: 800; }
+.chg { display: block; font-family: "Pretendard", system-ui, sans-serif; font-size: 11px; font-weight: 700; color: var(--amber); margin-top: 1px; }
+.chg::before { content: "● "; }
+
+/* ⑦ 고도 슬라이더 */
+.aslide { position: absolute; right: 20px; top: 76px; width: 52px; height: 588px; background: rgba(255,255,255,.96); border-radius: 12px; box-shadow: var(--shadow); z-index: 9; }
+.aslide .ttl { position: absolute; top: 8px; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 800; color: var(--text-3); }
+.aslide .rail2 { position: absolute; left: 18px; top: 28px; bottom: 14px; width: 6px; background: #e8eaee; border-radius: 3px; }
+.aslide .rng { position: absolute; left: 16px; width: 10px; background: #c7d2e0; border-radius: 5px; }
+.aslide .band { position: absolute; left: 32px; width: 8px; border-radius: 3px; }
+.aslide .tk { position: absolute; right: 60px; font-size: 11px; color: var(--text-3); transform: translateY(50%); white-space: nowrap; font-family: var(--mono); background: rgba(255,255,255,.85); padding: 0 3px; border-radius: 3px; }
+.aslide .knob { position: absolute; left: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 3px solid var(--route); transform: translateY(50%); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.aslide .kl { position: absolute; right: 60px; transform: translateY(50%); background: var(--route); color: #fff; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 6px; font-family: var(--mono); }
+
+/* ---------- 단면 독 (684–1024) ---------- */
+.dock { position: absolute; left: 56px; top: 684px; width: 1864px; height: 340px; background: var(--surface); border-top: 1px solid var(--line-2); z-index: 12; }
+.grip { position: absolute; left: 50%; top: -7px; transform: translateX(-50%); width: 64px; height: 14px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; }
+.grip::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: #a3aab4; }
+.dh { position: absolute; left: 0; right: 0; top: 0; height: 40px; display: flex; align-items: center; gap: 14px; padding: 0 20px 0 24px; }
+.dh .ttl { font-size: 14px; font-weight: 800; }
+.dh .src { font-size: 12px; color: var(--text-3); }
+.dh .sp { flex: 1; }
+.dh .tools { display: flex; gap: 4px; align-items: center; }
+.rb { position: absolute; left: 0; right: 0; height: 24px; }
+.rb .lbl { position: absolute; left: 24px; width: 136px; height: 24px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.rb .lbl .sw { width: 8px; height: 8px; border-radius: 2px; }
+.rb .trk { position: absolute; left: 176px; width: 1664px; height: 24px; background: var(--surface-2); border-radius: 6px; }
+.seg { position: absolute; top: 2px; height: 20px; border-radius: 5px; font-size: 11.5px; font-weight: 800; padding: 0 8px; border: 0; text-align: left; white-space: nowrap; overflow: hidden; cursor: pointer; line-height: 20px; }
+.seg.SEV { background: var(--sev); color: #fff; }
+.seg.MOD { background: var(--mod); color: var(--mod-ink); }
+.seg.ref { background: repeating-linear-gradient(135deg, #fff 0 5px, #f1f2f4 5px 10px); border: 1.5px dashed var(--c); color: var(--c); line-height: 17px; }
+.seg.sel { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--route); }
+.rb .empty { position: absolute; left: 12px; line-height: 24px; font-size: 12px; color: var(--text-3); }
+.rb .unav { position: absolute; inset: 0; border-radius: 6px; background: repeating-linear-gradient(135deg, #e8eaee 0 6px, #f4f5f7 6px 12px); font-size: 12px; font-weight: 700; color: var(--text-2); line-height: 24px; padding-left: 12px; }
+.chart { position: absolute; left: 176px; width: 1664px; top: 168px; height: 128px; }
+.chart svg { position: absolute; inset: 0; }
+.fl { position: absolute; left: 24px; width: 136px; text-align: right; padding-right: 10px; font-size: 11px; color: var(--text-3); font-family: var(--mono); transform: translateY(-50%); }
+.axis { position: absolute; left: 176px; width: 1664px; top: 300px; height: 36px; }
+.axis span { position: absolute; transform: translateX(-50%); font-size: 11.5px; font-family: var(--mono); color: var(--text-2); white-space: nowrap; top: 2px; }
+.axis span.apt-n { font-weight: 800; color: var(--text-1); }
+.axis span.nm { top: 18px; font-size: 10.5px; color: var(--text-3); }
+
+/* ---------- ⑥ 시간 막대 (1024–1080) ---------- */
+.timebar { position: absolute; left: 56px; top: 1024px; width: 1864px; height: 56px; background: #f8fafc; border-top: 1px solid var(--line-2); z-index: 13; }
+.timebar .lbl { position: absolute; left: 24px; top: 0; width: 136px; height: 56px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.timebar .lbl b { font-size: 12px; color: var(--text-3); }
+.timebar .lbl .jumps { display: flex; gap: 4px; }
+.timebar .trk { position: absolute; left: 176px; width: 1664px; top: 10px; height: 36px; }
+.timebar .base { position: absolute; left: 0; right: 0; top: 16px; height: 4px; border-radius: 2px; background: #dde1e7; }
+.timebar .past { position: absolute; left: 0; top: 16px; height: 4px; border-radius: 2px; background: #9aa5b4; }
+.timebar .win { position: absolute; top: 6px; height: 24px; border-radius: 6px; background: #33415514; border: 2px solid var(--accent); }
+.timebar .win span { position: absolute; top: 3px; left: calc(100% + 8px); font-size: 11px; font-weight: 800; color: var(--accent); white-space: nowrap; }
+.timebar .hz { position: absolute; top: 15px; height: 6px; border-radius: 3px; }
+.timebar .tk { position: absolute; top: 26px; font-size: 11px; color: var(--text-3); transform: translateX(-50%); font-family: var(--mono); }
+.timebar .tl { position: absolute; top: 10px; width: 1px; height: 4px; background: #9ca3af; }
+.timebar .now { position: absolute; top: 4px; height: 28px; width: 0; border-left: 2px dashed #6b7280; }
+.timebar .now span { position: absolute; top: -16px; left: 4px; font-size: 10px; color: var(--text-3); white-space: nowrap; }
+.timebar .knob { position: absolute; top: 7px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 3px solid var(--route); transform: translateX(-50%); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.timebar .kl { position: absolute; top: -20px; transform: translateX(-50%); background: var(--route); color: #fff; font-size: 12px; font-weight: 800; padding: 1px 8px; border-radius: 6px; font-family: var(--mono); white-space: nowrap; }
+
+/* ⑬ 팝오버 */
+.pop { position: absolute; z-index: 25; width: 360px; background: var(--surface); border-radius: 12px; box-shadow: 0 10px 30px rgba(16,24,40,.25); padding: 14px 16px; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+.pop .h { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; }
+.pop .src { font-size: 11px; font-weight: 600; color: var(--text-3); border: 1px solid var(--line-2); border-radius: 5px; padding: 0 6px; }
+.pop .enc { display: inline-flex; gap: 6px; align-items: center; font-weight: 800; color: var(--red); background: var(--red-bg); border-radius: 6px; padding: 3px 8px; align-self: flex-start; font-size: 12px; }
+.pop dl { margin: 0; display: grid; grid-template-columns: 44px 1fr; gap: 4px 10px; }
+.pop dt { color: var(--text-3); }
+.pop dd { margin: 0; }
+.pop .acts { display: flex; gap: 6px; margin-top: 2px; }
+.pop::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; background: var(--surface); transform: translateX(-50%) rotate(45deg); }
+
+.ann { position: absolute; z-index: 40; width: 24px; height: 24px; border-radius: 50%; background: #7c3aed; color: #fff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px #fff; pointer-events: none; }
+.no-ann .ann { display: none; }
+
+.spec { max-width: 1400px; margin: 0 auto; padding: 8px 20px 80px; display: flex; flex-direction: column; gap: 20px; }
+.spec h2 { font-size: 20px; margin: 16px 0 0; padding-bottom: 8px; border-bottom: 2px solid var(--text-1); }
+.spec table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13.5px; }
+.spec th, .spec td { border: 1px solid var(--line); padding: 8px 10px; vertical-align: top; text-align: left; }
+.spec th { background: #f3f4f6; font-size: 12px; color: var(--text-3); }
+.spec td.n { font-weight: 800; color: #7c3aed; text-align: center; width: 36px; }
+.spec td.nm { font-weight: 700; white-space: nowrap; }
+.spec .box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+.spec .box ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <b>지도형 브리핑 상세 시안 4 · 1920×1080</b>
+  <span class="sep"></span>
+  <button type="button" data-state="base" aria-pressed="true">S1 기본</button>
+  <button type="button" data-state="seg" aria-pressed="false">S2 막대 선택</button>
+  <button type="button" data-state="apt" aria-pressed="false">S3 공항 카드 펼침·과거 보기</button>
+  <button type="button" data-state="fold" aria-pressed="false">S4 패널 접힘</button>
+  <button type="button" data-state="na" aria-pressed="false">S5 단면 자료 없음</button>
+  <span class="sep"></span>
+  <button type="button" id="annBtn" aria-pressed="true">번호 표시</button>
+</div>
+
+<div class="stage"><div class="fit" id="fit"><div class="screen" id="screen"></div></div></div>
+
+<div class="spec">
+  <h2>요소별 명세 (시안 3에서 바뀐 곳 위주)</h2>
+  <table>
+    <thead><tr><th>#</th><th>요소</th><th>위치·크기</th><th>구성</th><th>동작</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td class="nm">브리핑 패널</td><td>좌 20·위 20 (사이드바 기준), 폭 304, 모서리 12, 그림자. 선 대신 여백으로 묶음 구분</td><td>① 머리: "비행 전 브리핑" + 접기 ② 경로 24px + 규칙 배지, 공항명·날짜 ③ 숫자 3칸(ETD·ETA·순항, 18px 고정폭) + 거리·소요·TAS 한 줄</td><td>접기 → 알약(경로·시각·최고 위험)</td></tr>
+      <tr><td class="n">2</td><td class="nm">요약</td><td>패널 좌우 18 안쪽, 모서리 10</td><td>왼쪽 강도 사각 아이콘(SEV/MOD/없음/회색) + 굵은 한 줄 + 보조 한 줄</td><td>누르면 해당 막대 선택(#13)</td></tr>
+      <tr><td class="n">3</td><td class="nm">경로상 위험</td><td>행 34, 좌우 여백 포함 hover 배경</td><td>눈 아이콘(켜기/끄기) · 지도·막대와 같은 색 사각 · 이름 · 오른쪽 상태(SEV/MOD 배지, "MOD 이상 없음", 점선 사각+"다른 고도", "확인 불가")</td><td>행 전체가 토글. 끄면 글자 흐려짐 + 눈 아이콘 사선</td></tr>
+      <tr><td class="n">4</td><td class="nm">지도 표시 · 버튼</td><td>칩 높이 30 · 버튼 높이 36</td><td>공항 카드 · NOTAM · 레이더 · 위성 (켜짐=진한 칩). 아래 "문서형 보기"(주, 폭 채움) + 저장·수정(보조)</td><td></td></tr>
+      <tr><td class="n">5</td><td class="nm">공항 카드</td><td>폭 300, 모서리 12, 공항 기호에서 지시선. 펼친 카드가 지도 밖으로 넘치면 경로 반대편(공간이 넓은 쪽)으로 옮기고, 그래도 넘치면 최대 높이(지도 높이 − 48) 안에서 스크롤</td><td>머리: 출발/도착 배지 · ICAO 18px · 공항명 · 비행등급 배지. 관측 덩어리: "METAR 09:00 KST · 최신" + ◀▶ 묶음 버튼, 값(고정폭 14px, 시정·운고 굵게). 예보 덩어리: "TAF 08:00 발표" + ◀▶, [ETA 10:29] 태그 + 해당 시각 값, "TAF 전문 ⌄". NOTAM은 빨간 바탕 띠</td><td>과거 보기: 머리 아래 주황 띠 "과거 관측 보는 중 · 2건 전" + "최신으로", 해당 덩어리 배경 연주황. 전문 펼침: 시간 열 + 값 열 표, ETA 행 파란 왼쪽 선, 직전 발표 대비 변경은 주황 점 문구</td></tr>
+      <tr><td class="n">6</td><td class="nm">시간 막대</td><td><b>화면 맨 아래</b> y 1024–1080, 전체 폭. 왼쪽 136 라벨 열(단면 라벨 열과 정렬), 막대 x 176–1840</td><td>라벨 열: "시간 KST" + [ETD][지금] 이동 버튼. 막대: 지난 시간 진한 선, ETD~ETA 창, 창 안 내 고도 위험 색 선, 현재 시각 점선, 둥근 손잡이 + 시각 말풍선</td><td>손잡이 끌기 또는 [ETD]/[지금] 버튼을 누를 때만 이동</td></tr>
+      <tr><td class="n">7</td><td class="nm">고도 슬라이더</td><td>우 20·위 76·폭 52·높이 588, 모서리 12</td><td>회색 레일 위 비행 범위(SFC~순항) 진한 구간, 오른쪽 8px 위험 띠, 둥근 손잡이 + 왼쪽 "FL250" 말풍선</td><td>끌 때만 이동</td></tr>
+      <tr><td class="n">9–12</td><td class="nm">단면 독</td><td>y 684–1024 (높이 340, 260~560 조절)</td><td>머리 40 · 위험 막대 4줄(24/간격 4) · 단면 128 · 거리축 36. 라벨 열 136은 시간 막대와 같은 폭으로 맞춤</td><td>시안 3과 같음</td></tr>
+    </tbody>
+  </table>
+  <h2>예시 자료</h2>
+  <div class="box"><ul>
+    <li>경로·지점·거리·위험 구간·RKSI 09:30 METAR·RKPC 09:00 METAR·TAF 시간 분할·NOTAM: 2026-10-20 운영 화면의 실제 값.</li>
+    <li>RKPC 08:00 METAR, 직전 TAF 발표 대비 변경 문구, ETA 시각의 운고 값(BKN015)은 <b>모양을 보이기 위한 예시</b>.</li>
+  </ul></div>
+</div>
+
+<script>
+const TOTAL = 329.9, ETD = 9 * 60 + 45, TAS = 450
+const RB_X = 176, RB_W = 1664
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`
+const passT = (nm) => hhmm(ETD + nm / TAS * 60)
+const WPS = [['RKSI', 0, [944, 70], 1], ['BOPTA', 66.6, [950, 190]], ['MOXID', 88.2, [954, 230]], ['BEDES', 102.9, [958, 258]], ['ELPOS', 117.8, [962, 286]], ['MANGI', 141.9, [956, 330]], ['DALSU', 164.7, [950, 372]], ['NULDI', 207.2, [942, 452]], ['DOTOL', 217.2, [940, 470]], ['TOD', 300, null], ['RKPC', 329.9, [990, 575], 1]]
+const PATH = [[0, 944, 70], [6, 900, 58], [14, 880, 80], [40, 910, 130], [66.6, 950, 190], [88.2, 954, 230], [102.9, 958, 258], [117.8, 962, 286], [141.9, 956, 330], [164.7, 950, 372], [207.2, 942, 452], [217.2, 940, 470], [240, 948, 500], [262, 930, 530], [285, 902, 556], [300, 905, 584], [318, 940, 598], [329.9, 990, 575]]
+const at = (nm) => { for (let i = 1; i < PATH.length; i++) { const [a, ax, ay] = PATH[i - 1], [b, bx, by] = PATH[i]; if (nm <= b) { const f = (nm - a) / (b - a); return [ax + (bx - ax) * f, ay + (by - ay) * f] } } return PATH.at(-1).slice(1) }
+const pts = (s, e) => { const r = [at(s)]; PATH.forEach(([d, x, y]) => { if (d > s && d < e) r.push([x, y]) }); r.push(at(e)); return r.map((p) => p.join(',')).join(' ') }
+const near = (nm) => WPS.filter((w) => w[0] !== 'TOD').reduce((a, b) => Math.abs(b[1] - nm) < Math.abs(a[1] - nm) ? b : a)[0]
+const altAt = (nm) => nm < 66.6 ? 250 * nm / 66.6 : nm < 300 ? 250 : 250 * (TOTAL - nm) / (TOTAL - 300)
+const ROWS = [
+  { key: 'turb', label: '난류', color: '#e5372f', model: true, src: 'KIM GKTG · 모델', segs: [
+    { s: 42, e: 180, sev: 'SEV', alt: 'FL250', phase: '순항', mine: true }, { s: 320, e: 327, sev: 'MOD', alt: '4,000–2,000ft', phase: '접근', mine: true }] },
+  { key: 'ice', label: '착빙', color: '#2563eb', model: true, segs: [] },
+  { key: 'sigmet', label: 'SIGMET', color: '#c0291f', segs: [{ s: 100, e: 217, sev: 'SEV', name: '착빙', alt: 'FL140–200', mine: false }] },
+  { key: 'airmet', label: 'AIRMET', color: '#92400e', segs: [{ s: 109, e: 217, sev: 'MOD', name: '시정', alt: 'SFC–10,000ft', mine: false }] },
+]
+let state = 'base'
+const EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+const WARN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18v.5"/></svg>'
+const CHEV = (d) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="${d === 'l' ? 'M15 5l-7 7 7 7' : d === 'r' ? 'M9 5l7 7-7 7' : 'M5 9l7 7 7-7'}"/></svg>`
+const step = (prev, next) => `<span class="step"><button ${prev ? '' : 'disabled'} aria-label="이전">${CHEV('l')}</button><button ${next ? '' : 'disabled'} aria-label="다음">${CHEV('r')}</button></span>`
+function status(r, na) {
+  if (na && r.model) return '<span class="st na">확인 불가</span>'
+  const m = r.segs.filter((s) => s.mine)
+  if (m.some((s) => s.sev === 'SEV')) return '<span class="st SEV">SEV</span>'
+  if (m.length) return '<span class="st MOD">MOD</span>'
+  if (r.segs.length) return '<span class="st ref">다른 고도</span>'
+  return '<span class="st none">MOD 이상 없음</span>'
+}
+const A = (n, x, y) => `<span class="ann" style="left:${x}px;top:${y}px">${n}</span>`
+
+function render() {
+  const na = state === 'na', sel = state === 'seg' ? ROWS[0].segs[0] : null, fold = state === 'fold', aptOpen = state === 'apt'
+  let h = `<div class="rail">${Array.from({ length: 8 }, (_, i) => `<i class="${i === 1 ? 'on' : ''}"></i>`).join('')}</div>`
+  const route = PATH.map(([, x, y]) => `${x},${y}`).join(' ')
+
+  // 지도
+  h += `<div class="map"><svg class="base" width="1864" height="684" viewBox="0 0 1864 684">
+    <path d="M760 0 L1240 0 L1210 120 L1180 250 L1120 380 L1040 420 L900 430 L860 380 L880 300 L850 220 L870 120 L820 40 Z" fill="var(--land)" stroke="var(--land-line)"/>
+    <path d="M1380 380 L1600 300 L1700 330 L1640 420 L1460 470 Z" fill="var(--land)" stroke="var(--land-line)"/>
+    <ellipse cx="990" cy="578" rx="58" ry="24" fill="var(--land)" stroke="var(--land-line)"/>
+    ${na ? '' : `<path d="M890 140 L1080 120 L1090 340 L900 360 Z" fill="#e5372f" opacity="${sel ? .26 : .14}"/>`}
+    <polygon points="700,300 1180,220 1240,300 1060,520 720,560" fill="#c0291f" fill-opacity=".04" stroke="#c0291f" stroke-width="2" stroke-dasharray="8 5"/>
+    <polygon points="690,330 1150,282 1110,522 712,584" fill="none" stroke="#92400e" stroke-width="1.5" stroke-dasharray="3 4"/>
+    <g font-size="12" font-weight="800"><rect x="1150" y="232" width="190" height="22" rx="6" fill="#fff" stroke="#c0291f"/><text x="1160" y="248" fill="#c0291f">SIGMET SEV ICE FL140–200</text>
+    <rect x="696" y="592" width="160" height="22" rx="6" fill="#fff" stroke="#92400e"/><text x="706" y="608" fill="#92400e">AIRMET SFC VIS 5000M</text></g>
+    ${na ? '' : ROWS[0].segs.map((s) => `<polyline points="${pts(s.s, s.e)}" fill="none" stroke="${s.sev === 'SEV' ? '#e5372f' : '#FFC300'}" stroke-width="${sel === s ? 16 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity="${sel === s ? .8 : .45}"/>`).join('')}
+    <polyline points="${route}" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+    <polyline points="${route}" fill="none" stroke="var(--route)" stroke-width="4" stroke-linejoin="round"/>
+    ${WPS.filter((w) => w[2] && !w[3]).map(([n, , [x, y]]) => `<circle cx="${x}" cy="${y}" r="4" fill="#fff" stroke="var(--route)" stroke-width="2"/><text x="${x - 10}" y="${y + 4}" font-size="12" font-family="monospace" fill="#1e3a8a" text-anchor="end" font-weight="700" paint-order="stroke" stroke="#fff" stroke-width="3">${n}</text>`).join('')}
+    <circle cx="944" cy="70" r="8" fill="#166534" stroke="#fff" stroke-width="2.5"/><circle cx="990" cy="575" r="8" fill="#166534" stroke="#fff" stroke-width="2.5"/>
+    <path d="M952 72 L1088 104" stroke="#9aa3ae" stroke-width="1.5"/>
+    <path d="${aptOpen ? 'M982 570 L840 520' : 'M998 572 L1088 400'}" stroke="#9aa3ae" stroke-width="1.5"/>
+    ${sel ? (() => { const [x1, y1] = at(sel.s), [x2, y2] = at(sel.e); return `<g font-size="12" font-weight="800"><rect x="${x1 + 16}" y="${y1 - 12}" width="92" height="22" rx="6" fill="#e5372f"/><text x="${x1 + 24}" y="${y1 + 4}" fill="#fff">시작 ${near(sel.s)}</text><rect x="${x2 + 16}" y="${y2 - 12}" width="86" height="22" rx="6" fill="#e5372f"/><text x="${x2 + 24}" y="${y2 + 4}" fill="#fff">끝 ${near(sel.e)}</text></g>` })() : ''}
+  </svg>
+  <div class="adv"><span>SIGMET 1 ▾</span><span class="am">AIRMET 1 ▾</span></div>
+  <div class="tsbar"><span>자료 시각</span><span style="text-align:right">난류 · KIM GKTG</span><span>발표 <b class="mono">10/20 06Z</b></span><span>유효 <b class="mono">10/20 09:45 KST</b></span></div>`
+
+  // ① 패널
+  if (fold) {
+    h += `<div class="pill"><b>RKSI → RKPC</b><span class="mono" style="color:var(--text-3)">09:45 → 10:29</span><span class="st SEV">SEV</span><button class="icon-btn" aria-label="패널 펼치기">${CHEV('r')}</button></div>`
+  } else {
+    h += `<div class="panel">
+      <div class="p-head">
+        <div class="p-top"><span class="eyebrow">비행 전 브리핑</span><button class="icon-btn" aria-label="패널 접기">${CHEV('l')}</button></div>
+        <div class="route"><span class="r1">RKSI <span class="arw">→</span> RKPC <span class="rule">IFR</span></span><span class="r2">인천 → 제주 · 10월 20일(화)</span></div>
+        <div class="stats"><div><span class="k">ETD</span><span class="v">09:45</span></div><div><span class="k">ETA</span><span class="v">10:29</span></div><div><span class="k">순항</span><span class="v">FL250</span></div></div>
+        <span class="sub">330NM · 44분 · TAS 450kt · KST</span>
+      </div>
+      ${na ? `<div class="callout na"><span class="sev-dot">?</span><b>모델 자료 없음 · 난류·착빙 확인 불가</b><span>SIGMET·AIRMET: 내 고도 해당 없음</span></div>`
+        : `<div class="callout"><span class="sev-dot">SEV</span><b>순항 중 심한 난류 18분</b><span>BOPTA→DALSU · 09:51–10:09</span></div>`}
+      <div class="group"><div class="g-h"><span>경로상 위험</span><span>내 고도 기준</span></div>
+        ${ROWS.map((r) => `<div class="hz"><span class="eye">${EYE}</span><span class="sw" style="background:${r.color}"></span><span class="nm">${r.label}</span>${status(r, na)}</div>`).join('')}</div>
+      <div class="group"><div class="g-h"><span>지도에 표시</span></div>
+        <div class="chips"><span class="tchip on">공항 카드</span><span class="tchip on">NOTAM</span><span class="tchip">레이더</span><span class="tchip">위성</span></div></div>
+      <div class="p-foot"><button class="btn pri">문서형 보기</button><button class="btn">저장</button><button class="btn">수정</button></div>
+    </div>`
+  }
+
+  // ⑤ 공항 카드
+  h += `<div class="apt" style="left:1088px;top:60px">
+    <div class="a-head"><span class="a-role">출발</span><span class="a-icao">RKSI</span><span class="a-name">인천</span><span class="cat VFR">VFR</span></div>
+    <div class="blk"><div class="b-meta"><span class="kind">METAR</span><span class="mono">09:30 KST</span><span>· 최신</span><span class="gap"></span>${step(true, false)}</div>
+      <div class="wx"><span>040°/8kt</span><span class="key">CAVOK</span><span class="dim">15/11 Q1019</span></div></div>
+    <div class="blk"><div class="b-meta"><span class="kind">TAF</span><span class="mono">08:00 발표</span><span class="gap"></span>${step(true, false)}</div>
+      <div class="wx"><span class="eta-tag">ETD 09:45</span><span>100°/6kt</span><span class="key">CAVOK</span></div>
+      <button class="more">TAF 전문 ${CHEV('d')}</button></div>
+  </div>`
+  if (aptOpen) {
+    h += `<div class="apt" style="left:540px;top:150px;max-height:516px;overflow:auto">
+      <div class="a-head"><span class="a-role">도착</span><span class="a-icao">RKPC</span><span class="a-name">제주</span><span class="cat VFR">VFR</span></div>
+      <div class="a-past"><span>과거 관측 보는 중 · 2건 전</span><button>최신으로</button></div>
+      <div class="blk past"><div class="b-meta"><span class="kind">METAR</span><span class="mono">08:00 KST</span><span>· 예시</span><span class="gap"></span>${step(true, true)}</div>
+        <div class="wx"><span>050°/4kt</span><span class="key">8000</span><span>-RA</span><span class="key">BKN030</span></div></div>
+      <div class="blk"><div class="b-meta"><span class="kind">TAF</span><span class="mono">08:00 발표</span><span>· 최신</span><span class="gap"></span>${step(true, false)}</div>
+        <table class="taf">
+          <tr><td>20/09</td><td>07008KT 9999 FEW010 BKN030</td></tr>
+          <tr class="eta"><td>20/10</td><td>6000 -RA BKN015 · ETA 10:29<span class="chg">직전 발표보다 1시간 앞당겨짐 (예시)</span></td></tr>
+          <tr><td>20/12</td><td>9999 NSW</td></tr>
+          <tr><td>20/19</td><td>24010KT 6000 -RA</td></tr>
+          <tr><td>21/04</td><td>30012KT NSW</td></tr>
+          <tr><td>21/09</td><td>33016G28KT 9999<span class="chg">돌풍 새로 추가 (예시)</span></td></tr>
+        </table>
+        <button class="more">원문(TAC) 보기 · 보관된 발표 3건</button></div>
+      <div class="a-notam">${WARN}<span>RWY 07/25 폐쇄 예정(시각 미정) · 선택 STAR가 RWY 07</span></div>
+    </div>`
+  } else {
+    h += `<div class="apt" style="left:1088px;top:372px">
+      <div class="a-head"><span class="a-role">도착</span><span class="a-icao">RKPC</span><span class="a-name">제주</span><span class="cat VFR">VFR</span></div>
+      <div class="blk"><div class="b-meta"><span class="kind">METAR</span><span class="mono">09:00 KST</span><span>· 최신</span><span class="gap"></span>${step(true, false)}</div>
+        <div class="wx"><span>070°/3kt</span><span class="key">6000</span><span>-RA BR</span><span class="key">BKN025</span></div></div>
+      <div class="blk"><div class="b-meta"><span class="kind">TAF</span><span class="mono">08:00 발표</span><span class="gap"></span>${step(true, false)}</div>
+        <div class="wx"><span class="eta-tag">ETA 10:29</span><span class="key">6000</span><span>-RA</span><span class="key">BKN015</span></div>
+        <button class="more">TAF 전문 ${CHEV('d')}</button></div>
+      <div class="a-notam">${WARN}<span>RWY 07/25 폐쇄 예정 · STAR RWY 07</span></div>
+    </div>`
+  }
+
+  // ⑦ 고도 슬라이더: 레일 y 28 ~ 574 (546px), SFC~FL450
+  const ay = (fl) => 574 - fl / 450 * 546
+  h += `<div class="aslide"><span class="ttl">고도</span><span class="rail2"></span>
+    <span class="rng" style="top:${ay(250)}px;height:${574 - ay(250)}px"></span>
+    ${na ? '' : `<span class="band" style="top:${ay(262)}px;height:${ay(238) - ay(262)}px;background:#e5372f"></span><span class="band" style="top:${ay(40)}px;height:${ay(20) - ay(40)}px;background:#FFC300"></span>`}
+    <span class="band" style="top:${ay(200)}px;height:${ay(140) - ay(200)}px;background:repeating-linear-gradient(135deg,#c0291f 0 3px,#fff 3px 6px);outline:1px dashed #c0291f"></span>
+    ${[0, 100, 200, 300, 400].map((fl) => `<span class="tk" style="top:${ay(fl)}px">${fl ? 'FL' + fl : 'SFC'}</span>`).join('')}
+    <span class="knob" style="top:${ay(250) - 11}px;transform:none"></span><span class="kl" style="top:${ay(250)}px">FL250</span>
+  </div></div>`
+
+  // 단면 독
+  h += `<div class="dock"><span class="grip"></span>
+    <div class="dh"><span class="ttl">경로 단면</span><span class="src">RKSI → RKPC · 계획 FL250 · 단면 기준 10/20 10:00 KST · KIM 06Z</span><span class="sp"></span>
+      <span class="tools"><button class="btn sm ghost">레이어 ▾</button><button class="btn sm ghost">−</button><button class="btn sm ghost">+</button><button class="btn sm ghost">전체</button><button class="btn sm ghost">⤢ 크게</button><button class="btn sm ghost">접기</button></span></div>`
+  h += ROWS.map((r, i) => {
+    let inner
+    if (na && r.model) inner = '<span class="unav">단면 자료 없음 · 확인 불가</span>'
+    else if (!r.segs.length) inner = '<span class="empty">MOD 이상 없음</span>'
+    else inner = r.segs.map((s) => {
+      const l = s.s / TOTAL * RB_W, w = Math.max(10, (s.e - s.s) / TOTAL * RB_W)
+      const txt = w >= 60 ? `${s.sev}${s.name ? ' ' + s.name : ''} · ${s.alt}${s.mine ? '' : ' · 다른 고도'}` : s.sev
+      return `<button class="seg ${s.mine ? s.sev : 'ref'}${sel === s ? ' sel' : ''}" style="left:${l}px;width:${w}px;--c:${r.color}">${txt}</button>`
+    }).join('')
+    return `<div class="rb" style="top:${48 + i * 28}px"><span class="lbl"><span class="sw" style="background:${r.color}"></span>${r.label}</span><div class="trk">${inner}</div></div>`
+  }).join('')
+  const cy = (fl) => 128 - fl / 350 * 128, cx = (nm) => nm / TOTAL * RB_W
+  const prof = []; for (let nm = 0; nm <= TOTAL; nm += 2) prof.push(`${cx(nm)},${cy(altAt(nm))}`)
+  h += [300, 200, 100].map((fl) => `<span class="fl" style="top:${168 + cy(fl)}px">FL${fl}</span>`).join('')
+  h += `<div class="chart"><svg width="${RB_W}" height="128">
+    ${[100, 200, 300].map((fl) => `<line x1="0" x2="${RB_W}" y1="${cy(fl)}" y2="${cy(fl)}" stroke="#eef0f3"/>`).join('')}
+    ${na ? `<rect width="${RB_W}" height="128" fill="#f4f5f7"/><text x="${RB_W / 2}" y="52" text-anchor="middle" font-size="13" fill="#4b5563" font-weight="700">KIM 단면 자료를 불러오지 못했습니다 · 비행 고도선과 SIGMET·AIRMET만 표시</text>`
+      : `<rect x="${cx(42)}" y="${cy(300)}" width="${cx(180) - cx(42)}" height="${cy(220) - cy(300)}" fill="#e5372f" opacity=".2"/>
+         <rect x="${cx(318)}" y="${cy(45)}" width="${cx(329) - cx(318)}" height="${cy(15) - cy(45)}" fill="#FFC300" opacity=".5"/>
+         ${[[67, 103, 230, 262], [165, 207, 236, 256], [258, 273, 100, 140]].map(([a, b, lo, hi]) => `<rect x="${cx(a)}" y="${cy(hi)}" width="${cx(b) - cx(a)}" height="${cy(lo) - cy(hi)}" fill="#2563eb" opacity=".2"/>`).join('')}`}
+    <rect x="${cx(100)}" y="${cy(200)}" width="${cx(217) - cx(100)}" height="${cy(140) - cy(200)}" fill="none" stroke="#c0291f" stroke-dasharray="6 4" stroke-width="1.5"/>
+    ${sel ? `<rect x="${cx(sel.s)}" y="0" width="${cx(sel.e) - cx(sel.s)}" height="128" fill="#1d4ed814" stroke="#1d4ed8" stroke-dasharray="4 3"/>` : ''}
+    <polyline points="${prof.join(' ')}" fill="none" stroke="var(--route)" stroke-width="3"/>
+    <text x="${cx(300) + 4}" y="${cy(250) - 6}" font-size="11" fill="#92400e" font-weight="800">TOD</text>
+    <rect x="0" y="122" width="${RB_W}" height="6" fill="#52525b" opacity=".4"/>
+  </svg></div>
+  <div class="axis">${WPS.map(([n, nm, , apt]) => `<span class="${apt ? 'apt-n' : ''}" style="left:${cx(nm)}px">${n}</span><span class="nm" style="left:${cx(nm)}px">${Math.round(nm)}</span>`).join('')}</div></div>`
+
+  // ⑥ 시간 막대 (맨 아래): 07:30~13:30
+  const T0 = 7 * 60 + 30, TW = 360, tx = (m) => (m - T0) / TW * RB_W
+  const knobM = ETD
+  h += `<div class="timebar"><div class="lbl"><b>시간 · KST</b><span class="jumps"><button class="btn sm">ETD</button><button class="btn sm">지금</button></span></div>
+    <div class="trk"><span class="base"></span><span class="past" style="width:${tx(9 * 60 + 50)}px"></span>
+      ${Array.from({ length: 6 }, (_, i) => { const m = 8 * 60 + i * 60; return `<span class="tl" style="left:${tx(m)}px"></span><span class="tk" style="left:${tx(m)}px">${hhmm(m)}</span>` }).join('')}
+      <span class="win" style="left:${tx(ETD)}px;width:${tx(ETD + 44) - tx(ETD)}px"><span>ETD 09:45 → ETA 10:29</span></span>
+      ${na ? '' : ROWS[0].segs.map((s) => `<span class="hz" style="left:${tx(ETD + s.s / TAS * 60)}px;width:${Math.max(5, tx(ETD + s.e / TAS * 60) - tx(ETD + s.s / TAS * 60))}px;background:${s.sev === 'SEV' ? '#e5372f' : '#FFC300'}"></span>`).join('')}
+      <span class="now" style="left:${tx(9 * 60 + 50)}px"><span>지금 09:50</span></span>
+      <span class="knob" style="left:${tx(knobM)}px"></span>
+    </div></div>`
+
+  // ⑬ 팝오버
+  if (sel) {
+    const mid = 56 + RB_X + (sel.s + sel.e) / 2 / TOTAL * RB_W
+    h += `<div class="pop" style="left:${mid - 180}px;top:${684 + 48 - 262}px">
+      <div class="h"><span class="st SEV">SEV</span>난류<span class="src">KIM GKTG · 모델</span><span style="flex:1"></span><button class="icon-btn" aria-label="닫기">✕</button></div>
+      <span class="enc">● 내 비행 고도에서 만남</span>
+      <dl><dt>구간</dt><dd><b>${near(sel.s)} → ${near(sel.e)}</b> <span class="mono" style="color:var(--text-3)">${sel.s}–${sel.e}NM</span></dd>
+      <dt>통과</dt><dd><span class="mono">${passT(sel.s)}–${passT(sel.e)} KST</span> · ${Math.round((sel.e - sel.s) / TAS * 60)}분 <span style="color:var(--text-3);font-size:11px">바람 미반영</span></dd>
+      <dt>고도</dt><dd>${sel.alt} · ${sel.phase}</dd>
+      <dt>자료</dt><dd style="color:var(--text-3)">KIM GKTG 10/20 06Z 발표 · 유효 10:00 KST</dd></dl>
+      <div class="acts"><button class="btn sm" style="background:var(--accent);color:#fff;border-color:var(--accent)">지도·슬라이더를 이 구간으로</button></div></div>`
+  }
+
+  h += A(1, 56 + 20 - 12, 20 - 12) + (fold ? '' : A(2, 56 + 8, 250) + A(3, 56 + 8, 330) + A(4, 56 + 8, 470))
+  h += A(5, 56 + 1088 - 12, 60 - 12) + A(7, 1920 - 20 - 52 - 12, 76 - 12) + A(8, 56 + 1090, 150)
+  h += A(9, 56 + 4, 684 + 8) + A(10, 56 + 4, 684 + 52) + A(11, 56 + 4, 684 + 200) + A(12, 56 + 4, 684 + 302) + A(6, 56 + 4, 1024 + 16) + A(14, 1920 - 92 - 12, 6)
+  if (sel) h += A(13, 56 + RB_X + 111 / TOTAL * RB_W - 192, 684 + 48 - 262 - 12)
+  document.getElementById('screen').innerHTML = h
+}
+function fit() { const w = document.getElementById('fit').clientWidth, s = Math.min(1, w / 1920); document.getElementById('screen').style.transform = `scale(${s})`; document.getElementById('fit').style.height = 1080 * s + 'px' }
+window.addEventListener('resize', fit)
+document.querySelectorAll('[data-state]').forEach((b) => b.addEventListener('click', () => { state = b.dataset.state; document.querySelectorAll('[data-state]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render() }))
+document.getElementById('annBtn').addEventListener('click', (e) => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); document.getElementById('screen').classList.toggle('no-ann', !on) })
+render(); fit()
+</script>
+</body>
+</html>

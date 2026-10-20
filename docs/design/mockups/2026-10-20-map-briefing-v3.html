@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지도형 브리핑 상세 시안</title>
+<style>
+/* 지도형 브리핑 상세 시안(v3) · 기준 해상도 1920×1080 · 앱 토큰 값 사용 */
+:root {
+  --bg: #f5f5f5; --surface: #ffffff; --line: #e0e0e0; --line-2: #c8c8c8;
+  --text-1: #242424; --text-2: #424242; --text-3: #616161;
+  --accent: #334155; --accent-bg: #eef2f7;
+  --red: #c0291f; --red-bg: #f7dcd9; --amber: #92400e; --amber-bg: #fdecc8;
+  --green: #166534; --green-bg: #dcefe2;
+  --sev: #e5372f; --mod: #FFC300; --mod-ink: #3a2a00;
+  --sea: #cfe3f0; --land: #eef0e6; --land-line: #c9ccbd; --route: #1d4ed8;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #d9dde3; color: var(--text-1); font: 14px/1.45 "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-3); }
+
+.toolbar { position: sticky; top: 0; z-index: 50; background: #111827; color: #fff; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.toolbar b { font-size: 15px; }
+.toolbar button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid #4b5563; background: transparent; color: #e5e7eb; cursor: pointer; }
+.toolbar button[aria-pressed="true"] { background: #fff; color: #111827; border-color: #fff; }
+.toolbar .sep { width: 1px; height: 22px; background: #4b5563; }
+
+/* 1920×1080 화면 틀(폭에 맞춰 축소) */
+.stage { padding: 20px; }
+.fit { width: 100%; max-width: 1920px; margin: 0 auto; }
+.screen { width: 1920px; height: 1080px; position: relative; background: var(--sea); overflow: hidden; transform-origin: 0 0; box-shadow: 0 6px 30px rgba(0,0,0,.25); }
+
+/* 기존 앱 사이드바 */
+.rail { position: absolute; left: 0; top: 0; bottom: 0; width: 56px; background: #f8fafc; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 16px; z-index: 5; }
+.rail i { width: 24px; height: 24px; border-radius: 6px; background: #cbd5e1; display: block; }
+.rail i.on { background: var(--accent); }
+
+/* 지도 영역: x 56~1920, y 0~700 */
+.map { position: absolute; left: 56px; top: 0; width: 1864px; height: 700px; }
+.map svg.base { position: absolute; inset: 0; }
+
+/* ① 떠 있는 패널 */
+.panel { position: absolute; left: 24px; top: 24px; width: 296px; max-height: 596px; overflow: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.14); z-index: 10; display: flex; flex-direction: column; }
+.panel .ph { padding: 12px 16px 10px; display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--line); position: relative; }
+.panel .eyebrow { font-size: 12px; color: var(--text-3); }
+.panel .rt { font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.chip { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 4px; white-space: nowrap; line-height: 16px; }
+.chip.ifr { background: var(--accent); color: #fff; }
+.chip.SEV { background: var(--sev); color: #fff; }
+.chip.MOD { background: var(--mod); color: var(--mod-ink); }
+.chip.none { background: var(--accent-bg); color: var(--text-3); font-weight: 600; }
+.chip.ref { color: var(--text-3); border: 1px dashed var(--line-2); font-weight: 600; line-height: 14px; }
+.chip.na { background: #e5e7eb; color: var(--text-2); font-weight: 700; }
+.chip.vfr { background: var(--green-bg); color: var(--green); }
+.panel .ln { font-size: 13px; color: var(--text-2); }
+.panel .collapse { position: absolute; right: 10px; top: 10px; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 14px; }
+.summary { margin: 12px 16px 4px; border-left: 4px solid var(--sev); background: #fff5f4; border-radius: 4px; padding: 8px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
+.summary b { font-size: 14px; }
+.summary.na { border-left-color: #6b7280; background: #f3f4f6; }
+.sec { padding: 8px 16px; display: flex; flex-direction: column; gap: 2px; }
+.sec + .sec { border-top: 1px solid var(--line); }
+.sec .hd { font-size: 12px; font-weight: 700; color: var(--text-3); letter-spacing: .04em; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.tg { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; height: 28px; padding: 0 4px; border-radius: 6px; font-size: 14px; }
+.tg .box { width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--accent); background: var(--accent); position: relative; }
+.tg .box::after { content: "✓"; color: #fff; font-size: 11px; position: absolute; left: 1px; top: -2px; font-weight: 800; }
+.tg.off .box { background: var(--surface); }
+.tg.off .box::after { content: ""; }
+.tg .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+.pf { padding: 12px 16px 14px; display: flex; gap: 8px; border-top: 1px solid var(--line); }
+.btn { font: inherit; font-size: 13px; height: 34px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text-1); white-space: nowrap; }
+.btn.pri { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.sm { height: 28px; font-size: 12px; padding: 0 10px; }
+.panel.collapsed { width: auto; }
+.pill { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 8px 0 14px; font-size: 14px; }
+.pill b { font-size: 16px; }
+
+/* ⑭ 기존 자료 시각 카드, 상단 칩 */
+.tsbar { position: absolute; right: 96px; top: 16px; background: rgba(255,255,255,.95); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 12px; font-size: 12px; z-index: 6; display: grid; grid-template-columns: auto auto; gap: 2px 16px; }
+.adv { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 6; }
+.adv span { background: #fde8e7; color: var(--red); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; }
+.adv span.am { background: var(--amber-bg); color: var(--amber); }
+
+/* ⑤ 공항 카드 */
+.apt { position: absolute; width: 272px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 3px 12px rgba(0,0,0,.15); z-index: 8; font-size: 12.5px; overflow: hidden; }
+.apt .ah { display: flex; align-items: center; gap: 6px; padding: 8px 10px 6px; }
+.apt .role { font-size: 11px; font-weight: 700; color: var(--text-3); }
+.apt .icao { font-size: 16px; font-weight: 800; }
+.apt .nm { color: var(--text-2); font-size: 12px; flex: 1; }
+.apt .past { background: var(--amber-bg); color: var(--amber); font-size: 12px; font-weight: 700; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; }
+.apt .past button { font: inherit; font-size: 11px; border: 1px solid var(--amber); color: var(--amber); background: #fff; border-radius: 4px; padding: 1px 6px; }
+.apt .row { display: grid; grid-template-columns: 44px 1fr; gap: 2px 6px; padding: 5px 10px; border-top: 1px solid var(--line); align-items: center; }
+.apt .k { font-size: 11px; font-weight: 800; color: var(--text-3); }
+.nav { display: inline-flex; align-items: center; gap: 2px; font-size: 11.5px; color: var(--text-2); }
+.nav button { width: 20px; height: 20px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; font-size: 10px; line-height: 1; padding: 0; color: var(--text-1); }
+.nav button:disabled { color: #c4c4c4; }
+.apt .v { grid-column: 2; font-family: var(--mono); font-size: 12px; color: var(--text-1); }
+.apt .warn { padding: 6px 10px; border-top: 1px solid var(--line); color: var(--red); font-weight: 700; font-size: 12px; background: #fff7f6; }
+.apt .more { padding: 4px 10px 6px; font-size: 11.5px; color: var(--accent); border-top: 1px solid var(--line); }
+.taf-full { padding: 4px 10px 8px; border-top: 1px solid var(--line); }
+.taf-full table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+.taf-full td { padding: 2px 4px; border-bottom: 1px dotted var(--line); vertical-align: top; }
+.taf-full tr.eta td { background: #e0e7ff; font-weight: 700; }
+.diff { font-family: inherit; font-size: 10.5px; font-weight: 700; color: var(--amber); background: var(--amber-bg); border-radius: 3px; padding: 0 4px; }
+.leader { position: absolute; z-index: 7; }
+
+/* ⑥ 시간 막대 */
+.trail { position: absolute; left: 24px; width: 1744px; top: 636px; height: 48px; background: rgba(255,255,255,.95); border: 1px solid var(--line-2); border-radius: 8px; z-index: 9; }
+.trail .tk { position: absolute; top: 26px; font-size: 11px; color: var(--text-3); transform: translateX(-50%); }
+.trail .tl { position: absolute; top: 18px; width: 1px; height: 6px; background: #9ca3af; }
+.trail .win { position: absolute; top: 4px; height: 20px; background: #33415526; border: 2px solid var(--accent); border-radius: 4px; }
+.trail .win span { position: absolute; top: -1px; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.trail .hz { position: absolute; top: 18px; height: 4px; border-radius: 2px; }
+.trail .knob { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--route); transform: translateX(-50%); }
+.trail .knob span { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: var(--route); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.trail .now { position: absolute; top: 2px; bottom: 2px; width: 0; border-left: 2px dashed #6b7280; }
+
+/* ⑦ 고도 슬라이더 */
+.aslide { position: absolute; right: 24px; top: 88px; width: 48px; height: 524px; background: rgba(255,255,255,.95); border: 1px solid var(--line-2); border-radius: 8px; z-index: 9; }
+.aslide .rng { position: absolute; left: 10px; width: 14px; background: #33415526; border: 2px solid var(--accent); border-radius: 3px; }
+.aslide .band { position: absolute; left: 28px; width: 8px; border-radius: 2px; }
+.aslide .tk { position: absolute; right: 52px; font-size: 11px; color: var(--text-3); transform: translateY(50%); white-space: nowrap; font-family: var(--mono); }
+.aslide .knob { position: absolute; left: -6px; right: -6px; height: 3px; background: var(--route); transform: translateY(50%); }
+.aslide .knob span { position: absolute; right: 56px; top: -9px; background: var(--route); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+
+/* 아래 독: y 700~1080 */
+.dock { position: absolute; left: 56px; top: 700px; width: 1864px; height: 380px; background: var(--surface); border-top: 1px solid var(--line-2); z-index: 12; }
+.dock .grip { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 56px; height: 12px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; }
+.dock .grip::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: #9ca3af; }
+.dh { position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 16px; padding: 0 24px; border-bottom: 1px solid var(--line); }
+.dh .ttl { font-size: 15px; font-weight: 800; }
+.dh .src { font-size: 12px; color: var(--text-3); }
+.dh .sp { flex: 1; }
+.dh .tools { display: flex; gap: 6px; }
+.rbs { position: absolute; left: 0; right: 0; top: 52px; }
+.rb { position: absolute; left: 0; right: 0; height: 24px; }
+.rb .lbl { position: absolute; left: 24px; width: 128px; height: 24px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--text-2); padding-right: 8px; }
+.rb .trk { position: absolute; left: 176px; width: 1664px; height: 24px; background: #f3f4f6; border-radius: 4px; }
+.seg { position: absolute; top: 2px; height: 20px; border-radius: 4px; font: inherit; font-size: 11.5px; font-weight: 800; padding: 0 8px; border: 0; text-align: left; white-space: nowrap; overflow: hidden; cursor: pointer; line-height: 20px; }
+.seg.SEV { background: var(--sev); color: #fff; }
+.seg.MOD { background: var(--mod); color: var(--mod-ink); }
+.seg.ref { background: repeating-linear-gradient(135deg, #fff 0 5px, #f1f1f1 5px 10px); border: 1.5px dashed var(--c); color: var(--c); line-height: 17px; }
+.seg.sel { outline: 3px solid var(--route); outline-offset: 1px; }
+.rb .empty { position: absolute; left: 10px; top: 0; line-height: 24px; font-size: 12px; color: var(--text-3); }
+.rb .unav { position: absolute; inset: 0; border-radius: 4px; background: repeating-linear-gradient(135deg, #e5e7eb 0 6px, #f3f4f6 6px 12px); font-size: 12px; font-weight: 700; color: var(--text-2); line-height: 24px; padding-left: 10px; }
+.chart { position: absolute; left: 176px; width: 1664px; top: 172px; height: 160px; }
+.chart svg { position: absolute; inset: 0; }
+.fl { position: absolute; left: 24px; width: 128px; text-align: right; padding-right: 8px; font-size: 11px; color: var(--text-3); font-family: var(--mono); transform: translateY(-50%); }
+.axis { position: absolute; left: 176px; width: 1664px; top: 338px; height: 36px; }
+.axis span { position: absolute; transform: translateX(-50%); font-size: 11.5px; font-family: var(--mono); color: var(--text-2); white-space: nowrap; top: 4px; }
+.axis span.apt-n { font-weight: 800; color: var(--text-1); font-size: 12.5px; }
+.axis span.nm { top: 20px; font-size: 10.5px; color: var(--text-3); }
+.axis-l { position: absolute; left: 24px; width: 128px; top: 342px; text-align: right; padding-right: 8px; font-size: 11px; color: var(--text-3); }
+
+/* ⑬ 상세 팝오버 */
+.pop { position: absolute; z-index: 20; width: 340px; background: var(--surface); border: 1px solid var(--line-2); border-top: 4px solid var(--c); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.22); padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.pop .h { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; }
+.pop .srcb { font-size: 11px; font-weight: 600; color: var(--text-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; }
+.pop .srcb.off { color: var(--red); border-color: var(--red); }
+.pop .enc { font-weight: 800; font-size: 13px; }
+.pop dl { margin: 0; display: grid; grid-template-columns: 40px 1fr; gap: 3px 8px; }
+.pop dt { color: var(--text-3); }
+.pop dd { margin: 0; }
+.pop .acts { display: flex; gap: 6px; margin-top: 4px; }
+.pop::after { content: ""; position: absolute; left: var(--ax, 50%); bottom: -8px; width: 14px; height: 14px; background: var(--surface); border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); transform: translateX(-50%) rotate(45deg); }
+
+/* 번호 표시 */
+.ann { position: absolute; z-index: 40; width: 26px; height: 26px; border-radius: 50%; background: #7c3aed; color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px #fff; pointer-events: none; }
+.no-ann .ann { display: none; }
+
+/* 명세 */
+.spec { max-width: 1400px; margin: 0 auto; padding: 8px 20px 80px; display: flex; flex-direction: column; gap: 24px; }
+.spec h2 { font-size: 20px; margin: 16px 0 0; padding-bottom: 8px; border-bottom: 2px solid var(--text-1); }
+.spec table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13.5px; }
+.spec th, .spec td { border: 1px solid var(--line); padding: 8px 10px; vertical-align: top; text-align: left; }
+.spec th { background: #f3f4f6; font-size: 12px; color: var(--text-3); }
+.spec td.n { font-weight: 800; color: #7c3aed; text-align: center; width: 36px; }
+.spec td.nm { font-weight: 700; white-space: nowrap; }
+.spec ul { margin: 0; padding-left: 18px; }
+.spec .box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+.spec .box ul { display: flex; flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <b>지도형 브리핑 상세 시안 · 1920×1080</b>
+  <span class="sep"></span>
+  <span style="font-size:13px;color:#9ca3af">상태</span>
+  <button type="button" data-state="base" aria-pressed="true">S1 기본</button>
+  <button type="button" data-state="seg" aria-pressed="false">S2 막대 선택</button>
+  <button type="button" data-state="apt" aria-pressed="false">S3 공항 카드 펼침·과거 보기</button>
+  <button type="button" data-state="fold" aria-pressed="false">S4 패널 접힘</button>
+  <button type="button" data-state="na" aria-pressed="false">S5 단면 자료 없음</button>
+  <span class="sep"></span>
+  <button type="button" id="annBtn" aria-pressed="true">번호 표시</button>
+</div>
+
+<div class="stage"><div class="fit" id="fit"><div class="screen" id="screen"></div></div></div>
+
+<div class="spec">
+  <h2>요소별 명세</h2>
+  <table>
+    <thead><tr><th>#</th><th>요소</th><th>위치·크기 (px, 1920×1080)</th><th>내용</th><th>상태·동작</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td class="nm">브리핑 패널</td><td>지도 왼쪽 위 (사이드바 오른쪽 24, 위 24), 폭 296, 높이는 내용만큼(최대 지도 높이 − 48). 모서리 10, 그림자</td><td>머리: "비행 전 브리핑", 경로(22px 굵게) + IFR/VFR 칩, 날짜·ETD→ETA(KST), FL·거리·소요·TAS</td><td>오른쪽 위 접기 버튼(‹) → #S4 알약 형태. 지도 드래그를 막지 않도록 패널 밖은 지도 조작 그대로</td></tr>
+      <tr><td class="n">2</td><td class="nm">요약 줄</td><td>패널 머리 아래, 좌우 16</td><td>내 고도에서 만나는 위험 중 가장 센 것 1건: 강도·종류·지속 시간·구간. 없으면 초록 "내 고도에서 MOD 이상 위험 없음", 자료 없으면 회색 "모델 자료 없음 — 난류·착빙 확인 불가"</td><td>누르면 해당 막대 선택(#13 팝오버)과 같은 동작. 공항 VFR 판정은 여기 넣지 않음(공항 카드 몫) — "전 구간 VFR" 오해 방지(F1)</td></tr>
+      <tr><td class="n">3</td><td class="nm">위험 막대 토글</td><td>행 높이 28, 4행</td><td>난류 · 착빙 · SIGMET · AIRMET. 오른쪽 칩 = 내 고도 기준 최고 강도: SEV / MOD / 없음 / 다른 고도 / 확인 불가</td><td>끄면 #10 막대 줄, #11 단면 표시, #8 지도 표시가 함께 숨음. 칩 기준은 #10과 같은 계산</td></tr>
+      <tr><td class="n">4</td><td class="nm">지도 토글 · 하단 버튼</td><td>행 높이 28 · 버튼 높이 34</td><td>공항 카드, NOTAM, 레이더, 위성. 버튼: 문서형 보기(주), 저장, 경로 수정</td><td>문서형 보기 = 기존 BriefingView. 저장은 비로그인 시 로그인 창(F12)</td></tr>
+      <tr><td class="n">5</td><td class="nm">공항 카드</td><td>폭 272, 공항 기호에서 지시선(24px)으로 떨어뜨려 경로를 가리지 않는 쪽에 배치</td><td>머리: 출발/도착, ICAO 16px, 공항명, 그 시각 비행등급 칩. METAR 줄: ◀ 관측 시각 ▶ + 원문 요약. TAF 줄: ◀ 발표 시각 ▶ + ETD/ETA에 유효한 한 줄. NOTAM 경고 줄(해당 시)</td><td>시간 막대와 연동하지 않음. ◀▶는 METAR 관측 1건, TAF 발표 1건씩 이동. 최신이 아니면 머리에 주황 "과거 자료 · n건 전" + "최신으로". 카드 누르면 TAF 전문 펼침(ETA 행 강조, 직전 발표 대비 바뀐 곳 표시). 이전 자료 없으면 ◀ 비활성 + 도움말 "보관된 이전 자료 없음"</td></tr>
+      <tr><td class="n">6</td><td class="nm">시간 막대</td><td>지도 아래 쪽, 좌 24 · 폭 1744 · 높이 48. 기본 범위 ETD−2h15 ~ ETA+3h (07:30~13:30)</td><td>정시 눈금, ETD~ETA 창(테두리 강조, "ETD 09:45 · ETA 10:29"), 창 안에 내 고도 위험 구간을 4px 색 선으로. 현재 시각 점선</td><td>손잡이 기본 위치 = ETD(이미 지났으면 현재). 사용자가 끌 때만 지도 기상 레이어 시각이 바뀜. 공항 카드는 영향 없음</td></tr>
+      <tr><td class="n">7</td><td class="nm">고도 슬라이더</td><td>지도 오른쪽, 우 24 · 위 88 · 폭 48 · 높이 524. SFC~FL450</td><td>왼쪽 칸: 비행 고도 범위(SFC~순항) 강조, 순항고도 선. 오른쪽 8px 띠: 위험 고도대(내 고도 = 꽉 찬 색, 다른 고도 = 빗금)</td><td>손잡이 기본 = 순항고도. 끌면 지도의 고도별 레이어(난류·착빙·바람) 고도가 바뀜</td></tr>
+      <tr><td class="n">8</td><td class="nm">지도 위 위험 표시</td><td>지도 전체</td><td>경로선(파랑 4px) 아래에 내 고도 위험 구간을 굵은 색 띠(SEV 빨강, MOD 노랑)로. SIGMET 다각형(빨강 점선), AIRMET(갈색 점선), 고른 시각·고도의 모델 난류 면</td><td>#13에서 선택한 구간은 한 단계 더 진하게 + 구간 시작·끝 지점 이름 표시</td></tr>
+      <tr><td class="n">9</td><td class="nm">단면 독 머리</td><td>y 700, 높이 44, 전체 폭(사이드바 제외). 위 가장자리 손잡이로 높이 조절 260~560</td><td>"경로 단면 RKSI → RKPC · FL250", 단면 자료 기준(모델·발표 시각), 도구: 레이어 ▾, 확대 −/+/전체, 크게 보기, 접기</td><td>접으면 머리 44px만 남고 지도가 아래까지 늘어남</td></tr>
+      <tr><td class="n">10</td><td class="nm">위험 막대 4줄</td><td>머리 아래 8, 줄 높이 24, 간격 4. 왼쪽 라벨 열 128, 막대 영역 x 176~1840 (1664px = 330NM, 약 5.0px/NM)</td><td>꽉 찬 막대 = 내 비행 고도에서 만남(MOD 이상), 빗금 점선 = 경로는 지나지만 다른 고도. 막대 안 글자: "강도 · 고도" (폭 &lt; 60px면 강도만). 빈 줄은 "MOD 이상 없음", 자료 실패 줄은 회색 빗금 "자료 없음 · 확인 불가"</td><td>누르면 #13 팝오버. 가리키면 #11 단면에 같은 구간 음영 + 지도에 구간 강조(미리보기)</td></tr>
+      <tr><td class="n">11</td><td class="nm">연직단면도</td><td>막대 아래, 높이 160 (독 높이에 따라 늘어남). 가로축은 #10과 같은 픽셀 대응</td><td>기존 VerticalProfileChart: 비행 고도선, 구름·착빙·난류·SIGMET 상자, 등온선. 기본 표시는 비행 고도선·난류·착빙·SIGMET/AIRMET만, 나머지는 레이어 ▾에서</td><td>가리키면 세로 커서 + 지도에 그 지점 점(기존 ProfileCursor). 누르면 시간·고도 이동 버튼이 있는 작은 메뉴</td></tr>
+      <tr><td class="n">12</td><td class="nm">거리축</td><td>단면 아래 높이 36</td><td>윗줄 지점 이름(공항은 굵게, TOD 표시), 아랫줄 누적 NM</td><td>지점 이름을 누르면 지도가 그 지점으로 이동</td></tr>
+      <tr><td class="n">13</td><td class="nm">막대 상세 팝오버</td><td>폭 340, 선택 막대 위쪽에 꼬리 달고 표시(지도 위로 겹쳐도 됨)</td><td>강도 칩 + 이름 + 출처(SIGMET·AIRMET은 빨간 테두리), 만남 여부 문장, 구간(지점→지점, NM), 통과 시각·지속, 고도, 자료 시각</td><td>버튼 "지도·슬라이더를 이 구간으로": 누를 때만 #6·#7 손잡이와 지도 이동. "닫기", Esc, 바깥 클릭으로 닫힘</td></tr>
+      <tr><td class="n">14</td><td class="nm">기존 상단 요소</td><td>그대로</td><td>SIGMET/AIRMET 칩(상단 가운데), 자료 시각 카드(오른쪽 위)</td><td>변경 없음</td></tr>
+    </tbody>
+  </table>
+
+  <h2>공통 규칙</h2>
+  <div class="box"><ul>
+    <li><b>화면은 스스로 움직이지 않는다</b>: 시간·고도·공항 카드 과거 보기는 모두 사용자가 조작할 때만 바뀐다. 막대 선택은 팝오버만 열고, 이동은 버튼으로.</li>
+    <li><b>"없음"과 "확인 불가"를 구분</b>: 계산했는데 없으면 "없음/MOD 이상 없음", 자료가 없으면 회색 빗금 "확인 불가".</li>
+    <li><b>색과 글자를 함께</b>: SEV 빨강·MOD 노랑에 항상 글자 칩. 다른 고도는 빗금 점선으로 모양까지 다르게.</li>
+    <li><b>위치는 지점 이름 먼저</b>, NM은 보조.</li>
+    <li><b>시각은 KST 기본</b>, 팝오버·카드의 자료 시각은 UTC 병기 가능(설정의 표시 시간대 따름). 표기 형식: <span class="mono">10/20 09:45 KST</span>.</li>
+    <li><b>통과 시각 계산</b> = ETD + 경로 거리(SID·STAR 포함) ÷ TAS. 바람 미반영임을 팝오버에 작게 표시. 선행: 총 거리 수정(F3).</li>
+    <li><b>최소 지원 폭 1280</b>: 1280~1919에서는 패널 폭 264, 공항 카드 240, 막대 라벨 열 112로 줄임. 1279 이하(휴대폰·세로 태블릿)는 문서형 보기.</li>
+  </ul></div>
+
+  <h2>예시 자료 출처</h2>
+  <div class="box"><ul>
+    <li>경로·지점·거리·위험 구간·RKSI METAR·RKPC 09:00 METAR·TAF 분할·NOTAM: 2026-10-20 운영 화면에서 확인한 값.</li>
+    <li>과거 METAR(08:30 이전)와 직전 TAF 발표 내용, 직전 발표 대비 변경 표시는 <b>모양을 보이기 위한 예시</b>이며 실제 자료가 아님.</li>
+  </ul></div>
+</div>
+
+<script>
+// ===== 좌표 상수 (화면 1920×1080, 지도 영역 원점 = (56,0)) =====
+const TOTAL = 329.9, ETD = 9 * 60 + 45, TAS = 450
+const RB_X = 176, RB_W = 1664 // 독 안 막대 영역
+const nmX = (nm) => RB_X + nm / TOTAL * RB_W
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`
+const passT = (nm) => hhmm(ETD + nm / TAS * 60)
+const WPS = [
+  ['RKSI', 0, [944, 70], 1], ['BOPTA', 66.6, [950, 190]], ['MOXID', 88.2, [954, 230]], ['BEDES', 102.9, [958, 258]],
+  ['ELPOS', 117.8, [962, 286]], ['MANGI', 141.9, [956, 330]], ['DALSU', 164.7, [950, 372]], ['NULDI', 207.2, [942, 452]],
+  ['DOTOL', 217.2, [940, 470]], ['TOD', 300, null], ['RKPC', 329.9, [990, 575], 1],
+]
+// 지도 경로(거리, 좌표) — SID·STAR 곡선 포함
+const PATH = [[0, 944, 70], [6, 900, 58], [14, 880, 80], [40, 910, 130], [66.6, 950, 190], [88.2, 954, 230], [102.9, 958, 258], [117.8, 962, 286],
+  [141.9, 956, 330], [164.7, 950, 372], [207.2, 942, 452], [217.2, 940, 470], [240, 948, 500], [262, 930, 530], [285, 902, 556], [300, 905, 584], [318, 940, 598], [329.9, 990, 575]]
+const at = (nm) => { for (let i = 1; i < PATH.length; i++) { const [a, ax, ay] = PATH[i - 1], [b, bx, by] = PATH[i]; if (nm <= b) { const f = (nm - a) / (b - a); return [ax + (bx - ax) * f, ay + (by - ay) * f] } } return PATH.at(-1).slice(1) }
+const pts = (s, e) => { const r = [at(s)]; PATH.forEach(([d, x, y]) => { if (d > s && d < e) r.push([x, y]) }); r.push(at(e)); return r.map((p) => p.join(',')).join(' ') }
+const near = (nm) => WPS.filter((w) => w[0] !== 'TOD').reduce((a, b) => Math.abs(b[1] - nm) < Math.abs(a[1] - nm) ? b : a)[0]
+const altAt = (nm) => nm < 66.6 ? 250 * nm / 66.6 : nm < 300 ? 250 : 250 * (TOTAL - nm) / (TOTAL - 300)
+
+const ROWS = [
+  { key: 'turb', label: '난류', src: 'KIM GKTG(모델)', model: true, segs: [
+    { s: 42, e: 180, sev: 'SEV', alt: 'FL250', phase: '순항', mine: true },
+    { s: 320, e: 327, sev: 'MOD', alt: '4,000–2,000ft', phase: '접근', mine: true }] },
+  { key: 'ice', label: '착빙', src: 'KIM(모델)', model: true, segs: [] },
+  { key: 'sigmet', label: 'SIGMET', src: 'SIGMET', off: true, segs: [
+    { s: 100, e: 217, sev: 'SEV', name: '착빙', alt: 'FL140–200', mine: false, note: '내 순항 FL250 · 위험 상단보다 5,000ft 위' }] },
+  { key: 'airmet', label: 'AIRMET', src: 'AIRMET', off: true, segs: [
+    { s: 109, e: 217, sev: 'MOD', name: '지표시정 5000M RA/FG/BR', alt: 'SFC–10,000ft', mine: false, note: '순항 중 통과 · 지상 시정' }] },
+]
+let state = 'base'
+
+function worst(r, na) {
+  if (na && r.model) return '<span class="chip na">확인 불가</span>'
+  const m = r.segs.filter((s) => s.mine)
+  if (m.some((s) => s.sev === 'SEV')) return '<span class="chip SEV">SEV</span>'
+  if (m.length) return '<span class="chip MOD">MOD</span>'
+  if (r.segs.length) return '<span class="chip ref">다른 고도</span>'
+  return '<span class="chip none">없음</span>'
+}
+const A = (n, x, y) => `<span class="ann" style="left:${x}px;top:${y}px">${n}</span>`
+
+function render() {
+  const na = state === 'na', sel = state === 'seg' ? ROWS[0].segs[0] : null
+  const fold = state === 'fold', aptOpen = state === 'apt'
+  let h = ''
+
+  // 사이드바
+  h += `<div class="rail">${Array.from({ length: 8 }, (_, i) => `<i class="${i === 1 ? 'on' : ''}"></i>`).join('')}</div>`
+
+  // ---------- 지도 ----------
+  const route = PATH.map(([, x, y]) => `${x},${y}`).join(' ')
+  const mineSegs = na ? [] : ROWS[0].segs
+  h += `<div class="map">
+  <svg class="base" width="1864" height="700" viewBox="0 0 1864 700">
+    <path d="M760 0 L1240 0 L1210 120 L1180 250 L1120 380 L1040 420 L900 430 L860 380 L880 300 L850 220 L870 120 L820 40 Z" fill="var(--land)" stroke="var(--land-line)"/>
+    <path d="M1380 380 L1600 300 L1700 330 L1640 420 L1460 470 Z" fill="var(--land)" stroke="var(--land-line)"/>
+    <ellipse cx="990" cy="578" rx="58" ry="24" fill="var(--land)" stroke="var(--land-line)"/>
+    ${!na && state !== 'fold' || true ? `<path d="M890 140 L1080 120 L1090 340 L900 360 Z" fill="#e5372f" opacity="${na ? 0 : sel ? .28 : .16}"/>` : ''}
+    <polygon points="700,300 1180,220 1240,300 1060,520 720,560" fill="none" stroke="#c0291f" stroke-width="2" stroke-dasharray="8 5"/>
+    <polygon points="690,330 1150,282 1110,522 712,584" fill="none" stroke="#92400e" stroke-width="1.5" stroke-dasharray="3 4"/>
+    <text x="1150" y="246" font-size="13" fill="#c0291f" font-weight="700">SIGMET SEV ICE FL140–200</text>
+    <text x="700" y="600" font-size="12" fill="#92400e" font-weight="700">AIRMET SFC VIS 5000M</text>
+    ${mineSegs.map((s) => `<polyline points="${pts(s.s, s.e)}" fill="none" stroke="${s.sev === 'SEV' ? '#e5372f' : '#FFC300'}" stroke-width="${sel === s ? 16 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity="${sel === s ? .75 : .5}"/>`).join('')}
+    <polyline points="${route}" fill="none" stroke="var(--route)" stroke-width="4" stroke-linejoin="round"/>
+    ${WPS.filter((w) => w[2] && !w[3]).map(([n, , [x, y]]) => `<circle cx="${x}" cy="${y}" r="4" fill="#fff" stroke="var(--route)" stroke-width="2"/><text x="${x - 12}" y="${y + 4}" font-size="12" font-family="monospace" fill="#1e3a8a" text-anchor="end" font-weight="700">${n}</text>`).join('')}
+    <circle cx="944" cy="70" r="8" fill="#166534" stroke="#fff" stroke-width="2"/><circle cx="990" cy="575" r="8" fill="#166534" stroke="#fff" stroke-width="2"/>
+    <line x1="952" y1="70" x2="1090" y2="96" stroke="#6b7280" stroke-width="1.5"/>
+    <line x1="998" y1="571" x2="1060" y2="540" stroke="#6b7280" stroke-width="1.5"/>
+    ${sel ? (() => { const [x1, y1] = at(sel.s), [x2, y2] = at(sel.e), [mx, my] = at((sel.s + sel.e) / 2); return `<g font-size="12" font-weight="800"><rect x="${x1 + 14}" y="${y1 - 11}" width="86" height="20" rx="4" fill="#e5372f"/><text x="${x1 + 20}" y="${y1 + 4}" fill="#fff">시작 ${near(sel.s)}</text><rect x="${x2 + 14}" y="${y2 - 11}" width="86" height="20" rx="4" fill="#e5372f"/><text x="${x2 + 20}" y="${y2 + 4}" fill="#fff">끝 ${near(sel.e)}</text></g>` })() : ''}
+  </svg>
+  <div class="adv"><span>SIGMET 1 ▾</span><span class="am">AIRMET 1 ▾</span></div>
+  <div class="tsbar"><span class="muted">자료 시각</span><span class="muted" style="text-align:right">난류 KIM GKTG</span><span>발표 <b class="mono">10/20 06Z</b></span><span>유효 <b class="mono">10/20 09:45 KST</b></span></div>`
+
+  // ① 패널
+  if (fold) {
+    h += `<div class="panel collapsed"><div class="pill"><b>RKSI → RKPC</b><span class="mono">09:45→10:29</span><span class="chip SEV">SEV 1</span><button class="collapse" style="position:static">›</button></div></div>`
+  } else {
+    h += `<div class="panel">
+      <div class="ph"><span class="eyebrow">비행 전 브리핑 · 10/20(화)</span>
+        <span class="rt">RKSI → RKPC <span class="chip ifr">IFR</span></span>
+        <span class="ln mono">ETD 09:45 → ETA 10:29 KST</span>
+        <span class="ln">FL250 · 330NM · 44분 · TAS 450kt</span>
+        <button class="collapse" aria-label="패널 접기">‹</button></div>
+      ${na ? `<div class="summary na"><b>모델 자료 없음 · 난류·착빙 확인 불가</b><span>SIGMET·AIRMET: 내 고도 해당 없음</span></div>`
+        : `<div class="summary"><b>순항 중 SEV 난류 18분</b><span>BOPTA → DALSU · FL250 · 09:51–10:09</span></div>`}
+      <div class="sec"><div class="hd"><span>위험 막대</span><span>내 고도 기준</span></div>
+        ${ROWS.map((r) => `<div class="tg"><span class="box"></span><span>${r.label}</span>${worst(r, na)}</div>`).join('')}</div>
+      <div class="sec"><div class="hd"><span>지도</span></div>
+        ${[['공항 카드', 1], ['NOTAM 1', 1], ['레이더', 0], ['위성', 0]].map(([l, o]) => `<div class="tg${o ? '' : ' off'}"><span class="box"></span><span>${l}</span><span></span></div>`).join('')}</div>
+      <div class="pf"><button class="btn pri">문서형 보기</button><button class="btn">저장</button><button class="btn">경로 수정</button></div>
+    </div>`
+  }
+
+  // ⑤ 공항 카드
+  h += `<div class="apt" style="left:1090px;top:64px">
+      <div class="ah"><span class="role">출발</span><span class="icao">RKSI</span><span class="nm">인천</span><span class="chip vfr">VFR</span></div>
+      <div class="row"><span class="k">METAR</span><span class="nav"><button disabled=false>◀</button><span class="mono">09:30</span><button disabled>▶</button><span class="muted" style="margin-left:4px">최신</span></span>
+        <span class="v">040/08 CAVOK 15/11 Q1019</span></div>
+      <div class="row"><span class="k">TAF</span><span class="nav"><button>◀</button><span class="mono">08:00 발표</span><button disabled>▶</button></span>
+        <span class="v">ETD 09:45 → 100/06 CAVOK</span></div>
+    </div>`
+  if (aptOpen) {
+    h += `<div class="apt" style="left:1060px;top:178px">
+      <div class="past"><span>과거 관측 · 2건 전 (08:00 KST)</span><button>최신으로</button></div>
+      <div class="ah"><span class="role">도착</span><span class="icao">RKPC</span><span class="nm">제주</span><span class="chip vfr">VFR</span></div>
+      <div class="row"><span class="k">METAR</span><span class="nav"><button>◀</button><span class="mono">08:00</span><button>▶</button><span class="muted" style="margin-left:4px">예시</span></span>
+        <span class="v">050/04 8000 -RA SCT012 BKN030</span></div>
+      <div class="row"><span class="k">TAF</span><span class="nav"><button>◀</button><span class="mono">08:00 발표</span><button disabled>▶</button><span class="muted" style="margin-left:4px">최신</span></span></div>
+      <div class="taf-full"><table>
+        <tr><td>20/09–10</td><td>07008KT 9999 FEW010 BKN030</td></tr>
+        <tr class="eta"><td>20/10–12</td><td>6000 -RA <span class="diff">직전 대비 1시간 앞당겨짐(예시)</span> · ETA 10:29</td></tr>
+        <tr><td>20/12–19</td><td>9999 NSW</td></tr>
+        <tr><td>20/19–21/04</td><td>24010KT 6000 -RA</td></tr>
+        <tr><td>21/04–09</td><td>30012KT NSW</td></tr>
+        <tr><td>21/09–13</td><td>33016G28KT 9999 <span class="diff">돌풍 신규(예시)</span></td></tr>
+        <tr><td>21/13–15</td><td>SCT035</td></tr>
+      </table><div class="muted" style="font-size:11px;margin-top:4px">원문(TAC) 보기 · 보관된 발표 3건</div></div>
+      <div class="warn">RWY 07/25 폐쇄 예정(시각 미정) · 선택 STAR RWY 07</div>
+    </div>`
+  } else {
+    h += `<div class="apt" style="left:1060px;top:470px">
+      <div class="ah"><span class="role">도착</span><span class="icao">RKPC</span><span class="nm">제주</span><span class="chip vfr">VFR</span></div>
+      <div class="row"><span class="k">METAR</span><span class="nav"><button>◀</button><span class="mono">09:00</span><button disabled>▶</button><span class="muted" style="margin-left:4px">최신</span></span>
+        <span class="v">070/03 6000 -RA BR BKN025</span></div>
+      <div class="row"><span class="k">TAF</span><span class="nav"><button>◀</button><span class="mono">08:00 발표</span><button disabled>▶</button></span>
+        <span class="v">ETA 10:29 → 6000 -RA</span></div>
+      <div class="warn">RWY 07/25 폐쇄 예정 · 선택 STAR RWY 07</div>
+    </div>`
+  }
+
+  // ⑥ 시간 막대: 07:30~13:30 → 1744px
+  const T0 = 7 * 60 + 30, TW = 360, tx = (m) => (m - T0) / TW * 1744
+  const knobM = sel ? ETD + (sel.s + sel.e) / 2 / TAS * 60 : ETD
+  h += `<div class="trail">
+    ${Array.from({ length: 7 }, (_, i) => { const m = 8 * 60 + i * 60; return `<span class="tl" style="left:${tx(m)}px"></span><span class="tk mono" style="left:${tx(m)}px">${hhmm(m)}</span>` }).join('')}
+    <span class="win" style="left:${tx(ETD)}px;width:${tx(ETD + 44) - tx(ETD)}px"><span style="left:4px">ETD 09:45 · ETA 10:29</span></span>
+    ${na ? '' : ROWS[0].segs.map((s) => `<span class="hz" style="left:${tx(ETD + s.s / TAS * 60)}px;width:${Math.max(4, tx(ETD + s.e / TAS * 60) - tx(ETD + s.s / TAS * 60))}px;background:${s.sev === 'SEV' ? '#e5372f' : '#FFC300'}"></span>`).join('')}
+    <span class="now" style="left:${tx(9 * 60 + 50)}px" title="현재 09:50"></span>
+    <span class="knob" style="left:${tx(knobM)}px"><span>${hhmm(knobM)} KST</span></span>
+  </div>`
+
+  // ⑦ 고도 슬라이더: SFC~FL450 → 524px
+  const ay = (fl) => 524 - fl / 450 * 524
+  const knobFL = 250
+  h += `<div class="aslide">
+    <span class="rng" style="top:${ay(250)}px;height:${524 - ay(250)}px"></span>
+    ${na ? '' : `<span class="band" style="top:${ay(260)}px;height:${ay(240) - ay(260)}px;background:#e5372f" title="난류 SEV FL250"></span>
+    <span class="band" style="top:${ay(40)}px;height:${ay(20) - ay(40)}px;background:#FFC300" title="난류 MOD 접근"></span>`}
+    <span class="band" style="top:${ay(200)}px;height:${ay(140) - ay(200)}px;background:repeating-linear-gradient(135deg,#c0291f 0 3px,#fff 3px 6px);border:1px dashed #c0291f" title="SIGMET 착빙 FL140–200 (다른 고도)"></span>
+    ${[0, 100, 200, 300, 400].map((fl) => `<span class="tk" style="top:${ay(fl)}px">${fl ? 'FL' + fl : 'SFC'}</span>`).join('')}
+    <span class="knob" style="top:${ay(knobFL)}px"><span>FL${knobFL}</span></span>
+  </div>`
+  h += `</div>` // map
+
+  // ---------- 독 ----------
+  h += `<div class="dock"><span class="grip" title="끌어서 높이 조절"></span>
+    <div class="dh"><span class="ttl">경로 단면 · RKSI → RKPC · FL250</span><span class="src">단면 기준 10/20 10:00 KST · KIM 10/20 06Z 발표</span><span class="sp"></span>
+      <span class="tools"><button class="btn sm">레이어 ▾</button><button class="btn sm">−</button><button class="btn sm">+</button><button class="btn sm">전체</button><button class="btn sm">크게 보기 ⤢</button><button class="btn sm">접기 ▾</button></span></div>
+    <div class="rbs">${ROWS.map((r, i) => {
+      const top = i * 28
+      let inner = ''
+      if (na && r.model) inner = '<span class="unav">단면 자료 없음 · 확인 불가</span>'
+      else if (!r.segs.length) inner = '<span class="empty">MOD 이상 없음</span>'
+      else inner = r.segs.map((s) => {
+        const l = nmX(s.s) - RB_X, w = Math.max(10, nmX(s.e) - nmX(s.s))
+        const txt = w >= 60 ? `${s.sev}${s.name ? ' ' + s.name.split(' ')[0] : ''} · ${s.alt}` : s.sev
+        return `<button class="seg ${s.mine ? s.sev : 'ref'}${sel === s ? ' sel' : ''}" style="left:${l}px;width:${w}px;--c:${s.sev === 'SEV' ? '#c0291f' : '#92400e'}">${txt}</button>`
+      }).join('')
+      return `<div class="rb" style="top:${top}px"><span class="lbl">${r.label}${worst(r, na)}</span><div class="trk">${inner}</div></div>`
+    }).join('')}</div>`
+
+  // ⑪ 단면도 (높이 160, FL0~FL350)
+  const cy = (fl) => 160 - fl / 350 * 160, cx = (nm) => nm / TOTAL * RB_W
+  const prof = []; for (let nm = 0; nm <= TOTAL; nm += 2) prof.push(`${cx(nm)},${cy(altAt(nm))}`)
+  h += [300, 200, 100].map((fl) => `<span class="fl" style="top:${172 + cy(fl)}px">FL${fl}</span>`).join('') + `<span class="fl" style="top:${172 + cy(250)}px;color:var(--route);font-weight:800">계획 FL250</span>`
+  h += `<div class="chart"><svg width="${RB_W}" height="160">
+    ${[100, 200, 300].map((fl) => `<line x1="0" x2="${RB_W}" y1="${cy(fl)}" y2="${cy(fl)}" stroke="#eceef1"/>`).join('')}
+    ${na ? `<rect x="0" y="0" width="${RB_W}" height="160" fill="#f3f4f6"/><text x="${RB_W / 2}" y="70" text-anchor="middle" font-size="14" fill="#4b5563" font-weight="700">KIM 단면 자료를 불러오지 못했습니다 · 비행 고도선과 SIGMET·AIRMET만 표시</text>`
+      : `<rect x="${cx(42)}" y="${cy(300)}" width="${cx(180) - cx(42)}" height="${cy(220) - cy(300)}" fill="#e5372f" opacity=".22"/>
+         <rect x="${cx(318)}" y="${cy(45)}" width="${cx(329) - cx(318)}" height="${cy(15) - cy(45)}" fill="#FFC300" opacity=".5"/>
+         ${[[67, 103, 230, 262], [165, 207, 236, 256], [258, 273, 100, 140]].map(([a, b, lo, hi]) => `<rect x="${cx(a)}" y="${cy(hi)}" width="${cx(b) - cx(a)}" height="${cy(lo) - cy(hi)}" fill="#3b82f6" opacity=".22"/>`).join('')}`}
+    <rect x="${cx(100)}" y="${cy(200)}" width="${cx(217) - cx(100)}" height="${cy(140) - cy(200)}" fill="none" stroke="#c0291f" stroke-dasharray="6 4" stroke-width="1.5"/>
+    ${sel ? `<rect x="${cx(sel.s)}" y="0" width="${cx(sel.e) - cx(sel.s)}" height="160" fill="#1d4ed81a" stroke="#1d4ed8" stroke-dasharray="4 3"/>` : ''}
+    <polyline points="${prof.join(' ')}" fill="none" stroke="var(--route)" stroke-width="3"/>
+    <line x1="${cx(300)}" x2="${cx(300)}" y1="${cy(250) - 14}" y2="${cy(250)}" stroke="#92400e" stroke-width="1.5"/><text x="${cx(300) + 4}" y="${cy(250) - 6}" font-size="11" fill="#92400e" font-weight="700">TOD</text>
+    <rect x="0" y="154" width="${RB_W}" height="6" fill="#52525b" opacity=".45"/>
+  </svg></div>`
+  h += `<span class="axis-l">지점 · NM</span><div class="axis">${WPS.map(([n, nm, , apt]) => `<span class="${apt ? 'apt-n' : ''}" style="left:${cx(nm)}px">${n}</span><span class="nm" style="left:${cx(nm)}px">${Math.round(nm)}</span>`).join('')}</div>`
+  h += `</div>` // dock
+
+  // ⑬ 팝오버
+  if (sel) {
+    const mid = nmX((sel.s + sel.e) / 2) + 56, left = mid - 170
+    h += `<div class="pop" style="left:${left}px;top:${700 + 52 - 272}px;--c:#e5372f">
+      <div class="h"><span class="chip SEV">SEV</span>난류<span class="srcb">${ROWS[0].src}</span></div>
+      <span class="enc" style="color:var(--red)">● 내 비행 고도에서 만남</span>
+      <dl><dt>구간</dt><dd><b>${near(sel.s)} → ${near(sel.e)}</b> <span class="muted mono">${sel.s}–${sel.e}NM · ${sel.e - sel.s}NM</span></dd>
+      <dt>통과</dt><dd class="mono">${passT(sel.s)}–${passT(sel.e)} KST (${Math.round((sel.e - sel.s) / TAS * 60)}분) <span class="muted" style="font-family:inherit;font-size:11px">바람 미반영</span></dd>
+      <dt>고도</dt><dd>${sel.alt} · ${sel.phase}</dd>
+      <dt>자료</dt><dd class="muted">KIM GKTG 10/20 06Z 발표 · 유효 10:00 KST</dd></dl>
+      <div class="acts"><button class="btn sm pri">지도·슬라이더를 이 구간으로</button><button class="btn sm">닫기</button></div></div>`
+  }
+
+  // 번호
+  h += A(1, 56 + 24 - 13, 24 - 13) + (fold ? '' : A(2, 56 + 24 - 13, 190) + A(3, 56 + 24 - 13, 292) + A(4, 56 + 24 - 13, 450))
+  h += A(5, 56 + 1090 - 13, 64 - 13) + A(6, 56 + 24 - 13, 636 - 6) + A(7, 1920 - 24 - 48 - 30, 88 - 13) + A(8, 56 + 880, 160)
+  h += A(9, 56 + 4, 700 + 9) + A(10, 56 + 150, 700 + 50) + A(11, 56 + 150, 700 + 210) + A(12, 56 + 150, 700 + 342) + A(14, 1920 - 96 - 30, 6)
+  if (sel) h += A(13, nmX(111) + 56 - 170 - 13, 700 + 52 - 272 - 13)
+
+  document.getElementById('screen').innerHTML = h
+}
+
+// 축소 맞춤
+function fit() {
+  const w = document.getElementById('fit').clientWidth, s = Math.min(1, w / 1920)
+  const sc = document.getElementById('screen'); sc.style.transform = `scale(${s})`
+  document.getElementById('fit').style.height = 1080 * s + 'px'
+}
+window.addEventListener('resize', fit)
+document.querySelectorAll('[data-state]').forEach((b) => b.addEventListener('click', () => {
+  state = b.dataset.state; document.querySelectorAll('[data-state]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render()
+}))
+document.getElementById('annBtn').addEventListener('click', (e) => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'
+  e.currentTarget.setAttribute('aria-pressed', String(on)); document.getElementById('screen').classList.toggle('no-ann', !on)
+})
+render(); fit()
+</script>
+</body>
+</html>

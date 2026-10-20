@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지도형 브리핑 시안 2</title>
+<style>
+/* 시안 2: 작은 패널 + 연직단면도 머리의 위험 막대가 위험 전달을 맡는다. 앱 토큰 값 사용. */
+:root {
+  --bg: #f5f5f5; --surface: #ffffff; --line: #e0e0e0; --line-2: #c8c8c8;
+  --text-1: #242424; --text-2: #424242; --text-3: #616161;
+  --accent: #334155; --accent-bg: #eef2f7;
+  --red: #c0291f; --red-bg: #f7dcd9; --amber: #b45309; --amber-bg: #fdecc8;
+  --green: #166534; --green-bg: #dcefe2;
+  --mod: #FFC300; --sev: #e5372f; --ice: #2563eb;
+  --sea: #cfe3f0; --land: #eef0e6; --route: #1d4ed8;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-1); font: 13px/1.5 "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+.page { max-width: 1440px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.top { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: baseline; }
+.top h1 { font-size: 20px; margin: 0; }
+.muted { color: var(--text-3); }
+.small { font-size: 12px; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* 앱 화면 틀 */
+.app { aspect-ratio: 16 / 9; min-height: 640px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden;
+  display: grid; grid-template-columns: 196px 1fr; grid-template-rows: 1fr 300px; }
+@media (max-width: 1000px) { .app { aspect-ratio: auto; grid-template-columns: 1fr; grid-template-rows: auto 420px 300px; } }
+
+/* 작은 패널 */
+.panel { grid-row: 1 / 3; border-right: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+@media (max-width: 1000px) { .panel { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--line); } }
+.flight { display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.flight .rt { font-size: 17px; font-weight: 800; letter-spacing: .01em; }
+.flight .meta { font-size: 11.5px; color: var(--text-2); }
+.toggles { display: flex; flex-direction: column; gap: 2px; }
+.toggles .hd { font-size: 10.5px; font-weight: 700; color: var(--text-3); letter-spacing: .06em; margin-bottom: 2px; }
+.tg { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: center; padding: 5px 4px; border-radius: 4px; cursor: pointer; user-select: none; }
+.tg:hover { background: var(--accent-bg); }
+.tg input { margin: 0; }
+.tg .nm { font-weight: 600; }
+.chip { font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 3px; white-space: nowrap; }
+.chip.SEV { background: var(--sev); color: #fff; }
+.chip.MOD { background: var(--mod); color: #3a2a00; }
+.chip.none { background: var(--accent-bg); color: var(--text-3); font-weight: 600; }
+.chip.ref { background: transparent; color: var(--text-3); border: 1px dashed var(--line-2); font-weight: 600; }
+.panel .doc { margin-top: auto; font: inherit; font-size: 12px; padding: 7px; border: 1px solid var(--line-2); background: var(--surface); border-radius: 5px; cursor: pointer; }
+
+/* 지도 */
+.map { position: relative; background: var(--sea); overflow: hidden; min-height: 0; }
+.map-inner { position: absolute; top: 8px; bottom: 48px; left: 50%; transform: translateX(-50%); aspect-ratio: 1 / 1; }
+.map svg.base { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.apt-card { position: absolute; background: var(--surface); border: 1px solid var(--line-2); border-radius: 5px; padding: 5px 7px; font-size: 10.5px; box-shadow: 0 1px 4px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 1px; min-width: 128px; }
+.apt-card .h { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 11.5px; }
+.apt-card .cat { color: var(--green); }
+.apt-card .warn { color: var(--red); font-weight: 700; }
+.tslider { position: absolute; left: 12px; right: 48px; bottom: 10px; height: 30px; background: rgba(255,255,255,.92); border: 1px solid var(--line-2); border-radius: 5px; }
+.tslider .win { position: absolute; top: 0; bottom: 0; background: #33415522; border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+.tslider .lb { position: absolute; bottom: 2px; font-size: 9.5px; font-family: var(--mono); color: var(--text-3); transform: translateX(-50%); white-space: nowrap; }
+.tslider .mk { position: absolute; top: 3px; width: 6px; height: 6px; border-radius: 50%; transform: translateX(-50%); }
+.tslider .knob { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--accent); transform: translateX(-50%); border-radius: 2px; }
+.aslider { position: absolute; right: 10px; top: 12px; bottom: 52px; width: 28px; background: rgba(255,255,255,.92); border: 1px solid var(--line-2); border-radius: 5px; }
+.aslider .rng { position: absolute; left: 4px; right: 4px; bottom: 0; background: #33415522; border-top: 2px solid var(--accent); }
+.aslider .band { position: absolute; left: 4px; right: 4px; }
+.aslider .tk { position: absolute; right: 32px; font-size: 9px; font-family: var(--mono); color: var(--text-3); transform: translateY(50%); white-space: nowrap; }
+.aslider .knob { position: absolute; left: -3px; right: -3px; height: 3px; background: var(--accent); transform: translateY(50%); }
+.legend-note { position: absolute; left: 12px; top: 10px; background: rgba(255,255,255,.92); border: 1px solid var(--line-2); border-radius: 5px; padding: 4px 8px; font-size: 11px; }
+
+/* 연직단면도 + 위험 막대 */
+.prof { border-top: 1px solid var(--line-2); display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+.ribbons { display: grid; grid-template-columns: 92px 1fr; padding: 6px 12px 4px; gap: 3px 8px; align-items: center; border-bottom: 1px solid var(--line); }
+.rb-label { font-size: 11px; font-weight: 700; color: var(--text-2); display: flex; justify-content: space-between; gap: 4px; align-items: center; }
+.rb-track { position: relative; height: 18px; background: #f3f4f6; border-radius: 3px; }
+.seg { position: absolute; top: 1px; bottom: 1px; border-radius: 3px; font-size: 9.5px; font-weight: 800; line-height: 16px; padding: 0 5px; white-space: nowrap; overflow: hidden; cursor: pointer; border: 0; font-family: inherit; text-align: left; }
+.seg.SEV { background: var(--sev); color: #fff; }
+.seg.MOD { background: var(--mod); color: #3a2a00; }
+.seg.ref { background: repeating-linear-gradient(135deg, transparent 0 4px, #0000000f 4px 8px); border: 1.5px dashed var(--c); color: var(--c); line-height: 13px; }
+.seg[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rb-empty { font-size: 10.5px; color: var(--text-3); padding-left: 6px; line-height: 18px; }
+.chart { position: relative; min-height: 0; }
+.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.axis { display: grid; grid-template-columns: 92px 1fr; padding: 0 12px 6px; gap: 8px; }
+.wp { position: relative; height: 16px; font-size: 9.5px; font-family: var(--mono); color: var(--text-2); }
+.wp span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.wp span.apt { font-weight: 800; color: var(--text-1); }
+
+/* 선택한 막대 상세 */
+.detail { position: absolute; z-index: 5; background: var(--surface); border: 1px solid var(--line-2); border-left: 4px solid var(--c); border-radius: 5px; box-shadow: 0 4px 14px rgba(0,0,0,.16); padding: 8px 10px; width: 270px; display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; }
+.detail .h { display: flex; gap: 6px; align-items: center; font-weight: 800; font-size: 13px; }
+.detail .src { font-size: 10px; color: var(--text-3); border: 1px solid var(--line-2); border-radius: 3px; padding: 0 4px; }
+.detail .src.off { color: var(--red); border-color: var(--red); }
+.detail dl { margin: 2px 0 0; display: grid; grid-template-columns: 34px 1fr; gap: 1px 6px; }
+.detail dt { color: var(--text-3); }
+.detail dd { margin: 0; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.notes > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.notes h3 { margin: 0 0 6px; font-size: 14px; }
+.notes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.tabs { display: flex; gap: 6px; }
+.tabs button { font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--text-1); color: #fff; border-color: var(--text-1); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <h1>지도형 브리핑 시안 2</h1>
+    <span class="muted">작은 패널 + 단면도 머리의 위험 막대 · 예시 자료 RKSI → RKPC, 2026-10-20 ETD 09:45 KST, FL250, 330NM</span>
+    <div class="tabs" role="group" aria-label="예시 상호작용">
+      <span class="muted small">막대를 눌러 보세요 →</span>
+    </div>
+  </div>
+
+  <div class="app">
+    <aside class="panel" aria-label="브리핑 요약과 표시 항목">
+      <div class="flight">
+        <span class="rt">RKSI → RKPC</span>
+        <span class="meta mono">ETD 09:45 · ETA 10:29 KST</span>
+        <span class="meta">IFR · FL250 · 330NM · 44분</span>
+      </div>
+      <div class="toggles" id="toggles">
+        <span class="hd">내 고도 기준 최고 강도</span>
+      </div>
+      <div class="toggles" id="toggles2">
+        <span class="hd">지도 표시</span>
+      </div>
+      <button type="button" class="doc">문서형 보기</button>
+    </aside>
+
+    <div class="map" id="map"></div>
+
+    <section class="prof" aria-label="연직단면도와 위험 막대">
+      <div class="ribbons" id="ribbons"></div>
+      <div class="chart" id="chart"></div>
+      <div class="axis"><span class="small muted" style="text-align:right">거리 NM</span><div class="wp" id="wps"></div></div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <div><h3>위험 막대가 맡는 일</h3><ul>
+      <li>줄마다 한 종류: 난류 · 착빙(모델) · SIGMET · AIRMET. 가로축은 단면도와 같은 경로 거리.</li>
+      <li><b>꽉 찬 막대</b> = 비행기가 실제 지나는 고도(상승·순항·강하 포함)에서 만남. 기존 enroute 리본 계산(MOD 이상) 그대로.</li>
+      <li><b>빗금 점선 막대</b> = 경로는 지나지만 내 고도와 다름. 예: SIGMET 착빙 FL140–200을 FL250으로 지남.</li>
+      <li>"MOD 이상 없음"도 줄에 글자로 남겨, 비어 있는 것이 "확인했는데 없음"임을 보여줌.</li>
+    </ul></div>
+    <div><h3>막대를 누르면</h3><ul>
+      <li>상세 카드: 강도·출처(SIGMET은 빨간 테두리)·지점 이름·고도·통과 시각.</li>
+      <li>지도: 해당 경로 구간이 굵게 강조, 위험 영역 표시.</li>
+      <li>단면도: 해당 거리 구간 음영.</li>
+      <li>시간 막대·고도 슬라이더: 그 구간의 통과 시각과 고도로 이동(이 시안에서는 손잡이 위치로 표현).</li>
+    </ul></div>
+    <div><h3>작은 패널에 남긴 것</h3><ul>
+      <li>비행 요약(구간·시각·고도·거리).</li>
+      <li>종류별 켜기·끄기 + 최고 강도 칩. 끄면 막대 줄·지도 표시가 함께 사라짐.</li>
+      <li>공항 기상과 NOTAM은 지도 위 공항 카드로 이동. 패널에는 켜기·끄기만.</li>
+      <li>문서형 보기 전환 버튼(B안 결정).</li>
+    </ul></div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 329.9, ETD = 9 * 60 + 45, SPEED = 450 / 60 // NM per min
+const WPS = [['RKSI', 0, 1], ['BOPTA', 66.6], ['MOXID', 88.2], ['BEDES', 102.9], ['ELPOS', 117.8], ['MANGI', 141.9], ['DALSU', 164.7], ['NULDI', 207.2], ['DOTOL', 217.2], ['TOD', 300], ['RKPC', 329.9, 1]]
+// 고도 프로필: 0→66.6NM 상승, 300NM부터 강하
+const altAt = (nm) => nm < 66.6 ? 250 * nm / 66.6 : nm < 300 ? 250 : 250 * (TOTAL - nm) / (TOTAL - 300)
+const t = (nm) => { const m = ETD + Math.round(nm / SPEED); return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` }
+const near = (nm) => WPS.reduce((a, b) => Math.abs(b[1] - nm) < Math.abs(a[1] - nm) ? b : a)[0]
+const C = { SEV: 'var(--sev)', MOD: '#b45309' }
+
+// 위험 막대 자료: mine=내 고도에서 만남(기존 리본), ref=다른 고도
+const ROWS = [
+  { key: 'turb', label: '난류', src: 'KIM GKTG', segs: [
+    { s: 42, e: 180, sev: 'SEV', alt: 'FL250 (순항)', mine: true },
+    { s: 320, e: 327, sev: 'MOD', alt: '4,000–2,000ft (접근)', mine: true }] },
+  { key: 'ice', label: '착빙', src: 'KIM', segs: [], empty: 'MOD 이상 없음 · LIGHT 3구간은 단면도에서' },
+  { key: 'sigmet', label: 'SIGMET', src: 'SIGMET', official: true, segs: [
+    { s: 100, e: 217, sev: 'SEV', name: '착빙', alt: 'FL140–200', mine: false, note: '내 고도 FL250 · 위험 상단보다 5,000ft 위' }] },
+  { key: 'airmet', label: 'AIRMET', src: 'AIRMET', official: true, segs: [
+    { s: 109, e: 217, sev: 'MOD', name: '지표시정 5000M RA/FG/BR', alt: 'SFC–10,000ft', mine: false, note: '순항 중 통과 · 지상 시정' }] },
+]
+const on = { turb: true, ice: true, sigmet: true, airmet: true }
+const mapOn = { apt: true, notam: true, radar: false }
+let sel = null
+
+const worst = (r) => { const m = r.segs.filter((s) => s.mine); return m.find((s) => s.sev === 'SEV') ? 'SEV' : m.length ? 'MOD' : r.segs.length ? 'ref' : 'none' }
+
+function renderPanel() {
+  const el = document.getElementById('toggles')
+  el.innerHTML = '<span class="hd">내 고도 기준 최고 강도</span>' + ROWS.map((r) => {
+    const w = worst(r)
+    const chip = w === 'SEV' || w === 'MOD' ? `<span class="chip ${w}">${w}</span>` : w === 'ref' ? '<span class="chip ref">다른 고도</span>' : '<span class="chip none">없음</span>'
+    return `<label class="tg"><input type="checkbox" data-k="${r.key}" ${on[r.key] ? 'checked' : ''}><span class="nm">${r.label}</span>${chip}</label>`
+  }).join('')
+  document.getElementById('toggles2').innerHTML = '<span class="hd">지도 표시</span>' +
+    [['apt', '공항 기상'], ['notam', 'NOTAM 1'], ['radar', '레이더']].map(([k, l]) => `<label class="tg"><input type="checkbox" data-m="${k}" ${mapOn[k] ? 'checked' : ''}><span class="nm">${l}</span><span></span></label>`).join('')
+  el.querySelectorAll('input').forEach((i) => i.addEventListener('change', () => { on[i.dataset.k] = i.checked; if (sel && !on[sel.row.key]) sel = null; renderAll() }))
+  document.querySelectorAll('[data-m]').forEach((i) => i.addEventListener('change', () => { mapOn[i.dataset.m] = i.checked; renderMap() }))
+}
+
+function renderRibbons() {
+  const el = document.getElementById('ribbons')
+  el.innerHTML = ROWS.filter((r) => on[r.key]).map((r) => {
+    const segs = r.segs.map((s, i) => {
+      const l = s.s / TOTAL * 100, w = Math.max(1.6, (s.e - s.s) / TOTAL * 100)
+      const pressed = sel && sel.row === r && sel.i === i
+      const txt = `${s.sev}${s.name ? ' ' + s.name.split(' ')[0] : ''} · ${s.alt}`
+      return `<button type="button" class="seg ${s.mine ? s.sev : 'ref'}" style="left:${l}%;width:${w}%;--c:${C[s.sev]}" data-r="${r.key}" data-i="${i}" aria-pressed="${pressed}" title="${txt}">${w > 9 ? txt : s.sev}</button>`
+    }).join('')
+    return `<div class="rb-label"><span>${r.label}</span></div><div class="rb-track">${segs}${r.empty ? `<span class="rb-empty">${r.empty}</span>` : ''}</div>`
+  }).join('')
+  el.querySelectorAll('.seg').forEach((b) => b.addEventListener('click', () => {
+    const row = ROWS.find((r) => r.key === b.dataset.r), i = +b.dataset.i
+    sel = sel && sel.row === row && sel.i === i ? null : { row, i }
+    renderAll()
+  }))
+}
+
+function renderChart() {
+  const X = (nm) => nm / TOTAL * 100, Y = (fl) => 100 - fl / 400 * 100
+  const prof = []; for (let nm = 0; nm <= TOTAL; nm += 2) prof.push(`${X(nm)},${Y(altAt(nm))}`)
+  const hl = sel ? (() => { const s = sel.row.segs[sel.i]; return `<rect x="${X(s.s)}" y="0" width="${X(s.e) - X(s.s)}" height="100" fill="#33415518"/>` })() : ''
+  const sig = on.sigmet ? `<rect x="${X(100)}" y="${Y(200)}" width="${X(217) - X(100)}" height="${Y(140) - Y(200)}" fill="none" stroke="#c0291f" stroke-dasharray="1.5 1" stroke-width=".35"/>` : ''
+  const turb = on.turb ? `<rect x="${X(42)}" y="${Y(300)}" width="${X(180) - X(42)}" height="${Y(220) - Y(300)}" fill="#e5372f" opacity=".22"/><rect x="${X(318)}" y="${Y(50)}" width="${X(329) - X(318)}" height="${Y(15) - Y(50)}" fill="#FFC300" opacity=".45"/>` : ''
+  const ice = on.ice ? [[67, 103, 230, 260], [165, 207, 235, 255], [258, 273, 100, 140]].map(([a, b, lo, hi]) => `<rect x="${X(a)}" y="${Y(hi)}" width="${X(b) - X(a)}" height="${Y(lo) - Y(hi)}" fill="#2563eb" opacity=".18"/>`).join('') : ''
+  const grid = [100, 200, 300].map((fl) => `<line x1="0" x2="100" y1="${Y(fl)}" y2="${Y(fl)}" stroke="#e5e7eb" stroke-width=".3"/>`).join('')
+  document.getElementById('chart').innerHTML = `
+    <div style="position:absolute;left:12px;top:0;bottom:0;width:92px;font-size:9.5px;color:var(--text-3);font-family:var(--mono)">
+      ${[300, 200, 100].map((fl) => `<span style="position:absolute;right:8px;top:${Y(fl)}%;transform:translateY(-50%)">FL${fl}</span>`).join('')}
+      <span style="position:absolute;right:8px;top:${Y(250)}%;transform:translateY(-50%);color:var(--route);font-weight:800">FL250</span></div>
+    <div style="position:absolute;left:112px;right:12px;top:4px;bottom:0">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">${grid}${turb}${ice}${sig}${hl}
+      <polyline points="${prof.join(' ')}" fill="none" stroke="var(--route)" vector-effect="non-scaling-stroke" style="stroke-width:2.5px"/>
+      <rect x="0" y="96" width="100" height="4" fill="#3f3f46" opacity=".5"/></svg></div>`
+  document.getElementById('wps').innerHTML = WPS.map(([n, nm, apt]) => `<span class="${apt ? 'apt' : ''}" style="left:${nm / TOTAL * 100}%">${n}</span>`).join('')
+}
+
+function renderMap() {
+  // 남북형 경로를 지도 좌표(0~100)로: 거리 비율로 위→아래
+  const P = (nm) => { const f = nm / TOTAL; return [48 - 6 * Math.sin(f * 3.1) + (f > .9 ? (f - .9) * 60 : 0), 8 + f * 82] }
+  const line = (a, b) => { const pts = []; for (let nm = a; nm <= b; nm += 2) pts.push(P(nm).join(',')); return pts.join(' ') }
+  const s = sel && sel.row.segs[sel.i]
+  const hl = s ? `<polyline points="${line(s.s, s.e)}" fill="none" stroke="${s.mine ? (s.sev === 'SEV' ? '#e5372f' : '#f59e0b') : '#c0291f'}" stroke-width="7" opacity=".55" vector-effect="non-scaling-stroke" stroke-linecap="round"/>` : ''
+  const sig = on.sigmet ? `<polygon points="30,38 66,33 64,73 33,75" fill="${s && sel.row.key === 'sigmet' ? '#c0291f22' : 'none'}" stroke="#c0291f" stroke-width=".5" stroke-dasharray="2 1"/>` : ''
+  const air = on.airmet ? `<polygon points="28,42 70,40 70,80 30,82" fill="none" stroke="#b45309" stroke-width=".4" stroke-dasharray="1 1"/>` : ''
+  const turb = on.turb ? `<rect x="36" y="14" width="22" height="40" fill="#e5372f" opacity="${s && sel.row.key === 'turb' ? .32 : .16}"/>` : ''
+  const wps = WPS.filter((w) => !w[2] && w[0] !== 'TOD').map(([n, nm]) => { const [x, y] = P(nm); return `<circle cx="${x}" cy="${y}" r=".5" fill="#1d4ed8"/><text x="${x + 1.2}" y="${y + .6}" font-size="2.2" fill="#1e3a8a" font-family="monospace">${n}</text>` }).join('')
+  const [ax, ay] = P(0), [bx, by] = P(TOTAL)
+  // 슬라이더 위치: 선택 구간의 중간
+  const mid = s ? (s.s + s.e) / 2 : 0
+  const tPct = s ? 18 + 64 * (mid / TOTAL) : 18
+  const aPct = s ? altAt(mid) / 450 * 100 : 0
+  document.getElementById('map').innerHTML = `<div class="map-inner">
+    <svg class="base" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <path d="M26 0 L74 0 L70 30 L64 58 L56 70 L40 70 L32 52 L28 26 Z" fill="var(--land)" stroke="#c9ccbd" stroke-width=".3"/>
+      <path d="M42 88 L58 87 L59 93 L43 94 Z" fill="var(--land)" stroke="#c9ccbd" stroke-width=".3"/>
+      ${turb}${air}${sig}
+      <polyline points="${line(0, TOTAL)}" fill="none" stroke="var(--route)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+      ${hl}${wps}
+      <circle cx="${ax}" cy="${ay}" r="1.1" fill="#166534"/><circle cx="${bx}" cy="${by}" r="1.1" fill="#166534"/>
+    </svg>
+    ${mapOn.apt ? `<div class="apt-card" style="left:calc(${ax}% + 18px);top:calc(${ay}% - 14px)"><div class="h"><span>RKSI 출발</span><span class="cat">VFR</span></div><span class="mono">09:45 · CAVOK 040/08</span></div>
+    <div class="apt-card" style="left:calc(${bx}% + 18px);top:calc(${by}% - 60px)"><div class="h"><span>RKPC 도착</span><span class="cat">VFR</span></div><span class="mono">10:29 · TAF 6000 -RA</span>${mapOn.notam ? '<span class="warn">RWY 07/25 폐쇄 예정 · STAR RWY 07</span>' : ''}</div>` : ''}</div>
+    ${s ? detailCard(s) : ''}
+    <div class="tslider" aria-label="시간 막대">
+      <div class="win" style="left:18%;width:64%"></div>
+      ${ROWS.filter((r) => on[r.key]).flatMap((r) => r.segs.filter((x) => x.mine).map((x) => `<span class="mk" style="left:${18 + 64 * x.s / TOTAL}%;background:${x.sev === 'SEV' ? '#e5372f' : '#f59e0b'}"></span>`)).join('')}
+      <span class="knob" style="left:${tPct}%"></span>
+      <span class="lb" style="left:6%">09:00</span><span class="lb" style="left:18%">09:45</span><span class="lb" style="left:50%">10:07</span><span class="lb" style="left:82%">10:29</span><span class="lb" style="left:94%">11:00</span>
+    </div>
+    <div class="aslider" aria-label="고도 슬라이더">
+      <div class="rng" style="height:${250 / 450 * 100}%"></div>
+      ${on.sigmet ? `<div class="band" style="bottom:${140 / 450 * 100}%;height:${60 / 450 * 100}%;background:repeating-linear-gradient(135deg,#c0291f55 0 3px,transparent 3px 6px);border:1px dashed #c0291f"></div>` : ''}
+      ${on.turb ? `<div class="band" style="bottom:${230 / 450 * 100}%;height:${40 / 450 * 100}%;background:#e5372f99"></div>` : ''}
+      ${[0, 100, 200, 250, 300, 400].map((fl) => `<span class="tk" style="bottom:${fl / 450 * 100}%">${fl ? 'FL' + fl : 'SFC'}</span>`).join('')}
+      <span class="knob" style="bottom:${aPct}%"></span>
+    </div>`
+}
+
+function detailCard(s) {
+  const r = sel.row
+  return `<div class="detail" style="right:52px;top:14px;--c:${s.mine ? C[s.sev] : '#64748b'}">
+    <div class="h"><span class="chip ${s.sev}">${s.sev}</span>${s.name || r.label}<span class="src${r.official ? ' off' : ''}">${r.src}</span></div>
+    <span style="font-weight:700;color:${s.mine ? 'var(--red)' : 'var(--text-3)'}">${s.mine ? '내 비행 고도에서 만남' : '경로는 지나지만 다른 고도'}</span>
+    <dl><dt>구간</dt><dd>${near(s.s)} ~ ${near(s.e)} <span class="muted mono">${s.s}–${s.e}NM</span></dd>
+    <dt>시각</dt><dd class="mono">${t(s.s)}–${t(s.e)} KST (${Math.round((s.e - s.s) / SPEED)}분)</dd>
+    <dt>고도</dt><dd>${s.alt}</dd>${s.note ? `<dt></dt><dd class="muted">${s.note}</dd>` : ''}</dl></div>`
+}
+
+function renderAll() { renderPanel(); renderRibbons(); renderChart(); renderMap() }
+sel = { row: ROWS[0], i: 0 }
+renderAll()
+</script>
+</body>
+</html>
