@@ -223,6 +223,8 @@ function ProfileChartContent({
   plotPaddingLeft = null,
   // 지점별 예보시각 조절 줄(점·선). 지도형 독에서도 켠다 — 한때 높이를 아끼려 껐다가 기능이 사라져 되돌렸다.
   showWaypointRail = true,
+  // 지도형 독: 시간선을 그림 바로 아래에 붙이고 지점 이름을 그 밑으로 당겨, 시간선을 끈 것과 같은 높이로.
+  compactRail = false,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -294,8 +296,10 @@ function ProfileChartContent({
   const railEnabled = Boolean(showWaypointRail && (onSetWaypointNwpOffset || nwpTimeSelection) && visibleMarkers.length > 1)
   // 시간선의 44px 클릭 영역과 기존 웨이포인트 이름 블록은 겹치면 안 된다.
   // 이름표는 클릭 영역이 끝나는 바로 다음 행에서 시작한다.
-  const waypointLabelBandOffset = railEnabled ? 36 : 0
-  const padding = { ...basePadding, bottom: (interactive ? 22 : 36) + markerLaneCount * 16 + (railEnabled ? 28 : 0) }
+  const waypointLabelBandOffset = railEnabled ? (compactRail ? 12 : 36) : 0
+  const padding = { ...basePadding, bottom: (interactive ? 22 : 36) + markerLaneCount * 16 + (railEnabled && !compactRail ? 28 : 0) }
+  const railOffsetY = compactRail ? 9 : 13
+  const railHitHalf = compactRail ? 9 : 22
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const terrainMaxFt = Math.max(...terrainPoints.map((point) => point.elevationFt), 0)
@@ -694,10 +698,10 @@ function ProfileChartContent({
           {nwpRail.map((segment) => {
             const x1 = xFor(segment.startDistanceNm)
             const x2 = xFor(segment.endDistanceNm)
-            const y = padding.top + plotHeight + 13
+            const y = padding.top + plotHeight + railOffsetY
             return <g key={segment.startWaypointId}>
               <line className={`vertical-profile-nwp-rail-line is-offset-${segment.offsetHours}`} x1={x1} x2={x2} y1={y} y2={y} />
-              {onSetWaypointNwpOffset && <rect x={x1} y={y - 22} width={Math.max(1, x2 - x1)} height={44} fill="transparent" role="button" tabIndex={0}
+              {onSetWaypointNwpOffset && <rect x={x1} y={y - railHitHalf} width={Math.max(1, x2 - x1)} height={railHitHalf * 2} fill="transparent" role="button" tabIndex={0}
                 aria-label={`${segment.startWaypointLabel}부터 NWP 시간 설정`}
                 onClick={(event) => { event.stopPropagation(); setEditingNwpSegment(segment) }}
                 onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingNwpSegment(segment) } }} />}

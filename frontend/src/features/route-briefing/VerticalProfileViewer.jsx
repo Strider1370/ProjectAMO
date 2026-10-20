@@ -208,7 +208,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         layers={chartLayers.current.value} legendInToolbar selectedCandidateAltitudeFt={selectedCandidateAltitudeFt} candidateAltitudes={candidateAltitudes}
         nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={crossSectionHourLoading ? undefined : onSetWaypointNwpOffset} allowMissingTerrain={allowMissingTerrain} fitHeight
         highlightRangeNm={highlightRangeNm} linkedItems={linkedItems} activeLinkedItemId={activeLinkedItemId} onSelectLinkedItem={onSelectLinkedItem}
-        hideMeta={compact} plotPaddingLeft={plotPaddingLeft}
+        hideMeta={compact} plotPaddingLeft={plotPaddingLeft} compactRail={compact}
         showComparisonProfiles interactive zoom={zoom} scrollElementRef={scrollRef} selectedMarkerId={selected?.id} onSelectMarker={selectMarker} enableDragScroll />
     </div>
     {!compact && <RouteOverview total={total} range={range} onRange={setRangeFromOverview} waypointCount={markers.length}/>}
