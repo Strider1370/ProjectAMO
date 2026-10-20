@@ -88,3 +88,16 @@ test('merges same-level model segments split by a small gap', () => {
   const [segment, ...rest] = buildHazardRibbon({ ...base, enrouteModel: split }).rows[0].model
   assert.deepEqual([segment.startNm, segment.endNm, rest.length], [328, 333, 0])
 })
+
+test('splits a SIGMET crossed twice into one frame per run', () => {
+  const hazard = sigmet('EMBD_TS', 100, 260, 'on', { routeRunsNm: [{ startNm: 100, endNm: 140 }, { startNm: 200, endNm: 260 }] })
+  const frames = buildHazardRibbon({ ...base, enrouteModel, hazards: [hazard] }).rows.find((row) => row.key === 'convection').frames
+  assert.deepEqual(frames.map((frame) => [frame.startNm, frame.endNm]), [[100, 140], [200, 260]])
+})
+
+test('keeps partially missing model data as missing intervals so it is not read as no hazard', () => {
+  const partial = { elements: [], status: { turbulence: 'none', icing: 'none' }, missing: { turbulence: [{ startNm: 280, endNm: 330 }], icing: [] } }
+  const ribbon = buildHazardRibbon({ ...base, enrouteModel: partial })
+  assert.deepEqual(ribbon.rows.map((row) => [row.key, row.missing]), [['turbulence', [{ startNm: 280, endNm: 330 }]]])
+  assert.deepEqual([ribbon.summary.status, ribbon.summary.partial], ['clear', ['turbulence']])
+})

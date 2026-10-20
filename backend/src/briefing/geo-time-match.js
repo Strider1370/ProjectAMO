@@ -85,6 +85,23 @@ export function routeIntervalInGeometry(axis, geometry) {
   return { entered: startNm != null, startNm, endNm }
 }
 
+// 경로가 영역 안에 있는 구간들(들어갔다 나올 때마다 하나씩). 여유 폭 없이 실제 경계 기준 —
+// 연직단면도가 SIGMET 상자를 그리는 기준과 같다. 위험 막대 틀이 단면 상자와 맞도록 쓴다.
+export function routeRunsInGeometry(axis, geometry) {
+  if (axis?.bounds && !boundsOverlap(axis.bounds, geometryBounds(geometry))) return []
+  const polygons = polygonsOf(geometry)
+  const runs = []
+  let current = null
+  for (const s of axis?.samples ?? []) {
+    const inside = polygons.some((polygon) => polygon[0] && pointInPolygon([s.lon, s.lat], polygon[0]))
+    if (inside) {
+      if (!current) { current = { startNm: s.distanceNm, endNm: s.distanceNm }; runs.push(current) }
+      else current.endNm = s.distanceNm
+    } else current = null
+  }
+  return runs
+}
+
 function minDistanceNmToRing([lon, lat], ring) {
   let min = Infinity
   for (const vertex of ring) {
@@ -123,4 +140,4 @@ export function routeCorridorInGeometry(axis, geometry, bufferNm) {
   return { entered: startNm != null, startNm, endNm }
 }
 
-export default { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, routeCorridorInGeometry, geometryBounds, boundsOverlap }
+export default { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, routeRunsInGeometry, routeCorridorInGeometry, geometryBounds, boundsOverlap }

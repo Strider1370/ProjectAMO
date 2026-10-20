@@ -5,6 +5,17 @@ import {
   exposureConfidence,
   hazardBandFt,
 } from './hazard-exposure.js'
+import { routeRunsInGeometry } from './geo-time-match.js'
+
+// 위험 막대 틀용: 실제 영역 안 구간들을 노출 구간(여유 폭·항로 범위 반영) 안으로 자른 것.
+// 여유 폭 안으로만 지나가 실제 영역에 안 들어가면 노출 구간 하나를 그대로 쓴다(숨기지 않는다).
+function routeRunsWithin(axis, geometry, interval) {
+  if (!interval) return []
+  const runs = routeRunsInGeometry(axis, geometry)
+    .map((run) => ({ startNm: Math.max(run.startNm, interval.startNm), endNm: Math.min(run.endNm, interval.endNm) }))
+    .filter((run) => run.endNm >= run.startNm)
+  return runs.length ? runs : [interval]
+}
 
 function matchItems(items, source, ctx) {
   const out = []
@@ -29,6 +40,7 @@ function matchItems(items, source, ctx) {
       verticalKnown: altitudeExposure.status !== 'unknown',
       bandFt,
       routeIntervalNm,
+      routeRunsNm: routeRunsWithin(ctx.axis, it.geometry, routeIntervalNm),
       horizontalExposure,
       altitudeExposure,
       timeStatus,

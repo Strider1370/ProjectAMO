@@ -110,3 +110,10 @@ test('reports per-phenomenon status so missing turbulence is not read as none', 
   const calm = { levels: crossSection.levels.map((level) => ({ ...level, values: level.values.map((value) => ({ ...value, icing: 0 })) })) }
   assert.equal(summarizeEnrouteModel({ ...ctx, crossSection: calm }).status.icing, 'none')
 })
+
+test('reports runs of missing samples', async () => {
+  const { missingIntervals } = await import('../src/briefing/enroute-model.js')
+  const series = [0, 10, 20, 30, 40].map((distanceNm, i) => ({ distanceNm, value: [1, null, null, 2, null][i] }))
+  // 5NM보다 짧은 빈 구간(끝 40NM 한 샘플)은 뺀다 — 공항 바로 위 지표 근처 결측.
+  assert.deepEqual(missingIntervals(series), [{ startNm: 10, endNm: 20 }])
+})

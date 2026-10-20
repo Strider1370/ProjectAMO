@@ -104,6 +104,24 @@ function classifyKtg(v, product) { const i = product === 'GKTG' ? gktgIntensity(
 
 // 현상별 자료 상태: found(MOD 이상 구간 있음) · none(자료는 있고 MOD 이상 없음) · unavailable(자료 없음).
 // 착빙 자료만 있고 난류가 빠진 경우를 "난류 없음"으로 읽지 않게 따로 둔다.
+// 값이 없는 샘플이 이어진 구간들. 일부만 빈 경우(예: 단면 자료 영역 밖) 위험 막대가 그 구간을
+// 빗금으로 그리게 해, 자료 없음이 "MOD 이상 없음"으로 읽히지 않게 한다.
+// MIN_MISSING_NM보다 짧은 빈 구간은 뺀다 — 출발·도착 공항 바로 위(지표 근처)는 늘 1NM쯤 비어
+// 모든 경로 양 끝에 빗금이 생겼다.
+const MIN_MISSING_NM = 5
+export function missingIntervals(series) {
+  const out = []
+  let current = null
+  for (const point of series) {
+    if (point.value == null) {
+      if (!current) { current = { startNm: point.distanceNm, endNm: point.distanceNm }; out.push(current) }
+      else current.endNm = point.distanceNm
+    } else current = null
+  }
+  return out.filter((iv) => iv.endNm - iv.startNm >= MIN_MISSING_NM)
+    .map((iv) => ({ startNm: Math.round(iv.startNm), endNm: Math.round(iv.endNm) }))
+}
+
 function seriesStatus(series, intervals) {
   if (!series.some((point) => point.value != null)) return 'unavailable'
   return intervals.length ? 'found' : 'none'
@@ -112,11 +130,13 @@ function seriesStatus(series, intervals) {
 export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceNm, cruiseAltitudeFt, flightPlanProfile = null }) {
   const elements = []
   const status = { icing: 'unavailable', turbulence: 'unavailable' }
+  const missing = { icing: [], turbulence: [] }
   const kim = crossSection?.levels ?? []
   if (kim.length) {
     const series = seriesAtAltitude(kim, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { flightPlanProfile, mode: 'worst' })
     const icing = thresholdIntervals(series, classifyIcing)
     status.icing = seriesStatus(series, icing)
+    missing.icing = missingIntervals(series)
     if (icing.length) elements.push({ kind: 'icing', label: '착빙', intervals: icing })
   }
   const ktg = turbulence?.levels ?? []
@@ -124,12 +144,14 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
     const series = seriesAtAltitude(ktg, totalDistanceNm, cruiseAltitudeFt, (e) => e?.ktg, { flightPlanProfile, mode: 'worst', nullOutside: true, strictMissing: turbulence.product === 'GKTG' })
     const turb = thresholdIntervals(series, value => classifyKtg(value, turbulence.product))
     status.turbulence = seriesStatus(series, turb)
+    missing.turbulence = missingIntervals(series)
     if (turb.length) elements.push({ kind: 'turbulence', label: '난류', intervals: turb })
   }
   return {
     totalDistanceNm: Math.round(totalDistanceNm) || null,
     elements,
     status,
+    missing,
     runs: { kim: crossSection?.run ?? null, ktg: turbulence?.run ?? null },
   }
 }

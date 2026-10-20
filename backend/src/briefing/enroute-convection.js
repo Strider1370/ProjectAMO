@@ -1,6 +1,6 @@
 import { readKimAciIndex, readKimAciField } from '../processors/kim-aci-store.js'
 import { ACI_MISSING, ACI_SCORE_SCALE } from '../../../shared/aci.js'
-import { thresholdIntervals } from './enroute-model.js'
+import { missingIntervals, thresholdIntervals } from './enroute-model.js'
 
 // 위험 막대의 대류 줄: KIM 대류영역(실험) 점수를 경로 축 샘플마다 읽어 구간으로 만든다.
 // 점수는 고도 구분이 없는 0~1 값이라 지도 색 구간과 같은 0.5(MOD)·0.75(SEV)로 나눈다.
@@ -33,7 +33,7 @@ function scoreAt(field, lon, lat) {
   return raw == null || raw === ACI_MISSING ? null : raw * ACI_SCORE_SCALE
 }
 
-const UNAVAILABLE = { status: 'unavailable', intervals: [], run: null }
+const UNAVAILABLE = { status: 'unavailable', intervals: [], missing: [], run: null }
 
 // status: found(MOD 이상 구간 있음) · none(MOD 이상 없음) · unavailable(자료 없음·영역 밖·읽기 실패).
 export function buildEnrouteConvection({ root, axis, etd, domain = 'ea', readIndex = readKimAciIndex, readField = readKimAciField } = {}) {
@@ -48,6 +48,7 @@ export function buildEnrouteConvection({ root, axis, etd, domain = 'ea', readInd
     return {
       status: intervals.length ? 'found' : 'none',
       intervals,
+      missing: missingIntervals(series),
       run: { tmfc: time.tmfc, hf: Number(time.hf), validTime: time.validTime ?? null, domain },
     }
   } catch {

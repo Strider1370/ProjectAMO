@@ -95,8 +95,13 @@ function modelSegments(ctx, intervals, { altitudeIndependent = false } = {}) {
   }))
 }
 
-function frameFor(ctx, hazard) {
-  const interval = hazard.routeIntervalNm
+// 발표 하나가 경로를 여러 번 지나면 지날 때마다 틀 하나(routeRunsNm). 없으면 노출 구간 하나.
+function framesFor(ctx, hazard) {
+  const runs = hazard.routeRunsNm?.length ? hazard.routeRunsNm : [hazard.routeIntervalNm]
+  return runs.map((interval) => frameFor(ctx, hazard, interval)).filter(Boolean)
+}
+
+function frameFor(ctx, hazard, interval) {
   if (!Number.isFinite(interval?.startNm) || !Number.isFinite(interval?.endNm)) return null
   return {
     source: hazard.source,
@@ -124,12 +129,13 @@ function buildSummary(rows) {
     ...row.frames.filter((frame) => frame.mine).map((frame) => ({ ...frame, kind: 'frame', row: row.key, label: row.label, sourceLabel: frame.label, level: 'SEV' })),
   ])
   const unavailable = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.status === 'unavailable').map((row) => row.key)
-  if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, unavailable }
+  const partial = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.missing?.length).map((row) => row.key)
+  if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, unavailable, partial }
   const top = candidates.reduce((best, item) => {
     const rank = summaryRank(item), bestRank = summaryRank(best)
     return rank > bestRank || (rank === bestRank && item.startNm < best.startNm) ? item : best
   })
-  return { status: 'hazard', top, unavailable }
+  return { status: 'hazard', top, unavailable, partial }
 }
 
 export function buildHazardRibbon({ enrouteModel = null, convection = null, hazards = [], flightPlanProfile = null, markers = [], cruiseAltitudeFt, totalDistanceNm, etd, eta } = {}) {
@@ -150,31 +156,33 @@ export function buildHazardRibbon({ enrouteModel = null, convection = null, haza
   }
 
   const elements = new Map((enrouteModel?.elements ?? []).map((element) => [element.kind, element]))
+  // missing: 자료가 없는 구간(일부만 빈 경우). 막대에 빗금으로 그려 "없음"으로 읽히지 않게 한다.
   const modelByRow = {
-    turbulence: { status: enrouteModel?.status?.turbulence ?? 'unavailable', segments: modelSegments(ctx, elements.get('turbulence')?.intervals) },
-    icing: { status: enrouteModel?.status?.icing ?? 'unavailable', segments: modelSegments(ctx, elements.get('icing')?.intervals) },
-    convection: { status: convection?.status ?? 'unavailable', segments: modelSegments(ctx, convection?.intervals, { altitudeIndependent: true }) },
+    turbulence: { status: enrouteModel?.status?.turbulence ?? 'unavailable', segments: modelSegments(ctx, elements.get('turbulence')?.intervals), missing: enrouteModel?.missing?.turbulence ?? [] },
+    icing: { status: enrouteModel?.status?.icing ?? 'unavailable', segments: modelSegments(ctx, elements.get('icing')?.intervals), missing: enrouteModel?.missing?.icing ?? [] },
+    convection: { status: convection?.status ?? 'unavailable', segments: modelSegments(ctx, convection?.intervals, { altitudeIndependent: true }), missing: convection?.missing ?? [] },
   }
 
   const framesByRow = new Map()
   for (const hazard of hazards) {
     if (hazard.airportScope || hazard.source === 'AIRMET') continue // 공항경보는 공항 카드 몫, AIRMET은 막대에서 뺌
     const row = rowForCode(hazard.code)
-    const frame = row ? frameFor(ctx, hazard) : null
-    if (!frame) continue
+    const frames = row ? framesFor(ctx, hazard) : []
+    if (!frames.length) continue
     if (!framesByRow.has(row)) framesByRow.set(row, [])
-    framesByRow.get(row).push(frame)
+    framesByRow.get(row).push(...frames)
   }
 
   const rows = ROWS
     .filter((row) => framesByRow.has(row.key) || modelByRow[row.key]?.segments.length
-      || (row.showUnavailable && modelByRow[row.key]?.status === 'unavailable'))
+      || (row.showUnavailable && (modelByRow[row.key]?.status === 'unavailable' || modelByRow[row.key]?.missing.length)))
     .map((row) => ({
       key: row.key,
       label: row.label,
       // 모델이 없는 줄(태풍)은 null — 화면이 "확인 불가"로 그리지 않게.
       status: modelByRow[row.key]?.status ?? null,
       model: modelByRow[row.key]?.segments ?? [],
+      missing: modelByRow[row.key]?.status === 'unavailable' ? [] : (modelByRow[row.key]?.missing ?? []),
       frames: (framesByRow.get(row.key) ?? []).sort((a, b) => a.startNm - b.startNm),
     }))
 
