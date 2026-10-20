@@ -221,3 +221,11 @@
 .mb-toast b { color: #fde68a; }
 .mb-toast button { padding: 2px 8px; border: 1px solid #6b7280; border-radius: var(--radius-sm); background: transparent; color: #e5e7eb; font: inherit; font-size: var(--fs-100); cursor: pointer; }
 .mb-toast button:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* 지도형 브리핑 중 항공·기상 레이어 패널: 아래 독(위험 막대·단면도)에 가리지 않게 독 위에서 끝나고, 안쪽을 스크롤한다.
+   패널 위치(top 72) + 시간 막대(40) + 독 위 범례·지점 정보 줄과 여백(64). App.css의 레이어 패널 높이 규칙과 같은 특이도(이 파일이 나중에 읽혀 이긴다). */
+.app.map-controls-visible .map-view-wrapper[data-map-briefing='true'][data-mobile-layer-panel='true'] .layer-drawer {
+  display: flex; flex-direction: column;
+  max-height: calc(100% - 72px - 40px - var(--mb-dock-h, 0px) - 64px);
+}
+.app.map-controls-visible .map-view-wrapper[data-map-briefing='true'][data-mobile-layer-panel='true'] .layer-drawer-body { flex: 1 1 auto; min-height: 0; max-height: none; }
