@@ -187,6 +187,14 @@ function WindBarb({ cx, cy, u, v }) {
   )
 }
 
+// 시간 조절 창은 누른 시간선 구간 바로 위에 띄운다(화면 가운데에 뜨면 어느 지점을 고치는지 알 수 없었다).
+// 창 폭(최대 약 560px)의 절반만큼 화면 안쪽으로 잘라 둔다.
+function nwpPopoverAnchor(element) {
+  const rect = element.getBoundingClientRect()
+  const half = Math.min(280, window.innerWidth / 2 - 16)
+  return { x: Math.min(window.innerWidth - half - 16, Math.max(half + 16, rect.left + rect.width / 2)), y: rect.top }
+}
+
 export default memo(function VerticalProfileChart(props) {
   if ((props.profile?.axis?.samples?.length ?? 0) < 2) return <div className="vertical-profile-empty">연직단면도 샘플이 부족합니다.</div>
   if (!props.allowMissingTerrain && !(props.profile?.terrain?.values ?? []).some(v => Number.isFinite(v.elevationM))) {
@@ -703,8 +711,8 @@ function ProfileChartContent({
               <line className={`vertical-profile-nwp-rail-line is-offset-${segment.offsetHours}`} x1={x1} x2={x2} y1={y} y2={y} />
               {onSetWaypointNwpOffset && <rect x={x1} y={y - railHitHalf} width={Math.max(1, x2 - x1)} height={railHitHalf * 2} fill="transparent" role="button" tabIndex={0}
                 aria-label={`${segment.startWaypointLabel}부터 NWP 시간 설정`}
-                onClick={(event) => { event.stopPropagation(); setEditingNwpSegment(segment) }}
-                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingNwpSegment(segment) } }} />}
+                onClick={(event) => { event.stopPropagation(); setEditingNwpSegment({ ...segment, anchor: nwpPopoverAnchor(event.currentTarget) }) }}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingNwpSegment({ ...segment, anchor: nwpPopoverAnchor(event.currentTarget) }) } }} />}
               <circle cx={x1} cy={y} r={4} className="vertical-profile-nwp-rail-point" />
               {segment.showLabel && <text x={x1 + 4} y={y - 5} className="vertical-profile-nwp-rail-label" pointerEvents="none">{segment.offsetHours === 0 ? `기준 ${nwpBaseTimeLabel}` : `+${segment.offsetHours}h`}</text>}
             </g>
@@ -803,7 +811,8 @@ function ProfileChartContent({
         <span>{'\uc800\uc7a5\ub41c NWP \uc2dc\uac04 \uc124\uc815 \uc911 \ud604\uc7ac \uacbd\ub85c\uc5d0 \uc5c6\ub294 \uc6e8\uc774\ud3ec\uc778\ud2b8 \uc124\uc815\uc740 \uc801\uc6a9\ud558\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4.'}</span>
         <button type="button" onClick={() => setNwpMissingNoticeDismissed(true)} aria-label="NWP 시간 설정 경고 닫기">{'\ub2eb\uae30'}</button>
       </div>}
-      {editingNwpSegment && <div className="vertical-profile-nwp-popover" role="dialog" aria-label={`${editingNwpSegment.startWaypointLabel}부터 NWP 시간 설정`}>
+      {editingNwpSegment && <div className="vertical-profile-nwp-popover" role="dialog" aria-label={`${editingNwpSegment.startWaypointLabel}부터 NWP 시간 설정`}
+        style={editingNwpSegment.anchor ? { position: 'fixed', left: editingNwpSegment.anchor.x, top: editingNwpSegment.anchor.y, transform: 'translate(-50%, calc(-100% - 8px))' } : undefined}>
         <strong>{editingNwpSegment.startWaypointLabel}부터 적용</strong>
         <p className="vertical-profile-nwp-status">기준 {nwpBaseTimeLabel} · 현재 {editingNwpSegment.offsetHours ? `+${editingNwpSegment.offsetHours}h` : '기준 시간'} 적용</p>
         {unavailableNwpOffsets.length > 0 && <p className="vertical-profile-nwp-status">{Array.from({ length: 12 }, (_, i) => i + 1).every(offset => unavailableNwpOffsets.includes(offset)) ? '기준 시간 이후 수집된 예보자료가 없습니다.' : '흐리게 표시된 시간은 수집된 예보자료가 없습니다.'}</p>}
