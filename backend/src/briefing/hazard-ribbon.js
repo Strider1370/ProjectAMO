@@ -78,8 +78,20 @@ function placement(ctx, startNm, endNm) {
   }
 }
 
+// 같은 강도로 MERGE_GAP_NM 이내에 끊긴 구간은 한 막대로 합친다(샘플 경계로 1NM씩 갈라지던 것).
+const MERGE_GAP_NM = 2
+function mergeIntervals(intervals) {
+  const out = []
+  for (const iv of [...intervals].sort((a, b) => a.startNm - b.startNm)) {
+    const last = out.at(-1)
+    if (last && last.level === iv.level && iv.startNm - last.endNm <= MERGE_GAP_NM) last.endNm = Math.max(last.endNm, iv.endNm)
+    else out.push({ ...iv })
+  }
+  return out
+}
+
 function modelSegments(ctx, intervals, { altitudeIndependent = false } = {}) {
-  return (intervals ?? []).filter((iv) => MODEL_LEVEL[iv.level]).map((iv) => ({
+  return mergeIntervals((intervals ?? []).filter((iv) => MODEL_LEVEL[iv.level])).map((iv) => ({
     level: MODEL_LEVEL[iv.level],
     ...placement(ctx, iv.startNm, iv.endNm),
     ...(altitudeIndependent ? { altitudeFt: null, phase: null } : phaseFor(ctx.profile, iv.startNm, iv.endNm)),
@@ -111,8 +123,8 @@ function summaryRank(item) {
 
 function buildSummary(rows) {
   const candidates = rows.flatMap((row) => [
-    ...row.model.map((segment) => ({ kind: 'model', row: row.key, label: row.label, ...segment })),
-    ...row.frames.filter((frame) => frame.mine).map((frame) => ({ kind: 'frame', row: row.key, label: row.label, level: frame.source === 'AIRMET' ? 'MOD' : 'SEV', ...frame })),
+    ...row.model.map((segment) => ({ ...segment, kind: 'model', row: row.key, label: row.label })),
+    ...row.frames.filter((frame) => frame.mine).map((frame) => ({ ...frame, kind: 'frame', row: row.key, label: row.label, sourceLabel: frame.label, level: frame.source === 'AIRMET' ? 'MOD' : 'SEV' })),
   ])
   const unavailable = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.status === 'unavailable').map((row) => row.key)
   if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, unavailable }

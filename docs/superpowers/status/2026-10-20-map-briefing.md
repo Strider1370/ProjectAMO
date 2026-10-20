@@ -29,6 +29,11 @@
 테스트 발견 중 F2·F3·F4·F5·F6·F7·F8·F11·F12와 고도 비교 단면 경로선 색을 먼저 고쳐 커밋(594ff465~be11e3f0). F3이 끝났으므로 구현 계획 1단계는 완료. F1(위험 없음 문구)은 계획 2단계에서.
 - 남은 문제: 브라우저 계약 `briefing-view` "renders route weather legs"가 `.cs-toggle`을 못 찾아 실패 — 수정 전 HEAD에서도 같음(10-16 단면도 통합 이후 계약이 안 따라감).
 
+## 로컬 시험 자료 (2026-10-20)
+- 운영 서버에서 읽기만 해서 받은 자료: `.artifacts/prod-data-20261020/` (git 무시). KIM 10-20 00Z 회차 hf9~15(18~24시 KST, kr+ea, GKTG·ACI·권계면 포함, raw·map-bin 제외)와 11:25Z 실황 최신본(METAR·TAF·SIGMET 2·AIRMET 1 등). 없는 고정 자료는 `backend/data`로 링크, DB는 복사본.
+- 실행: `DATA_PATH=$PWD/.artifacts/prod-data-20261020 npm run dev:test` (자동수집 꺼짐 → 기상청 호출 없음). 브리핑은 RKSI→RKPC, ETD 10-20 20:30 KST, FL250이면 난류 MOD·SIGMET SEV TURB(내 고도)·SEV ICE(다른 고도)·AIRMET SFC VIS가 나온다.
+- 받는 방법: `ssh -i ~/.ssh/key.pem ec2-user@3.34.113.37`에서 `rsync`로 `kim_nwp_ea`·`kim_nwp`를 시간 필터(`--include='hf009*' --include='hf01[0-5]*' --exclude='hf[0-9][0-9][0-9]*' --exclude=raw/ --exclude=map-bin/`)로.
+
 ## 다음 할 일
 1. ~~구현 계획 작성~~ → [plans/2026-10-20-map-briefing-implementation.md](../plans/2026-10-20-map-briefing-implementation.md) (2026-10-20). 코드 확인 결과 고도 슬라이더·대류 막대·시간 막대를 시안과 다르게 정함(spec §2.1).
 2. 계획 3단계(지도형 화면 틀과 독)부터 구현(2단계 완료: `sections.enroute.ribbon`). 공항 카드(6단계)는 커밋 안 된 TAF 개편 작업이 정리된 뒤.

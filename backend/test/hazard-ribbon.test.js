@@ -71,4 +71,13 @@ test('summary picks the strongest hazard at my altitude, else clear or unknown',
   // 다른 고도의 발표만 있으면 요약에 올리지 않는다.
   const other = buildHazardRibbon({ ...base, enrouteModel: null, hazards: [sigmet('SEV_ICE', 100, 200, 'nearby')] })
   assert.equal(other.summary.status, 'unknown')
+  // 발표 틀이 요약에 오를 때도 이름은 줄 이름(한글), 원문 라벨은 sourceLabel.
+  const frameTop = buildHazardRibbon({ ...base, enrouteModel: null, hazards: [sigmet('SEV_TURB', 73, 222, 'on', { label: 'Severe Turbulence' })] }).summary.top
+  assert.deepEqual([frameTop.label, frameTop.sourceLabel, frameTop.level], ['난류', 'Severe Turbulence', 'SEV'])
+})
+
+test('merges same-level model segments split by a small gap', () => {
+  const split = { elements: [{ kind: 'turbulence', intervals: [{ startNm: 328, endNm: 331, level: '중' }, { startNm: 332, endNm: 333, level: '중' }] }], status: { turbulence: 'found', icing: 'none' } }
+  const [segment, ...rest] = buildHazardRibbon({ ...base, enrouteModel: split }).rows[0].model
+  assert.deepEqual([segment.startNm, segment.endNm, rest.length], [328, 333, 0])
 })
