@@ -74,7 +74,7 @@ function MinimaTab({ s, minima, saveMinima }) {
 
   return (
     <div className={s.tabBody}>
-      {unset && <div className={s.hint}>미설정 — 기본 VFR 기준(운고 1000ft / 시정 5000m) 적용 중</div>}
+      {unset && <div className={s.hint}>미설정 — 기본 VFR 기준(운고 1500ft / 시정 5000m) 적용 중</div>}
       <div className={s.row}>
         <label className={s.field}>
           <span className={s.label}>운고 (ft)</span>
