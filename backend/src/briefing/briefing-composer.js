@@ -5,7 +5,9 @@ import { buildConfidenceWarnings } from './confidence.js'
 import { buildHazardSection } from './hazard-section.js'
 import { matchTyphoonHazards } from './typhoon-briefing.js'
 import { summarizeEnrouteModel } from './enroute-model.js'
-import { buildFlightPlanProfile } from './profile-composer.js'
+import { buildFlightPlanProfile, buildProfileMarkers } from './profile-composer.js'
+import { buildEnrouteConvection } from './enroute-convection.js'
+import { buildHazardRibbon } from './hazard-ribbon.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 import { buildRouteWeatherLegs } from './route-weather-legs.js'
 import { buildRouteAxis } from './route-axis.js'
@@ -190,6 +192,20 @@ export function composeBriefing(request, data) {
     routeNotams,
     aipConstraints,
   })
+  let profileMarkers = []
+  try { profileMarkers = buildProfileMarkers(request) } catch { profileMarkers = [] }
+  // 지도형 브리핑 위험 막대: 현상별 줄(모델 구간 + 예보관 발표 틀)과 패널 요약 1건.
+  const ribbon = buildHazardRibbon({
+    enrouteModel,
+    convection: data?.enrouteConvection ?? buildEnrouteConvection({ root: data?.dataRoot, axis, etd: request.etd }),
+    hazards: adverse.hazards,
+    flightPlanProfile,
+    markers: profileMarkers,
+    cruiseAltitudeFt,
+    totalDistanceNm: axis.totalDistanceNm,
+    etd: request.etd,
+    eta: request.eta,
+  })
   const enroute = {
     // adverse와 동일한 보수 레벨을 따른다(밴드 미상 SIGMET이 ④에서만 amber로 새지 않도록).
     level: adverse.level,
@@ -198,6 +214,7 @@ export function composeBriefing(request, data) {
     crossSectionAvailable: loaded ? Boolean(loaded.available) : true,
     // enroute 단면 모델을 여기서 소유(이전엔 라우트·경보 스케줄러가 사후 mutate). root 없으면 null.
     model: enrouteModel,
+    ribbon,
     legs: routeWeatherLegs.legs,
     procedures: routeWeatherLegs.procedures,
     aipConstraints,

@@ -103,3 +103,10 @@ test('icing follows the full climb and descent profile instead of treating every
     { startNm: 100, endNm: 100, level: '중' },
   ])
 })
+
+test('reports per-phenomenon status so missing turbulence is not read as none', () => {
+  assert.deepEqual(summarizeEnrouteModel(ctx).status, { icing: 'found', turbulence: 'found' })
+  assert.deepEqual(summarizeEnrouteModel({ ...ctx, turbulence: null }).status, { icing: 'found', turbulence: 'unavailable' })
+  const calm = { levels: crossSection.levels.map((level) => ({ ...level, values: level.values.map((value) => ({ ...value, icing: 0 })) })) }
+  assert.equal(summarizeEnrouteModel({ ...ctx, crossSection: calm }).status.icing, 'none')
+})

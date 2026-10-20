@@ -39,7 +39,7 @@
 
 **확인**: RKSI→RKPC 자동 경로에서 경로 비교·브리핑 준비·NAVLOG 합계·기상이 답의 거리가 같음(시험 때 329.87NM), ETA = ETD + 거리/TAS. 단위 테스트(`routePlanner.*.test.js`, `routeBriefingModel.test.js`, `etaCalc.test.js`, AI 도구 테스트) 추가·갱신.
 
-## 2단계 — 위험 막대 자료 (백엔드)
+## 2단계 — 위험 막대 자료 (백엔드) — 완료
 
 브리핑 응답에 `sections.enroute.ribbon`을 새로 넣는다. 화면은 이 값만 그린다(판정 로직을 프론트에 두지 않음).
 

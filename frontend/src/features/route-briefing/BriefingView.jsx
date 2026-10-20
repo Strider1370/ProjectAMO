@@ -414,13 +414,24 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   )
 
   const legs = sections.enroute?.legs ?? []
+  // "위험 없음"은 SIGMET·AIRMET만 본 판정이었다. 수치모델 MOD 이상이 있거나 모델 자료가
+  // 없으면 그 사실을 같은 줄에 적어, 바로 아래 SEVERE 난류와 어긋나지 않게 한다(F1).
+  const ribbonSummary = sections.enroute?.ribbon?.summary
+  const modelTop = ribbonSummary?.top?.kind === 'model' ? ribbonSummary.top : null
+  const noEncounterText = weatherIncomplete
+    ? '예보 범위와 누락 자료를 확인해야 합니다. 계획고도의 위험 여부를 확정할 수 없습니다.'
+    : modelTop
+      ? `SIGMET·AIRMET 해당 없음 · 수치모델 ${modelTop.label} ${modelTop.level === 'SEV' ? 'SEVERE' : 'MODERATE'} ${modelTop.from && modelTop.to ? `${modelTop.from}→${modelTop.to} ` : ''}${modelTop.startNm}–${modelTop.endNm}NM`
+      : ribbonSummary?.status === 'unknown'
+        ? 'SIGMET·AIRMET 해당 없음 · 수치모델 난류·착빙은 자료가 없어 확인 불가'
+        : '계획고도에서 조우하는 위험 없음'
   const enroute = sections.enroute && (
     <section data-bvid="enroute" className="bv-section">
       <Card>
         <Subtitle2 as="h3">③ 노선·공역</Subtitle2>
         <Body1>계획고도 <b style={{ fontVariantNumeric: 'tabular-nums' }}>{sections.enroute.plannedCruiseAltitudeFt}ft</b></Body1>
         {sections.enroute.encounters.length === 0
-          ? <Body1 style={{ color: 'var(--text-3)' }}>{weatherIncomplete ? '예보 범위와 누락 자료를 확인해야 합니다. 계획고도의 위험 여부를 확정할 수 없습니다.' : '계획고도에서 조우하는 위험 없음'}</Body1>
+          ? <Body1 style={{ color: modelTop ? (modelTop.level === 'SEV' ? 'var(--level-red)' : 'var(--level-amber)') : 'var(--text-3)' }}>{noEncounterText}</Body1>
           : sections.enroute.encounters.map((h, i) => (
               <Body1 key={i}>
                 <b>{phenomenonKo(h.code) || h.label}</b>

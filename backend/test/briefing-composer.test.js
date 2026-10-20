@@ -207,3 +207,15 @@ test('composeBriefing merges departure and arrival when they are the same airpor
   assert.deepEqual(rksi[0].roles, ['departure', 'arrival'])
   assert.equal(b.sections.current.airports.length, 2) // RKSI(출발/도착) + RKPK(교체)
 })
+
+test('enroute ribbon puts the SIGMET icing frame on the icing row and marks model rows unavailable without data', () => {
+  const b = composeBriefing(request, data)
+  const ribbon = b.sections.enroute.ribbon
+  assert.deepEqual(ribbon.rows.map((row) => row.key), ['turbulence', 'icing', 'convection'])
+  const icing = ribbon.rows.find((row) => row.key === 'icing')
+  assert.equal(icing.frames.length, 1)
+  assert.equal(icing.frames[0].mine, true) // FL060–120 band covers 9000ft
+  assert.ok(ribbon.rows.every((row) => row.status === 'unavailable'))
+  assert.equal(ribbon.summary.status, 'hazard')
+  assert.equal(ribbon.summary.top.source, 'SIGMET')
+})
