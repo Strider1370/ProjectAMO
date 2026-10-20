@@ -1,7 +1,7 @@
 // 지도형 브리핑 화면 계산(그리기와 분리). 판정은 서버의 sections.enroute.ribbon이 하고,
 // 여기서는 위치·문구·높이만 만든다.
 import { phenomenonKo } from '../../../shared/weather/phenomenonKo.js'
-import { icingPatternStyle } from '../../../shared/weather/cloudIcingPresentation.js'
+import { ICING_PRESENTATION, icingPatternStyle } from '../../../shared/weather/cloudIcingPresentation.js'
 import { GKTG_BANDS } from '../../../../../shared/gktg.js'
 import { ACI_BANDS } from '../../../../../shared/aci.js'
 
@@ -137,7 +137,9 @@ export function summaryCallout(summary, formatTime = (iso) => iso) {
     return { tone: 'unknown', badge: '?', title: '난류·착빙 확인 불가', detail: '모델 자료 없음 · SIGMET·AIRMET만 확인' }
   }
   if (summary.status === 'clear') {
-    return { tone: 'clear', badge: 'OK', title: '내 고도에서 MOD 이상 위험 없음', detail: summary.unavailable?.length ? '일부 모델 자료 없음' : '수치예보·SIGMET·AIRMET 기준' }
+    // 일부 구간 자료가 없으면 "위험 없음"이라고 단정하지 않는다.
+    if (summary.partial?.length) return { tone: 'unknown', badge: '?', title: '확인된 구간에서 MOD 이상 위험 없음', detail: '일부 구간 모델 자료 없음 · 위험 막대 빗금 확인' }
+    return { tone: 'clear', badge: 'OK', title: '내 고도에서 MOD 이상 위험 없음', detail: '수치예보·SIGMET 기준' }
   }
   const top = summary.top
   const phase = top.phase ? `${PHASE_KO[top.phase]} 중 ` : ''
@@ -153,18 +155,47 @@ export function summaryCallout(summary, formatTime = (iso) => iso) {
   }
 }
 
-// 위험 막대 색 = 연직단면도 범례 색. 난류는 단면의 GKTG 칸과 같은 색·투명도(.3), 착빙은 단면의 착빙 무늬,
-// 대류는 지도 대류영역(실험) 색(0.5·0.75 구간). 범례 한 줄로 막대와 단면을 함께 읽게 한다.
-const TURBULENCE_CELL_OPACITY = 0.3
+// 위험 막대 색 = 연직단면도 범례 색. 난류는 단면의 GKTG 칸 색, 착빙은 단면의 착빙 무늬, 대류는 지도 대류영역(실험) 색.
+// 막대는 같은 색을 더 진하게(.6) — 단면 칸과 같은 .3이면 흰 바탕에서 MOD 노랑이 거의 안 보였다.
+const TURBULENCE_BAR_OPACITY = 0.6
 const LEVEL_GRADE = { MOD: 2, SEV: 3 }
+function turbulenceColor(grade, alpha) {
+  const [r, g, b] = GKTG_BANDS[grade].rgba
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 export function hazardSwatchStyle(rowKey, level) {
   const grade = LEVEL_GRADE[level]
   if (!grade) return {}
-  if (rowKey === 'turbulence') {
-    const [r, g, b] = GKTG_BANDS[grade].rgba
-    return { backgroundColor: `rgba(${r}, ${g}, ${b}, ${TURBULENCE_CELL_OPACITY})` }
-  }
+  if (rowKey === 'turbulence') return { backgroundColor: turbulenceColor(grade, TURBULENCE_BAR_OPACITY) }
   if (rowKey === 'icing') return icingPatternStyle(grade)
   if (rowKey === 'convection') return { backgroundColor: ACI_BANDS[grade].color }
   return {}
+}
+
+function readableTextColor(cssColor) {
+  const hex = /^#([0-9a-f]{6})$/i.exec(cssColor ?? '')
+  const rgba = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/i.exec(cssColor ?? '')
+  let r, g, b, a = 1
+  if (hex) [r, g, b] = [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16))
+  else if (rgba) { [r, g, b] = rgba.slice(1, 4).map(Number); a = rgba[4] == null ? 1 : Number(rgba[4]) }
+  else return '#1f2937'
+  // 흰 바탕 위 반투명 → 실제 보이는 색으로 바꿔 밝기를 잰다.
+  const [R, G, B] = [r, g, b].map((v) => v * a + 255 * (1 - a))
+  return (0.299 * R + 0.587 * G + 0.114 * B) > 150 ? '#1f2937' : '#ffffff'
+}
+
+// 줄 왼쪽 강도 칩: 막대와 같은 색의 단색 바탕(착빙은 점무늬 없이 바탕색만) + 읽히는 글자색.
+export function hazardChipStyle(rowKey, level) {
+  const grade = LEVEL_GRADE[level]
+  if (!grade) return {}
+  const backgroundColor = rowKey === 'turbulence' ? turbulenceColor(grade, TURBULENCE_BAR_OPACITY)
+    : rowKey === 'icing' ? ICING_PRESENTATION[grade].fillColor
+      : rowKey === 'convection' ? ACI_BANDS[grade].color : null
+  return backgroundColor ? { backgroundColor, color: readableTextColor(backgroundColor) } : {}
+}
+
+// 틀 이름표 짧은 판: "SIG 차폐뇌우" / "태풍" — 좁은 틀에서 잘리지 않게(전체는 툴팁).
+export function frameShortTag(frame) {
+  if (frame.source === 'TYPHOON') return '태풍'
+  return `SIG ${phenomenonKo(frame.code) ?? frame.code ?? ''}`.trim()
 }

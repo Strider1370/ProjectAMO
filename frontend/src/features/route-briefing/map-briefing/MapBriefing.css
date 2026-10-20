@@ -141,9 +141,11 @@
 .mb-track.is-unavailable { background: repeating-linear-gradient(135deg, var(--bg-2) 0 6px, var(--bg-3) 6px 12px); }
 .mb-track-empty { position: absolute; left: var(--space-s); top: 50%; transform: translateY(-50%); color: var(--text-3); white-space: nowrap; }
 /* 수치예보: 글자 없이 강도 색으로 줄을 칠한다. 예보관 틀이 그 위를 덮는다. */
-.mb-seg { position: absolute; top: 2px; bottom: 2px; z-index: 1; padding: 0; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+.mb-seg { position: absolute; top: 2px; bottom: 2px; z-index: 1; min-width: 4px; padding: 0; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+/* 모델 자료가 없는 구간: 단면도 "자료 없음"과 같은 빗금. */
+.mb-gap { position: absolute; top: 2px; bottom: 2px; z-index: 0; border-radius: var(--radius-sm); background: repeating-linear-gradient(135deg, var(--bg-2) 0 4px, var(--stroke-1) 4px 5px); }
 .mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
-.mb-frame { position: absolute; top: 0; bottom: 0; z-index: 2; padding: 0; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
+.mb-frame { position: absolute; top: 0; bottom: 0; z-index: 2; min-width: 4px; padding: 0; container-type: inline-size; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
 .mb-frame.is-mine { border-style: solid; border-width: 2px; }
 .mb-frame.is-airmet { border-color: var(--mb-airmet); }
 .mb-frame.is-typhoon { border-color: var(--mb-typhoon); }
@@ -174,3 +176,8 @@
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__tick-label { top: 9px; font-size: 10.5px; }
 .map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(48px + var(--mb-dock-h, 0px)); }
 .map-view-wrapper[data-map-briefing='true'] .mapboxgl-ctrl-bottom-right { bottom: calc(12px + var(--mb-dock-h, 0px)); }
+
+/* 틀 이름표: 넓으면 전체, 좁으면 "SIG 차폐뇌우", 아주 좁으면 숨김(전체는 툴팁). */
+.mb-frame-tag .is-short { display: none; }
+@container (max-width: 220px) { .mb-frame-tag .is-full { display: none; } .mb-frame-tag .is-short { display: inline; } }
+@container (max-width: 56px) { .mb-frame-tag { display: none; } }

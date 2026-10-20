@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
-  segmentTitle, sourceChips, hazardSwatchStyle, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
+  segmentTitle, sourceChips, hazardSwatchStyle, hazardChipStyle, frameShortTag, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
 } from './mapBriefingModel.js'
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) } }
@@ -79,9 +79,23 @@ test('summary callout names phase, strength, phenomenon and minutes', () => {
 })
 
 test('ribbon swatches reuse the vertical-profile legend colors', () => {
-  assert.deepEqual(hazardSwatchStyle('turbulence', 'MOD'), { backgroundColor: 'rgba(255, 204, 0, 0.3)' })
-  assert.deepEqual(hazardSwatchStyle('turbulence', 'SEV'), { backgroundColor: 'rgba(255, 41, 0, 0.3)' })
+  assert.deepEqual(hazardSwatchStyle('turbulence', 'MOD'), { backgroundColor: 'rgba(255, 204, 0, 0.6)' })
+  assert.deepEqual(hazardSwatchStyle('turbulence', 'SEV'), { backgroundColor: 'rgba(255, 41, 0, 0.6)' })
   assert.ok(hazardSwatchStyle('icing', 'SEV').backgroundImage.includes('radial-gradient'))
   assert.deepEqual(hazardSwatchStyle('convection', 'MOD'), { backgroundColor: '#fb923c' })
   assert.deepEqual(hazardSwatchStyle('typhoon', 'SEV'), {})
+})
+
+test('chips use a flat fill with readable text and narrow frames get a short tag', () => {
+  const icing = hazardChipStyle('icing', 'SEV')
+  assert.equal(icing.backgroundImage, undefined)
+  assert.equal(icing.color, '#ffffff')
+  assert.equal(hazardChipStyle('turbulence', 'MOD').color, '#1f2937')
+  assert.equal(frameShortTag({ source: 'SIGMET', code: 'EMBD_TS' }), 'SIG 차폐뇌우')
+  assert.equal(frameShortTag({ source: 'TYPHOON', code: 'TC' }), '태풍')
+})
+
+test('summary does not claim no hazard when part of the route has no model data', () => {
+  const callout = summaryCallout({ status: 'clear', unavailable: [], partial: ['turbulence'] })
+  assert.deepEqual([callout.tone, callout.title], ['unknown', '확인된 구간에서 MOD 이상 위험 없음'])
 })

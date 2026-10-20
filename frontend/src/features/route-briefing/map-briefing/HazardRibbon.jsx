@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { frameTag, hazardSwatchStyle, modelChip, pctOf, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
+import { frameShortTag, frameTag, hazardChipStyle, hazardSwatchStyle, modelChip, pctOf, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
 
 // 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 연직단면도 범례와 같은 색으로 줄을 칠하고,
 // 예보관 발표 틀(이름표는 틀 안쪽 왼쪽)을 그 위에 덮어 그린다 — 겹친 곳은 배경색으로 모델 위험이 있음을 보인다. 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
@@ -28,7 +28,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
               <i className="mb-row-dot" aria-hidden="true" />
               <span className="mb-row-name">{row.label}</span>
               <span className="mb-row-chips">
-                {chip && <span className={`mb-chip is-${chip.tone}`} title={chip.title} style={hazardSwatchStyle(row.key, chip.text)}>{chip.text}</span>}
+                {chip && <span className={`mb-chip is-${chip.tone}`} title={chip.title} style={hazardChipStyle(row.key, chip.text)}>{chip.text}</span>}
                 {sourceChips(row).map((source) => (
                   <span key={source.text} className={`mb-src-chip is-${source.text.toLowerCase()}${source.mine ? ' is-mine' : ''}`} title={source.mine ? '내 고도와 겹치는 발표' : '다른 고도 발표'}>{source.text}</span>
                 ))}
@@ -36,6 +36,12 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
             </div>
             <div className={`mb-track${row.status === 'unavailable' && !row.model.length ? ' is-unavailable' : ''}`}>
               {!hidden && empty && <span className="mb-track-empty">{empty}</span>}
+              {/* 자료가 없는 구간: 단면도의 "자료 없음"과 같은 빗금. 비어 있으면 "없음"으로 읽히므로 따로 그린다. */}
+              {!hidden && (row.missing ?? []).map((gap) => {
+                const left = pctOf(gap.startNm, total)
+                const width = Math.max(0.4, pctOf(gap.endNm, total) - left)
+                return <span key={`gap-${gap.startNm}`} className="mb-gap" style={{ left: `${left}%`, width: `${width}%` }} title={`모델 자료 없음 · ${gap.startNm}–${gap.endNm}NM`} />
+              })}
               {!hidden && row.model.map((segment, index) => {
                 const left = pctOf(segment.startNm, total)
                 const width = Math.max(0.6, pctOf(segment.endNm, total) - left)
@@ -56,7 +62,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                   <button key={id} type="button" className={`mb-frame is-${String(frame.source).toLowerCase()}${frame.mine ? ' is-mine' : ''}${selectedId === id ? ' is-selected' : ''}`}
                     style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${tag} · ${frame.startNm}–${frame.endNm}NM`} title={tag}
                     onClick={() => onSelect?.({ id, row, kind: 'frame', item: frame })}>
-                    <span className="mb-frame-tag">{tag}</span>
+                    <span className="mb-frame-tag"><span className="is-full">{tag}</span><span className="is-short">{frameShortTag(frame)}</span></span>
                   </button>
                 )
               })}
