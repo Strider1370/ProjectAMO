@@ -14,18 +14,23 @@ export function writeBriefingView(view, storage = globalThis.localStorage) {
 }
 
 const DOCK_KEY = 'projectamo.briefingDock'
-// heightPx null = 아직 손대지 않음 → 화면 높이의 46%(1080에서 약 500, 시안 8처럼 지도 약 절반).
-// 고정 500이면 768 화면에서 패널과 지도가 거의 가려졌다.
+// heightPx null = 아직 손대지 않음 → 화면 높이의 34%(1080에서 약 370: 위험 막대 4줄 + 단면 머리 1줄 + 그림 약 200).
+// 지도형인데 지도가 안 보이던 것(독 70%) 때문에 최대 50%로 묶는다 — 끌어 올려도 지도가 절반 이상 남는다.
 // profileOpen null = 아직 고르지 않음 → 화면 높이 900 이상이면 펼침(768 같은 낮은 화면은 단면 그림이 안 들어간다).
 export const DEFAULT_DOCK = { ribbonOpen: true, profileOpen: null, heightPx: null }
 export const PROFILE_OPEN_MIN_HEIGHT = 900
 export function profileOpenFor(dock, viewportHeight) {
   return typeof dock.profileOpen === 'boolean' ? dock.profileOpen : viewportHeight >= PROFILE_OPEN_MIN_HEIGHT
 }
-export const DEFAULT_DOCK_RATIO = 0.46
+export const DEFAULT_DOCK_RATIO = 0.34
+export const DOCK_MAX_RATIO = 0.5
 export function dockHeightPx(dock, viewportHeight) {
-  return Number.isFinite(dock.heightPx) ? Math.min(dock.heightPx, Math.round(viewportHeight * 0.7)) : Math.round(viewportHeight * DEFAULT_DOCK_RATIO)
+  return Number.isFinite(dock.heightPx) ? Math.min(dock.heightPx, Math.round(viewportHeight * DOCK_MAX_RATIO)) : Math.round(viewportHeight * DEFAULT_DOCK_RATIO)
 }
+
+// 위험 막대 이름 칸 폭 = 단면도 왼쪽 여백(두 가로축을 맞춘다). 144로 줄이면 "시정·운고 AIR"·"난류 MOD SIG" 칩이 잘려
+// 모든 폭에서 176을 쓴다.
+export const RIBBON_LABEL_WIDTH_PX = 176
 export function readDockState(storage = globalThis.localStorage) {
   try {
     const saved = JSON.parse(storage?.getItem(DOCK_KEY) ?? 'null')
@@ -107,12 +112,6 @@ export function segmentText(segment, widthPct) {
     ? (segment.phase === 'cruise' ? formatAltitudeFt(segment.altitudeFt.to) : `${formatAltitudeFt(segment.altitudeFt.from)}→${formatAltitudeFt(segment.altitudeFt.to)}`)
     : '전 고도'
   return `${segment.level} · ${altitude}`
-}
-
-// 줄 높이: 틀(이름표 자리)이 있으면 36, 막대만 24, 아무것도 없으면 20.
-export function rowHeightPx(row) {
-  if (row.frames.length) return 36
-  return row.model.length ? 24 : 20
 }
 
 export function rowEmptyText(row) {

@@ -18,6 +18,13 @@ test.describe('map-briefing', () => {
     // 픽스처는 모델 단면이 없으므로 "확인 불가"(짧게 '불가')로 그린다 — "없음"으로 읽히지 않게.
     await expect(ribbon.getByText('불가', { exact: true }).first()).toBeVisible()
     await expect(page.getByRole('group', { name: '연직단면도' })).toBeVisible()
+    // 위험 막대 가로축이 아래 단면도 그림의 0NM~끝과 같은 세로선에 온다.
+    await expect.poll(() => page.evaluate(() => {
+      const track = document.querySelector('.mb-track').getBoundingClientRect()
+      const svg = document.querySelector('.mb-profile-body .vertical-profile-plot-svg')
+      const rect = svg.getBoundingClientRect()
+      return [Math.round(track.left - (rect.left + Number(svg.dataset.plotLeft))), Math.round(track.right - (rect.left + Number(svg.dataset.plotRight)))]
+    })).toEqual([0, 0])
 
     // 상단 버튼: 연직단면도 대신 브리핑(패널 켜기/끄기). 패널을 닫아도 독은 남는다.
     await expect(page.getByRole('button', { name: '연직단면도', exact: true })).toHaveCount(0)

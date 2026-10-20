@@ -3,7 +3,8 @@
 .mb-panel {
   --mb-typhoon: #6d28d9;
   position: absolute; top: 72px; left: 20px; z-index: 8; width: 288px;
-  max-height: calc(100% - 72px - var(--mb-dock-h, 0px) - 100px); overflow-y: auto;
+  /* 독 높이에 묶지 않는다(독이 크면 패널이 제목만 남고 찌그러졌다). 낮은 화면에서는 독 위에 겹쳐 뜬다. */
+  max-height: calc(100% - 72px - 50px); overflow-y: auto;
   background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--radius-lg);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); color: var(--text-1);
   font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
@@ -45,10 +46,10 @@
 .mb-end { display: block; width: 100%; padding: var(--space-s) var(--space-l) var(--space-m); border: 0; background: none; color: var(--text-3); font: inherit; cursor: pointer; }
 .mb-end:hover { color: var(--text-1); text-decoration: underline; }
 
-/* 독: 위험 막대 + 연직단면도 */
+/* 독: 위험 막대 + 연직단면도. 시간 막대 띠(38px) 바로 위에 붙인다 — 띠 위의 빈 50px에 지도가 비쳐 보이던 틈을 없앤다. */
 .mb-dock {
-  --mb-label-w: 176px; --mb-typhoon: #6d28d9; --mb-airmet: #92400e;
-  position: absolute; left: 0; right: 0; bottom: 86px; z-index: 7;
+  --mb-label-w: 176px; --mb-track-right: 0px; --mb-typhoon: #6d28d9; --mb-airmet: #92400e;
+  position: absolute; left: 0; right: 0; bottom: 38px; z-index: 7;
   display: flex; flex-direction: column; min-height: 0;
   background: var(--bg-1); border-top: 1px solid var(--stroke-2); box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
   color: var(--text-1); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
@@ -57,18 +58,39 @@
 .mb-dock-handle span { width: 40px; height: 4px; border-radius: var(--radius-circular); background: var(--stroke-strong); }
 .mb-dock-handle:focus-visible { outline: 2px solid var(--accent); border-radius: var(--radius-sm); }
 .mb-dock-section { padding: 0 var(--space-l); }
-.mb-dock-section.is-ribbon { flex: none; padding-top: var(--space-s); padding-bottom: var(--space-s); }
-.mb-dock-section.is-profile { flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--stroke-2); padding-top: var(--space-xs); }
-.mb-dock:not(.has-profile) .mb-dock-section.is-profile { flex: none; padding-bottom: var(--space-xs); }
-.mb-dock-head { display: flex; align-items: center; gap: var(--space-m); min-height: 28px; }
-.mb-dock-head h3 { margin: 0; font-size: var(--fs-300); font-weight: var(--fw-bold); }
+.mb-dock-section.is-ribbon { flex: none; padding-top: 2px; padding-bottom: var(--space-xs); }
+.mb-dock-section.is-profile { flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--stroke-2); padding: 0; }
+.mb-dock:not(.has-profile) .mb-dock-section.is-profile { flex: none; padding: 0 var(--space-l); }
+.mb-dock-head, .mb-ribbon-head { display: flex; align-items: center; gap: var(--space-s); }
+.mb-dock-head { min-height: 32px; }
+.mb-ribbon-head { min-height: 22px; }
+.mb-dock-title { margin: 0; font-size: var(--fs-300); font-weight: var(--fw-bold); white-space: nowrap; }
+.mb-info { display: inline-flex; color: var(--text-3); cursor: help; }
+.mb-info:focus-visible { outline: 2px solid var(--accent); border-radius: var(--radius-sm); }
 .mb-dock-sub { overflow: hidden; color: var(--text-3); text-overflow: ellipsis; white-space: nowrap; }
-.mb-fold-btn { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; padding: 2px var(--space-s); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-2); font: inherit; cursor: pointer; }
-.mb-profile-body { flex: 1; min-height: 0; overflow: hidden; }
+.mb-fold-btn { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; padding: 1px var(--space-s); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-2); font: inherit; cursor: pointer; }
+.mb-profile-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+.mb-profile-body > .profile-embedded { flex: 1; }
+/* 압축 단면도: 머리 한 줄(제목·시각·레이어·확대·범례·접기). 레이어·범례는 펼침 창. */
+.mb-profile-body .vpc-operational.is-embedded { border: 0; border-radius: 0; }
+.mb-profile-body .vpc-compact-header { position: relative; z-index: 3; display: flex; align-items: center; gap: var(--space-m); min-height: 32px; padding: 0 var(--space-l); border-bottom: 1px solid var(--stroke-2); }
+.mb-profile-body .vpc-compact-header .vpc-time-control { margin: 0; }
+.mb-profile-body .vpc-compact-header .vpc-chart-controls { display: flex; gap: 2px; margin: 0; }
+.mb-profile-body .vpc-compact-spacer { flex: 1; }
+.mb-profile-body .vpc-compact-pop { position: relative; }
+.mb-profile-body .vpc-compact-pop > summary { padding: 2px var(--space-s); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); color: var(--text-2); cursor: pointer; list-style: none; }
+.mb-profile-body .vpc-compact-pop > summary::-webkit-details-marker { display: none; }
+.mb-profile-body .vpc-compact-pop > summary::after { content: ' ▾'; }
+.mb-profile-body .vpc-compact-pop[open] > summary { border-color: var(--accent); color: var(--accent); }
+.mb-profile-body .vpc-compact-pop-body { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--space-s); min-width: 280px; max-width: 70vw; padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16); }
+.mb-profile-body .vpc-compact-pop-body p { margin: 0; color: var(--text-2); font-size: var(--fs-100); }
 .mb-ribbon-empty { margin: var(--space-s) 0; color: var(--text-3); }
 
-.mb-ribbon { position: relative; display: flex; flex-direction: column; gap: 4px; margin-top: var(--space-xs); }
-.mb-row { display: grid; grid-template-columns: var(--mb-label-w) 1fr; align-items: stretch; min-height: var(--mb-row-h); }
+.mb-dock-section.is-ribbon { padding-left: 0; padding-right: 0; }
+.mb-ribbon-head { padding: 0 var(--space-l); }
+.mb-ribbon { position: relative; display: flex; flex-direction: column; gap: 3px; }
+.mb-row { display: grid; grid-template-columns: var(--mb-label-w) 1fr var(--mb-track-right); align-items: stretch; height: 22px; }
+.mb-row-label { padding-left: var(--space-l); }
 .mb-row-label { display: flex; align-items: center; gap: 6px; min-width: 0; padding-right: var(--space-s); }
 .mb-eye { display: inline-flex; padding: 2px; border: 0; background: none; color: var(--text-3); cursor: pointer; }
 .mb-row.is-hidden .mb-row-name { color: var(--text-3); }
@@ -79,7 +101,7 @@
 .mb-row.is-typhoon { --mb-row-color: var(--mb-typhoon); }
 .mb-row.is-visibility { --mb-row-color: var(--mb-airmet); }
 .mb-row-name { flex: none; font-weight: var(--fw-semibold); white-space: nowrap; }
-.mb-row-chips { display: flex; gap: 4px; margin-left: auto; white-space: nowrap; }
+.mb-row-chips { display: flex; flex: none; gap: 4px; margin-left: auto; white-space: nowrap; }
 .mb-chip, .mb-src-chip { padding: 0 5px; border-radius: var(--radius-sm); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 16px; }
 .mb-chip.is-sev { background: var(--level-red); color: #fff; }
 .mb-chip.is-mod { background: var(--turb-mod); color: #1f2937; }
@@ -93,32 +115,35 @@
 .mb-track { position: relative; border-radius: var(--radius-sm); background: var(--bg-2); }
 .mb-track.is-unavailable { background: repeating-linear-gradient(135deg, var(--bg-2) 0 6px, var(--bg-3) 6px 12px); }
 .mb-track-empty { position: absolute; left: var(--space-s); top: 50%; transform: translateY(-50%); color: var(--text-3); white-space: nowrap; }
-.mb-seg { position: absolute; top: 3px; bottom: 3px; overflow: hidden; padding: 0 6px; border: 0; border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 1; text-align: left; white-space: nowrap; cursor: pointer; }
-.mb-seg.is-under-tag { top: auto; bottom: 3px; height: 14px; }
+.mb-seg { position: absolute; top: 4px; bottom: 4px; z-index: 1; overflow: hidden; padding: 0 6px; border: 0; border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-align: left; white-space: nowrap; cursor: pointer; }
 .mb-seg.is-end { text-align: right; }
 .mb-seg.is-sev { background: var(--level-red); color: #fff; }
 .mb-seg.is-mod { background: var(--turb-mod); color: #1f2937; }
 .mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 2; }
-.mb-frame { position: absolute; top: 14px; bottom: 2px; padding: 0; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
+.mb-frame { position: absolute; top: 0; bottom: 0; padding: 0; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
 .mb-frame.is-mine { border-style: solid; border-width: 2px; }
 .mb-frame.is-airmet { border-color: var(--mb-airmet); }
 .mb-frame.is-typhoon { border-color: var(--mb-typhoon); }
-.mb-frame-tag { position: absolute; bottom: 100%; left: 4px; overflow: hidden; max-width: calc(100% + 240px); padding: 0 4px; background: var(--bg-1); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.mb-frame-tag { position: absolute; top: 50%; left: 3px; z-index: 2; overflow: hidden; max-width: calc(100% - 6px); padding: 0 4px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.9); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; transform: translateY(-50%); pointer-events: none; }
 .mb-frame.is-airmet .mb-frame-tag { color: var(--mb-airmet); }
 .mb-frame.is-typhoon .mb-frame-tag { color: var(--mb-typhoon); }
 .mb-range-window {
   position: absolute; top: -18px; bottom: -2px; pointer-events: none;
-  left: calc(var(--mb-label-w) + (100% - var(--mb-label-w)) * var(--mb-range-from));
-  width: calc((100% - var(--mb-label-w)) * var(--mb-range-span));
+  left: calc(var(--mb-label-w) + (100% - var(--mb-label-w) - var(--mb-track-right)) * var(--mb-range-from));
+  width: calc((100% - var(--mb-label-w) - var(--mb-track-right)) * var(--mb-range-span));
   border: 1.5px solid var(--text-1); border-radius: var(--radius-sm); background: rgba(15, 23, 42, 0.04);
 }
 .mb-range-window span { position: absolute; top: 0; left: 4px; color: var(--text-1); font-size: var(--fs-100); font-weight: var(--fw-bold); white-space: nowrap; }
 
 @media (max-width: 1919px) {
   .mb-panel { width: 264px; }
-  .mb-dock { --mb-label-w: 144px; }
 }
 
-/* 지도형 브리핑 중에는 독 위로 지도 컨트롤을 올린다. */
+/* 지도형 브리핑 중에는 범례·기본지도·확대 버튼을 독 위 지도 아래 모서리로 올린다(독과 시간 막대 사이에 떠 있던 것).
+   재생 버튼은 숨긴다 — 화면이 스스로 움직이지 않는다(설계 원칙). */
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
-.map-view-wrapper[data-map-briefing='true'] .active-route-chip { display: none; }
+.map-view-wrapper[data-map-briefing='true'] .active-route-chip,
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__play { display: none; }
+.map-view-wrapper[data-map-briefing='true'] .map-bottom-control-dock { bottom: calc(38px + var(--mb-dock-h, 0px) + var(--space-s)); }
+.map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(40px + var(--mb-dock-h, 0px)); }
+.map-view-wrapper[data-map-briefing='true'] .mapboxgl-ctrl-bottom-right { bottom: var(--mb-dock-h, 0px); }

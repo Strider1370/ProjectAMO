@@ -219,6 +219,8 @@ function ProfileChartContent({
   allowMissingTerrain = false,
   // 전체 화면(폰 가로 보기)에서는 칸 높이에 맞춰 그린다. 고정 높이로 그리면 비율을 지키느라 좌우가 빈다.
   fitHeight = false,
+  // 지도형 브리핑: 위험 막대 이름 칸과 같은 폭으로 왼쪽 여백을 맞춰 두 가로축을 정렬한다.
+  plotPaddingLeft = null,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -272,7 +274,7 @@ function ProfileChartContent({
     .filter((point) => Number.isFinite(point.elevationFt))
 
   const height = fitHeight ? Math.max(160, Math.round(containerHeight) || 380) : 380
-  const basePadding = { top: interactive ? 18 : 26, right: 58, left: 80 }
+  const basePadding = { top: interactive ? 18 : 26, right: 58, left: Number.isFinite(plotPaddingLeft) ? plotPaddingLeft : 80 }
   const maxDistance = Math.max(profile.axis.totalDistanceNm || 0, samples[samples.length - 1].distanceNm || 0.1)
   // 컨테이너 폭을 채우되 항로가 길면 전체 거리를 유지한다. 장거리 항로는 차트 안에서 가로 이동한다.
   const availWidth = Math.max(320, Math.round(containerWidth) || 960)
@@ -579,6 +581,8 @@ function ProfileChartContent({
       <div className="vertical-profile-plot-scroll" ref={scrollElementRef} onLostPointerCapture={() => { dragRef.current = null }} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <svg
         className="vertical-profile-plot-svg"
+        data-plot-left={padding.left}
+        data-plot-right={width - padding.right}
         viewBox={`0 0 ${width} ${height}`}
         width={width}
         height={height}

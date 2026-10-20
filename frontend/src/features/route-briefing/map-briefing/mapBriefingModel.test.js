@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  dockHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText, rowHeightPx,
+  dockHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
   segmentText, sourceChips, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
 } from './mapBriefingModel.js'
 
@@ -26,10 +26,11 @@ test('profile starts folded on low screens until the user chooses', () => {
 })
 
 test('dock height follows the viewport until the user resizes it', () => {
-  assert.equal(dockHeightPx(DEFAULT_DOCK, 1080), 497)
-  assert.equal(dockHeightPx(DEFAULT_DOCK, 768), 353)
+  assert.equal(dockHeightPx(DEFAULT_DOCK, 1080), 367)
+  assert.equal(dockHeightPx(DEFAULT_DOCK, 768), 261)
   assert.equal(dockHeightPx({ ...DEFAULT_DOCK, heightPx: 300 }, 768), 300)
-  assert.equal(dockHeightPx({ ...DEFAULT_DOCK, heightPx: 900 }, 768), 538)
+  // 예전에 기억된 큰 높이(최대 70%)도 50%로 묶어 지도가 절반 아래로 줄지 않게.
+  assert.equal(dockHeightPx({ ...DEFAULT_DOCK, heightPx: 700 }, 1000), 500)
 })
 
 const row = (extra) => ({ key: 'turbulence', label: '난류', status: 'found', model: [], frames: [], ...extra })
@@ -64,10 +65,7 @@ test('segment text drops to the level when narrow and says 전 고도 for convec
   assert.equal(segmentText({ level: 'MOD' }, 1), '')
 })
 
-test('row height and empty text follow content', () => {
-  assert.equal(rowHeightPx(row({ frames: [{}] })), 36)
-  assert.equal(rowHeightPx(row({ model: [{}] })), 24)
-  assert.equal(rowHeightPx(row()), 20)
+test('empty row text separates none from unavailable', () => {
   assert.equal(rowEmptyText(row({ status: 'none' })), '모델 MOD 이상 없음')
   assert.equal(rowEmptyText(row({ status: 'unavailable' })), '단면 자료 없음 · 확인 불가')
   assert.equal(rowEmptyText(row({ model: [{}] })), null)

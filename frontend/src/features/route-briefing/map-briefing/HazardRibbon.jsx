@@ -1,25 +1,27 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { frameTag, modelChip, pctOf, rowEmptyText, rowHeightPx, segmentText, sourceChips } from './mapBriefingModel.js'
+import { frameTag, modelChip, pctOf, rowEmptyText, segmentText, sourceChips } from './mapBriefingModel.js'
 
-// 위험 막대: 현상별 줄. 꽉 찬 막대 = 수치예보(내 비행 고도·MOD 이상), 테두리 틀 = 예보관 발표.
-// 가로축은 항상 경로 전체. 연직단면도가 확대돼 있으면 보이는 구간을 테두리 창으로 겹쳐 그린다.
-export default function HazardRibbon({ ribbon, profileRange = null, selectedId = null, onSelect, hiddenRows = [], onToggleRow }) {
+// 위험 막대: 현상별 줄(높이 22 고정). 꽉 찬 막대 = 수치예보(내 비행 고도·MOD 이상), 테두리 틀 = 예보관 발표
+// (이름표는 틀 안쪽 왼쪽). 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
+// 같은 세로선에 맞춘다. 단면도가 확대돼 있으면 보이는 구간을 테두리 창으로 겹쳐 그린다.
+export default function HazardRibbon({ ribbon, profileRange = null, selectedId = null, onSelect, hiddenRows = [], onToggleRow, trackInset = null }) {
   const total = ribbon?.totalDistanceNm || 0
   if (!ribbon || !(total > 0)) return <p className="mb-ribbon-empty">경로상 위험 자료가 없습니다.</p>
   const [rangeStart, rangeEnd] = profileRange ?? [0, total]
   const zoomed = profileRange && (rangeStart > 0.5 || rangeEnd < total - 0.5)
+  const insetStyle = trackInset ? { '--mb-label-w': `${trackInset.left}px`, '--mb-track-right': `${Math.max(0, trackInset.right)}px` } : undefined
 
   return (
-    <div className="mb-ribbon" role="group" aria-label="경로상 위험 막대">
+    <div className="mb-ribbon" role="group" aria-label="경로상 위험 막대" style={insetStyle}>
       {ribbon.rows.map((row) => {
         const hidden = hiddenRows.includes(row.key)
         const chip = modelChip(row)
         const empty = rowEmptyText(row)
         return (
-          <div key={row.key} className={`mb-row is-${row.key}${hidden ? ' is-hidden' : ''}`} style={{ '--mb-row-h': `${rowHeightPx(row)}px` }}>
+          <div key={row.key} className={`mb-row is-${row.key}${hidden ? ' is-hidden' : ''}`}>
             <div className="mb-row-label">
               <button type="button" className="mb-eye" aria-pressed={!hidden} aria-label={`${row.label} ${hidden ? '보이기' : '숨기기'}`} onClick={() => onToggleRow?.(row.key)}>
-                {hidden ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
+                {hidden ? <EyeOff size={13} aria-hidden="true" /> : <Eye size={13} aria-hidden="true" />}
               </button>
               <i className="mb-row-dot" aria-hidden="true" />
               <span className="mb-row-name">{row.label}</span>
@@ -36,11 +38,12 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                 const left = pctOf(frame.startNm, total)
                 const width = Math.max(0.6, pctOf(frame.endNm, total) - left)
                 const id = `${row.key}:frame:${index}`
+                const tag = frameTag(frame)
                 return (
                   <button key={id} type="button" className={`mb-frame is-${String(frame.source).toLowerCase()}${frame.mine ? ' is-mine' : ''}${selectedId === id ? ' is-selected' : ''}`}
-                    style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${frameTag(frame)} · ${frame.startNm}–${frame.endNm}NM`}
+                    style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${tag} · ${frame.startNm}–${frame.endNm}NM`} title={tag}
                     onClick={() => onSelect?.({ id, row, kind: 'frame', item: frame })}>
-                    <span className="mb-frame-tag">{frameTag(frame)}</span>
+                    <span className="mb-frame-tag">{tag}</span>
                   </button>
                 )
               })}
@@ -48,9 +51,8 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                 const left = pctOf(segment.startNm, total)
                 const width = Math.max(0.6, pctOf(segment.endNm, total) - left)
                 const id = `${row.key}:model:${index}`
-                const nearEnd = left + width > 92
                 return (
-                  <button key={id} type="button" className={`mb-seg is-${segment.level.toLowerCase()}${row.frames.length ? ' is-under-tag' : ''}${nearEnd ? ' is-end' : ''}${selectedId === id ? ' is-selected' : ''}`}
+                  <button key={id} type="button" className={`mb-seg is-${segment.level.toLowerCase()}${left + width > 92 ? ' is-end' : ''}${selectedId === id ? ' is-selected' : ''}`}
                     style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${row.label} ${segment.level} ${segment.from ?? ''}→${segment.to ?? ''} ${segment.startNm}–${segment.endNm}NM`}
                     onClick={() => onSelect?.({ id, row, kind: 'model', item: segment })}>
                     {segmentText(segment, width)}

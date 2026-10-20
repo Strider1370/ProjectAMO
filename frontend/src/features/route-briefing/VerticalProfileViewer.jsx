@@ -22,7 +22,7 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange }) {
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, compactTitle = null, compactActions = null, plotPaddingLeft = null }) {
   const floating = useFloatingWindow(placement)
   const { tz, setTz } = useTimeZone()
   const [localLayers, localToggle] = useCrossSectionLayers(INITIAL_LAYERS)
@@ -137,23 +137,14 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
   ]
   const candidates = [...new Set((candidateAltitudes.length ? candidateAltitudes : (profile?.candidateProfiles ?? []).map(candidate => candidate.plannedCruiseAltitudeFt)).filter(Number.isFinite))].sort((a, b) => a - b)
   const highlightedAltitude = selectedCandidateAltitudeFt ?? effectiveAltitude
-  return <div className={embedded ? `profile-embedded${fillContainer ? ' is-fill' : ''}` : 'vpc-overlay'}><section className={`vpc-window vpc-operational${embedded ? ' is-embedded' : ''}`} role={embedded ? 'group' : 'dialog'} aria-label="연직단면도"
-    style={embedded ? undefined : {left:floating.rect.x, top:floating.rect.y, width:floating.rect.width, height:floating.rect.height}}>
-    <header className="vpc-window-header" {...(embedded ? {} : floating.handlers('move'))}>
-      {!embedded && <div className="vpc-window-title" tabIndex={0} aria-label="창 이동" onKeyDown={e=>floating.key(e,'move')}><Grip size={15}/><h1>연직단면도</h1>{previewLabel && <span className="vpc-demo" title={previewLabel}>시안 · 저장 자료</span>}</div>}
-      <div className="vpc-time-control vpc-operational-nav vertical-profile-hour-nav" aria-label="예보시간 선택">
+  const timeControl = <div className="vpc-time-control vpc-operational-nav vertical-profile-hour-nav" aria-label="예보시간 선택">
         {onSelectForecastHour && <button className="vpc-button" aria-label="이전 예보시간" disabled={!onSelectForecastHour || timeIndex <= 0 || crossSectionHourLoading} onClick={()=>onSelectForecastHour(times[timeIndex-1].hf)}><ChevronLeft size={15}/></button>}
         <strong>{crossSection?.run?.validTime ? formatBriefingTime(crossSection.run.validTime,tz,{withDate:true}).replace(/ KST$|Z$/, '') : '기상자료 없음'}</strong>
         {onSelectForecastHour && <button className="vpc-button" aria-label="다음 예보시간" disabled={!onSelectForecastHour || timeIndex < 0 || timeIndex >= times.length-1 || crossSectionHourLoading} onClick={()=>onSelectForecastHour(times[timeIndex+1].hf)}><ChevronRight size={15}/></button>}
         <button className="vpc-timezone" aria-label="표시 시간대 변경" onClick={()=>setTz(tz==='KST'?'UTC':'KST')}>{tz}</button>
         {crossSectionHourLoading && <span role="status">갱신 중 · 이전 자료</span>}
       </div>
-      {!embedded && <button className="vpc-button" aria-label="창 최대화 또는 복원" onClick={floating.toggleMaximize}><Maximize2 size={16}/></button>}
-      {!embedded && <button className="vpc-button" aria-label="연직단면도 닫기" onClick={onClose}><X size={18}/></button>}
-    </header>
-    <details className="vpc-operational-controls" open={window.innerWidth >= 800 && window.innerHeight >= 650 ? true : undefined}>
-      <summary>표시·고도 설정</summary>
-      <div className="vpc-operational-toolbar">
+  const layerControls = <>
         <div className="vpc-layer-controls" role="group" aria-label="기상 레이어">
           {groups.map((group,i)=><div className="vpc-layer-group" key={i}>{group.map(([key,label,tone])=>{
             const enabled = key === 'isotachs' ? isotachs : layers[key]
@@ -164,13 +155,42 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
           <label><input type="checkbox" checked={!!layers.cloud} onChange={()=>toggle('cloud')}/>모델 구름량 윤곽</label>
           <label><input type="checkbox" checked={!!layers.temperatureDetail} onChange={()=>toggle('temperatureDetail')}/>−10°C 등온선 추가</label>
         </div></details>
-        <div className="vpc-chart-controls">
-
+      </>
+  const zoomControls = <div className="vpc-chart-controls">
           <button className="vpc-button" aria-label="차트 축소" disabled={zoom<=1} onClick={()=>changeZoom(1/1.6)}>−</button><button className="vpc-button" aria-label="차트 확대" disabled={zoom>=total/45} onClick={()=>changeZoom(1.6)}>+</button><button className="vpc-button vpc-fit" onClick={()=>{anchor.current={fraction:0,pixel:0};setZoom(1);if(scrollRef.current)scrollRef.current.scrollLeft=0}}>전체</button>
         </div>
+  const sourceInfo = <>
+        <p>{crossSection?.run?.validTime ? `자료 기준 ${formatBriefingTime(crossSection.run.validTime,tz,{withDate:true})}` : '기상자료 없음'}</p>
+        {sourceNote && <p>{sourceNote}</p>}
+        <p>{coverageNotes.join(' · ')}</p><p>고도는 원자료 기준입니다. 자료가 없는 영역은 별도로 표시합니다.</p>
+      </>
+  // 지도형 브리핑 독: 시각·레이어·확대·범례를 머리 한 줄에 모으고, 미니맵(위험 막대가 대신)·범례 줄·비교 고도 줄은 뺀다.
+  const compactHeader = compact && <header className="vpc-compact-header">
+      {compactTitle}
+      {timeControl}
+      <details className="vpc-compact-pop"><summary>레이어</summary><div className="vpc-compact-pop-body">{layerControls}</div></details>
+      {zoomControls}
+      <details className="vpc-compact-pop is-legend"><summary>범례</summary><div className="vpc-compact-pop-body"><ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>{sourceInfo}</div></details>
+      <span className="vpc-compact-spacer"/>
+      {compactActions}
+    </header>
+  return <div className={embedded ? `profile-embedded${fillContainer ? ' is-fill' : ''}` : 'vpc-overlay'}><section className={`vpc-window vpc-operational${embedded ? ' is-embedded' : ''}`} role={embedded ? 'group' : 'dialog'} aria-label="연직단면도"
+    style={embedded ? undefined : {left:floating.rect.x, top:floating.rect.y, width:floating.rect.width, height:floating.rect.height}}>
+    {compactHeader}
+    {!compact && <header className="vpc-window-header" {...(embedded ? {} : floating.handlers('move'))}>
+      {!embedded && <div className="vpc-window-title" tabIndex={0} aria-label="창 이동" onKeyDown={e=>floating.key(e,'move')}><Grip size={15}/><h1>연직단면도</h1>{previewLabel && <span className="vpc-demo" title={previewLabel}>시안 · 저장 자료</span>}</div>}
+      {timeControl}
+      {!embedded && <button className="vpc-button" aria-label="창 최대화 또는 복원" onClick={floating.toggleMaximize}><Maximize2 size={16}/></button>}
+      {!embedded && <button className="vpc-button" aria-label="연직단면도 닫기" onClick={onClose}><X size={18}/></button>}
+    </header>}
+    {!compact && <details className="vpc-operational-controls" open={window.innerWidth >= 800 && window.innerHeight >= 650 ? true : undefined}>
+      <summary>표시·고도 설정</summary>
+      <div className="vpc-operational-toolbar">
+        {layerControls}
+        {zoomControls}
       </div>
-    </details>
-    {candidates.length > 0 && <div className="vpc-altitude-comparison" role="group" aria-label="비교 고도">
+    </details>}
+    {!compact && candidates.length > 0 && <div className="vpc-altitude-comparison" role="group" aria-label="비교 고도">
       <span className="vpc-altitude-caption">{candidates.length > 1 ? '비교 고도' : '계획 고도'}</span>
       {candidates.map(ft => onSelectCandidateAltitude
         ? <button key={ft} type="button" className="vpc-altitude-choice" aria-pressed={ft === highlightedAltitude} disabled={crossSectionHourLoading} onClick={() => onSelectCandidateAltitude(ft)}>{ft === highlightedAltitude && <Check size={12}/>}<span>{ft.toLocaleString()} ft</span></button>
@@ -183,17 +203,16 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         layers={chartLayers.current.value} legendInToolbar selectedCandidateAltitudeFt={selectedCandidateAltitudeFt} candidateAltitudes={candidateAltitudes}
         nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={crossSectionHourLoading ? undefined : onSetWaypointNwpOffset} allowMissingTerrain={allowMissingTerrain} fitHeight
         highlightRangeNm={highlightRangeNm} linkedItems={linkedItems} activeLinkedItemId={activeLinkedItemId} onSelectLinkedItem={onSelectLinkedItem}
+        hideMeta={compact} plotPaddingLeft={plotPaddingLeft}
         showComparisonProfiles interactive zoom={zoom} scrollElementRef={scrollRef} selectedMarkerId={selected?.id} onSelectMarker={selectMarker} enableDragScroll />
     </div>
-    <RouteOverview total={total} range={range} onRange={setRangeFromOverview} waypointCount={markers.length}/>
-    <footer className="vpc-operational-footer">
+    {!compact && <RouteOverview total={total} range={range} onRange={setRangeFromOverview} waypointCount={markers.length}/>}
+    {!compact && <footer className="vpc-operational-footer">
       <ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>
       <details className="vpc-operational-info"><summary>자료 정보 · ft</summary><div>
-        <p>{crossSection?.run?.validTime ? `자료 기준 ${formatBriefingTime(crossSection.run.validTime,tz,{withDate:true})}` : '기상자료 없음'}</p>
-        {sourceNote && <p>{sourceNote}</p>}
-        <p>{coverageNotes.join(' · ')}</p><p>고도는 원자료 기준입니다. 자료가 없는 영역은 별도로 표시합니다.</p>
+        {sourceInfo}
       </div></details>
-    </footer>
+    </footer>}
     {!embedded && !floating.maximized && <>{['n','s','e','w','ne','nw','sw'].map(edge=><div key={edge} className={`vpc-resize is-${edge}`} {...floating.handlers(edge)}/>)}<div className="vpc-resize is-se" tabIndex={0} role="group" aria-label="창 크기 조절" {...floating.handlers('se')} onKeyDown={e=>floating.key(e,'resize')}>◢</div></>}
   </section></div>
 }
