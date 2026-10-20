@@ -46,19 +46,20 @@
 .mb-end { display: block; width: 100%; padding: var(--space-s) var(--space-l) var(--space-m); border: 0; background: none; color: var(--text-3); font: inherit; cursor: pointer; }
 .mb-end:hover { color: var(--text-1); text-decoration: underline; }
 
-/* 독: 위험 막대 + 연직단면도. 시간 막대 띠(브리핑 중 28px) 바로 위에 붙인다 — 띠 위의 빈 50px에 지도가 비쳐 보이던 틈을 없앤다. */
+/* 독: 위험 막대 + 연직단면도. 왼쪽 패널처럼 지도 위에 뜬 카드(둘레 12px 여백·둥근 모서리·그림자).
+   가장자리까지 붙은 흰 판이면 화면이 지도/판으로 반씩 갈라져 답답해 보였다. 시간 막대 띠(28px) 위 12px. */
 .mb-dock {
-  --mb-label-w: 176px; --mb-track-right: 0px; --mb-typhoon: #6d28d9; --mb-airmet: #92400e;
-  position: absolute; left: 0; right: 0; bottom: 28px; z-index: 7;
-  display: flex; flex-direction: column; min-height: 0;
-  background: var(--bg-1); border-top: 1px solid var(--stroke-2); box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
+  --mb-label-w: 176px; --mb-track-right: 0px; --mb-typhoon: #6d28d9; --mb-airmet: #92400e; --mb-dock-gap: 12px;
+  position: absolute; left: var(--mb-dock-gap); right: var(--mb-dock-gap); bottom: calc(28px + var(--mb-dock-gap)); z-index: 7;
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--radius-lg); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
   color: var(--text-1); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
 }
-.mb-dock-handle { position: absolute; top: -7px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; width: 72px; height: 14px; cursor: ns-resize; touch-action: none; }
+.mb-dock-handle { position: absolute; top: 0; z-index: 4; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; width: 72px; height: 14px; cursor: ns-resize; touch-action: none; }
 .mb-dock-handle span { width: 40px; height: 4px; border-radius: var(--radius-circular); background: var(--stroke-strong); }
 .mb-dock-handle:focus-visible { outline: 2px solid var(--accent); border-radius: var(--radius-sm); }
 .mb-dock-section { padding: 0 var(--space-l); }
-.mb-dock-section.is-ribbon { flex: none; padding-top: 2px; padding-bottom: var(--space-xs); }
+.mb-dock-section.is-ribbon { flex: none; padding-top: var(--space-xs); padding-bottom: var(--space-s); }
 .mb-dock-section.is-profile { flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--stroke-2); padding: 0; }
 .mb-dock:not(.has-profile) .mb-dock-section.is-profile { flex: none; padding: 0 var(--space-l); }
 .mb-dock-head, .mb-ribbon-head { display: flex; align-items: center; gap: var(--space-s); }
@@ -73,7 +74,7 @@
 .mb-profile-body > .profile-embedded { flex: 1; }
 /* 압축 단면도: 머리 한 줄(제목·시각·레이어·확대·범례·접기). 레이어·범례는 펼침 창. */
 .mb-profile-body .vpc-operational.is-embedded { border: 0; border-radius: 0; }
-.mb-profile-body .vpc-compact-header { position: relative; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-m); min-height: 32px; padding: 0 var(--space-l); border-bottom: 1px solid var(--stroke-2); }
+.mb-profile-body .vpc-compact-header { position: relative; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-m); min-height: 32px; padding: 0 var(--space-l); }
 .mb-profile-body .vpc-compact-header .vpc-layer-controls { display: flex; gap: var(--space-s); margin: 0; }
 .mb-profile-body .vpc-compact-header .vpc-layer-group { display: flex; gap: 2px; }
 .mb-profile-body .vpc-compact-header .vpc-layer-group + .vpc-layer-group { padding-left: var(--space-s); border-left: 1px solid var(--stroke-2); }
@@ -121,7 +122,9 @@
 .mb-src-chip.is-tc { color: var(--mb-typhoon); }
 .mb-src-chip.is-mine { border-style: solid; }
 
-.mb-track { position: relative; border-radius: var(--radius-sm); background: var(--bg-2); }
+/* 바탕 띠 대신 가운데 기준선 하나 — 비어 있는 줄이 빈 표처럼 보이지 않게. */
+.mb-track { position: relative; border-radius: var(--radius-sm); }
+.mb-track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--stroke-2); }
 .mb-track.is-unavailable { background: repeating-linear-gradient(135deg, var(--bg-2) 0 6px, var(--bg-3) 6px 12px); }
 .mb-track-empty { position: absolute; left: var(--space-s); top: 50%; transform: translateY(-50%); color: var(--text-3); white-space: nowrap; }
 /* 수치예보: 글자 없이 강도 색으로 줄을 칠한다. 예보관 틀이 그 위를 덮는다. */
@@ -153,10 +156,10 @@
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
 .map-view-wrapper[data-map-briefing='true'] .active-route-chip,
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__play { display: none; }
-.map-view-wrapper[data-map-briefing='true'] .map-bottom-control-dock { bottom: calc(28px + var(--mb-dock-h, 0px) + var(--space-s)); }
+.map-view-wrapper[data-map-briefing='true'] .map-bottom-control-dock { bottom: calc(40px + var(--mb-dock-h, 0px) + var(--space-s)); }
 /* 시간 막대 띠를 38 → 28px로(눈금·글자를 위로 당김). */
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__viewport,
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__playhead { height: 28px; }
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__tick-label { top: 9px; font-size: 10.5px; }
-.map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(30px + var(--mb-dock-h, 0px)); }
-.map-view-wrapper[data-map-briefing='true'] .mapboxgl-ctrl-bottom-right { bottom: var(--mb-dock-h, 0px); }
+.map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(48px + var(--mb-dock-h, 0px)); }
+.map-view-wrapper[data-map-briefing='true'] .mapboxgl-ctrl-bottom-right { bottom: calc(12px + var(--mb-dock-h, 0px)); }

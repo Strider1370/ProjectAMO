@@ -788,7 +788,7 @@ const MapView = forwardRef(function MapView({
     if (lw > 0) pad.left = cap(lw)
     // 지도형 브리핑: 아래 독(위험 막대·단면도)과 시간 막대에 가리지 않게.
     const dock = doc?.querySelector('.mb-dock')
-    if (dock) pad.bottom = Math.min(Math.round(dock.getBoundingClientRect().height) + 28 + base, (container?.clientHeight || 800) - 160)
+    if (dock) pad.bottom = Math.min(Math.round(dock.getBoundingClientRect().height) + 40 + base, (container?.clientHeight || 800) - 160)
     return pad
   }
 
