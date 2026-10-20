@@ -1,6 +1,9 @@
 // 지도형 브리핑 화면 계산(그리기와 분리). 판정은 서버의 sections.enroute.ribbon이 하고,
 // 여기서는 위치·문구·높이만 만든다.
 import { phenomenonKo } from '../../../shared/weather/phenomenonKo.js'
+import { icingPatternStyle } from '../../../shared/weather/cloudIcingPresentation.js'
+import { GKTG_BANDS } from '../../../../../shared/gktg.js'
+import { ACI_BANDS } from '../../../../../shared/aci.js'
 
 export const MAP_BRIEFING_MIN_WIDTH = 1280
 const VIEW_KEY = 'projectamo.briefingView'
@@ -148,4 +151,20 @@ export function summaryCallout(summary, formatTime = (iso) => iso) {
     title: `${phase}${source}${LEVEL_KO[top.level] ?? ''} ${top.label}${minutes ? ` ${minutes}분` : ''}`.replace(/\s+/g, ' ').trim(),
     detail: `${route}${time}`,
   }
+}
+
+// 위험 막대 색 = 연직단면도 범례 색. 난류는 단면의 GKTG 칸과 같은 색·투명도(.3), 착빙은 단면의 착빙 무늬,
+// 대류는 지도 대류영역(실험) 색(0.5·0.75 구간). 범례 한 줄로 막대와 단면을 함께 읽게 한다.
+const TURBULENCE_CELL_OPACITY = 0.3
+const LEVEL_GRADE = { MOD: 2, SEV: 3 }
+export function hazardSwatchStyle(rowKey, level) {
+  const grade = LEVEL_GRADE[level]
+  if (!grade) return {}
+  if (rowKey === 'turbulence') {
+    const [r, g, b] = GKTG_BANDS[grade].rgba
+    return { backgroundColor: `rgba(${r}, ${g}, ${b}, ${TURBULENCE_CELL_OPACITY})` }
+  }
+  if (rowKey === 'icing') return icingPatternStyle(grade)
+  if (rowKey === 'convection') return { backgroundColor: ACI_BANDS[grade].color }
+  return {}
 }

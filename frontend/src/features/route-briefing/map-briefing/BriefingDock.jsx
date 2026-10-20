@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import VerticalProfileViewer from '../VerticalProfileViewer.jsx'
 import { useCrossSectionLayers } from '../crossSectionLayers.jsx'
 import HazardRibbon from './HazardRibbon.jsx'
-import { RIBBON_LABEL_WIDTH_PX, profileHeightPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
+import { RIBBON_LABEL_WIDTH_PX, hazardSwatchStyle, profileHeightPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
 
 // 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 윗변 탭으로 독 전체를 접는다.
 // 독 높이는 내용대로 — 위험 막대를 접으면 독이 줄 뿐 단면도가 커지지 않는다. 접힘·단면 높이는 브라우저에 기억.
@@ -79,6 +79,10 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   )
   if (dock.collapsed) return collapseTab
   const profileTitle = <h3 className="mb-dock-title">연직단면도</h3>
+  // 대류(실험)는 단면도 범례에 없어 위험 막대에 대류 줄이 있을 때만 같은 범례 줄에 덧붙인다.
+  const legendExtra = ribbon?.rows?.some((row) => row.key === 'convection' && row.model.length)
+    ? <span className="mb-legend-extra" title="KIM 대류영역(실험) 점수 0.5 이상 MOD, 0.75 이상 SEV">대류(실험){['MOD', 'SEV'].map((level) => <b key={level}><i style={hazardSwatchStyle('convection', level)} />{level}</b>)}</span>
+    : null
   const profileFold = fold(profileOpen, () => toggle('profileOpen'), '연직단면도')
 
   return (
@@ -102,7 +106,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
       <div className="mb-dock-section is-profile">
         {profileOpen && verticalProfile ? (
           <div className="mb-profile-body" style={{ height: heightPx }}>
-            <VerticalProfileViewer embedded fillContainer compact compactTitle={profileTitle} compactActions={profileFold} plotPaddingLeft={labelWidth}
+            <VerticalProfileViewer embedded fillContainer compact compactTitle={profileTitle} compactActions={profileFold} compactLegendExtra={legendExtra} plotPaddingLeft={labelWidth}
               profile={verticalProfile} crossSection={crossSection} layers={layers} onToggleLayer={toggleLayer}
               advisories={advisories} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset}
               onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} onRangeChange={setProfileRange} />

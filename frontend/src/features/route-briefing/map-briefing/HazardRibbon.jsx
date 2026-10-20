@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { frameTag, modelChip, pctOf, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
+import { frameTag, hazardSwatchStyle, modelChip, pctOf, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
 
-// 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 강도 색으로 줄을 칠하고,
+// 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 연직단면도 범례와 같은 색으로 줄을 칠하고,
 // 예보관 발표 틀(이름표는 틀 안쪽 왼쪽)을 그 위에 덮어 그린다 — 겹친 곳은 배경색으로 모델 위험이 있음을 보인다. 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
 // 같은 세로선에 맞춘다. 단면도가 확대돼 있으면 보이는 구간을 테두리 창으로 겹쳐 그린다.
 export default function HazardRibbon({ ribbon, profileRange = null, selectedId = null, onSelect, hiddenRows = [], onToggleRow, trackInset = null }) {
@@ -28,7 +28,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
               <i className="mb-row-dot" aria-hidden="true" />
               <span className="mb-row-name">{row.label}</span>
               <span className="mb-row-chips">
-                {chip && <span className={`mb-chip is-${chip.tone}`} title={chip.title}>{chip.text}</span>}
+                {chip && <span className={`mb-chip is-${chip.tone}`} title={chip.title} style={hazardSwatchStyle(row.key, chip.text)}>{chip.text}</span>}
                 {sourceChips(row).map((source) => (
                   <span key={source.text} className={`mb-src-chip is-${source.text.toLowerCase()}${source.mine ? ' is-mine' : ''}`} title={source.mine ? '내 고도와 겹치는 발표' : '다른 고도 발표'}>{source.text}</span>
                 ))}
@@ -43,7 +43,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                 const title = segmentTitle(row.label, segment)
                 return (
                   <button key={id} type="button" className={`mb-seg is-${segment.level.toLowerCase()}${selectedId === id ? ' is-selected' : ''}`}
-                    style={{ left: `${left}%`, width: `${width}%` }} aria-label={title} title={title}
+                    style={{ ...hazardSwatchStyle(row.key, segment.level), left: `${left}%`, width: `${width}%` }} aria-label={title} title={title}
                     onClick={() => onSelect?.({ id, row, kind: 'model', item: segment })} />
                 )
               })}

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
-  segmentTitle, sourceChips, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
+  segmentTitle, sourceChips, hazardSwatchStyle, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
 } from './mapBriefingModel.js'
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) } }
@@ -76,4 +76,12 @@ test('summary callout names phase, strength, phenomenon and minutes', () => {
   assert.equal(summaryCallout({ status: 'clear', unavailable: [] }).title, '내 고도에서 MOD 이상 위험 없음')
   assert.equal(summaryCallout({ status: 'unknown', unavailable: ['turbulence'] }).title, '난류·착빙 확인 불가')
   assert.equal(summaryCallout(null).tone, 'unknown')
+})
+
+test('ribbon swatches reuse the vertical-profile legend colors', () => {
+  assert.deepEqual(hazardSwatchStyle('turbulence', 'MOD'), { backgroundColor: 'rgba(255, 204, 0, 0.3)' })
+  assert.deepEqual(hazardSwatchStyle('turbulence', 'SEV'), { backgroundColor: 'rgba(255, 41, 0, 0.3)' })
+  assert.ok(hazardSwatchStyle('icing', 'SEV').backgroundImage.includes('radial-gradient'))
+  assert.deepEqual(hazardSwatchStyle('convection', 'MOD'), { backgroundColor: '#fb923c' })
+  assert.deepEqual(hazardSwatchStyle('typhoon', 'SEV'), {})
 })

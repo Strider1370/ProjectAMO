@@ -22,7 +22,7 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, compactTitle = null, compactActions = null, plotPaddingLeft = null }) {
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null }) {
   const floating = useFloatingWindow(placement)
   const { tz, setTz } = useTimeZone()
   const [localLayers, localToggle] = useCrossSectionLayers(INITIAL_LAYERS)
@@ -164,18 +164,17 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         {sourceNote && <p>{sourceNote}</p>}
         <p>{coverageNotes.join(' · ')}</p><p>고도는 원자료 기준입니다. 자료가 없는 영역은 별도로 표시합니다.</p>
       </>
-  // 지도형 브리핑 독: 시각·레이어·확대를 머리 한 줄에 펼쳐 두고, 범례는 그림 왼쪽 칸(고도 눈금 왼쪽)에 세로로.
-  // 미니맵(위험 막대가 대신)·범례 줄·비교 고도 줄은 뺀다.
+  // 지도형 브리핑 독: 범례는 위험 막대와 단면 사이 머리 줄 가운데(위험 막대도 같은 색을 쓰므로 한 범례로 함께 읽는다),
+  // 레이어 켜고 끄기는 그림 왼쪽 칸(고도 눈금 왼쪽)에 세로로. 미니맵(위험 막대가 대신)·범례 줄·비교 고도 줄은 뺀다.
   const compactHeader = compact && <header className="vpc-compact-header">
       {compactTitle}
       {timeControl}
-      {layerControls}
+      <div className="vpc-compact-legend-row"><ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>{compactLegendExtra}</div>
       {zoomControls}
-      <span className="vpc-compact-spacer"/>
       {compactActions}
     </header>
   const compactLegend = compact && <div className="vpc-compact-legend">
-      <ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>
+      {layerControls}
       <details className="vpc-compact-info"><summary>자료 정보</summary><div>{sourceInfo}</div></details>
     </div>
   return <div className={embedded ? `profile-embedded${fillContainer ? ' is-fill' : ''}` : 'vpc-overlay'}><section className={`vpc-window vpc-operational${embedded ? ' is-embedded' : ''}`} role={embedded ? 'group' : 'dialog'} aria-label="연직단면도"
