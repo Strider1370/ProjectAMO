@@ -25,8 +25,10 @@ test('profile starts folded on low screens until the user chooses', () => {
   assert.equal(profileOpenFor({ ...DEFAULT_DOCK, profileOpen: true }, 768), true)
 })
 
-test('profile height keeps the whole dock near a third of the screen and under half', () => {
-  assert.equal(profileHeightPx(DEFAULT_DOCK, 1080), 237)
+test('profile height leaves room for the chart and keeps the dock under half the screen', () => {
+  assert.equal(profileHeightPx(DEFAULT_DOCK, 1080), 324)
+  assert.equal(profileHeightPx(DEFAULT_DOCK, 1000), 300)
+  assert.equal(profileHeightPx(DEFAULT_DOCK, 900), 280)
   assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 300 }, 1080), 300)
   // 위험 막대 + 단면이 화면 50%를 넘지 않는다(1080 → 단면 최대 410).
   assert.equal(profileHeightPx({ ...DEFAULT_DOCK, profileHeightPx: 900 }, 1080), 410)
