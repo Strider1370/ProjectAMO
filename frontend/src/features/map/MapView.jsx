@@ -717,7 +717,7 @@ const MapView = forwardRef(function MapView({
     lowPower, cloudMaxSpread,
     altLevelsFt, selectedAltFt, setSelectedAltFt,
     sliderLevels, sliderTimes, sliderAvailability, nwpSelection, setNwpSelection, aci,
-  } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs: weatherTimelineSelectedMs, dataMode: routeBriefing.state.briefingContext?.kind === 'organization' ? 'pinned' : dataMode, mapDataSelection: organizationMapSelection ?? mapDataSelection })
+  } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs: weatherTimelineSelectedMs, liveNowMs: effectiveLightningReferenceTimeMs, dataMode: routeBriefing.state.briefingContext?.kind === 'organization' ? 'pinned' : dataMode, mapDataSelection: organizationMapSelection ?? mapDataSelection })
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
 

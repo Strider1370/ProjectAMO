@@ -22,6 +22,7 @@ export function useNwpOverlays({
   windFlowTrail,
   windFlowWidth,
   timelineSelectedMs = null,
+  liveNowMs = null,
   dataMode = 'live',
   mapDataSelection = null,
 }) {
@@ -116,16 +117,18 @@ export function useNwpOverlays({
     : (turbulenceEnabled ? legacyKtg.availableTimes : aci.times)
 
   // 메인 타임라인 스크럽(절대시각) → 가장 가까운 예보시간(hf)으로 공유 selection 갱신.
-  // NWP·난류가 함께 그 예보시각으로 따라감. 라이브(selectedMs=null)면 기본 예보시각 유지.
+  // NWP·난류가 함께 그 예보시각으로 따라감. 라이브(selectedMs=null)면 지금 시각에 가장 가까운
+  // 예보시각 — 그대로 두면 최신 회차의 첫 시각(분석시각)이 남아 하루 전 난류가 보였다.
+  const targetMs = Number.isFinite(timelineSelectedMs) ? timelineSelectedMs : (Number.isFinite(liveNowMs) ? liveNowMs : null)
   useEffect(() => {
-    if (pinned || !Number.isFinite(timelineSelectedMs)) return
-    const nearest = pickNearestNwp(sliderTimes, timelineSelectedMs)
+    if (pinned || !Number.isFinite(targetMs)) return
+    const nearest = pickNearestNwp(sliderTimes, targetMs)
     if (!nearest) return
     setNwpSelection((prev) => {
       if (prev && Number(prev.hf) === Number(nearest.hf)) return prev
       return prev ? { ...prev, hf: Number(nearest.hf) } : { hf: Number(nearest.hf) }
     })
-  }, [pinned, timelineSelectedMs, sliderTimes])
+  }, [pinned, targetMs, sliderTimes])
 
   const pinnedVariable = metVisibility.turbulence ? 'gktg' : combinedEnabled ? 'temperature' : 'wind'
   const pinnedSliderLevels = pinnedKimLevels(mapDataSelection, pinnedVariable)
