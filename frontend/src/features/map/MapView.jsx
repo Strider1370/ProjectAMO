@@ -808,7 +808,8 @@ const MapView = forwardRef(function MapView({
   // 지도형 브리핑 ↔ 지도(경로 위 위험 색 띠, 막대 구간 강조, SIGMET 면 강조, "이 구간으로"). 로직은 map-briefing/에.
   const briefingMapLink = useBriefingMapLink({
     mapRef, isStyleReady, styleRevision, active: mapBriefingActive,
-    ribbon: routeBriefing.state.briefing?.sections?.enroute?.ribbon ?? null, previewGeojson: routeResult?.previewGeojson,
+    ribbon: routeBriefing.state.briefing?.sections?.enroute?.ribbon ?? null,
+    routeSamples: routeBriefing.state.verticalProfile?.axis?.samples ?? null, previewGeojson: routeResult?.previewGeojson,
     cruiseAltitudeFt: routeBriefing.state.briefing?.sections?.enroute?.plannedCruiseAltitudeFt ?? null,
     fitPadding: fitPaddingFor, setTimelineMs: setWeatherTimelineSelectedMs,
     nwpSelection, setNwpSelection, sliderLevels, sliderTimes,

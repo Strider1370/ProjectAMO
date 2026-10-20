@@ -1,5 +1,5 @@
 // 지도형 브리핑 ↔ 지도: 경로 위 위험 색 띠, 막대를 가리키거나 누른 구간 강조, 시작·끝 이름표.
-// 좌표는 이미 지도에 올라간 경로 preview geojson을 거리(NM)로 잘라 만든다 — 새 자료를 받지 않는다.
+// 좌표는 이미 받은 연직단면도 경로 축(route.samples)을 거리(NM)로 잘라 만든다 — 새 자료를 받지 않는다.
 import { rangeCoordinates } from '../lib/legHighlight.js'
 import { ROUTE_PREVIEW_LINE } from '../lib/routePreview.js'
 import { hazardLineColor } from './mapBriefingModel.js'
@@ -11,37 +11,31 @@ export const MB_FOCUS_LINE = 'map-briefing-focus-line'
 export const MB_FOCUS_LABEL = 'map-briefing-focus-label'
 
 const EMPTY = { type: 'FeatureCollection', features: [] }
-const EARTH_RADIUS_NM = 3440.065
+const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 
-function routeLine(previewGeojson) {
-  const coordinates = (previewGeojson?.features ?? []).find((feature) => feature.properties?.role === 'route-preview-line')?.geometry?.coordinates
-  return Array.isArray(coordinates) && coordinates.length > 1 ? coordinates : null
-}
-
-function lineLengthNm(coordinates) {
-  const rad = Math.PI / 180
-  let total = 0
-  for (let index = 1; index < coordinates.length; index += 1) {
-    const [a, b] = [coordinates[index - 1], coordinates[index]]
-    const h = Math.sin((b[1] - a[1]) * rad / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin((b[0] - a[0]) * rad / 2) ** 2
-    total += 2 * EARTH_RADIUS_NM * Math.asin(Math.min(1, Math.sqrt(h)))
+// 막대 거리(NM) → 지도 좌표. 위험 막대·연직단면도와 같은 경로 축(단면 샘플: SID·STAR 포함, 지점마다 거리·위경도)을
+// 따라 자른다. 지도 경로 preview 선은 절차가 빠진 공항↔첫·끝 지점 직선이라 거리가 맞지 않는다(2026-10-21 사용자 발견).
+// 단면 샘플이 없을 때만 preview 선을 거리로 자른다.
+export function ribbonRangeCoordinates(route, startNm, endNm) {
+  if (!Number.isFinite(startNm) || !Number.isFinite(endNm) || endNm <= startNm) return []
+  const samples = (route?.samples ?? []).filter((sample) => Number.isFinite(sample?.distanceNm) && Number.isFinite(sample?.lon) && Number.isFinite(sample?.lat))
+  if (samples.length < 2) return rangeCoordinates(route?.previewGeojson, startNm, endNm)
+  const out = []
+  for (let index = 1; index < samples.length; index += 1) {
+    const a = samples[index - 1], b = samples[index]
+    const span = b.distanceNm - a.distanceNm
+    if (!(span > 0) || b.distanceNm < startNm || a.distanceNm > endNm) continue
+    const pa = [a.lon, a.lat], pb = [b.lon, b.lat]
+    if (!out.length) out.push(lerp(pa, pb, Math.max(0, (startNm - a.distanceNm) / span)))
+    if (b.distanceNm <= endNm) out.push(pb)
+    else { out.push(lerp(pa, pb, (endNm - a.distanceNm) / span)); break }
   }
-  return total
-}
-
-// 막대 거리(NM, SID·STAR 포함 총 거리 기준) → 지도 경로선 위 좌표. 지도 선 길이가 브리핑 총 거리와
-// 조금 다르면(절차 병합·반올림) 비율로 맞춰 끝 지점이 공항에 닿게 한다.
-export function ribbonRangeCoordinates(previewGeojson, totalNm, startNm, endNm) {
-  const line = routeLine(previewGeojson)
-  if (!line) return []
-  const length = lineLengthNm(line)
-  const scale = totalNm > 0 && length > 0 ? length / totalNm : 1
-  return rangeCoordinates(previewGeojson, startNm * scale, endNm * scale)
+  return out.length > 1 ? out : []
 }
 
 // 경로 위 위험 색 띠: 내 고도 모델 구간(난류·착빙·대류) + 태풍 틀. 숨긴 줄은 뺀다.
 // SEV가 MOD 위에 오도록 순서를 맞춘다(같은 곳에 둘 다 있으면 센 쪽이 보인다).
-export function hazardBandCollection(ribbon, previewGeojson, { hiddenRows = [] } = {}) {
+export function hazardBandCollection(ribbon, route, { hiddenRows = [] } = {}) {
   const total = ribbon?.totalDistanceNm
   if (!ribbon?.rows?.length || !(total > 0)) return EMPTY
   const features = []
@@ -53,7 +47,7 @@ export function hazardBandCollection(ribbon, previewGeojson, { hiddenRows = [] }
     ]
     for (const { segment, level } of items) {
       const color = hazardLineColor(row.key, level)
-      const coordinates = color ? ribbonRangeCoordinates(previewGeojson, total, segment.startNm, segment.endNm) : []
+      const coordinates = color ? ribbonRangeCoordinates(route, segment.startNm, segment.endNm) : []
       if (coordinates.length < 2) continue
       features.push({
         type: 'Feature',
@@ -67,11 +61,11 @@ export function hazardBandCollection(ribbon, previewGeojson, { hiddenRows = [] }
 }
 
 // 가리킨(미리보기)·누른(고정) 구간 → 강조선 + (누른 경우) 시작·끝 이름표.
-export function focusCollection(ribbon, previewGeojson, focus) {
+export function focusCollection(ribbon, route, focus) {
   const total = ribbon?.totalDistanceNm
   const item = focus?.item
   if (!item || !(total > 0)) return EMPTY
-  const coordinates = ribbonRangeCoordinates(previewGeojson, total, item.startNm, item.endNm)
+  const coordinates = ribbonRangeCoordinates(route, item.startNm, item.endNm)
   if (coordinates.length < 2) return EMPTY
   const pinned = Boolean(focus.pinned)
   const features = [{ type: 'Feature', properties: { kind: 'line', pinned }, geometry: { type: 'LineString', coordinates } }]

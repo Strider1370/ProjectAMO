@@ -2,11 +2,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { coordinatesBounds, focusCollection, hazardBandCollection, ribbonRangeCoordinates } from './briefingMapLayers.js'
 
-// 적도 위 동서 직선: 경도 1° ≈ 60NM. 길이 ≈ 120NM.
-const preview = {
+// 지도 preview 선(절차 없음): 적도 위 동서 직선.
+const previewGeojson = {
   type: 'FeatureCollection',
   features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: [[0, 0], [1, 0], [2, 0]] } }],
 }
+// 단면 샘플(SID 포함 실제 경로 축): 0–60NM은 북쪽으로 올라갔다가(절차) 60–120NM은 동쪽으로.
+const samples = [
+  { distanceNm: 0, lon: 0, lat: 0 }, { distanceNm: 60, lon: 0, lat: 1 }, { distanceNm: 120, lon: 1, lat: 1 },
+]
+const preview = { samples, previewGeojson }
 const ribbon = {
   totalDistanceNm: 120,
   rows: [
@@ -17,13 +22,13 @@ const ribbon = {
 }
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 0.01, `${actual} ≠ ${expected}`)
 
-test('막대 거리 → 경로선 좌표: 지도 선이 총 거리와 다르면 비율로 맞춘다', () => {
-  const coordinates = ribbonRangeCoordinates(preview, 120, 30, 90)
-  near(coordinates[0][0], 0.5)
-  near(coordinates.at(-1)[0], 1.5)
-  // 브리핑 총 거리가 240NM로 두 배면 같은 막대는 선의 앞쪽 절반 안에 든다.
-  near(ribbonRangeCoordinates(preview, 240, 30, 90).at(-1)[0], 0.75)
-  assert.deepEqual(ribbonRangeCoordinates(null, 120, 0, 10), [])
+test('막대 거리 → 좌표는 단면 샘플(절차 포함) 축을 따른다, 샘플이 없을 때만 preview 선', () => {
+  const coordinates = ribbonRangeCoordinates(preview, 30, 90)
+  assert.deepEqual(coordinates.map(([lon, lat]) => [+lon.toFixed(3), +lat.toFixed(3)]), [[0, 0.5], [0, 1], [0.5, 1]])
+  const fallback = ribbonRangeCoordinates({ previewGeojson }, 30, 90)
+  near(fallback[0][0], 0.5)
+  near(fallback.at(-1)[0], 1.5)
+  assert.deepEqual(ribbonRangeCoordinates(null, 0, 10), [])
 })
 
 test('색 띠: 모델 구간과 태풍만(SIGMET 틀은 띠 없음), 숨긴 줄 제외, SEV가 MOD 위', () => {

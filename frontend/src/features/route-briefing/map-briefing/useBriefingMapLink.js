@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { setAdvisoryHighlight } from '../../weather-overlays/lib/advisoryLayers.js'
 import { formatPressureFlightLevel, nearestPressureLevelForAltitude } from '../../weather-overlays/lib/pressureLevelModel.js'
 import { clearBriefingMapLayers, coordinatesBounds, focusCollection, hazardBandCollection, ribbonRangeCoordinates, syncBriefingMapLayers } from './briefingMapLayers.js'
@@ -11,10 +11,12 @@ const NO_FOCUS = { hover: null, selection: null, advisoryId: null, hiddenRows: [
 // - goTo: 팝오버 "지도·슬라이더를 이 구간으로" — 누를 때만 지도·시간·고도를 옮긴다.
 // - mapStatus: 켠 레이어 안내에 쓸 지금 지도 고도(KIM 기압면)·시각
 export function useBriefingMapLink({
-  mapRef, isStyleReady, styleRevision, active, ribbon, previewGeojson, cruiseAltitudeFt,
+  mapRef, isStyleReady, styleRevision, active, ribbon, routeSamples, previewGeojson, cruiseAltitudeFt,
   fitPadding, setTimelineMs, nwpSelection, setNwpSelection, sliderLevels, sliderTimes,
 }) {
   const [focus, setFocus] = useState(NO_FOCUS)
+  // 위험 막대와 같은 거리 축: 연직단면도 샘플(없으면 지도 경로 preview 선).
+  const route = useMemo(() => ({ samples: routeSamples, previewGeojson }), [routeSamples, previewGeojson])
 
   useEffect(() => {
     const map = mapRef.current
@@ -24,10 +26,10 @@ export function useBriefingMapLink({
     // 다른 막대를 가리키는 동안은 그 구간을 미리보기로, 아니면 누른 구간을 고정 강조로.
     const target = hover && hover.id !== selection?.id ? { item: hover.item, pinned: false } : selection ? { item: selection.item, pinned: true } : null
     syncBriefingMapLayers(map, {
-      bands: hazardBandCollection(ribbon, previewGeojson, { hiddenRows }),
-      focus: focusCollection(ribbon, previewGeojson, target),
+      bands: hazardBandCollection(ribbon, route, { hiddenRows }),
+      focus: focusCollection(ribbon, route, target),
     })
-  }, [mapRef, isStyleReady, styleRevision, active, ribbon, previewGeojson, focus])
+  }, [mapRef, isStyleReady, styleRevision, active, ribbon, route, focus])
 
   useEffect(() => {
     const map = mapRef.current
@@ -39,16 +41,15 @@ export function useBriefingMapLink({
 
   const goTo = useCallback((selection) => {
     const map = mapRef.current
-    const total = ribbon?.totalDistanceNm
     const item = selection?.item
     if (!item) return
-    const bounds = coordinatesBounds(ribbonRangeCoordinates(previewGeojson, total, item.startNm, item.endNm))
+    const bounds = coordinatesBounds(ribbonRangeCoordinates(route, item.startNm, item.endNm))
     if (map && bounds) map.fitBounds(bounds, { padding: fitPadding?.(80), maxZoom: 8, duration: 600 })
     const target = focusTarget(selection, { cruiseAltitudeFt })
     if (Number.isFinite(target?.timeMs)) setTimelineMs?.(target.timeMs)
     const level = nearestPressureLevelForAltitude(sliderLevels, target?.altitudeFt)
     if (level) setNwpSelection?.((previous) => previous?.level === level.id ? previous : { ...(previous ?? {}), level: level.id })
-  }, [mapRef, ribbon, previewGeojson, cruiseAltitudeFt, fitPadding, setTimelineMs, sliderLevels, setNwpSelection])
+  }, [mapRef, route, cruiseAltitudeFt, fitPadding, setTimelineMs, sliderLevels, setNwpSelection])
 
   // 안내 문구용: 지도 KIM 레이어가 지금 그리는 기압면(FL)과 예보 시각.
   const pressure = Number.parseFloat(nwpSelection?.level)
