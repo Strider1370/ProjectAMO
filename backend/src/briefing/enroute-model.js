@@ -133,7 +133,12 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
   const missing = { icing: [], turbulence: [] }
   const kim = crossSection?.levels ?? []
   if (kim.length) {
-    const series = seriesAtAltitude(kim, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { flightPlanProfile, mode: 'worst' })
+    // 착빙은 300hPa 이상에서만 계산한다(KIM_NWP_ICING_LEVEL_IDS — 그 위는 −35°C 하드게이트로 늘 0이라 수집 안 함).
+    // 그 위 기압면의 빈 값을 "자료 없음"으로 두면 고고도 순항 구간 전체가 확인 불가로 빗금 쳐졌다 → 0(없음)으로 본다.
+    const icingLevels = kim.map((level) => Number(level.pressure) < 300
+      ? { ...level, values: level.values.map((value) => (value && value.icing == null ? { ...value, icing: 0 } : value)) }
+      : level)
+    const series = seriesAtAltitude(icingLevels, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { flightPlanProfile, mode: 'worst' })
     const icing = thresholdIntervals(series, classifyIcing)
     status.icing = seriesStatus(series, icing)
     missing.icing = missingIntervals(series)

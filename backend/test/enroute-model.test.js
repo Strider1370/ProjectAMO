@@ -117,3 +117,15 @@ test('reports runs of missing samples', async () => {
   // 5NM보다 짧은 빈 구간(끝 40NM 한 샘플)은 뺀다 — 공항 바로 위 지표 근처 결측.
   assert.deepEqual(missingIntervals(series), [{ startNm: 10, endNm: 20 }])
 })
+
+test('icing above 300hPa counts as none, not missing', () => {
+  const levels = [
+    { pressure: 400, altFt: 24000, values: [0, 50, 100].map((distanceNm) => ({ distanceNm, icing: 0 })) },
+    { pressure: 300, altFt: 30000, values: [0, 50, 100].map((distanceNm) => ({ distanceNm, icing: 0 })) },
+    { pressure: 200, altFt: 39000, values: [0, 50, 100].map((distanceNm) => ({ distanceNm, icing: null })) },
+    { pressure: 150, altFt: 45000, values: [0, 50, 100].map((distanceNm) => ({ distanceNm, icing: null })) },
+  ]
+  const r = summarizeEnrouteModel({ crossSection: { levels }, turbulence: null, totalDistanceNm: 100, cruiseAltitudeFt: 43000 })
+  assert.equal(r.status.icing, 'none')
+  assert.deepEqual(r.missing.icing, [])
+})
