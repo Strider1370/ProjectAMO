@@ -95,7 +95,8 @@
 - 팝오버: `HazardPopover.jsx`, 내용은 `selectionDetail`. "이 구간으로"는 지도 맞춤 + 시간 = 통과 가운데 시각 + 고도 = 가장 가까운 기압면(`pressureLevelModel.js` `nearestPressureLevelForAltitude`; 모델 = 구간 가운데 고도, 내 고도 SIGMET = 순항고도, 다른 고도 = 발표 고도대 가운데).
 - SIGMET 강조: 단면 상자에 마우스(겹치면 가장 작은 상자) → 같은 발표 상자 전부 강조·나머지 흐림, 위험 막대 틀 강조, 지도 면 강조(`advisoryLayers.js` `promoteId: 'id'` + feature-state `highlight`). 문서형 단면도는 단면 안 강조만(지도 면 연동은 지도형만).
 - MapView에는 `useBriefingMapLink` 호출과 콜백만 추가.
-- 브라우저 계약 2개(막대 누름·SIGMET 마우스 올림)는 아직 없음 — 아래 status 참고.
+- 사용자 검토 후: 브리핑 중 기상·항공 레이어 패널이 독(+범례 줄) 위에서 끝나고 안쪽 스크롤(4e8b2c2e). 막대 누름 시 지도 확대·고도 변경은 하지 않기로 재확인.
+- 브라우저 계약 2개(막대 누름·SIGMET 마우스 올림)는 아직 없음 — status "남은 것" 참고.
 
 ## 5단계 — 고도 슬라이더와 시간 막대
 

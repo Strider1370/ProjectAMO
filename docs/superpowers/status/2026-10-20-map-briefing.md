@@ -42,15 +42,22 @@
 - 브리핑 중 시간 막대 28px, 현재 시각 줄·재생 버튼 숨김.
 - 열린 질문(spec §9): 브리핑 단면도에 비행 시간 밖 SIGMET을 그릴지.
 
-## 4단계 완료 (2026-10-21)
+## 4단계 완료 (2026-10-21) — a9c5a85c · 57bfd4cd · 4e8b2c2e
 경로 위 위험 색 띠, 막대·틀 가리키기/누르기(구간 강조·이름표·레이어 켜기·안내·기상정보 배지), 팝오버("지도·슬라이더를 이 구간으로"), SIGMET 마우스 올림 강조(단면 상자 ↔ 위험 막대 틀 ↔ 지도 면). 달라진 점은 계획 4단계 "실제로 한 것".
-- 운영 자료(RKSI→RKPC, FL250, ETD 20:30 KST)로 스크립트 확인: 띠·미리보기·누름·팝오버(강하 구간 안내 포함)·Esc·바깥 클릭·"이 구간으로"·SIGMET 강조 동작.
-- 남은 것: 브라우저 계약 "막대 누름"·"SIGMET 마우스 올림" 미작성(사용자 개발 서버가 3001/5173을 쓰고 있어 계약 실행 불가, 픽스처에 ribbon·SIGMET 주입 필요). 짧은 강하 구간은 시작·끝 이름표가 겹친다.
-- 커밋 전 HEAD의 `App.jsx`는 faec3ff9부터 `mapBriefing` 속성이 `/>` 밖에 있어 빌드가 깨져 있었다 — 4단계 커밋에 수정 포함.
+- 코드 위치: `map-briefing/briefingMapLayers.js`(띠·강조·이름표, 거리→좌표), `useBriefingMapLink.js`(MapView가 부르는 훅), `HazardPopover.jsx`, `mapBriefingModel.js`(`selectionDetail`·`focusTarget`·`layerToastText`·`pickRibbonTarget`·`hazardLineColor`), `lib/hazardLayers.js` `ribbonItemLayers`, `lib/profileAdvisoryFocus.js`, `advisoryLayers.js` `setAdvisoryHighlight`.
+- 사용자 검토 후 고친 것:
+  - 57bfd4cd: 출발 구간 강조가 경로 밖에 그려짐 → 지도 preview 선(SID·STAR 없는 직선) 대신 **연직단면도 경로 축(`verticalProfile.axis.samples`)**으로 자른다. 위험 막대 거리와 같은 축.
+  - 4e8b2c2e: 브리핑 중 기상·항공 레이어 패널이 독 아래로 들어가 아래 버튼을 못 누름 → 독(+범례 줄) 위에서 끝나고 안쪽 스크롤.
+- 사용자와 확인한 결정: 막대를 눌러도 **지도 확대·고도 변경 없음**(spec §3.3 그대로, "화면이 스스로 움직이지 않는다"). 지금 레이어가 순항고도가 아닌 기압면으로 그려지는 것(예: FL390 브리핑에 "FL270")은 5단계에서 슬라이더 기본값 = 순항고도로 풀린다.
+- 실제 화면 확인 방법(운영 자료): `DATA_PATH=$PWD/.artifacts/prod-data-20261020 npm run dev:test` 후 Playwright로 1920×1080, `page.clock.setFixedTime('2026-10-20T11:30:00Z')`(ETD 기본 = 20:30 KST), localStorage `projectamo:skip-intro=1`·`projectamo.briefingView=map`. 흐름: 비행 전 브리핑 → 출발 RKSI·도착 RKPC → 자동 생성 → 경로비교로 → 기본 경로로 고도 비교 → 순항 25000 → 고도 비교 → "이 고도로 진행"을 **두 번**(FL250은 고도 방향 규칙 확인) → 브리핑 생성. 위험 막대 버튼은 마우스를 받지 않으므로(줄이 위치로 고름) `page.mouse`로 막대 좌표를 누른다. 막대 id는 `[data-ribbon-id="turbulence:model:0"]` 형식.
+- 남은 것:
+  - 브라우저 계약 "막대 누름"·"SIGMET 마우스 올림"(`map-briefing.spec.mjs`, 데스크톱만) 미작성. `dev:contract`는 3001·5173이 비어 있어야 한다(사용자 서버를 끄고 실행). 픽스처(`route-fixture.mjs` `briefingFor`)에 `sections.enroute.ribbon`과 경로에 걸리는 SIGMET(지도 `/api` sigmet 응답 + 같은 id의 ribbon 틀)을 넣어야 한다.
+  - 짧은 강하 구간은 시작·끝 이름표가 겹친다(사용자 판단 대기).
+- 커밋 전 HEAD의 `App.jsx`는 faec3ff9부터 `mapBriefing` 속성이 `/>` 밖에 있어 빌드가 깨져 있었다 — a9c5a85c에 수정 포함.
 
 ## 다음 할 일
-1. 4단계 브라우저 계약 2개.
-2. 5단계(고도 슬라이더·시간 막대 ETD~ETA 창) → 6단계(공항 카드, 커밋 안 된 TAF 개편 정리 후) → 7단계(과거 보기) → 8단계(마무리).
+1. 4단계 브라우저 계약 2개(위 "남은 것").
+2. 5단계(고도 슬라이더 기본 = 순항고도 기압면·축 위 위험 표시·말풍선, 시간 막대 ETD~ETA 창) → 6단계(공항 카드, 커밋 안 된 TAF 개편 정리 후) → 7단계(과거 보기) → 8단계(마무리).
 3. 따로: 문서형 `briefing-view` 계약 3개 실패(10-16 단면 통합 이후 갱신 안 됨, 1개는 수정 전 HEAD에서도 실패 확인).
 4. spec §9 열린 질문은 사용자 인터뷰 후(인터뷰는 개편 이후).
 
