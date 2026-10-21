@@ -1,6 +1,10 @@
 # 지도형 브리핑 · 진행 상황 (2026-10-20)
 
-다른 세션에서 이어받을 때 이 문서부터 읽는다.
+다른 세션에서 이어받을 때 이 문서부터 읽고, 이어서 아래 순서로 읽는다.
+1. 이 문서 — 단계별 완료 내역, 사용자와 정한 것, 로컬 시험 자료·확인 방법, 남은 일, 다음 할 일.
+2. 구현 계획 [plans/2026-10-20-map-briefing-implementation.md](../plans/2026-10-20-map-briefing-implementation.md) — 다음 단계 본문, 그리고 끝난 단계마다 "실제로 한 것"(계획과 달라진 점).
+3. 설계 [specs/2026-10-20-map-briefing-design.md](../specs/2026-10-20-map-briefing-design.md) — §2.1·§2.2(시안 이후 바뀐 결정, 이쪽이 우선), 다음 단계에 해당하는 §3, §9 열린 질문(건드리지 않음).
+4. 최종 시안 `docs/design/mockups/2026-10-20-map-briefing-v8.html` — 다음 단계에 해당하는 상태 버튼.
 
 ## 한 일
 1. **운영 사이트 신규 사용자 테스트** → [docs/research/2026-10-20-live-site-new-user-test.md](../../research/2026-10-20-live-site-new-user-test.md)
