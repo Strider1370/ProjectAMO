@@ -13,7 +13,7 @@ const NO_FOCUS = { hover: null, selection: null, advisoryId: null, hiddenRows: [
 // - 경로 위 위험 색 띠, 막대를 가리키거나 누른 구간 강조·이름표, 가리킨 SIGMET 면 강조
 // - goTo: 팝오버 "지도·슬라이더를 이 구간으로" — 누를 때만 지도·시간·고도를 옮긴다.
 // - mapStatus: 켠 레이어 안내에 쓸 지금 지도 고도(KIM 기압면)·시각
-// - 5단계: 브리핑을 열 때 한 번 고도 손잡이 = 순항고도에 가장 가까운 기압면, 시간 손잡이 = ETD(지났으면 지금).
+// - 5단계: 브리핑을 열 때 한 번 고도 손잡이 = 순항고도에 가장 가까운 기압면, 시간 손잡이 = ETD(지났으면 지금 시각).
 //   그 뒤로는 사용자가 움직일 때만 바뀐다. altitudeMarks(고도 슬라이더 표시)·flightWindow(시간 막대 ETD~ETA 창).
 export function useBriefingMapLink({
   mapRef, isStyleReady, styleRevision, active, ribbon, routeSamples, previewGeojson, cruiseAltitudeFt, etd = null, eta = null, nowMs = null,
@@ -55,7 +55,8 @@ export function useBriefingMapLink({
     if (level) setNwpSelection?.((previous) => previous?.level === level.id ? previous : { ...(previous ?? {}), level: level.id })
     const etdMs = Date.parse(etd)
     const now = Number.isFinite(nowMs) ? nowMs : Date.now()
-    if (Number.isFinite(etdMs)) setTimelineMs?.(etdMs > now ? etdMs : null)
+    // 지났으면 "지금"을 시각으로 넣는다(실시간 null로 두면 손잡이가 마지막 관측 프레임에 붙어, 관측이 늦거나 오래된 자료에서 창이 화면 밖에 있었다).
+    if (Number.isFinite(etdMs)) setTimelineMs?.(Math.max(etdMs, now))
   }, [active, ribbon, levels, cruiseAltitudeFt, etd, nowMs, setNwpSelection, setTimelineMs])
 
   const marks = useMemo(() => {
@@ -67,7 +68,7 @@ export function useBriefingMapLink({
     const startMs = Date.parse(etd), endMs = Date.parse(eta)
     if (!active || !Number.isFinite(startMs) || !Number.isFinite(endMs)) return null
     const hhmm = (iso) => formatBriefingTime(iso, tz).replace(` ${tz}`, '').replace('Z', '')
-    return { startMs, endMs, label: `ETD ${hhmm(etd)} → ETA ${hhmm(eta)}` }
+    return { startMs, endMs, label: `ETD ${hhmm(etd)} → ETA ${hhmm(eta)}`, etdLabel: `ETD ${hhmm(etd)}`, etaLabel: `ETA ${hhmm(eta)}` }
   }, [active, etd, eta, tz])
 
   const goTo = useCallback((selection) => {

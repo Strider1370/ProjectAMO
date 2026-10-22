@@ -110,8 +110,8 @@
   - 표시 규칙(`map-briefing/briefingAltitudeModel.js`): 모델 = 칠함(순항 단계면 꽉 찬 색, 상승·강하는 빗금), SIGMET = 테두리(내 고도 실선·다른 고도 점선), 비행 범위 SFC~순항 상자, 대류(고도 없음)·태풍은 축 위 칩. 위치는 `pressureLevelModel.js` `altitudePositionPct`(눈금이 기압면 간격이라 이웃 기압면 사이를 표준대기 고도로 보간).
   - 말풍선: "순항 FL250 → 지도 FL240 · SIGMET 심한 난기류"(그 기압면 ±1,000ft에서 가장 센 위험).
   - KIM 레이어가 모두 꺼져 있으면 레이어 색인이 없어 기압면 목록이 없다 → `BriefingLevelRail`이 고정 목록 `KIM_PRESSURE_LEVELS`(백엔드 `KIM_NWP_LEVELS`의 기압면과 같음)로 슬라이더를 띄운다. 고른 기압면은 레이어를 켜면 그대로 쓰인다.
-- 기본값: 브리핑을 열 때 **한 번만**(브리핑 ribbon이 바뀔 때) 고도 = 순항고도에 가장 가까운 기압면, 시간 = ETD(지났으면 실시간). 이후 사용자 조작만. `useBriefingMapLink`.
-- 시간 막대: `TimelineRail` `flightWindow` — ETD~ETA 테두리 상자, 글은 상자 **오른쪽**(시간 띠가 넘침을 잘라 상자 위에 둘 수 없고, 상자 안 눈금을 가리지 않으려고).
+- 기본값: 브리핑을 열 때 **한 번만**(브리핑 ribbon이 바뀔 때) 고도 = 순항고도에 가장 가까운 기압면, 시간 = ETD(지났으면 **지금 시각**). 이후 사용자 조작만. `useBriefingMapLink`. 처음엔 지났으면 실시간(null)으로 뒀는데, 실시간 손잡이는 마지막 관측 프레임에 붙어 브리핑 직후 ETD~ETA 창이 화면 밖에 있었다(사용자 발견, 10-22).
+- 시간 막대: `TimelineRail` `flightWindow` — 띠 안은 ETD·ETA 세로선과 옅은 칠, 글은 **각 선 바로 위**(띠와 독 사이 틈) "ETD 20:30"은 선 왼쪽으로·"ETA 21:14"는 오른쪽으로 펼친다. 처음엔 한 줄 글을 상자 오른쪽에 몰았는데 어느 선이 무엇인지 읽기 어렵다는 사용자 검토로 바꿨다(10-22).
 - 4단계 보완: "이 구간으로"에서 순항 단계 모델 막대는 가운데 고도가 아니라 순항고도로(상승 끝에서 시작하는 막대가 FL210으로 가던 것).
 - 확인: 단위 테스트(`briefingAltitudeModel.test.js`, `pressureLevelModel.test.js`), 운영 자료 화면(`.artifacts/map-briefing-check/`, git 무시). 브라우저 계약은 4단계 것과 함께 미작성.
 

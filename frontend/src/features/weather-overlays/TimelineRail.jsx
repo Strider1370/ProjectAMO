@@ -40,7 +40,7 @@ function TimelineRail({
   onPlayPause,
   referenceNowMs = null,
   availableFrameEntries = [],
-  // 지도형 브리핑: ETD~ETA 테두리 창과 "ETD 20:30 → ETA 21:14" 글. { startMs, endMs, label }
+  // 지도형 브리핑: ETD~ETA 창(양끝 세로선) + 각 선 위 "ETD 20:30"·"ETA 21:14". { startMs, endMs, label, etdLabel, etaLabel }
   flightWindow = null,
 }) {
   const { tz } = useTimeZone()
@@ -91,6 +91,10 @@ function TimelineRail({
   const visibleEnd = selected + visibleSpanMs * (1 - PLAYHEAD_RATIO)
   const tapeTicks = buildTapeTicks({ startMs: visibleStart, endMs: visibleEnd })
   const availabilitySegments = buildAvailabilitySegments(availableFrameEntries, visibleStart, visibleEnd)
+
+  const windowPct = flightWindow && Number.isFinite(flightWindow.startMs) && Number.isFinite(flightWindow.endMs)
+    && pct(flightWindow.endMs) >= 0 && pct(flightWindow.startMs) <= 100
+    ? { start: pct(flightWindow.startMs), end: pct(flightWindow.endMs) } : null
 
   const commit = (ms) => onScrub?.(clampMs(domain, ms))
 
@@ -153,17 +157,10 @@ function TimelineRail({
             />
           )
         })}
-        {flightWindow && Number.isFinite(flightWindow.startMs) && Number.isFinite(flightWindow.endMs) && (() => {
-          const startPct = pct(flightWindow.startMs)
-          const endPct = pct(flightWindow.endMs)
-          if (endPct < 0 || startPct > 100) return null
-          return (
-            <span className="timeline-rail__flight-window" style={{ left: `${startPct}%`, width: `${Math.max(0.4, endPct - startPct)}%` }}
-              title={flightWindow.label} aria-hidden="true">
-              <span>{flightWindow.label}</span>
-            </span>
-          )
-        })()}
+        {windowPct && (
+          <span className="timeline-rail__flight-window" style={{ left: `${windowPct.start}%`, width: `${Math.max(0.4, windowPct.end - windowPct.start)}%` }}
+            title={flightWindow.label} aria-hidden="true" />
+        )}
         {pastTicksMs.map((ms) => (
           <span key={`p-${ms}`} className="timeline-rail__frame" style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
         ))}
@@ -193,7 +190,13 @@ function TimelineRail({
         {isPlaying ? <Pause size={20} /> : <Play size={20} />}
       </button>
 
-      {active && (
+      {/* ETD·ETA 글은 각 선 바로 위(시간 띠 밖)에 — 띠 안은 눈금 글자와 겹치고, 한쪽에 몰면 어느 선이 무엇인지 읽기 어렵다. */}
+      {windowPct && [['etd', windowPct.start, flightWindow.etdLabel], ['eta', windowPct.end, flightWindow.etaLabel]]
+        .filter(([, at, text]) => text && at >= 0 && at <= 100)
+        .map(([key, at, text]) => (
+          <span key={key} className={`timeline-rail__flight-mark is-${key}`} style={{ left: `${at}%` }} aria-hidden="true">{text}</span>
+        ))}
+            {active && (
         <div className="timeline-rail__readout" style={{ left: `${PLAYHEAD_RATIO * 100}%` }} aria-hidden="true">
           {formatKstMinute(selected, tz)}
         </div>

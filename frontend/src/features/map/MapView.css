@@ -1074,32 +1074,37 @@
   background: rgba(51, 65, 85, 0.38);
 }
 
-/* 지도형 브리핑: ETD~ETA 창(설계 §3.6). 눈금 위에 테두리 상자, 글은 창 바로 오른쪽(시간 띠가 넘침을 자르므로 창 위에 둘 수 없다 — 창 안 눈금은 가리지 않게). */
+/* 지도형 브리핑: ETD~ETA 창(설계 §3.6). 띠 안에는 양끝 세로선과 옅은 칠만, 글은 각 선 바로 위 — 시간 띠 밖,
+   독과의 틈(12px)에. 띠 안에 쓰면 눈금 글자와 겹치고, 한쪽에 몰아 쓰면 어느 선이 ETD·ETA인지 읽기 어렵다. */
 .timeline-rail__flight-window {
   position: absolute;
-  top: 1px;
-  bottom: 1px;
+  top: 0;
+  bottom: 0;
   z-index: 2;
-  border: 1.5px solid var(--accent);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-right: 2px solid var(--accent);
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   pointer-events: none;
 }
-.timeline-rail__flight-window span {
+.timeline-rail__flight-mark {
   position: absolute;
-  top: 50%;
-  left: calc(100% + 4px);
-  transform: translateY(-50%);
-  padding: 0 6px;
-  border-radius: 4px;
+  bottom: 39px;
+  z-index: 7;
+  padding: 0 5px;
+  border-radius: 3px;
   background: var(--accent);
   color: #fff;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 16px;
+  line-height: 12px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
+/* ETD 글은 선의 왼쪽으로, ETA 글은 오른쪽으로 펼쳐 두 글이 창 안에서 서로 겹치지 않게. */
+.timeline-rail__flight-mark.is-etd { transform: translateX(-100%); border-bottom-right-radius: 0; }
+.timeline-rail__flight-mark.is-eta { border-bottom-left-radius: 0; }
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__flight-mark { bottom: 29px; }
 .timeline-rail__availability-segment {
   position: absolute;
   top: 0;
