@@ -9,7 +9,8 @@ export function metarText(metar) {
   const obs = metar?.observation
   if (!obs) return null
   const d = obs.display ?? {}
-  const visibility = obs.visibility?.cavok ? 'CAVOK' : Number.isFinite(obs.visibility?.value) ? String(obs.visibility.value).padStart(4, '0') : null
+  // METAR 표기대로: 10km 이상은 9999.
+  const visibility = obs.visibility?.cavok ? 'CAVOK' : Number.isFinite(obs.visibility?.value) ? String(Math.min(9999, obs.visibility.value)).padStart(4, '0') : null
   const clouds = obs.visibility?.cavok ? null : d.clouds
   return [d.wind, visibility, d.weather && d.weather !== '-' ? d.weather : null, clouds, d.temperature].filter(Boolean).join(' ') || null
 }
@@ -42,7 +43,7 @@ export function airportCards(briefing, { airportList = [], nameFor = (icao) => i
       categoryLevel: CATEGORY_LEVEL[airport.category] ?? 'unknown',
       position: Number.isFinite(listed?.lat) && Number.isFinite(listed?.lon) ? [listed.lon, listed.lat] : null,
       canOpenPanel: Boolean(listed),
-      metar: { text: metarText(airport.metar), time: airport.observationTime ?? null, speci: airport.reportType === 'SPECI' },
+      metar: { text: metarText(airport.metar), time: airport.observationTime ?? null, speci: airport.reportType === 'SPECI', report: airport.metar ?? null },
       taf: window
         ? { basis: window.basis, time: window.time ?? null, issued: window.issued ?? null, text: window.outOfRange ? 'TAF 유효기간 밖' : (window.at?.text ?? null), changes: window.changes ?? [], outOfRange: Boolean(window.outOfRange), previous: Boolean(window.previous) }
         : { basis: airport.role === 'departure' ? 'ETD' : 'ETA', time: null, issued: null, text: null, changes: [], outOfRange: false, previous: false },
@@ -105,13 +106,4 @@ export function tafTextAt(report, iso) {
   const vis = cavok ? 'CAVOK' : Number.isFinite(entry.visibility?.value) ? String(entry.visibility.value).padStart(4, '0') : null
   return [entry.wind?.raw, vis, (entry.weather ?? []).map((w) => w.raw ?? w).join(' ') || null, cavok ? null : (entry.clouds ?? []).map((c) => c.raw).join(' ') || null]
     .filter(Boolean).join(' ') || null
-}
-
-// 줄 이름 칸에 붙는 "몇 번째 과거인지 시각"(이름 칸이 좁아 짧게): METAR "1건 전 19:30"(SPECI면 "SPECI"), TAF "직전 05Z"·"2개 전 23Z"(AMD면 "AMD").
-export function historyLabel(type, offset, item, formatTime = (iso) => iso) {
-  if (!item) return null
-  if (type === 'metar') return `${offset}건 전${item.kind === 'SPECI' ? ' SPECI' : ''} ${formatTime(item.time)}`
-  const issued = new Date(item.time)
-  const z = `${String(issued.getUTCHours()).padStart(2, '0')}Z`
-  return `${offset === 1 ? '직전' : `${offset}개 전`}${item.kind === 'AMD' ? ' AMD' : ''} ${z}`
 }

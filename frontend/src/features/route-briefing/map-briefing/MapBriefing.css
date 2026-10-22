@@ -268,13 +268,16 @@
 .mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mb-ac-rows dd, .mb-ac-rows dd span { overflow: hidden; text-overflow: ellipsis; }
 .mb-ac-rows dd em { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-style: normal; font-weight: var(--fw-bold); }
-/* 과거 보기(7단계): 줄 끝 ◀▶, 과거를 보는 줄은 연한 주황 바탕 + "n건 전 · 시각" + "최신" */
-.mb-ac-nav { display: inline-flex; flex: none; align-items: center; gap: 1px; margin-left: auto; }
-.mb-ac-nav button { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
-.mb-ac-nav button:hover:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
-.mb-ac-nav button:disabled { color: var(--stroke-2); cursor: default; }
-.mb-ac-nav .mb-ac-latest { padding: 0 5px; color: var(--accent); font-size: var(--fs-100); font-weight: var(--fw-bold); }
-.mb-ac-rows dd em + .mb-ac-nav { margin-left: 2px; }
+/* 과거 보기(7단계): 이름 칸 아래 이력 점(왼쪽 과거 → 오른쪽 최신, METAR 점 색 = 비행등급). 과거를 보는 줄은 연한 주황. */
+.mb-ac-rows dt > span { white-space: nowrap; }
+.mb-ac-dots { display: flex; gap: 3px; margin-top: 4px; }
+.mb-ac-dots button { --mb-dot: var(--text-3); width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: var(--mb-dot); opacity: 0.55; cursor: pointer; }
+.mb-ac-dots button:hover { opacity: 1; }
+.mb-ac-dots button.is-vfr { --mb-dot: var(--cat-vfr); }
+.mb-ac-dots button.is-mvfr { --mb-dot: var(--cat-mvfr); }
+.mb-ac-dots button.is-ifr { --mb-dot: var(--cat-ifr); }
+.mb-ac-dots button.is-lifr { --mb-dot: var(--cat-lifr); }
+.mb-ac-dots button.is-selected { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--text-1); }
 .mb-ac-rows dt.is-past, .mb-ac-rows dd.is-past { background: #fff4e5; }
 .mb-ac-rows dt.is-past { margin-left: -4px; padding-left: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
 .mb-ac-rows dd.is-past { margin-right: -4px; padding-right: 4px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }

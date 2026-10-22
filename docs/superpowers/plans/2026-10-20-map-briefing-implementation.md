@@ -151,8 +151,8 @@
 - 범위(사용자 결정): **METAR 최근 3시간(SPECI 포함), TAF 현재 + 직전 2개 발표(AMD 포함)**. 개수가 아니라 시간·발표 기준. 공항 패널뿐 아니라 **공항 카드에도** 넣었다.
 - 보관을 **저장 시각 기준**으로 바꿈(사용자 결정): `config.storage.max_age_hours_by_type` METAR 6시간·TAF 30시간(국내·해외), 개수 상한(METAR 400·TAF 200)은 폭주 방지용, 오래돼도 최근 10개는 남김(`min_files_by_age`). `store.js` `snapshotsToDelete`. 운영 확인(10-22): 이전 방식에서 TAF 10개 = **1.5시간뿐**(10분마다 묶음이 바뀜)이라 직전 발표를 못 덮었다. 30시간이면 국내+해외 TAF 약 0.6GB(운영 디스크 여유 6.8GB). **운영 반영은 배포 후**.
 - API `GET /api/airports/:icao/history?type=metar|taf`(`backend/src/airport-history.js`): 최신·보관 파일 최신순으로 읽다가 METAR는 저장 시각이 3시간 전보다 오래되면, TAF는 발표 3개를 모으면 멈춘다. 같은 보고는 하나로. TAF는 응답에 붙은 직전 발표(`previous`)로 보관본 부족을 메운다. 깨진 파일 건너뜀, 공항 코드·종류 검증. 운영 보관본으로 RKPC METAR 5건(SPECI 2)·TAF 11Z/05Z/23Z 확인.
-- 카드: METAR·TAF 줄 끝 ‹ ›, 과거면 줄 연한 주황 + 이름 칸 "2건 전 SPECI 18:55"·"직전 23Z" + "최신". 과거 TAF는 같은 ETD/ETA 시각의 예보 한 줄. 카드 폭 360(이름 칸 78). 처음 누를 때만 받는다(`shared/weather/useAirportHistory.js`, `api/airportHistoryApi.js`).
-- 공항 패널: **METAR 탭**에 "과거 관측 보는 중 · 1건 전 · 19:30 KST [최신으로] ‹ ›" 띠(`MetarTab.jsx`, 스타일은 `tabs/MetarHistory.css` — `AirportPanel.css`는 TAF 개편 중이라 건드리지 않음). **TAF 탭은 TAF 개편 정리 후**.
+- 카드: 이름 칸("METAR 21:00"·"TAF 05Z") 아래 **이력 점**(왼쪽 과거 → 오른쪽 최신, METAR 점 색 = 비행등급, 고른 점 테두리). 누르면 그 줄이 그 보고로, 과거면 줄 연한 주황. 과거 TAF는 같은 ETD/ETA 시각의 예보 한 줄. 카드 폭 360(이름 칸 78). 보이면 바로 받는다(`shared/weather/useAirportHistory.js`, 계산 `airportHistoryModel.js`, `api/airportHistoryApi.js`). 처음 만든 ‹ › 단계 이동은 "몇 건 있는지·추세가 안 보이고 조잡하다"는 사용자 검토로 바꿈(10-22).
+- 공항 패널: **METAR 탭**에 **관측 이력 줄** — 최근 3시간 관측을 칸으로(시각 · SPECI면 S · 비행등급 색 점, 오른쪽 끝 = 최신 표시). 칸을 누르면 원문·해독 카드가 그 관측으로, 최신이 아니면 원문 위 "21:00 관측 · 최신 아님"(`MetarTab.jsx`, 스타일은 `tabs/MetarHistory.css` — `AirportPanel.css`는 TAF 개편 중이라 건드리지 않음). **TAF 탭은 TAF 개편 정리 후**(같은 칸 방식: 23Z · 05Z · 11Z).
 
 ## 8단계 — 마무리
 

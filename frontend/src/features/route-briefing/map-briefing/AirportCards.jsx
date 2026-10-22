@@ -1,14 +1,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import { formatBriefingTime } from '../lib/briefingTime.js'
 import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
-import { airportCards, changeLines, chipWidth, hasAlertFlag, historyLabel, metarText, tafTextAt } from './airportCardModel.js'
+import { airportCards, changeLines, chipWidth, hasAlertFlag, metarText, tafTextAt } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
 const CARD_W = 360
 const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄
 const CHIP_H = 28 // 접은 칩
+const LATEST_TAF = {} // TAF 이력 줄의 최신 칸 자리(글은 카드의 ±1시간 한 줄을 쓴다)
 // 카드가 피할 화면 요소(지도 위에 뜬 것들). 공항 패널이 열려 있으면 카드는 숨긴다(아래).
 const OBSTACLE_SELECTORS = ['.mb-panel', '.mb-dock', '.mb-dock-tab', '.mb-toast', '.mb-popover', '.vertical-level-rail-stack', '.weather-time-card', '.mobile-map-layer-btns', '.map-bottom-control-dock']
 
@@ -102,26 +103,32 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
   )
 }
 
-// METAR·TAF 줄의 ◀▶: 한 건씩 과거로(METAR 최근 3시간, TAF 직전 2개 발표). 과거를 보는 줄은 주황 바탕 + "n건 전 · 시각" + "최신".
-function HistoryNav({ history, label }) {
+// 이력 점: 이름 칸 아래 한 줄, 왼쪽 = 과거 → 오른쪽 = 최신. METAR 점 색 = 비행등급, 고른 점은 테두리. 누르면 그 줄이 그 보고로.
+function HistoryDots({ history, label, describe }) {
+  if (history.entries.length < 2) return null
   return (
-    <span className="mb-ac-nav">
-      {history.offset > 0 && <button type="button" className="mb-ac-latest" onClick={history.latest} aria-label={`${label} 최신으로`}>최신</button>}
-      <button type="button" onClick={history.older} disabled={!history.canOlder} aria-label={`${label} 이전`}
-        title={history.canOlder ? `이전 ${label}` : label === 'METAR' ? '최근 3시간까지만 보관' : '직전 2개 발표까지만 보관'}><ChevronLeft size={15} aria-hidden="true" /></button>
-      <button type="button" onClick={history.newer} disabled={!history.canNewer} aria-label={`${label} 다음`}><ChevronRight size={15} aria-hidden="true" /></button>
+    <span className="mb-ac-dots" role="listbox" aria-label={`${label} 이력`}>
+      {history.entries.map((entry) => {
+        const selected = entry.key === history.selected?.key
+        return (
+          <button key={entry.key} type="button" role="option" aria-selected={selected} aria-label={describe(entry)} title={describe(entry)}
+            className={`is-${(entry.category ?? 'none').toLowerCase()}${selected ? ' is-selected' : ''}${entry.latest ? ' is-latest' : ''}`}
+            onClick={() => history.select(entry.key)} />
+        )
+      })}
     </span>
   )
 }
 
 function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollapse }) {
-  const metarHistory = useAirportHistory(card.icao, 'metar', { currentTime: card.metar.time })
-  const tafHistory = useAirportHistory(card.icao, 'taf', { currentTime: card.taf.issued })
-  const pastMetar = metarHistory.item
-  const pastTaf = tafHistory.item
+  const metarHistory = useAirportHistory(card.icao, 'metar', { latest: card.metar.report, latestTime: card.metar.time, latestKind: card.metar.speci ? 'SPECI' : 'METAR' })
+  const tafHistory = useAirportHistory(card.icao, 'taf', { latest: card.taf.issued ? LATEST_TAF : null, latestTime: card.taf.issued })
+  const pastMetar = metarHistory.selected && !metarHistory.selected.latest ? metarHistory.selected : null
+  const pastTaf = tafHistory.selected && !tafHistory.selected.latest ? tafHistory.selected : null
   const metarShown = pastMetar ? (metarText(pastMetar.report) ?? '자료 없음') : (card.metar.text ?? '자료 없음')
   const tafShown = pastTaf ? (tafTextAt(pastTaf.report, card.taf.time) ?? '자료 없음') : (card.taf.text ?? '자료 없음')
   const zHour = (iso) => `${String(new Date(iso).getUTCHours()).padStart(2, '0')}Z`
+  const metarKind = (pastMetar?.kind ?? (card.metar.speci ? 'SPECI' : 'METAR')) === 'SPECI' ? 'SPECI' : 'METAR'
   return (
     <article className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_W, height: CARD_H }}
       aria-label={`${card.roleLabel} ${card.icao} ${card.name}`}>
@@ -135,18 +142,18 @@ function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollap
         </button>
       </header>
       <dl className="mb-ac-rows">
-        <dt className={pastMetar ? 'is-past' : undefined}>{(pastMetar?.kind ?? (card.metar.speci ? 'SPECI' : 'METAR')) === 'SPECI' ? 'SPECI' : 'METAR'}
-          <small>{pastMetar ? historyLabel('metar', metarHistory.offset, pastMetar, hhmm) : (card.metar.time ? hhmm(card.metar.time) : '')}</small></dt>
-        <dd className={pastMetar ? 'is-past' : undefined}>
-          <span title={metarShown}>{metarShown}</span>
-          <HistoryNav history={metarHistory} label="METAR" />
-        </dd>
-        <dt className={pastTaf ? 'is-past' : undefined} title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>TAF
-          <small>{pastTaf ? historyLabel('taf', tafHistory.offset, pastTaf) : `${card.taf.basis}±1h${card.taf.previous ? ' 직전' : ''}${card.taf.issued ? ` ${zHour(card.taf.issued)}` : ''}`}</small></dt>
+        <dt className={pastMetar ? 'is-past' : undefined}>
+          <span>{metarKind} <small>{pastMetar ? hhmm(pastMetar.time) : (card.metar.time ? hhmm(card.metar.time) : '')}</small></span>
+          <HistoryDots history={metarHistory} label="METAR" describe={(entry) => `${hhmm(entry.time)} ${entry.kind}${entry.category ? ` · ${entry.category}` : ''}${entry.latest ? ' · 최신' : ''}`} />
+        </dt>
+        <dd className={pastMetar ? 'is-past' : undefined}><span title={metarShown}>{metarShown}</span></dd>
+        <dt className={pastTaf ? 'is-past' : undefined} title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>
+          <span>TAF <small>{pastTaf ? `${zHour(pastTaf.time)}${pastTaf.kind === 'AMD' ? ' AMD' : ''}` : `${card.taf.basis}±1h${card.taf.issued ? ` ${zHour(card.taf.issued)}` : ''}`}</small></span>
+          <HistoryDots history={tafHistory} label="TAF" describe={(entry) => `${zHour(entry.time)} ${entry.latest ? '발표 · 지금 기준' : `${entry.kind === 'AMD' ? 'AMD' : 'TAF'} 발표`}`} />
+        </dt>
         <dd className={pastTaf ? 'is-past' : undefined}>
           <span title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}>{tafShown}</span>
           {!pastTaf && changes.length > 0 && <em>변화 {changes.length}</em>}
-          <HistoryNav history={tafHistory} label="TAF" />
         </dd>
       </dl>
       <footer className="mb-ac-foot">

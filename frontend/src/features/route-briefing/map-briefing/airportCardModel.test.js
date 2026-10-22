@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { airportCards, changeLines, chipWidth, hasAlertFlag, historyLabel, readCollapsedRoles, tafTextAt, writeCollapsedRoles } from './airportCardModel.js'
+import { airportCards, changeLines, chipWidth, hasAlertFlag, metarText, readCollapsedRoles, tafTextAt, writeCollapsedRoles } from './airportCardModel.js'
 
 const metar = (display, visibility = { value: 9999 }) => ({ observation: { visibility, display } })
 const briefing = {
@@ -53,6 +53,10 @@ test('출발·도착이 같은 공항은 한 장, 유효기간 밖 TAF는 그렇
   assert.equal(cards[0].taf.text, 'TAF 유효기간 밖')
 })
 
+test('METAR 한 줄은 METAR 표기대로 10km 이상을 9999로', () => {
+  assert.equal(metarText({ observation: { visibility: { value: 10000 }, display: { wind: '12009KT', clouds: 'FEW035', temperature: '16/09' } } }), '12009KT 9999 FEW035 16/09')
+})
+
 test('변화 목록 한 줄씩', () => {
   assert.deepEqual(changeLines([{ type: 'TEMPO', start: 'a', end: 'b', text: '30010KT 6000' }, { type: '변화', start: 'c', end: null, text: 'X' }], (iso) => iso.toUpperCase()), ['TEMPO A–B 30010KT 6000', '변화 C X'])
 })
@@ -69,7 +73,7 @@ test('접은 카드는 역할로 기억하고, 저장소가 막혀도 모두 펼
   assert.ok(chipWidth(card) > chipWidth({ ...card, flags: { windshear: false, warnings: [], notams: 3 } }))
 })
 
-test('과거 TAF의 기준 시각 한 줄(display 없으면 원시 값), 유효기간 밖, 과거 표시 이름', () => {
+test('과거 TAF의 기준 시각 한 줄(display 없으면 원시 값), 유효기간 밖', () => {
   const report = { header: { valid_start: '2026-10-20T06:00:00Z', valid_end: '2026-10-21T12:00:00Z' }, timeline: [
     { time: '2026-10-20T11:00:00Z', wind: { raw: '31006KT' }, visibility: { value: 9999, cavok: true }, weather: [], clouds: [] },
     { time: '2026-10-20T12:00:00Z', display: { wind: '30010KT', visibility: '6000', weather: '-RA', clouds: 'BKN010' } },
@@ -77,8 +81,4 @@ test('과거 TAF의 기준 시각 한 줄(display 없으면 원시 값), 유효�
   assert.equal(tafTextAt(report, '2026-10-20T11:20:00Z'), '31006KT CAVOK')
   assert.equal(tafTextAt(report, '2026-10-20T11:50:00Z'), '30010KT 6000 -RA BKN010')
   assert.equal(tafTextAt(report, '2026-10-22T00:00:00Z'), '그 발표의 유효기간 밖')
-  assert.equal(historyLabel('metar', 1, { time: 'x', kind: 'SPECI' }, () => '19:42'), '1건 전 SPECI 19:42')
-  assert.equal(historyLabel('taf', 1, { time: '2026-10-20T05:00:00Z', kind: 'TAF' }), '직전 05Z')
-  assert.equal(historyLabel('taf', 2, { time: '2026-10-20T08:15:00Z', kind: 'AMD' }), '2개 전 AMD 08Z')
-  assert.equal(historyLabel('metar', 0, null), null)
 })

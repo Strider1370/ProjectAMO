@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, MoveUp } from 'lucide-react'
+import { MoveUp } from 'lucide-react'
 import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
 import { buildMetarViewModel, buildMetarTacSegments } from '../lib/metarViewModel.js'
 import { formatRvr } from '../../../shared/weather/helpers.js'
@@ -6,28 +6,41 @@ import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import './MetarHistory.css'
 
-// 과거 관측 보기(◀▶): 최근 3시간 보관 METAR·SPECI를 한 건씩. 과거를 보는 동안 위에 주황 띠.
-function MetarHistoryBar({ history }) {
+// 관측 이력 줄: 최근 3시간 METAR·SPECI를 왼쪽(과거) → 오른쪽(최신) 칸으로. 칸 색 = 비행등급이라 추세가 한눈에 보이고,
+// 칸을 누르면 아래 원문·해독 카드가 그 관측으로 바뀐다. 최신이 아니면 원문 위에 "19:30 관측 · 최신 아님".
+function hhmmIn(tz, iso) {
+  const t = new Date(iso)
+  if (!Number.isFinite(t.getTime())) return '—'
+  if (tz === 'KST') { const k = new Date(t.getTime() + 9 * 3600_000); return `${String(k.getUTCHours()).padStart(2, '0')}:${String(k.getUTCMinutes()).padStart(2, '0')}` }
+  return `${String(t.getUTCHours()).padStart(2, '0')}${String(t.getUTCMinutes()).padStart(2, '0')}Z`
+}
+
+function MetarHistoryStrip({ history }) {
   const { tz } = useTimeZone()
-  const item = history.item
-  const time = item ? new Date(item.time) : null
-  const hhmm = time ? (tz === 'KST'
-    ? `${String((time.getUTCHours() + 9) % 24).padStart(2, '0')}:${String(time.getUTCMinutes()).padStart(2, '0')} KST`
-    : `${String(time.getUTCHours()).padStart(2, '0')}${String(time.getUTCMinutes()).padStart(2, '0')}Z`) : null
+  if (history.entries.length < 2) return null // 보관된 이전 관측이 없으면 줄을 띄우지 않는다
   return (
-    <div className={`ap-metar-history${item ? ' is-past' : ''}`}>
-      <span>{item ? `과거 관측 보는 중 · ${history.offset}건 전${item.kind === 'SPECI' ? ' SPECI' : ''} · ${hhmm}` : '최신 관측'}</span>
-      {item && <button type="button" className="ap-metar-history-latest" onClick={history.latest}>최신으로</button>}
-      <button type="button" onClick={history.older} disabled={!history.canOlder} aria-label="이전 관측" title={history.canOlder ? '이전 관측' : '최근 3시간까지만 보관'}><ChevronLeft size={16} aria-hidden="true" /></button>
-      <button type="button" onClick={history.newer} disabled={!history.canNewer} aria-label="다음 관측"><ChevronRight size={16} aria-hidden="true" /></button>
+    <div className="ap-metar-history" role="listbox" aria-label="최근 3시간 관측">
+      {history.entries.map((entry) => {
+        const selected = entry.key === history.selected?.key
+        return (
+          <button key={entry.key} type="button" role="option" aria-selected={selected}
+            className={`ap-mh-cell is-${(entry.category ?? 'unknown').toLowerCase()}${selected ? ' is-selected' : ''}${entry.latest ? ' is-latest' : ''}`}
+            onClick={() => history.select(entry.key)} title={`${hhmmIn(tz, entry.time)} ${entry.kind}${entry.category ? ` · ${entry.category}` : ''}`}>
+            <span className="ap-mh-time">{hhmmIn(tz, entry.time)}{entry.kind === 'SPECI' && <b>S</b>}{entry.latest && <em>최신</em>}</span>
+            <span className="ap-mh-cat"><i />{entry.category ?? '—'}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
 
 export default function MetarTab({ metar: latestMetar, amosData, icao, airportMeta }) {
-  const history = useAirportHistory(icao, 'metar', { currentTime: latestMetar?.header?.observation_time })
+  const { tz } = useTimeZone()
+  const history = useAirportHistory(icao, 'metar', { latest: latestMetar, latestTime: latestMetar?.header?.observation_time, latestKind: latestMetar?.header?.report_type })
   if (!latestMetar) return <div className="ap-empty">METAR 데이터 없음</div>
-  const metar = history.item?.report ?? latestMetar
+  const past = history.selected && !history.selected.latest ? history.selected : null
+  const metar = past?.report ?? latestMetar
 
   const vm = buildMetarViewModel({ metar, amosData, icao, airportMeta })
   const {
@@ -62,7 +75,8 @@ export default function MetarTab({ metar: latestMetar, amosData, icao, airportMe
 
   return (
     <div className="ap-metar-v2">
-      {icao && <MetarHistoryBar history={history} />}
+      {icao && <MetarHistoryStrip history={history} />}
+      {past && <p className="ap-mh-note">{hhmmIn(tz, past.time)} {past.kind === 'SPECI' ? 'SPECI' : '관측'} · 최신 아님</p>}
       {/* ── TAC 원문 — 임계값 색칠, 비행조건 배지는 섹션 헤더에 표시 ── */}
       {rawText && (
         <div className="ap-metar-tac-block">

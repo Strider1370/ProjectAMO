@@ -1,8 +1,21 @@
-/* METAR 과거 보기 띠. AirportPanel.css는 TAF 개편이 고치는 중이라 따로 둔다. */
-.ap-metar-history { display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-s); padding: 4px var(--space-s); border-radius: var(--radius-md); color: var(--text-3); font-size: var(--fs-200); }
-.ap-metar-history > span { margin-right: auto; }
-.ap-metar-history.is-past { background: #fff4e5; color: #b45309; font-weight: var(--fw-semibold); }
-.ap-metar-history button { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px; border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); background: var(--bg-1); color: var(--text-2); font: inherit; cursor: pointer; }
-.ap-metar-history button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.ap-metar-history button:disabled { color: var(--stroke-2); cursor: default; }
-.ap-metar-history .ap-metar-history-latest { border-color: var(--accent); color: var(--accent); font-weight: var(--fw-bold); }
+/* METAR 관측 이력 줄(최근 3시간). AirportPanel.css는 TAF 개편이 고치는 중이라 따로 둔다.
+   칸 = 시각(+SPECI면 S) / 비행등급 색 점 + 글. 고른 칸은 진한 테두리, 최신 칸은 오른쪽 끝. */
+.ap-metar-history { display: flex; gap: 6px; margin-bottom: var(--space-m); overflow-x: auto; }
+.ap-mh-cell {
+  --ap-mh-cat: var(--text-3);
+  display: flex; flex: 1 0 72px; flex-direction: column; align-items: flex-start; gap: 3px; max-width: 110px;
+  padding: 6px 10px; border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1);
+  color: var(--text-1); font: inherit; text-align: left; cursor: pointer;
+}
+.ap-mh-cell:hover { border-color: var(--text-3); }
+.ap-mh-cell.is-vfr { --ap-mh-cat: var(--cat-vfr); }
+.ap-mh-cell.is-mvfr { --ap-mh-cat: var(--cat-mvfr); }
+.ap-mh-cell.is-ifr { --ap-mh-cat: var(--cat-ifr); }
+.ap-mh-cell.is-lifr { --ap-mh-cat: var(--cat-lifr); }
+.ap-mh-cell.is-selected { border: 2px solid var(--text-1); padding: 5px 9px; background: var(--bg-2); }
+.ap-mh-time { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-300); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.ap-mh-time b { padding: 0 4px; border-radius: var(--radius-sm); background: var(--level-amber); color: #fff; font-size: var(--fs-100); }
+.ap-mh-cat { display: inline-flex; align-items: center; gap: 5px; color: var(--ap-mh-cat); font-size: var(--fs-200); font-weight: var(--fw-bold); }
+.ap-mh-cat i { width: 8px; height: 8px; border-radius: 50%; background: var(--ap-mh-cat); }
+.ap-mh-time em { color: var(--accent); font-size: var(--fs-100); font-style: normal; font-weight: var(--fw-bold); }
+.ap-mh-note { margin: 0 0 var(--space-s); color: #b45309; font-size: var(--fs-200); font-weight: var(--fw-semibold); }
