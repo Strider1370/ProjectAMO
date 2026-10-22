@@ -66,7 +66,13 @@ function MainAppShell({ conceptPreview = false }) {
   // 딥링크: ?flight=<routeId> 로 비행 알림 에스컬레이션 화면 바로 열기 (Task 10)
   // 번호는 deeplinkFlight.js가 페이지 열릴 때 한 번 집어 둔다 — 변경점 띠도 같은 값을 읽는다.
   const [deeplinkFlightId, setDeeplinkFlightId] = useState(deeplinkFlightIdFromUrl)
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  // 사이드바는 맨 처음 방문 때만 펼친 상태로 연다 — 그다음부터는 접힌 상태로 시작한다.
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    try { return !localStorage.getItem(SIDEBAR_INTRO_KEY) } catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_INTRO_KEY, '1') } catch { /* 저장이 막히면 매번 접힌 상태 */ }
+  }, [])
   const [mobileTask, setMobileTask] = useState('map')
   const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0, traffic: 0 })
   const [searchOpen, setSearchOpenRaw] = useState(false)
@@ -414,6 +420,8 @@ function MainAppShell({ conceptPreview = false }) {
     </div>
   )
 }
+
+const SIDEBAR_INTRO_KEY = 'projectamo.sidebarIntroShown'
 
 function App() {
   if (import.meta.env.DEV && /^\/concepts\/vertical-profile\/?$/.test(window.location.pathname)) {

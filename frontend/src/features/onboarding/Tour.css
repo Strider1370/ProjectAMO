@@ -33,7 +33,7 @@
 
 .tour-tip {
   position: fixed;
-  width: 300px;
+  width: 340px;
   max-width: calc(100vw - 16px);
   background: var(--bg-1);
   border: 1px solid var(--stroke-1);
@@ -42,22 +42,37 @@
   padding: var(--space-l);
   pointer-events: auto; /* 툴팁·버튼은 조작 가능 */
   font-family: var(--font-base);
+  transition: top 0.18s ease, left 0.18s ease; /* 지도 이동·패널 열림으로 자리가 바뀔 때 튀지 않게 */
 }
 
+.tour-tip-head { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
+.tour-tip-head .tour-tip-title { flex: 1; margin: 0; font-size: var(--fs-400); }
 .tour-tip-progress {
   font-size: var(--fs-200);
   line-height: var(--lh-200);
   font-weight: var(--fw-semibold);
   color: var(--text-3);
-  margin-bottom: var(--space-s);
+  white-space: nowrap;
 }
 
 .tour-tip-text {
-  margin: 0 0 var(--space-l);
+  margin: 0 0 var(--space-m);
   font-size: var(--fs-300);
   line-height: var(--lh-300);
   color: var(--text-1);
+  word-break: keep-all;
 }
+
+/* 비행등급 색 견본(공항 단계). */
+.tour-tip-legend { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-m); margin: 0 0 var(--space-m); padding: 0; list-style: none; color: var(--text-2); font-size: var(--fs-200); }
+.tour-tip-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.tour-tip-legend span { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg-1), 0 0 0 3px var(--stroke-1); }
+
+/* 할 일(대상 열기 전) / 열린 뒤 안내. */
+.tour-tip-action { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 var(--space-l); padding: var(--space-s) var(--space-m); border-radius: var(--radius-md); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text-1); font-size: var(--fs-200); font-weight: var(--fw-semibold); line-height: var(--lh-200); word-break: keep-all; }
+.tour-tip-action > svg { flex: none; margin-top: 2px; color: var(--accent); }
+.tour-tip-action.is-done { background: color-mix(in srgb, var(--level-green) 10%, transparent); }
+.tour-tip-action.is-done > svg { color: var(--level-green); }
 
 .tour-tip-actions {
   display: flex;
@@ -124,7 +139,7 @@
 .tour-tip-caution-label { display: block; margin-bottom: 2px; color: var(--level-amber); font-weight: var(--fw-bold); }
 .tour-tip-caution p strong { font-weight: var(--fw-bold); }
 .tour-tip-caution p { margin: 0; }
-.tour-tip-note { margin: calc(-1 * var(--space-m)) 0 var(--space-l); color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); }
+.tour-tip-note { margin: calc(-1 * var(--space-xs)) 0 var(--space-m); color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); }
 
 /* 예시 위험 요약 배지 — 실제 막대(지도 위 가운데)와 같은 자리·모양(빨강 SIGMET, 갈색 AIRMET). */
 .tour-demo-advisory { position: fixed; top: 14px; left: calc(var(--active-sidebar-width, 56px) + (100vw - var(--active-sidebar-width, 56px)) / 2); display: flex; align-items: center; gap: 8px; transform: translateX(-50%); font-family: var(--font-base); }

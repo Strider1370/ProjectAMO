@@ -7,6 +7,8 @@ export const test = base.extend({
     await context.addInitScript(() => { try { localStorage.setItem('projectamo:skip-intro', '1') } catch { /* storage disabled */ } })
     // 첫 방문 사용 안내(투어)는 2026-10-22부터 자동으로 뜬다 — 다른 계약을 가리지 않게 본 것으로 둔다(onboarding 계약만 지운다).
     await context.addInitScript(() => { try { if (!localStorage.getItem('amo.tour.v1.done')) localStorage.setItem('amo.tour.v1.done', '1') } catch { /* storage disabled */ } })
+    // 사이드바는 맨 처음 방문 때만 펼쳐진다(2026-10-23) — 기존 계약·스크린샷은 접힌 사이드바 기준이라 이미 본 것으로 둔다.
+    await context.addInitScript(() => { try { localStorage.setItem('projectamo.sidebarIntroShown', '1') } catch { /* storage disabled */ } })
     await use(context)
   },
   consoleMessages: [async ({ page }, use) => {

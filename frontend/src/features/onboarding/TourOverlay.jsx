@@ -1,12 +1,19 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Map as MapIcon, Route, TriangleAlert } from 'lucide-react'
+import { CircleCheck, Map as MapIcon, MousePointerClick, Route, TriangleAlert } from 'lucide-react'
+import { AIRPORT_CATEGORY_COLORS, AIRPORT_CATEGORY_UNKNOWN_COLOR } from '../map/lib/airportStationModel.js'
 import { resolveTargetRect, isRevealed } from './targetRect.js'
 import './Tour.css'
 
 // 첫 화면 카드의 기능 소개 아이콘(tourSteps의 features[].icon).
 const FEATURE_ICONS = { map: MapIcon, route: Route }
 
-const TT_W = 300  // 툴팁 폭(placeTooltip 계산용, CSS와 일치)
+// 공항 단계의 비행등급 색 견본 — 지도 마커와 같은 색.
+const FLIGHT_CATEGORY_LEGEND = [
+  ...Object.entries(AIRPORT_CATEGORY_COLORS).map(([label, color]) => ({ label, color })),
+  { label: '자료 없음', color: AIRPORT_CATEGORY_UNKNOWN_COLOR },
+]
+
+const TT_W = 340  // 툴팁 폭(placeTooltip 계산용, CSS와 일치)
 const PAD = 6     // 스포트라이트 구멍 여백
 
 // rect 기준 여백 큰 쪽에 툴팁 배치(아래→오른쪽→왼쪽→위). 뷰포트 안으로 클램프.
@@ -20,6 +27,9 @@ function placeTooltip(rect, vw, vh, ttH) {
   if (rect.top > ttH + 16) return { x: clampX(rect.left), y: rect.top - ttH - 12 }             // 위
   return { x: clampX((vw - TT_W) / 2), y: clampY(vh - ttH - 24) }                              // 폴백: 하단 중앙
 }
+
+const sameRect = (a, b) => Math.round(a.left) === Math.round(b.left) && Math.round(a.top) === Math.round(b.top)
+  && Math.round(a.width) === Math.round(b.width) && Math.round(a.height) === Math.round(b.height)
 
 export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onSelectAirport }) {
   const { active, step, stepNumber, total, isLast, isFirst, next, back, skip } = tour
@@ -46,7 +56,8 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
       setRevealed(rev) // 값 같으면 React가 리렌더 생략
       const r = resolveTargetRect(step, getAirportPoint)
       if (r) {
-        setRect(r)
+        // 값이 바뀔 때만 갱신 — 매 프레임 새 객체를 넣으면 멈춰 있어도 초당 60번 다시 그린다.
+        setRect((prev) => (prev && sameRect(prev, r) ? prev : r))
         // 마커 단계(패널 열리기 전)에만 flyTo. 패널이 열리면(rev) 카메라 안 건드림.
         if (step.mapAirport && !rev && focusedStepRef.current !== step.id) {
           focusedStepRef.current = step.id
@@ -63,7 +74,8 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
   useLayoutEffect(() => {
     if (!rect) return
     const ttH = tipRef.current?.offsetHeight || 132
-    setPos(placeTooltip(rect, window.innerWidth, window.innerHeight, ttH))
+    const next = placeTooltip(rect, window.innerWidth, window.innerHeight, ttH)
+    setPos((prev) => (prev && prev.x === next.x && prev.y === next.y ? prev : next))
   }, [rect, step])
 
   // 스텝 전환 시 [다음]에 포커스(키보드 접근).
@@ -157,9 +169,22 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
           aria-modal="true"
           aria-label="사용 안내"
         >
-          <div className="tour-tip-progress">{stepNumber} / {total}</div>
+          <div className="tour-tip-head">
+            {step.title && <h2 className="tour-tip-title">{step.title}</h2>}
+            <span className="tour-tip-progress">{stepNumber} / {total}</span>
+          </div>
           <p className="tour-tip-text" aria-live="polite">{step.text}</p>
+          {step.legend === 'flightCategory' && (
+            <ul className="tour-tip-legend" aria-label="비행등급 색">
+              {FLIGHT_CATEGORY_LEGEND.map(({ label, color }) => (
+                <li key={label}><span style={{ background: color }} aria-hidden="true" />{label}</li>
+              ))}
+            </ul>
+          )}
           {demoShown && step.demoText && <p className="tour-tip-note">{step.demoText}</p>}
+          {revealed && step.revealedText
+            ? <p className="tour-tip-action is-done"><CircleCheck size={15} aria-hidden="true" />{step.revealedText}</p>
+            : step.action && <p className="tour-tip-action"><MousePointerClick size={15} aria-hidden="true" />{step.action}</p>}
           <div className="tour-tip-actions">
             <button type="button" className="tour-btn tour-btn-ghost" onClick={skip}>건너뛰기</button>
             <div className="tour-tip-spacer" />
