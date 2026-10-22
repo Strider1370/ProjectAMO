@@ -47,13 +47,14 @@ export function routeHits(rect, route) {
   return hits
 }
 
-// anchors: [{ key, x, y }] 놓을 순서대로, bounds: 지도 영역 { left, top, right, bottom }, obstacles: 막힌 상자들, route: 경로 화면 좌표.
+// anchors: [{ key, x, y, size? }] 놓을 순서대로(size가 없으면 공통 size), bounds: 지도 영역 { left, top, right, bottom }, obstacles: 막힌 상자들, route: 경로 화면 좌표.
 export function placeAirportCards(anchors, { size, bounds, obstacles = [], route = [] }) {
   const placed = []
   for (const anchor of anchors) {
+    const own = anchor.size ?? size
     let best = null
-    for (const [order, candidate] of candidates(anchor, size).entries()) {
-      const rect = rectOf(candidate, size)
+    for (const [order, candidate] of candidates(anchor, own).entries()) {
+      const rect = rectOf(candidate, own)
       const outside = Math.max(0, bounds.left - rect.left) + Math.max(0, rect.right - bounds.right)
         + Math.max(0, bounds.top - rect.top) + Math.max(0, rect.bottom - bounds.bottom)
       const blocked = [...obstacles, ...placed.map((p) => p.rect)].reduce((sum, other) => sum + overlapArea(rect, other), 0)

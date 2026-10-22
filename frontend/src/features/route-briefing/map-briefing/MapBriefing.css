@@ -243,36 +243,43 @@
 .mb-airport-leaders line { stroke: var(--text-2); stroke-width: 1.5; stroke-dasharray: 3 2; }
 .mb-airport-card {
   --mb-ac-cat: var(--text-3);
-  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box;
-  padding: 6px 10px 6px 12px; border-left: 4px solid var(--mb-ac-cat); border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.96); box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18); color: var(--text-1);
-  font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200); pointer-events: auto;
+  position: absolute; display: flex; flex-direction: column; gap: var(--space-s); box-sizing: border-box;
+  padding: var(--space-s) var(--space-m) var(--space-s) var(--space-m); border-left: 5px solid var(--mb-ac-cat); border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.97); box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2); color: var(--text-1);
+  font-family: var(--app-font, system-ui, sans-serif); pointer-events: auto;
 }
 .mb-airport-card.is-vfr { --mb-ac-cat: var(--cat-vfr); }
 .mb-airport-card.is-mvfr { --mb-ac-cat: var(--cat-mvfr); }
 .mb-airport-card.is-ifr { --mb-ac-cat: var(--cat-ifr); }
 .mb-airport-card.is-lifr { --mb-ac-cat: var(--cat-lifr); }
-.mb-ac-head { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; }
-.mb-ac-head strong { font-size: var(--fs-300); font-weight: var(--fw-bold); }
-.mb-ac-role { padding: 0 5px; border-radius: var(--radius-sm); background: var(--text-1); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 16px; }
+/* 1줄: 역할 · ICAO(가장 크게) · 공항명 · 비행등급(오른쪽) */
+.mb-ac-head { display: flex; align-items: center; gap: var(--space-s); min-width: 0; white-space: nowrap; }
+.mb-ac-head strong { font-size: 18px; font-weight: var(--fw-bold); letter-spacing: 0.01em; }
+.mb-ac-role { padding: 1px 6px; border-radius: var(--radius-sm); background: var(--text-1); color: #fff; font-size: var(--fs-200); font-weight: var(--fw-bold); }
 .mb-ac-role.is-alternate { background: var(--level-amber); }
-.mb-ac-name { overflow: hidden; color: var(--text-2); text-overflow: ellipsis; }
-.mb-ac-cat { padding: 0 5px; border-radius: var(--radius-sm); background: var(--mb-ac-cat); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 16px; }
-.mb-ac-flag { padding: 0 5px; border: 1px solid var(--level-amber); border-radius: var(--radius-sm); color: var(--level-amber); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; }
+.mb-ac-name { overflow: hidden; color: var(--text-2); font-size: var(--fs-300); text-overflow: ellipsis; }
+.mb-ac-cat { margin-left: auto; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--mb-ac-cat); color: #fff; font-size: var(--fs-200); font-weight: var(--fw-bold); }
+/* 2·3줄: 왼쪽 이름 칸(METAR 20:00 / TAF ETD±1h), 오른쪽 본문 14px */
+.mb-ac-rows { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: 4px var(--space-s); margin: 0; }
+.mb-ac-rows dt { display: flex; flex-direction: column; color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-bold); line-height: 1.15; }
+.mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
+.mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mb-ac-rows dd, .mb-ac-rows dd span { overflow: hidden; text-overflow: ellipsis; }
+.mb-ac-rows dd em { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-style: normal; font-weight: var(--fw-bold); }
+/* 맨 아래: 깃발 + 상세 */
+.mb-ac-foot { display: flex; align-items: center; gap: var(--space-xs); margin-top: auto; }
+.mb-ac-flag { padding: 1px 6px; border: 1px solid var(--level-amber); border-radius: var(--radius-sm); color: var(--level-amber); font-size: var(--fs-200); font-weight: var(--fw-bold); }
 .mb-ac-flag.is-red { border-color: var(--level-red); background: var(--level-red-bg); color: var(--level-red); }
 .mb-ac-flag.is-notam { border-color: var(--stroke-2); color: var(--text-2); }
-.mb-ac-more { display: inline-flex; align-items: center; margin-left: auto; padding: 1px 2px 1px 6px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--accent); font: inherit; font-size: var(--fs-200); font-weight: var(--fw-semibold); cursor: pointer; }
+.mb-ac-more { display: inline-flex; align-items: center; margin-left: auto; padding: 2px 4px 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--accent); font: inherit; font-size: var(--fs-300); font-weight: var(--fw-semibold); cursor: pointer; }
 .mb-ac-more:hover:not(:disabled) { background: var(--bg-3); }
 .mb-ac-more:disabled { color: var(--text-3); cursor: default; }
-.mb-ac-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin: 0; white-space: nowrap; }
-.mb-ac-key { flex: none; color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-bold); }
-.mb-ac-text { overflow: hidden; font-size: var(--fs-200); font-variant-numeric: tabular-nums; text-overflow: ellipsis; }
-.mb-ac-changes { flex: none; margin-left: auto; padding: 0 5px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-100); font-weight: var(--fw-bold); }
 
 /* 브리핑 중 공항 패널: 오른쪽 전체 높이 서랍 대신 지도 영역 안의 떠 있는 카드 — 독(위험 막대·단면도)을 가리지 않는다(사용자 결정, 2026-10-22).
+   폭은 원래 설계(화면 절반, 560~960) 그대로 — 560으로 줄였더니 위쪽 사진·탭 칸이 눌려 어설퍼 보였다.
    공항 패널은 지도 영역 밖(앱 최상위)이라 독 높이는 MapBriefingView가 :root에 올린 --mb-dock-h-app으로 읽는다. 시간 막대 40 + 틈 12. */
 .app.is-map-briefing .airport-panel {
   top: 12px; right: 12px; bottom: calc(40px + var(--mb-dock-h-app, 0px) + 12px); height: auto;
-  width: min(560px, calc(100vw - var(--active-sidebar-width, 56px) - 24px));
+  width: min(var(--panel-drawer-lg), calc(100vw - var(--active-sidebar-width, 56px) - 24px));
   border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
 }

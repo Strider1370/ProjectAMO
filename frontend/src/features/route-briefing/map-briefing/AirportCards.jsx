@@ -5,9 +5,10 @@ import { formatBriefingTime } from '../lib/briefingTime.js'
 import { airportCards, changeLines } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
-const CARD_SIZE = { w: 300, h: 92 }
-// 카드가 피할 화면 요소(지도 위에 뜬 것들). 공항 패널이 열려 있으면 그 자리도 피한다.
-const OBSTACLE_SELECTORS = ['.mb-panel', '.mb-dock', '.mb-dock-tab', '.mb-toast', '.mb-popover', '.vertical-level-rail-stack', '.weather-time-card', '.mobile-map-layer-btns', '.map-bottom-control-dock', '.airport-panel']
+const CARD_W = 320
+const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄
+// 카드가 피할 화면 요소(지도 위에 뜬 것들). 공항 패널이 열려 있으면 카드는 숨긴다(아래).
+const OBSTACLE_SELECTORS = ['.mb-panel', '.mb-dock', '.mb-dock-tab', '.mb-toast', '.mb-popover', '.vertical-level-rail-stack', '.weather-time-card', '.mobile-map-layer-btns', '.map-bottom-control-dock']
 
 const shortName = (name) => String(name ?? '').replace('국제공항', '').replace('공항', '')
 
@@ -44,11 +45,12 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
   useLayoutEffect(() => {
     const map = mapRef?.current
     const layer = layerRef.current
-    if (!map || !layer) { setLayout([]); return }
+    // 공항 패널이 열려 있으면 카드를 숨긴다 — 패널이 그 공항을 자세히 보여 주고, 카드가 패널에 반쯤 가려 어지러웠다.
+    if (!map || !layer || document.querySelector('.airport-panel')) { setLayout([]); return }
     const origin = layer.getBoundingClientRect()
     const toLocal = (rect) => ({ left: rect.left - origin.left, top: rect.top - origin.top, right: rect.right - origin.left, bottom: rect.bottom - origin.top })
     const wrapper = layer.closest('.map-view-wrapper') ?? document
-    const obstacles = OBSTACLE_SELECTORS.flatMap((selector) => [...(selector === '.airport-panel' ? document : wrapper).querySelectorAll(selector)])
+    const obstacles = OBSTACLE_SELECTORS.flatMap((selector) => [...wrapper.querySelectorAll(selector)])
       .map((el) => el.getBoundingClientRect()).filter((rect) => rect.width > 0 && rect.height > 0).map(toLocal)
     const step = Math.max(1, Math.floor((routeSamples?.length ?? 0) / 60))
     const route = (routeSamples ?? []).filter((_, index) => index % step === 0)
@@ -56,7 +58,7 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
       .map((sample) => { const p = map.project([sample.lon, sample.lat]); return [p.x, p.y] })
     const anchors = cards.filter((card) => card.position).map((card) => { const p = map.project(card.position); return { key: card.icao, x: p.x, y: p.y } })
     const bounds = { left: 8, top: 8, right: origin.width - 8, bottom: origin.height - 8 }
-    setLayout(placeAirportCards(anchors, { size: CARD_SIZE, bounds, obstacles, route }))
+    setLayout(placeAirportCards(anchors, { size: { w: CARD_W, h: CARD_H }, bounds, obstacles, route }))
   }, [cards, mapRef, routeSamples, frame])
 
   const byKey = new Map(layout.map((place) => [place.key, place]))
@@ -69,31 +71,34 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
         const place = byKey.get(card.icao)
         if (!place) return null
         const changes = changeLines(card.taf.changes, hhmm)
+        const hasFlags = card.flags.windshear || card.flags.warnings.length > 0 || card.flags.notams > 0
         return (
-          <article key={card.icao} className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_SIZE.w, height: CARD_SIZE.h }}
+          <article key={card.icao} className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_W, height: CARD_H }}
             aria-label={`${card.roleLabel} ${card.icao} ${card.name}`}>
             <header className="mb-ac-head">
               <span className={`mb-ac-role is-${card.role}`}>{card.roleLabel}</span>
               <strong>{card.icao}</strong>
               <span className="mb-ac-name">{card.name}</span>
               {card.category && <span className="mb-ac-cat">{card.category}</span>}
+            </header>
+            <dl className="mb-ac-rows">
+              <dt>{card.metar.speci ? 'SPECI' : 'METAR'}<small>{card.metar.time ? hhmm(card.metar.time) : ''}</small></dt>
+              <dd title={card.metar.text ?? undefined}>{card.metar.text ?? '자료 없음'}</dd>
+              <dt title={card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>TAF<small>{card.taf.basis}±1h{card.taf.previous ? ' · 직전' : ''}</small></dt>
+              <dd title={[card.taf.text, ...changes].filter(Boolean).join('\n') || undefined}>
+                <span>{card.taf.text ?? '자료 없음'}</span>
+                {changes.length > 0 && <em>변화 {changes.length}</em>}
+              </dd>
+            </dl>
+            <footer className="mb-ac-foot">
               {card.flags.windshear && <span className="mb-ac-flag is-red" title="윈드시어 경보">윈드시어</span>}
-              {card.flags.warnings.length > 0 && <span className="mb-ac-flag" title={card.flags.warnings.join(' · ')}>경보 {card.flags.warnings.length}</span>}
+              {card.flags.warnings.length > 0 && <span className="mb-ac-flag" title={card.flags.warnings.join(' · ')}>공항경보 {card.flags.warnings.length}</span>}
               {card.flags.notams > 0 && <span className="mb-ac-flag is-notam" title="공항 NOTAM">NOTAM {card.flags.notams}</span>}
               <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)}
                 title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>
-                상세<ChevronRight size={13} aria-hidden="true" />
+                상세<ChevronRight size={15} aria-hidden="true" />
               </button>
-            </header>
-            <p className="mb-ac-line" title={card.metar.text ?? undefined}>
-              <span className="mb-ac-key">{card.metar.speci ? 'SPECI' : 'METAR'}{card.metar.time ? ` ${hhmm(card.metar.time)}` : ''}</span>
-              <span className="mb-ac-text">{card.metar.text ?? '자료 없음'}</span>
-            </p>
-            <p className="mb-ac-line" title={[card.taf.text, ...changes].filter(Boolean).join('\n') || undefined}>
-              <span className="mb-ac-key" title={card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>TAF {card.taf.basis}±1h{card.taf.previous ? ' · 직전' : ''}</span>
-              <span className="mb-ac-text">{card.taf.text ?? '자료 없음'}</span>
-              {changes.length > 0 && <span className="mb-ac-changes">변화 {changes.length}</span>}
-            </p>
+            </footer>
           </article>
         )
       })}
