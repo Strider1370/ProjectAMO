@@ -6,8 +6,8 @@ import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import './MetarHistory.css'
 
-// 관측 이력 줄: 최근 3시간 METAR·SPECI를 왼쪽(과거) → 오른쪽(최신) 칸으로. 칸 색 = 비행등급이라 추세가 한눈에 보이고,
-// 칸을 누르면 아래 원문·해독 카드가 그 관측으로 바뀐다. 최신이 아니면 원문 위에 "19:30 관측 · 최신 아님".
+// 관측 이력 줄: 최근 3시간 METAR·SPECI를 왼쪽(과거) → 오른쪽(최신) 작은 칸(한 줄)으로. 점 색 = 비행등급이라 추세가 한눈에 보이고,
+// 칸을 누르면 아래 원문·해독 카드가 그 관측으로 바뀐다. 최신이 아니면 칸 오른쪽에 "19:30 관측 · 최신 아님".
 function hhmmIn(tz, iso) {
   const t = new Date(iso)
   if (!Number.isFinite(t.getTime())) return '—'
@@ -15,7 +15,7 @@ function hhmmIn(tz, iso) {
   return `${String(t.getUTCHours()).padStart(2, '0')}${String(t.getUTCMinutes()).padStart(2, '0')}Z`
 }
 
-function MetarHistoryStrip({ history }) {
+function MetarHistoryStrip({ history, note }) {
   const { tz } = useTimeZone()
   if (history.entries.length < 2) return null // 보관된 이전 관측이 없으면 줄을 띄우지 않는다
   return (
@@ -26,11 +26,11 @@ function MetarHistoryStrip({ history }) {
           <button key={entry.key} type="button" role="option" aria-selected={selected}
             className={`ap-mh-cell is-${(entry.category ?? 'unknown').toLowerCase()}${selected ? ' is-selected' : ''}${entry.latest ? ' is-latest' : ''}`}
             onClick={() => history.select(entry.key)} title={`${hhmmIn(tz, entry.time)} ${entry.kind}${entry.category ? ` · ${entry.category}` : ''}`}>
-            <span className="ap-mh-time">{hhmmIn(tz, entry.time)}{entry.kind === 'SPECI' && <b>S</b>}{entry.latest && <em>최신</em>}</span>
-            <span className="ap-mh-cat"><i />{entry.category ?? '—'}</span>
+            <i className="ap-mh-dot" aria-hidden="true" />{hhmmIn(tz, entry.time)}{entry.kind === 'SPECI' && <b>S</b>}{entry.latest && <em>최신</em>}
           </button>
         )
       })}
+      {note && <span className="ap-mh-note">{note}</span>}
     </div>
   )
 }
@@ -75,8 +75,7 @@ export default function MetarTab({ metar: latestMetar, amosData, icao, airportMe
 
   return (
     <div className="ap-metar-v2">
-      {icao && <MetarHistoryStrip history={history} />}
-      {past && <p className="ap-mh-note">{hhmmIn(tz, past.time)} {past.kind === 'SPECI' ? 'SPECI' : '관측'} · 최신 아님</p>}
+      {icao && <MetarHistoryStrip history={history} note={past ? `${hhmmIn(tz, past.time)} ${past.kind === 'SPECI' ? 'SPECI' : '관측'} · 최신 아님` : null} />}
       {/* ── TAC 원문 — 임계값 색칠, 비행조건 배지는 섹션 헤더에 표시 ── */}
       {rawText && (
         <div className="ap-metar-tac-block">
