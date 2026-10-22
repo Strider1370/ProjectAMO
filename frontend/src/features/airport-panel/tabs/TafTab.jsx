@@ -5,6 +5,8 @@ import { buildTafForecastView } from '../lib/tafForecastViewModel.js'
 import TafForecastTimeline from './TafForecastTimeline.jsx'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import useDemoMode from '../../../shared/demoMode/useDemoMode.js'
+import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
+import ReportHistoryStrip from './ReportHistoryStrip.jsx'
 import '../AirportPanel.css'
 
 function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
@@ -54,7 +56,13 @@ function computeColumnSpans(periods, textFn) {
   return spans
 }
 
-export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = false, tempoMode = 'inline' }) {
+// 발표 이력 줄(공항 패널에서만 — eta·forceCompact로 쓰는 브리핑 화면은 제외): 현재 + 직전 2개 발표 칸, 누르면 그 발표로.
+// 응답에 붙은 직전 발표는 변화군 없이 시간별 예보만 있어 원문은 비고 시간별 타임라인으로 그린다.
+export default function EnhancedTafTab({ taf: latestTaf, icao, eta = null, forceCompact = false, tempoMode = 'inline' }) {
+  const showHistory = Boolean(icao) && eta == null && !forceCompact
+  const history = useAirportHistory(showHistory ? icao : null, 'taf', { latest: latestTaf, latestTime: latestTaf?.header?.issued, latestKind: latestTaf?.header?.report_status === 'AMENDMENT' ? 'AMD' : 'TAF' })
+  const pastTaf = history.selected && !history.selected.latest ? history.selected : null
+  const taf = pastTaf?.report ?? latestTaf
   // 모바일·태블릿: 테이블 고정. 데스크톱: 타임라인 고정. 뷰 토글 없음.
   // 타임라인은 패널 폭이 좁아지면 칸이 잘게 쪼개져 값이 칸 밖으로 넘친다. 패널 폭은
   // clamp(560px, 50vw, 960px)라 화면이 좁을수록 패널도 좁다 — 아이패드 11" 가로(1194px)에서
@@ -80,8 +88,13 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
   // 배포 전에 저장된 TAF에는 없어서, 그때는 기존 시각별 타임라인을 그대로 쓴다.
   const forecastView = view === 'timeline' ? buildTafForecastView(taf, icao, nowMs) : null
 
+  const zHour = (iso) => `${String(new Date(iso).getUTCHours()).padStart(2, '0')}${String(new Date(iso).getUTCMinutes()).padStart(2, '0')}Z`
+  const partial = pastTaf && !pastTaf.report?.change_groups
   return (
     <div className={`ap-taf${compact ? ' ap-taf--compact' : ''}`}>
+      {showHistory && <ReportHistoryStrip history={history} label="TAF 발표 이력" cellText={(entry) => zHour(entry.time)}
+        cellTitle={(entry) => `${zHour(entry.time)} ${entry.kind === 'AMD' ? 'TAF AMD' : 'TAF'} 발표${entry.latest ? ' · 최신' : ''}`}
+        note={pastTaf ? `${zHour(pastTaf.time)} 발표 · 최신 아님${partial ? ' · 원문 없음(시간별 예보만)' : ''}` : null} />}
       {rawTimeline.length === 0 && <div className="ap-empty">TAF 시간대 데이터 없음</div>}
       {rawTimeline.length > 0 && slots.length === 0 && <div className="ap-empty">TAF 유효 기간 만료</div>}
 
