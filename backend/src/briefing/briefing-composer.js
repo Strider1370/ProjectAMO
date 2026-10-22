@@ -1,6 +1,6 @@
 import { summarizeAirport } from './airport-summary.js'
 import { levelForCategory, to3Level } from './flight-category.js'
-import { buildDestination } from './taf-window.js'
+import { buildDestination, tafWindow } from './taf-window.js'
 import { buildConfidenceWarnings } from './confidence.js'
 import { buildHazardSection } from './hazard-section.js'
 import { matchTyphoonHazards } from './typhoon-briefing.js'
@@ -160,6 +160,12 @@ export function composeBriefing(request, data) {
     roles, // 출발·도착이 같은 공항이면 ['departure','arrival'] — 배지를 '출발/도착'으로 합친다
     amos: amosByIcao[icao] ?? null, // ② 도착 행 확장(AMOS 지상실황) — 프론트에서 buildAmosConsoleModel 재사용
     takeoffFcst: takeoffByIcao[icao] ?? null, // ② 출발 행 확장(이륙예보 매시 wd/ws/ta/qnh)
+    // 지도형 브리핑 공항 카드: 출발은 ETD, 도착·교체는 ETA 기준 ±1시간 TAF.
+    tafWindow: (() => {
+      const basis = role === 'departure' ? 'ETD' : 'ETA'
+      const window = tafWindow(tafByIcao[icao] ?? null, basis === 'ETD' ? request.etd : request.eta)
+      return window ? { basis, time: basis === 'ETD' ? request.etd : request.eta, ...window } : null
+    })(),
   }))
 
   const banner = buildBanner(airports)

@@ -2465,6 +2465,9 @@ const MapView = forwardRef(function MapView({
             }}
             onMapFocus={briefingMapLink.setFocus}
             onGoTo={briefingMapLink.goTo}
+            mapRef={mapRef}
+            airports={airports}
+            onOpenAirport={onAirportSelect}
           />
         </Suspense>
       )}

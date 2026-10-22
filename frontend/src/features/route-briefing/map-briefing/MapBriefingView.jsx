@@ -5,6 +5,7 @@ import { ribbonItemLayers } from '../lib/hazardLayers.js'
 import MapBriefingPanel from './MapBriefingPanel.jsx'
 import BriefingDock from './BriefingDock.jsx'
 import HazardPopover from './HazardPopover.jsx'
+import AirportCards from './AirportCards.jsx'
 import { frameAdvisoryId, layerToastText, selectionDetail } from './mapBriefingModel.js'
 import './MapBriefing.css'
 
@@ -17,7 +18,8 @@ const TOAST_MS = 8000
 export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt, verticalProfile, crossSection, advisories,
   nwpTimeSelection, onSetWaypointNwpOffset, onSelectForecastHour, crossSectionHourLoading,
   onClosePanel, onDocumentView, onSave, onEdit, onEnd, onDockHeightChange,
-  metVisibility = {}, mapStatus = null, timelineMs = null, onLayersOn, onLayersOff, onMapFocus, onGoTo }) {
+  metVisibility = {}, mapStatus = null, timelineMs = null, onLayersOn, onLayersOff, onMapFocus, onGoTo,
+  mapRef = null, airports = [], onOpenAirport }) {
   const { tz } = useTimeZone()
   const [selection, setSelection] = useState(null)
   const [hover, setHover] = useState(null)
@@ -32,6 +34,12 @@ export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt
     ?? frameAdvisoryId(selection?.kind === 'frame' ? selection.item : null)
 
   useEffect(() => { onMapFocus?.({ hover, selection, advisoryId, hiddenRows }) }, [onMapFocus, hover, selection, advisoryId, hiddenRows])
+  // 독 높이를 앱 전체에 알린다 — 지도 영역 밖(앱 최상위)에 있는 공항 패널이 브리핑 중 독 위까지만 뜨도록(MapBriefing.css).
+  const handleDockHeight = useCallback((height) => {
+    document.documentElement.style.setProperty('--mb-dock-h-app', `${Math.round(height)}px`)
+    onDockHeightChange?.(height)
+  }, [onDockHeightChange])
+  useEffect(() => () => document.documentElement.style.removeProperty('--mb-dock-h-app'), [])
   useEffect(() => {
     if (!toast) return undefined
     const timer = setTimeout(() => setToast(null), TOAST_MS)
@@ -67,6 +75,7 @@ export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt
 
   return (
     <>
+      <AirportCards briefing={briefing} mapRef={mapRef} airports={airports} routeSamples={verticalProfile?.axis?.samples ?? null} onOpenAirport={onOpenAirport} />
       {panelOpen && (
         <MapBriefingPanel briefing={briefing} distanceNm={distanceNm} tasKt={tasKt} onClose={onClosePanel}
           onDocumentView={onDocumentView} onSave={onSave} onEdit={onEdit} onEnd={onEnd} onSelectSummary={selectSummary} />
@@ -82,7 +91,7 @@ export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt
         crossSectionHourLoading={crossSectionHourLoading} selectedId={selection?.id ?? null}
         onSelect={select} onHover={setHover} highlightAdvisoryId={advisoryId} onHoverAdvisory={setProfileAdvisoryId}
         hiddenRows={hiddenRows} onToggleRow={(key) => setHiddenRows((rows) => rows.includes(key) ? rows.filter((r) => r !== key) : [...rows, key])}
-        onHeightChange={onDockHeightChange} />
+        onHeightChange={handleDockHeight} />
       {selection && <HazardPopover selection={selection} detail={detail} onClose={closePopover} onGoTo={(target) => onGoTo?.(target)} />}
     </>
   )

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { selectTafAtEta, alternateRequired, buildDestination, metricsAt, weatherAt } from '../src/briefing/taf-window.js'
+import { selectTafAtEta, alternateRequired, buildDestination, metricsAt, weatherAt, tafWindow } from '../src/briefing/taf-window.js'
 
 const taf = {
   header: { icao: 'RKPC' },
@@ -104,4 +104,41 @@ test('weatherAt: 같은 항목의 병합된 현상을 준다', () => {
   }
   assert.deepEqual(weatherAt(t, '2026-08-20T03:10:00Z'), wx)
   assert.deepEqual(weatherAt(t, '2026-08-20T09:00:00Z'), [], '유효기간 밖이면 빈 배열')
+})
+
+test('공항 카드 TAF ±1시간: 기준 시각 우세 예보 + 앞뒤 1시간의 다른 예보(시간별 변화·변화군), 유효기간 밖 표시', () => {
+  const windowTaf = {
+    header: { icao: 'RKPC', valid_start: '2026-06-26T09:00:00Z', valid_end: '2026-06-27T09:00:00Z', issued: '2026-06-26T05:00:00Z' },
+    timeline: taf.timeline.map((entry) => ({ ...entry, display: { ...entry.display, visibility: String(entry.visibility.value) } })),
+    change_groups: [
+      { type: 'TEMPO', start: '2026-06-26T10:30:00Z', end: '2026-06-26T13:00:00Z', wind: { raw: '20015G25KT' }, vis: 4000, wx: [{ raw: 'SHRA' }], clouds: [{ raw: 'BKN010' }] },
+      { type: 'BECMG', start: '2026-06-26T14:00:00Z', end: '2026-06-26T15:00:00Z', wind: { raw: '22010KT' } },
+    ],
+  }
+  const window = tafWindow(windowTaf, '2026-06-26T10:10:00Z')
+  assert.equal(window.at.time, '2026-06-26T10:00:00Z')
+  assert.equal(window.at.text, '14020KT 3000 BKN006')
+  assert.deepEqual(window.changes.map((c) => [c.type, c.text]), [
+    ['TEMPO', '20015G25KT 4000 SHRA BKN010'],
+    ['변화', '18010KT 9999 SCT020'],
+  ])
+  assert.deepEqual(tafWindow(windowTaf, '2026-06-28T00:00:00Z'), { at: null, changes: [], outOfRange: true, issued: '2026-06-26T05:00:00Z' })
+  assert.equal(tafWindow(null, '2026-06-26T10:00:00Z'), null)
+})
+
+test('공항 카드 TAF: 새 TAF가 아직 발효 전이면 그 시각에 유효한 직전 발표를 쓴다', () => {
+  const latest = {
+    header: { icao: 'RKSI', issued: '2026-10-20T11:00:00Z', valid_start: '2026-10-20T12:00:00Z', valid_end: '2026-10-21T18:00:00Z' },
+    timeline: [{ time: '2026-10-20T12:00:00Z', display: { wind: '30008KT', visibility: '9999', clouds: 'FEW030' } }],
+    previous: {
+      header: { issued: '2026-10-20T05:00:00Z', valid_start: '2026-10-20T06:00:00Z', valid_end: '2026-10-21T12:00:00Z' },
+      // 직전 발표 보관본은 display 없이 원시 값만 있다.
+      timeline: [{ time: '2026-10-20T11:00:00Z', wind: { raw: '31006KT' }, visibility: { value: 9999, cavok: true }, weather: [], clouds: [] }],
+    },
+  }
+  const window = tafWindow(latest, '2026-10-20T11:30:00Z')
+  assert.equal(window.previous, true)
+  assert.equal(window.at.text, '31006KT CAVOK')
+  assert.equal(window.issued, '2026-10-20T05:00:00Z')
+  assert.equal(tafWindow({ ...latest, previous: null }, '2026-10-20T11:30:00Z').outOfRange, true)
 })

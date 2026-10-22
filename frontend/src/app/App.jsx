@@ -248,7 +248,7 @@ function MainAppShell({ conceptPreview = false }) {
   }
 
   return (
-    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''} ${mobileTask === 'map' && !selectedAirport ? 'map-controls-visible' : ''}${mapBriefingActive ? ' is-map-briefing' : ''}`}>
+    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''} ${mobileTask === 'map' && (!selectedAirport || mapBriefingActive) ? 'map-controls-visible' : ''}${mapBriefingActive ? ' is-map-briefing' : ''}`}>
       {previewMode && <PreviewMode compact />}
       <Sidebar
         activePanel={activePanel}
@@ -308,7 +308,8 @@ function MainAppShell({ conceptPreview = false }) {
         onRequestDeferredWeatherData={requestDeferredWeatherData}
       />
 
-      {mobileTask === 'map' && !selectedAirport && (
+      {/* 지도형 브리핑 중에는 공항 패널이 지도 영역 안 카드로 떠서(오른쪽) 위쪽 버튼(왼쪽)을 가리지 않는다 — 버튼을 남긴다. */}
+      {mobileTask === 'map' && (!selectedAirport || mapBriefingActive) && (
         <MapInfoControls
           mobile={isMobile}
           activePanel={activePanel}

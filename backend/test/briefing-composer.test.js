@@ -220,3 +220,13 @@ test('enroute ribbon puts the SIGMET icing frame on the icing row and marks mode
   assert.equal(ribbon.summary.status, 'hazard')
   assert.equal(ribbon.summary.top.source, 'SIGMET')
 })
+
+test('공항 카드 TAF: 출발은 ETD, 도착·교체는 ETA 기준 ±1시간, TAF 없는 공항은 null', () => {
+  const b = composeBriefing(request, data)
+  const byRole = Object.fromEntries(b.sections.current.airports.map((a) => [a.role, a]))
+  assert.equal(byRole.arrival.tafWindow.basis, 'ETA')
+  assert.equal(byRole.arrival.tafWindow.time, request.eta)
+  assert.equal(byRole.arrival.tafWindow.at.text, '14020KT BKN006')
+  assert.equal(byRole.departure.tafWindow, null)
+  assert.equal(byRole.alternate.tafWindow, null)
+})

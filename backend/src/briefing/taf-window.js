@@ -271,3 +271,73 @@ export function alternateRequired(taf, etaIso) {
 }
 
 export default { selectTafAtEta, alternateRequired, metricsAt, weatherAt }
+
+// ── 공항 카드: ETD/ETA ±1시간 TAF 한 줄(지도형 브리핑 6단계) ──
+// at = 기준 시각의 우세 예보(시간별 타임라인에서 가장 가까운 항목), changes = 앞뒤 1시간 안에 걸린 다른 예보
+// (TEMPO·PROB·BECMG 변화군 + 시간별 우세 예보가 바뀌는 시각). 글은 TAF 표기 그대로(바람 시정 일기 구름).
+const WINDOW_MS = 60 * 60 * 1000
+
+function displayText(display) {
+  return [display?.wind, display?.visibility, display?.weather && display.weather !== '-' ? display.weather : null, display?.clouds]
+    .filter(Boolean).join(' ').trim() || null
+}
+
+// 타임라인 항목 글: 미리 만든 display가 있으면 그것, 없으면(직전 발표 보관본) 원시 값으로.
+function entryText(entry) {
+  if (entry?.display) return displayText(entry.display)
+  const cavok = entry?.visibility?.cavok
+  const vis = cavok ? 'CAVOK' : Number.isFinite(entry?.visibility?.value) ? String(entry.visibility.value).padStart(4, '0') : null
+  const wx = (entry?.weather ?? []).map((w) => w.raw ?? w).join(' ') || null
+  const clouds = cavok ? null : (entry?.clouds ?? []).map((c) => c.raw).filter(Boolean).join(' ') || null
+  return [entry?.wind?.raw, vis, wx, clouds].filter(Boolean).join(' ').trim() || null
+}
+
+function groupText(group) {
+  const vis = group.cavok_flag ? 'CAVOK' : Number.isFinite(group.vis) ? String(group.vis).padStart(4, '0') : null
+  const wx = (group.wx ?? []).length ? group.wx.map((w) => w.raw ?? w).join(' ') : group.nsw_flag ? 'NSW' : null
+  const clouds = group.cavok_flag ? null : (group.clouds ?? []).length ? group.clouds.map((c) => c.raw).join(' ') : group.nsc_flag ? 'NSC' : null
+  return [group.wind?.raw, vis, wx, clouds].filter(Boolean).join(' ').trim() || null
+}
+
+export function tafWindow(taf, iso, { windowMs = WINDOW_MS } = {}) {
+  const center = Date.parse(iso)
+  const timeline = taf?.timeline ?? []
+  if (!Number.isFinite(center) || timeline.length === 0) return null
+  const validStart = Date.parse(taf?.header?.valid_start), validEnd = Date.parse(taf?.header?.valid_end)
+  if (Number.isFinite(validStart) && Number.isFinite(validEnd) && (center < validStart || center > validEnd)) {
+    // 새 TAF가 아직 발효 전(예: 11Z 발표 · 12Z부터)이면 그 시각에 유효한 것은 직전 발표다.
+    const previous = taf?.previous
+    const prevStart = Date.parse(previous?.header?.valid_start), prevEnd = Date.parse(previous?.header?.valid_end)
+    if (center < validStart && previous?.timeline?.length && center >= prevStart && center <= prevEnd) {
+      const window = tafWindow({ header: { icao: taf?.header?.icao, ...previous.header }, timeline: previous.timeline, change_groups: previous.change_groups ?? [] }, iso, { windowMs })
+      return window ? { ...window, previous: true } : null
+    }
+    return { at: null, changes: [], outOfRange: true, issued: taf?.header?.issued ?? null }
+  }
+  const from = center - windowMs, to = center + windowMs
+  const at = nearestEntry(taf, iso)
+  const atText = at ? entryText(at) : null
+  const changes = []
+  // 시간별 우세 예보가 창 안에서 바뀌는 시각
+  let previous = atText
+  for (const entry of timeline) {
+    const t = Date.parse(entry.time)
+    if (!Number.isFinite(t) || t <= center || t > to) continue
+    const text = entryText(entry)
+    if (text && text !== previous) changes.push({ type: '변화', start: entry.time, end: null, text })
+    previous = text
+  }
+  // 창과 겹치는 변화군(TEMPO·PROB·BECMG)
+  for (const group of taf?.change_groups ?? []) {
+    const start = Date.parse(group.start), end = Date.parse(group.end)
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= from || start >= to) continue
+    changes.push({ type: group.type, start: group.start, end: group.end, text: groupText(group) })
+  }
+  changes.sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
+  return {
+    at: at ? { time: at.time, text: atText, category: metricsAt(taf, at.time)?.category ?? null } : null,
+    changes,
+    outOfRange: false,
+    issued: taf?.header?.issued ?? null,
+  }
+}

@@ -129,6 +129,14 @@
 
 **확인**: 자리 계산 단위 테스트(남북형·동서형), ±1h 구간 테스트, 브라우저 계약에 "카드 펼침" 하나.
 
+**실제로 한 것 (2026-10-22)**
+- 백엔드: `taf-window.js` `tafWindow` — 기준 시각(출발 ETD, 도착·교체 ETA)의 우세 예보 한 줄 + 앞뒤 1시간 안 다른 예보(TEMPO·PROB·BECMG 변화군, 시간별 우세 예보가 바뀌는 시각). 새 TAF가 아직 발효 전이면(예: 11Z 발표 · 12Z부터, ETD 11:30Z) 그 시각에 유효한 **직전 발표**(`taf.previous`)를 쓰고 표시한다. 직전 발표 보관본은 display가 없어 원시 값으로 글을 만든다. `sections.current.airports[].tafWindow`. TAF 파서·개편 파일은 건드리지 않음.
+- 카드(`map-briefing/AirportCards.jsx`, 모델 `airportCardModel.js`, 자리 `airportCardPlacement.js`): 머리(역할·ICAO·공항명·비행등급·깃발 윈드시어/경보 n/NOTAM n·"상세") + METAR 한 줄 + "TAF ETD±1h" 한 줄(+ "변화 n", 툴팁에 목록). 폭 300. 자리는 공항 둘레 여섯 곳 중 경로선·브리핑 패널·독·슬라이더·자료 시각 카드·위쪽 버튼·열린 공항 패널·다른 카드를 피하는 곳, 점선 지시선. 지도 이동·화면 구성 변화(공항 패널 열림 등)마다 다시 놓는다. 좌표는 앱 공항 목록(국내 + 해외 navdata).
+- "상세" = 기존 공항 패널(지도에서 공항 기호를 누른 것과 같은 `onAirportSelect`). 목록에 없는 공항은 버튼 비활성.
+- 공항 패널(브리핑 중만): 오른쪽 전체 높이 서랍 → 지도 영역 안 떠 있는 카드(폭 560, 위 12 ~ 독 위 12, 둥근 모서리). 공항 패널 파일은 손대지 않고 `MapBriefing.css`의 `.app.is-map-briefing .airport-panel`로. 독 높이는 `:root --mb-dock-h-app`(MapBriefingView).
+- 브리핑 중에는 공항 패널이 열려도 위쪽 [항공정보·기상정보·브리핑] 버튼을 남긴다(`App.jsx` 조건에 `mapBriefingActive`).
+- 남은 것: 공항 패널 TAF 탭에 ETD/ETA 표시(TAF 개편 정리 후), 브라우저 계약 "카드 → 상세 → 공항 패널".
+
 ## 7단계 — METAR·TAF 과거 보기
 
 > **2026-10-22 사용자 결정 (spec §2.3)**: 과거 보기는 카드가 아니라 **공항 패널**(METAR·TAF 탭)에 넣는다. API(1번)는 그대로, 2번 "카드 ◀▶"는 공항 패널 탭에서. TAF 탭과 겹치므로 TAF 개편이 정리된 뒤에 한다.
