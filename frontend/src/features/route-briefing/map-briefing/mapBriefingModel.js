@@ -221,8 +221,8 @@ function formatRunCycle(tmfc) {
   return match ? `${match[1]}/${match[2]} ${match[3]}Z` : null
 }
 
-// 막대·틀 상세 팝오버 내용(2026-10-22 사용자 검토로 정리): 머리 = 현상·강도 하나, 본문 = 언제·어디서·어느 고도,
-// 아래 옅은 두 줄 = 출처·근거. formatTime(iso) → 'HH:mm', tzLabel → 'KST'.
+// 막대·틀 상세 팝오버 내용(2026-10-22 사용자 검토로 정리): 머리 = 강도 배지·현상·출처 배지, 본문 = 통과·구간·고도(+내 고도 배지),
+// 아래 옅은 두 줄 = 자료 시각·근거. formatTime(iso) → 'HH:mm', tzLabel → 'KST'.
 export function selectionDetail(selection, { runs = {}, formatTime = (iso) => iso, tzLabel = '' } = {}) {
   if (!selection?.item) return null
   const { row, kind, item } = selection
@@ -233,8 +233,9 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
   const mine = kind === 'model' ? true : Boolean(item.mine) // 수치예보 막대는 내 비행 고도 단면에서 뽑은 것
   const detail = {
     level,
-    // 모델: "난류 MOD" / 발표: "SIGMET 심한 난기류" / 태풍: 이름
-    title: kind === 'model' ? `${row.label} ${item.level}` : typhoon ? (item.label ?? '태풍') : `${item.source}${item.overseas ? '(해외)' : ''} ${phenomenonKo(item.code) ?? item.label ?? row.label}`,
+    // 강도는 배지(level)로, 제목은 현상 이름만: 모델 "난류" / 발표 "심한 착빙" / 태풍 이름
+    title: kind === 'model' ? row.label : typhoon ? (item.label ?? '태풍') : (phenomenonKo(item.code) ?? item.label ?? row.label),
+    sourceChip: kind === 'model' ? `${MODEL_SOURCE[row.key] ?? 'KIM'} 모델` : typhoon ? '태풍 정보' : `${item.source}${item.overseas ? '(해외)' : ''}`,
     mine,
     when: item.passFrom && item.passTo ? `${formatTime(item.passFrom)}–${formatTime(item.passTo)}${tz}${minutes ? ` · ${minutes}분` : ''}` : null,
     route: item.from && item.to ? `${item.from} → ${item.to}` : `${item.startNm}–${item.endNm}NM`,
@@ -256,13 +257,13 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
     const run = runs?.[MODEL_RUN[row.key]]
     const cycle = formatRunCycle(run?.tmfc)
     const valid = run?.validTime ? `유효 ${formatTime(run.validTime)}${tz}` : null
-    detail.source = [`${MODEL_SOURCE[row.key] ?? 'KIM'}${cycle ? ` ${cycle}` : ''}`, valid].filter(Boolean).join(' · ')
+    detail.source = [cycle && `${cycle} 회차`, valid].filter(Boolean).join(' · ') || null
   } else {
     altitude = typhoon ? '전 고도' : formatBand(item.bandFt)
     const valid = item.validFrom && item.validTo ? `유효 ${formatTime(item.validFrom)}–${formatTime(item.validTo)}${tz}` : null
-    detail.source = [typhoon ? '태풍 정보' : `${item.source} 발표`, valid].filter(Boolean).join(' · ')
+    detail.source = valid
   }
-  detail.altitude = `${altitude} · ${mine ? '내 비행 고도' : '다른 고도'}`
+  detail.altitude = altitude
   return detail
 }
 
