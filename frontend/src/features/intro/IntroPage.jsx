@@ -42,13 +42,13 @@ const LAYERS = [
   { key: 'base', label: '기본 지도', frames: [[imgMain, null]] },
   { key: 'humid', label: '습도', frames: [[imgHumid0, '01:00 KST'], [imgHumid1, '02:00 KST'], [imgHumid2, '03:00 KST']], alt: 'KIM 습도 예보' },
   { key: 'precip', label: '강수와 등압선', video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자' },
-  { key: 'turb', label: '난류', frames: [[imgTurb0, '03:00 KST'], [imgTurb1, '06:00 KST'], [imgTurb2, '09:00 KST']], alt: 'KTG 난류 예보' },
+  { key: 'turb', label: '난류', frames: [[imgTurb0, '03:00 KST'], [imgTurb1, '06:00 KST'], [imgTurb2, '09:00 KST']], alt: 'KIM 난류(GKTG) 예보' },
   { key: 'sat', label: '적외 위성', frames: [[imgSat0, '21:30 KST'], [imgSat1, '22:30 KST'], [imgSat2, '23:30 KST'], [imgSat3, '00:30 KST']], alt: '적외 위성 영상' },
 ]
 // 목록은 위에서부터(맨 위 레이어 먼저) 보여 준다.
 const LEGEND = [
   ['linear-gradient(90deg,#222,#EEE)', '적외 위성, 천리안위성 2A호'],
-  ['linear-gradient(90deg,#3DB24B,#F2C230,#E07B22)', '난류, KTG'],
+  ['linear-gradient(90deg,#3DB24B,#F2C230,#E07B22)', '난류, KIM GKTG'],
   ['linear-gradient(90deg,#A7D3F5,#3D8BD9,#1F4FA8)', '강수와 등압선, 바람, KIM 지상일기도'],
   ['linear-gradient(90deg,#DDEBD8,#7FB78C,#2F7D5B)', '습도, KIM'],
   ['#DCE6EE', '기본 지도와 공항, FIR'],
@@ -394,7 +394,7 @@ export default function IntroPage() {
                 {live.details.map((detail) => <span key={detail}>{detail}</span>)}
               </p>
             )}
-            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.5.1</b>권계면·제트 레이어와 구름·착빙 표시가 추가됐어요. 2026년 10월 4일</p>
+            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.6.0</b>지도 위에서 보는 비행 전 브리핑과 공항 카드가 추가됐어요. 2026년 10월 23일</p>
             <div className="hero-shot hero-anim" style={{ animationDelay: '.35s' }}>
               <div className="tilt">
                 <Frame title="ProjectAMO">
@@ -414,7 +414,7 @@ export default function IntroPage() {
           <div className="wrap feature">
             <div className="copy">
               <h2 id="gis-title">지난 관측부터 30시간 예보까지 한 지도에서</h2>
-              <p>위성, 레이더, 낙뢰, KIM 수치예보의 강수와 습도, 난류, SIGWX까지 20여 종의 레이어를 필요한 만큼 겹쳐 보세요. 하단 타임라인으로 지난 관측과 앞으로의 예보를 이어서 넘겨볼 수 있어요.</p>
+              <p>위성, 레이더, 낙뢰, KIM 수치예보의 강수와 구름·착빙, 난류, 권계면·제트, SIGWX까지 20여 종의 레이어를 필요한 만큼 겹쳐 보세요. 하단 타임라인으로 지난 관측과 앞으로의 예보를 이어서 넘겨볼 수 있어요.</p>
               <ul className="legend">
                 {LEGEND.map(([swatch, label]) => <li key={label}><i style={{ background: swatch }} />{label}</li>)}
               </ul>
@@ -460,7 +460,7 @@ export default function IntroPage() {
           <div className="wrap feature">
             <div className="copy">
               <h2 id="brief-title">경로만 입력하면 브리핑이 정리돼요</h2>
-              <p>출발 공항과 도착 공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 구간별 위험기상과 연직단면도, 출발과 도착 공항 실황을 한 번에 보고, 내 미니마 기준으로 이륙 가부까지 확인하세요.</p>
+              <p>출발 공항과 도착 공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 브리핑은 지도 위에서 열려 경로를 따라 현상별 위험 구간과 연직단면도, 출발·도착 공항의 METAR·TAF를 함께 보여주고, 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
             </div>
             <div className="stage">
               <div className="tabs fit" aria-hidden="true">
@@ -565,11 +565,11 @@ export default function IntroPage() {
               <tbody>
                 <tr><th>레이더, 낙뢰, 지상 관측</th><td>기상청</td></tr>
                 <tr><th>위성 영상, 대류 가능성, 운정고도</th><td>천리안위성 2A호 (국가기상위성센터)</td></tr>
-                <tr><th>KIM 수치예보, KTG 난류</th><td>기상청</td></tr>
+                <tr><th>KIM 수치예보</th><td>기상청 (난류 GKTG는 KIM 자료로 계산)</td></tr>
                 <tr><th>METAR, TAF, SIGMET, AIRMET, SIGWX, AMOS</th><td>항공기상청</td></tr>
                 <tr><th>해외 모델 비교</th><td>ECMWF, NOAA GFS, DWD ICON</td></tr>
                 <tr><th>해외 레이더</th><td>RainViewer</td></tr>
-                <tr><th>항로, 절차, 공역</th><td>항공정보간행물(AIP)</td></tr>
+                <tr><th>항로, 절차, 공역</th><td>항공정보간행물(AIP), 국토교통부</td></tr>
               </tbody>
             </table>
           </div>
@@ -578,6 +578,7 @@ export default function IntroPage() {
         <section className="cta" aria-labelledby="cta-title">
           <div className="wrap">
             <div><h2 id="cta-title">지금 바로 확인해 보세요</h2><p>로그인 없이 대시보드를 볼 수 있어요.</p></div>
+            <p className="cta-note" role="note">ProjectAMO는 시험 운영 중인 프로토타입이며 기상청 공식 서비스가 아니에요. 자료가 늦거나 빠지거나 틀릴 수 있으니, <b>실제 운항 판단에는 항공기상청 공식 자료와 정식 브리핑을 기준으로 하세요.</b></p>
             <button className="btn btn-white" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
           </div>
         </section>
@@ -587,7 +588,7 @@ export default function IntroPage() {
         <div className="wrap foot-bottom">
           <b className="foot-name">ProjectAMO</b>
           <span>통합형 항공기상정보 브리핑 플랫폼</span>
-          <span>현재 버전 v0.5.1, 2026년 10월 4일 업데이트</span>
+          <span>현재 버전 v0.6.0, 2026년 10월 23일 업데이트</span>
         </div>
       </footer>
 
