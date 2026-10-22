@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Map as MapIcon, Route, TriangleAlert } from 'lucide-react'
 import { resolveTargetRect, isRevealed } from './targetRect.js'
 import './Tour.css'
+
+// 첫 화면 카드의 기능 소개 아이콘(tourSteps의 features[].icon).
+const FEATURE_ICONS = { map: MapIcon, route: Route }
 
 const TT_W = 300  // 툴팁 폭(placeTooltip 계산용, CSS와 일치)
 const PAD = 6     // 스포트라이트 구멍 여백
@@ -75,13 +79,40 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
       <div className="tour-root" role="presentation">
         <div className="tour-scrim" />
         <div className="tour-tip tour-tip--center" role="dialog" aria-modal="true" aria-label="사용 안내">
-          {step.title && <h2 className="tour-tip-title">{step.title}</h2>}
-          <p className="tour-tip-text" aria-live="polite">{step.text}</p>
-          {step.caution && <p className="tour-tip-caution" role="note"><strong>주의</strong>{step.caution}</p>}
-          <div className="tour-tip-actions">
-            <button type="button" className="tour-btn tour-btn-ghost" onClick={skip}>건너뛰기</button>
-            <div className="tour-tip-spacer" />
-            <button type="button" className="tour-btn tour-btn-primary" ref={nextBtnRef} onClick={next}>{step.nextLabel ?? '다음'}</button>
+          {step.hero && (
+            <div className="tour-welcome-hero" style={{ backgroundImage: `url(${step.hero})` }}>
+              {step.badge && <span className="tour-welcome-badge">{step.badge}</span>}
+              {step.title && <h2 className="tour-welcome-title">{step.title}</h2>}
+            </div>
+          )}
+          <div className="tour-welcome-body">
+            {!step.hero && step.title && <h2 className="tour-tip-title">{step.title}</h2>}
+            <p className="tour-welcome-lead" aria-live="polite">{step.text}</p>
+            {step.features?.length > 0 && (
+              <ul className="tour-welcome-features">
+                {step.features.map((feature) => {
+                  const Icon = FEATURE_ICONS[feature.icon] ?? MapIcon
+                  return (
+                    <li key={feature.title}>
+                      <span className="tour-welcome-icon" aria-hidden="true"><Icon size={18} /></span>
+                      <div><strong>{feature.title}</strong><p>{feature.text}</p></div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {step.caution && (
+              <div className="tour-tip-caution" role="note">
+                <TriangleAlert size={16} aria-hidden="true" />
+                <div><span className="tour-tip-caution-label">주의</span><p>{step.caution}{step.cautionEmphasis && <> <strong>{step.cautionEmphasis}</strong></>}</p></div>
+              </div>
+            )}
+            {step.note && <p className="tour-welcome-note">{step.note}</p>}
+            <div className="tour-tip-actions">
+              <button type="button" className="tour-btn tour-btn-ghost" onClick={skip}>건너뛰기</button>
+              <div className="tour-tip-spacer" />
+              <button type="button" className="tour-btn tour-btn-primary" ref={nextBtnRef} onClick={next}>{step.nextLabel ?? '다음'}</button>
+            </div>
           </div>
         </div>
       </div>

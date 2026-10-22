@@ -71,17 +71,18 @@ export default function useTour({ isMobile, isFirstVisit, markSeen, getAirportPo
     return () => window.removeEventListener('keydown', onKey)
   }, [active, finish])
 
-  // 진행 표시(부재 스텝 제외한 실제 순번/총계).
+  // 진행 표시(부재 스텝 제외한 실제 순번/총계). 첫 화면 소개 카드(center)는 세지 않는다 — '안내 시작' 뒤가 1번.
   const visible = active ? TOUR_STEPS.filter(isPresent) : []
+  const counted = visible.filter((s) => !s.center)
   const step = active ? TOUR_STEPS[index] : null
-  const stepNumber = step ? visible.findIndex((s) => s.id === step.id) + 1 : 0
+  const stepNumber = step ? counted.findIndex((s) => s.id === step.id) + 1 : 0
 
   return {
     active,
     willAutoStart,
     step,
     stepNumber,
-    total: visible.length,
+    total: counted.length,
     isLast: firstVisibleFrom(TOUR_STEPS, isPresent, index + 1) >= TOUR_STEPS.length,
     isFirst: firstVisibleFrom(TOUR_STEPS, isPresent, index - 1, -1) < 0,
     next,
