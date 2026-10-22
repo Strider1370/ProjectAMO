@@ -1,0 +1,248 @@
+{
+ "header": {
+  "valid_start": "2026-10-17T12:00:00Z",
+  "valid_end": "2026-10-18T18:00:00Z"
+ },
+ "forecast": {
+  "prevailing": [
+   {
+    "start": "2026-10-17T12:00:00Z",
+    "end": "2026-10-17T17:00:00Z",
+    "wind": {
+     "raw": "12010G25KT",
+     "direction": 120,
+     "speed": 10,
+     "gust": 25,
+     "unit": "KT",
+     "variable": false,
+     "calm": false
+    },
+    "visibility": {
+     "value": 9999,
+     "cavok": true
+    },
+    "weather": [],
+    "clouds": [],
+    "display": {
+     "weather": "",
+     "visibility": "9999",
+     "clouds": "NSC"
+    },
+    "change": null
+   },
+   {
+    "start": "2026-10-17T17:00:00Z",
+    "end": "2026-10-17T21:00:00Z",
+    "wind": {
+     "raw": "14018G35KT",
+     "direction": 140,
+     "speed": 18,
+     "gust": 35,
+     "unit": "KT",
+     "variable": false,
+     "calm": false
+    },
+    "visibility": {
+     "value": 9999,
+     "cavok": true
+    },
+    "weather": [],
+    "clouds": [],
+    "display": {
+     "weather": "",
+     "visibility": "9999",
+     "clouds": "NSC"
+    },
+    "change": {
+     "index": 0,
+     "type": "BECMG",
+     "start": "2026-10-17T15:00:00Z",
+     "end": "2026-10-17T17:00:00Z"
+    }
+   },
+   {
+    "start": "2026-10-17T21:00:00Z",
+    "end": "2026-10-18T09:00:00Z",
+    "wind": {
+     "raw": "14018G35KT",
+     "direction": 140,
+     "speed": 18,
+     "gust": 35,
+     "unit": "KT",
+     "variable": false,
+     "calm": false
+    },
+    "visibility": {
+     "value": 6000,
+     "cavok": false
+    },
+    "weather": [
+     {
+      "raw": "-RA"
+     }
+    ],
+    "clouds": [
+     {
+      "amount": "FEW",
+      "base": 1000,
+      "type": null,
+      "raw": "FEW010"
+     },
+     {
+      "amount": "BKN",
+      "base": 3000,
+      "type": null,
+      "raw": "BKN030"
+     },
+     {
+      "amount": "OVC",
+      "base": 7000,
+      "type": null,
+      "raw": "OVC070"
+     }
+    ],
+    "display": {
+     "weather": "-RA",
+     "visibility": "6000",
+     "clouds": "FEW010 BKN030 OVC070"
+    },
+    "change": {
+     "index": 1,
+     "type": "BECMG",
+     "start": "2026-10-17T19:00:00Z",
+     "end": "2026-10-17T21:00:00Z"
+    }
+   },
+   {
+    "start": "2026-10-18T09:00:00Z",
+    "end": "2026-10-18T13:00:00Z",
+    "wind": {
+     "raw": "27012G25KT",
+     "direction": 270,
+     "speed": 12,
+     "gust": 25,
+     "unit": "KT",
+     "variable": false,
+     "calm": false
+    },
+    "visibility": {
+     "value": 9999,
+     "cavok": false
+    },
+    "weather": [],
+    "clouds": [
+     {
+      "amount": "SCT",
+      "base": 2500,
+      "type": null,
+      "raw": "SCT025"
+     }
+    ],
+    "display": {
+     "weather": "",
+     "visibility": "9999",
+     "clouds": "SCT025"
+    },
+    "change": {
+     "index": 3,
+     "type": "BECMG",
+     "start": "2026-10-18T07:00:00Z",
+     "end": "2026-10-18T09:00:00Z"
+    }
+   },
+   {
+    "start": "2026-10-18T13:00:00Z",
+    "end": "2026-10-18T18:00:00Z",
+    "wind": {
+     "raw": "33008KT",
+     "direction": 330,
+     "speed": 8,
+     "gust": null,
+     "unit": "KT",
+     "variable": false,
+     "calm": false
+    },
+    "visibility": {
+     "value": 9999,
+     "cavok": false
+    },
+    "weather": [],
+    "clouds": [
+     {
+      "amount": "SCT",
+      "base": 2500,
+      "type": null,
+      "raw": "SCT025"
+     }
+    ],
+    "display": {
+     "weather": "",
+     "visibility": "9999",
+     "clouds": "SCT025"
+    },
+    "change": {
+     "index": 4,
+     "type": "BECMG",
+     "start": "2026-10-18T11:00:00Z",
+     "end": "2026-10-18T13:00:00Z"
+    }
+   }
+  ],
+  "temporary": [
+   {
+    "type": "TEMPO",
+    "start": "2026-10-18T03:00:00Z",
+    "end": "2026-10-18T06:00:00Z",
+    "changed": [
+     "wind",
+     "visibility",
+     "weather",
+     "clouds"
+    ],
+    "wind": {
+     "raw": "18025G45KT",
+     "direction": 180,
+     "speed": 25,
+     "gust": 45,
+     "unit": "KT",
+     "variable": false,
+     "calm": false
+    },
+    "visibility": {
+     "value": 2000,
+     "cavok": false
+    },
+    "weather": [
+     {
+      "raw": "+RA"
+     }
+    ],
+    "clouds": [
+     {
+      "amount": "SCT",
+      "base": 500,
+      "type": null,
+      "raw": "SCT005"
+     },
+     {
+      "amount": "BKN",
+      "base": 2000,
+      "type": null,
+      "raw": "BKN020"
+     },
+     {
+      "amount": "OVC",
+      "base": 5000,
+      "type": null,
+      "raw": "OVC050"
+     }
+    ],
+    "display": {
+     "weather": "+RA",
+     "visibility": "2000",
+     "clouds": "SCT005 BKN020 OVC050"
+    }
+   }
+  ]
+ }
+}

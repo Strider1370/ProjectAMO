@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { MoveUp } from 'lucide-react'
 import { buildTafViewModel, buildTafTacLines, formatTafHour, formatTafPeriodRange, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
+import { buildTafForecastView } from '../lib/tafForecastViewModel.js'
+import TafForecastTimeline from './TafForecastTimeline.jsx'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import useDemoMode from '../../../shared/demoMode/useDemoMode.js'
 import '../AirportPanel.css'
@@ -52,12 +54,13 @@ function computeColumnSpans(periods, textFn) {
   return spans
 }
 
-export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = false }) {
+export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = false, tempoMode = 'inline' }) {
   // 모바일·태블릿: 테이블 고정. 데스크톱: 타임라인 고정. 뷰 토글 없음.
   // 타임라인은 패널 폭이 좁아지면 칸이 잘게 쪼개져 값이 칸 밖으로 넘친다. 패널 폭은
   // clamp(560px, 50vw, 960px)라 화면이 좁을수록 패널도 좁다 — 아이패드 11" 가로(1194px)에서
   // 패널 597px, 가장 좁은 칸 57px이라 바람(14006KT)이 잘렸다.
-  // 데스크톱(패널 720px)도 변화구간이 많은 TAF에서는 바람 값이 넘친다 — 그건 타임라인 자체 문제라 여기서 다루지 않는다.
+  // 데스크톱 타임라인은 TafForecastTimeline이 그린다: 주 예보와 TEMPO/PROB를 나누고, 좁은 칸은 실측해서
+  // 줄임 표기 → 두 줄 → 숨김 순으로 줄인다. 숨겨진 값은 아래 원문(타임라인일 때 펼침)과 칸 툴팁으로 본다.
   const [{ view, compact }] = useState(() => {
     if (forceCompact) return { view: 'table', compact: true }
     if (typeof window === 'undefined') return { view: 'timeline', compact: false }
@@ -73,13 +76,18 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
   const { rawTimeline, slots } = buildTafViewModel(taf, icao, nowMs)
   const periods = groupTafPeriods(slots) // 테이블·그리드용 변화구간 묶음
   const tacLines = buildTafTacLines(taf, icao)
+  // 서버가 붙인 해석(taf.forecast: 주 예보 + TEMPO/PROB 분리)이 있으면 그것으로 그린다.
+  // 배포 전에 저장된 TAF에는 없어서, 그때는 기존 시각별 타임라인을 그대로 쓴다.
+  const forecastView = view === 'timeline' ? buildTafForecastView(taf, icao, nowMs) : null
 
   return (
     <div className={`ap-taf${compact ? ' ap-taf--compact' : ''}`}>
       {rawTimeline.length === 0 && <div className="ap-empty">TAF 시간대 데이터 없음</div>}
       {rawTimeline.length > 0 && slots.length === 0 && <div className="ap-empty">TAF 유효 기간 만료</div>}
 
-      {slots.length > 0 && view === 'timeline' && (
+      {forecastView && <TafForecastTimeline view={forecastView} tz={tz} tempoMode={tempoMode} />}
+
+      {slots.length > 0 && view === 'timeline' && !forecastView && (
         <div className="ap-taf-timeline">
           <div className="ap-taf-scale" style={{ '--taf-hour-count': slots.length }}>
             {slots.map((item, index) => <span key={index}>{index % 3 === 0 || index === 0 ? formatTafHour(item.time, tz) : ''}</span>)}
@@ -158,10 +166,10 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
         )
       })()}
 
-      {/* ── 원문(TAC) — 접이식(기본 접힘). METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
+      {/* ── 원문(TAC) — 접이식(타임라인에선 펼침, 표에선 접힘). METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
           줄(기본/TEMPO/BECMG/FM/PROB)마다 그 시점의 비행조건을 왼쪽 색 테두리로 표시한다. ── */}
       {tacLines.length > 0 && (
-        <details className="ap-raw-fold">
+        <details className="ap-raw-fold" open={view === 'timeline'}>
           <summary className="ap-raw-fold-summary">원문 (TAC)</summary>
           <div className="ap-taf-tac-block">
             {tacLines.map((line, i) => (

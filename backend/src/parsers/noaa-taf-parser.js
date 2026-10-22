@@ -6,10 +6,11 @@ import {
   parseWeatherCode,
   parseWind,
   resolveWeatherIconKey,
-  pickPrimaryWeatherIcon,
 } from './parse-utils.js'
 import { convertSmToMeters } from './noaa-metar-parser.js'
 import { annotateTafTac } from './tac-annotation.js'
+import { parseTafTac } from './taf-tac-parser.js'
+import { buildTafForecast, formatDisplay, partialMerge } from './taf-forecast.js'
 
 const CLEAR_COVERS = new Set(['SKC', 'CLR', 'NSC', 'NCD'])
 
@@ -117,32 +118,6 @@ function mapType(fcst) {
   return 'FM' // fcstChange null이지만 base가 아닌 추가 세그먼트(FM)
 }
 
-function partialMerge(current, change) {
-  const next = deepClone(current)
-  if (change.wind != null) next.wind = change.wind
-  if (change.vis != null) {
-    next.vis = change.vis
-    if (change.vis !== 9999) next.cavok_flag = false
-  }
-  if (change.wx_touched === true) {
-    next.wx = change.wx
-    if (!change.cavok_flag) next.cavok_flag = false
-  }
-  if (change.clouds_touched === true) {
-    next.clouds = change.clouds
-    next.cavok_flag = false
-    next.nsc_flag = change.nsc_flag === true
-  }
-  if (change.cavok_flag === true) {
-    next.cavok_flag = true
-    next.nsc_flag = false
-    next.vis = 9999
-    next.wx = []
-    next.clouds = []
-  }
-  return next
-}
-
 function resolveWxByVis(state) {
   const next = deepClone(state)
   const vis = Number(next.vis)
@@ -151,18 +126,6 @@ function resolveWxByVis(state) {
     next.wx = [{ ...br, icon_key: resolveWeatherIconKey(br) }]
   }
   return next
-}
-
-function formatDisplay(state) {
-  const weatherList = state.wx || []
-  return {
-    wind: state.wind?.raw || null,
-    visibility: String(state.vis ?? '//'),
-    weather: state.cavok_flag ? '' : weatherList.map((w) => w.raw).join(' '),
-    clouds: (state.cavok_flag || state.nsc_flag) ? 'NSC' : (state.clouds || []).map((c) => c.raw).join(' '),
-    weather_icon: state.cavok_flag ? 'CAVOK' : pickPrimaryWeatherIcon(weatherList),
-    weather_intensity: weatherList[0]?.intensity || null,
-  }
 }
 
 function hourRange(startIso, endIso) {
@@ -182,83 +145,13 @@ export function parse(entry) {
   const validEnd = unixToIso(entry.validTimeTo)
   if (!validStart || !validEnd) return null
 
-  // fcstChange===null → base/FM 세그먼트, 그 외 → 변화군.
-  const rawTokens = String(entry.rawTAF || '').toUpperCase().split(/\s+/)
-  const cavokIndex = rawTokens.indexOf('CAVOK')
-  const baseCavok = cavokIndex >= 0 && !rawTokens.slice(0, cavokIndex)
-    .some((token) => token === 'BECMG' || token === 'TEMPO' || /^PROB(?:30|40)?$/.test(token) || /^FM\d{6}$/.test(token))
-  const tacMeters = tacVisibilityMeters(entry.rawTAF)
-  let baseSeen = false
-  const segments = entry.fcsts.map((f) => {
-    const isBase = f.fcstChange == null
-    const cavok = isBase && !baseSeen && baseCavok
-    if (isBase) baseSeen = true
-    return {
-      ...parseState(f, isBase, cavok, tacMeters),
-      _from: unixToIso(f.timeFrom),
-      _to: unixToIso(f.timeTo),
-      _raw: f,
-    }
-  })
-
-  const baseSegments = segments.filter((s) => s._raw.fcstChange == null)
-    .sort((a, b) => (a._from || '').localeCompare(b._from || ''))
-  const changeSegments = segments.filter((s) => s._raw.fcstChange != null)
-
-  const base = baseSegments[0] || segments[0]
-
-  // change_groups: 변화군 + 첫 base 이후의 FM 세그먼트(type='FM')
-  const change_groups = [
-    ...changeSegments.map((s) => ({
-      type: mapType(s._raw),
-      start: s._from,
-      end: s._to,
-      wind: s.wind, vis: s.vis, wx: s.wx, clouds: s.clouds,
-      wx_touched: s.wx_touched, clouds_touched: s.clouds_touched,
-      cavok_flag: s.cavok_flag, nsc_flag: s.nsc_flag,
-    })),
-    ...baseSegments.slice(1).map((s) => ({
-      type: 'FM',
-      start: s._from,
-      end: s._to,
-      wind: s.wind, vis: s.vis, wx: s.wx, clouds: s.clouds,
-      wx_touched: true, clouds_touched: true,
-      cavok_flag: s.cavok_flag, nsc_flag: s.nsc_flag,
-    })),
-  ].sort((a, b) => (a.start || '').localeCompare(b.start || ''))
-
-  const becmgList = changeSegments.filter((s) => mapType(s._raw) === 'BECMG')
-  const tempoList = changeSegments.filter((s) => /TEMPO|PROB/.test(mapType(s._raw)))
-
-  const timeline = []
-  for (const time of hourRange(validStart, validEnd)) {
-    // 해당 시각을 덮는 base/FM 세그먼트(가장 늦게 시작한 것) 선택
-    let state = null
-    for (const seg of baseSegments) {
-      if (seg._from && time >= seg._from && (!seg._to || time < seg._to)) state = seg
-    }
-    state = deepClone(state ? stripMeta(state) : stripMeta(base))
-
-    for (const becmg of becmgList) {
-      // 정상 TAF는 시작 시각부터 바로 적용(플리커 방지). 단 BECMG가 유효시작과 동시에
-      // 시작하는 비정상 TAF는 BASE가 지속시간 0이 되어 증발하므로 이때만 창 끝에 적용.
-      const gate = becmg._from === validStart ? becmg._to : becmg._from
-      if (gate && time >= gate) state = partialMerge(state, becmg)
-    }
-    for (const tempo of tempoList) {
-      if (tempo._from && tempo._to && time >= tempo._from && time < tempo._to) state = partialMerge(state, tempo)
-    }
-
-    state = resolveWxByVis(state)
-    timeline.push({
-      time,
-      wind: state.wind,
-      visibility: { value: state.vis, cavok: state.cavok_flag },
-      weather: state.wx || [],
-      clouds: state.clouds || [],
-      display: formatDisplay(state),
-    })
-  }
+  // 원문(TAC)에서 읽은 변화군을 우선 쓴다. NOAA JSON은 변화군마다 앞 상태를 채운 전체 상태라
+  // 무엇이 바뀌었는지와 CAVOK 지속 여부를 잃는다. 원문 해석이 NOAA 변화군 시각과 어긋나면 JSON으로 대신한다.
+  const fromJson = normalizeFromJson(entry)
+  const tac = parseTafTac(entry.rawTAF, { validStart, validEnd })
+  const useTac = Boolean(tac) && tac.valid_start === validStart && sameGroupStarts(tac.change_groups, fromJson.change_groups)
+  const { base, change_groups } = useTac ? tac : fromJson
+  const timeline = buildTimeline(base, change_groups, validStart, validEnd)
 
   const issued = unixToIso(entry.issueTime) || entry.issueTime || null
 
@@ -273,6 +166,7 @@ export function parse(entry) {
       report_status: /CANCEL/i.test(entry.rawTAF || '') ? 'CANCELLATION' : (entry.prior ? 'CORRECTION' : 'NORMAL'),
       // NOAA는 원문 TAC 제공. 공항패널 TAF 탭에서 전문 표시용.
       raw_text: entry.rawTAF || null,
+      parsed_from: useTac ? 'TAC' : 'JSON',
       tac: annotateTafTac(entry.rawTAF, timeline),
       temperatures: { max: { value: null, time: null }, min: { value: null, time: null } },
       source: {
@@ -283,13 +177,104 @@ export function parse(entry) {
         fetch_time: null,
       },
     },
-    base: stripMeta(base),
+    base,
     change_groups,
     timeline,
+    forecast: buildTafForecast({ base, change_groups, valid_start: validStart, valid_end: validEnd }),
   }
 
   if (!parsed.header.valid_start || !parsed.header.valid_end) return null
   return parsed
+}
+
+// NOAA JSON fcsts → base + change_groups. 원문을 못 읽을 때만 쓴다.
+// BECMG의 timeTo는 다음 변화군 시작이라, 변화 시간대의 끝은 timeBec에서 읽는다.
+function normalizeFromJson(entry) {
+  const rawTokens = String(entry.rawTAF || '').toUpperCase().split(/\s+/)
+  const cavokIndex = rawTokens.indexOf('CAVOK')
+  const baseCavok = cavokIndex >= 0 && !rawTokens.slice(0, cavokIndex)
+    .some((token) => token === 'BECMG' || token === 'TEMPO' || /^PROB(?:30|40)?$/.test(token) || /^FM\d{6}$/.test(token))
+  const tacMeters = tacVisibilityMeters(entry.rawTAF)
+  let baseSeen = false
+  const segments = entry.fcsts.map((f) => {
+    const isBase = f.fcstChange == null
+    const cavok = isBase && !baseSeen && baseCavok
+    if (isBase) baseSeen = true
+    return {
+      ...parseState(f, isBase, cavok, tacMeters),
+      _from: unixToIso(f.timeFrom),
+      _to: unixToIso(f.timeTo),
+      _bec: unixToIso(f.timeBec),
+      _raw: f,
+    }
+  })
+  const baseSegments = segments.filter((s) => s._raw.fcstChange == null)
+    .sort((a, b) => (a._from || '').localeCompare(b._from || ''))
+  const changeSegments = segments.filter((s) => s._raw.fcstChange != null)
+  const base = stripMeta(baseSegments[0] || segments[0])
+  const change_groups = [
+    ...changeSegments.map((s) => {
+      const type = mapType(s._raw)
+      return {
+        type,
+        start: s._from,
+        end: type === 'BECMG' && s._bec ? s._bec : s._to,
+        wind: s.wind, vis: s.vis, wx: s.wx, clouds: s.clouds,
+        wx_touched: s.wx_touched, clouds_touched: s.clouds_touched,
+        cavok_flag: s.cavok_flag, nsc_flag: s.nsc_flag,
+      }
+    }),
+    ...baseSegments.slice(1).map((s) => ({
+      type: 'FM',
+      start: s._from,
+      end: s._to,
+      wind: s.wind, vis: s.vis, wx: s.wx, clouds: s.clouds,
+      wx_touched: true, clouds_touched: true,
+      cavok_flag: s.cavok_flag, nsc_flag: s.nsc_flag,
+    })),
+  ].sort((a, b) => (a.start || '').localeCompare(b.start || ''))
+  return { base, change_groups }
+}
+
+function sameGroupStarts(a, b) {
+  if (a.length !== b.length) return false
+  const x = a.map((g) => g.start).sort()
+  const y = b.map((g) => g.start).sort()
+  return x.every((v, i) => v === y[i])
+}
+
+// 시각별 상태: base에 FM(전체 교체)·BECMG(부분 적용)를 시간순으로 쌓고, TEMPO/PROB를 그 위에 덮는다.
+function buildTimeline(base, changeGroups, validStart, validEnd) {
+  const persistent = changeGroups.filter((g) => g.type === 'FM' || g.type === 'BECMG')
+    .sort((a, b) => (a.start || '').localeCompare(b.start || ''))
+  const temporary = changeGroups.filter((g) => /TEMPO|PROB/.test(g.type))
+  const timeline = []
+  for (const time of hourRange(validStart, validEnd)) {
+    let state = deepClone(base)
+    for (const g of persistent) {
+      if (g.type === 'FM') {
+        if (g.start && time >= g.start) state = deepClone(g)
+        continue
+      }
+      // 정상 TAF는 시작 시각부터 바로 적용(플리커 방지). 단 BECMG가 유효시작과 동시에
+      // 시작하는 비정상 TAF는 BASE가 지속시간 0이 되어 증발하므로 이때만 창 끝에 적용.
+      const gate = g.start === validStart ? g.end : g.start
+      if (gate && time >= gate) state = partialMerge(state, g)
+    }
+    for (const g of temporary) {
+      if (g.start && g.end && time >= g.start && time < g.end) state = partialMerge(state, g)
+    }
+    state = resolveWxByVis(state)
+    timeline.push({
+      time,
+      wind: state.wind,
+      visibility: { value: state.vis, cavok: state.cavok_flag },
+      weather: state.wx || [],
+      clouds: state.clouds || [],
+      display: formatDisplay(state),
+    })
+  }
+  return timeline
 }
 
 function stripMeta(seg) {

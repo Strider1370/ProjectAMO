@@ -7,8 +7,8 @@ import { toArray,
   parseWeatherCode,
   parseWind,
   resolveWeatherIconKey,
-  pickPrimaryWeatherIcon,
   resolveDdhh } from './parse-utils.js'
+import { buildTafForecast, formatDisplay, partialMerge } from './taf-forecast.js'
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -201,46 +201,6 @@ function parseChangeGroups(taf) {
     .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
 }
 
-function partialMerge(current, change) {
-  const next = deepClone(current);
-
-  if (change.wind != null) {
-    next.wind = change.wind;
-  }
-
-  if (change.vis != null) {
-    next.vis = change.vis;
-    if (change.vis !== 9999) {
-      next.cavok_flag = false;
-    }
-  }
-
-  if (change.wx_touched === true) {
-    next.wx = change.wx;
-    next.nsw_flag = change.nsw_flag === true;
-    if (!change.cavok_flag) {
-      next.cavok_flag = false;
-    }
-  }
-
-  if (change.clouds_touched === true) {
-    next.clouds = change.clouds;
-    next.cavok_flag = false;
-    next.nsc_flag = change.nsc_flag === true;
-  }
-
-  if (change.cavok_flag === true) {
-    next.cavok_flag = true;
-    next.nsc_flag = false;
-    next.vis = 9999;
-    next.wx = [];
-    next.clouds = [];
-    next.nsw_flag = false;
-  }
-
-  return next;
-}
-
 function resolveWxByVis(state) {
   const next = deepClone(state);
   const vis = Number(next.vis);
@@ -253,18 +213,6 @@ function resolveWxByVis(state) {
   }
 
   return next;
-}
-
-function formatDisplay(state) {
-  const weatherList = state.wx || [];
-  return {
-    wind: state.wind?.raw || null,
-    visibility: String(state.vis ?? "//"),
-    weather: state.cavok_flag ? "" : (weatherList.map((w) => w.raw).join(" ")),
-    clouds: (state.cavok_flag || state.nsc_flag) ? "NSC" : ((state.clouds || []).map((c) => c.raw).join(" ")),
-    weather_icon: state.cavok_flag ? "CAVOK" : pickPrimaryWeatherIcon(weatherList),
-    weather_intensity: weatherList[0]?.intensity || null
-  };
 }
 
 function hourRange(startIso, endIso) {
@@ -401,7 +349,8 @@ function parse(xmlString) {
     },
     base,          // 브리핑 ⑥ 기간표/원문 재구성용 (base forecast state)
     change_groups: changes, // TEMPO/BECMG/PROB 구조화(type·start·end·wind·vis·wx·clouds)
-    timeline
+    timeline,
+    forecast: buildTafForecast({ base, change_groups: changes, valid_start: valid.start, valid_end: valid.end })
   };
 
   // Guard: reject empty/placeholder payloads that would poison latest.json cache.

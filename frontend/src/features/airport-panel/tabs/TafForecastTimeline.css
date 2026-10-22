@@ -1,0 +1,233 @@
+/* 공항패널 TAF 타임라인(주 예보 + TEMPO/PROB 분리).
+   줄 = 주 예보(BECMG로 바뀐 값은 변화 시간대 시작부터), 무채색 칸·세로 기둥·아래 카드 = TEMPO/PROB.
+   색은 비행조건과 기준 초과 값에만 쓴다. TEMPO라는 표시는 --tafx-ink(무채색)로만 그린다. */
+.ap-tafx {
+  --tafx-ink: var(--level-gray);
+  --tafx-mono: 'Consolas', 'Menlo', monospace;
+  position: relative;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 7px 6px;
+}
+
+.ap-tafx-scale {
+  position: relative;
+  height: 16px;
+  color: var(--text-3);
+  font-family: var(--tafx-mono);
+  font-size: 11px;
+}
+.ap-tafx-scale span { position: absolute; white-space: nowrap; }
+
+.ap-tafx-label {
+  align-self: center;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+.ap-tafx-label--lane { align-self: start; padding-top: var(--space-l); line-height: 1.35; }
+
+.ap-tafx-track {
+  position: relative;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid var(--stroke-2);
+  border-radius: 6px;
+  background: var(--bg-2);
+}
+.ap-tafx-track--cat { border-color: transparent; }
+
+.ap-tafx-seg,
+.ap-tafx-frame,
+.ap-tafx-tempo,
+.ap-tafx-lbl {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.ap-tafx-seg { border-right: 1px solid rgba(15, 23, 42, 0.08); }
+.ap-tafx-track--cat .ap-tafx-seg { border-right: none; }
+
+/* TEMPO가 가운데를 가르는 주 예보 칸: 한 구간임을 보여 주는 테두리 */
+.ap-tafx-frame {
+  top: 2px;
+  bottom: 2px;
+  border: 2px solid color-mix(in srgb, currentColor 55%, transparent);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* TEMPO/PROB 칸: 무채색 바탕 + 얇은 테두리. 안의 값은 기준 초과일 때만 색(--tafx-fg) */
+.ap-tafx-tempo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--tafx-ink) 55%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--tafx-ink) 11%, var(--bg-1));
+  color: var(--tafx-fg, var(--text-1));
+  font-family: var(--tafx-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ap-tafx-tempo.is-prob { border-style: dashed; background: color-mix(in srgb, var(--tafx-ink) 6%, var(--bg-1)); }
+/* 비행조건 줄은 진한 바탕이라 그 비행조건 색 블록으로. 비행조건이 그대로인 TEMPO는 점선 테두리만 */
+.ap-tafx-tempo.is-cat { border-color: transparent; font-family: inherit; font-weight: 800; }
+.ap-tafx-tempo.is-cat.is-prob { border: 1px dashed rgba(255, 255, 255, 0.9); opacity: 0.85; }
+.ap-tafx-tempo.is-same { background: none; border: 1.5px dashed rgba(255, 255, 255, 0.75); }
+
+/* 주 예보 값 글자: TEMPO가 덮지 않은 조각마다 하나, 실제로는 가장 넓은 조각에 한 번만 보인다 */
+.ap-tafx-lbl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  padding: 0 3px;
+  pointer-events: none;
+  font-family: var(--tafx-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ap-tafx-track--cat .ap-tafx-lbl { font-family: inherit; font-size: 13px; font-weight: 800; }
+
+.ap-tafx-txt { white-space: nowrap; line-height: 1.15; }
+.ap-tafx-tok { white-space: nowrap; }
+/* 칸이 좁으면 글자부터 줄인다(전체 값 → 작은 글자 → 줄임 표기 → 작은 글자 → 두 줄) */
+[data-size='sm'] .ap-tafx-txt { font-size: 10px; }
+[data-size='sm'] .ap-tafx-arrow { width: 11px; height: 11px; }
+.ap-tafx-v-short { display: none; }
+[data-fit='short'] .ap-tafx-v-full { display: none; }
+[data-fit='short'] .ap-tafx-v-short { display: inline; }
+[data-wrap='1'] .ap-tafx-txt { width: min-content; white-space: normal; text-align: center; }
+.ap-tafx-lbl[data-fit='hidden'] { display: none; }
+[data-fit='dot'] .ap-tafx-txt { display: none; }
+.ap-tafx-lbl[data-fit='dot']::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+.ap-tafx-track--wind .ap-tafx-lbl[data-fit='dot']::after { display: none; }
+
+.ap-tafx-arrow { width: 14px; height: 14px; flex: 0 0 auto; }
+.ap-tafx-w2 { display: inline-flex; flex-direction: column; }
+.ap-tafx-more { font-size: 11px; opacity: 0.75; }
+.ap-tafx-ceil { text-decoration: underline; text-underline-offset: 2px; }
+.ap-tafx-cb { color: var(--level-red); }
+
+/* TEMPO 세로 기둥: 첫 줄부터 그 TEMPO 카드 윗변까지 */
+.ap-tafx-col {
+  position: absolute;
+  z-index: 0;
+  border-radius: 6px 6px 0 0;
+  background: color-mix(in srgb, var(--tafx-ink) 5%, transparent);
+  pointer-events: none;
+}
+.ap-tafx-col.is-prob { background: color-mix(in srgb, var(--tafx-ink) 3%, transparent); }
+
+.ap-tafx-lane { position: relative; z-index: 1; }
+.ap-tafx-card {
+  position: absolute;
+  width: max-content;
+  max-width: 100%;
+  padding: 10px 14px 11px;
+  border: 1px solid var(--tafx-ink);
+  border-radius: var(--radius-xl);
+  background: var(--bg-1);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  font-size: var(--fs-300);
+  line-height: 1.5;
+}
+.ap-tafx-card.is-prob { border-style: dashed; }
+.ap-tafx-card-head {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  margin-bottom: var(--space-s);
+  padding-bottom: var(--space-s);
+  border-bottom: 1px solid var(--stroke-2);
+}
+.ap-tafx-card-type { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-bold); letter-spacing: 0.04em; }
+.ap-tafx-card-time { color: var(--text-1); font-family: var(--tafx-mono); font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.ap-tafx-card dl { display: grid; gap: var(--space-xs); margin: 0; }
+.ap-tafx-card-line { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: var(--space-m); }
+.ap-tafx-card dt { color: var(--text-3); font-size: var(--fs-200); }
+.ap-tafx-card dd { margin: 0; font-family: var(--tafx-mono); font-weight: var(--fw-medium); }
+.ap-tafx-over { font-weight: var(--fw-semibold); }
+.ap-tafx-cat { display: inline-block; padding: 1px 7px; border-radius: var(--radius-md); color: #fff; font-family: var(--font-base); font-size: var(--fs-200); font-weight: var(--fw-bold); }
+
+/* 구역 표시 방식(data-mode='zone'): 줄 위 TEMPO 띠 + 바뀌는 줄에만 표시(.ap-tafx-mark). 줄 안 글자는 가리지 않는다 */
+.ap-tafx-label--zones { font-size: 11px; color: var(--text-3); }
+.ap-tafx-zones { position: relative; height: 16px; align-self: end; }
+.ap-tafx-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--tafx-ink);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.ap-tafx-zone[data-fit='dot'] span { display: none; }
+.ap-tafx-zone.is-prob { border: 1.5px dashed var(--tafx-ink); background: var(--bg-1); color: var(--text-1); }
+/* TEMPO가 바꾸는 줄에만: 칸 아랫변의 얇은 막대 하나. 칸 색과 글자는 건드리지 않는다.
+   비행조건 줄은 막대를 그 TEMPO의 비행조건 색으로 */
+.ap-tafx-mark {
+  position: absolute;
+  bottom: 3px;
+  height: 3px;
+  margin: 0 2px;
+  border-radius: 2px;
+  background: var(--tafx-mark, var(--tafx-ink));
+  pointer-events: auto;
+}
+.ap-tafx-mark.is-prob { background: repeating-linear-gradient(90deg, var(--tafx-mark, var(--tafx-ink)) 0 6px, transparent 6px 9px); }
+.ap-tafx-track--cat .ap-tafx-mark { height: 4px; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9); }
+.ap-tafx-mark[data-hl] { height: 5px; }
+.ap-tafx-zone[data-hl] { outline: 2px solid var(--tafx-ink); outline-offset: -2px; }
+
+/* TEMPO 표(구역 표시 방식): TEMPO 하나에 한 줄, 열은 위 줄 순서 */
+.ap-tafx-list { width: 100%; margin-bottom: var(--space-s); border-collapse: collapse; font-size: var(--fs-300); }
+.ap-tafx-list th {
+  padding: 0 8px 4px;
+  border-bottom: 1px solid var(--stroke-2);
+  color: var(--text-3);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+.ap-tafx-list td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--stroke-2);
+  font-family: var(--tafx-mono);
+  font-weight: var(--fw-medium);
+  vertical-align: middle;
+}
+.ap-tafx-list td:first-child, .ap-tafx-list th:first-child { width: 1px; padding-right: 2px; }
+.ap-tafx-list-when { white-space: nowrap; font-weight: var(--fw-semibold); }
+.ap-tafx-list-when .ap-tafx-card-type { display: block; }
+.ap-tafx-list-same { color: var(--text-3); }
+.ap-tafx-list tr.is-prob td { border-bottom-style: dashed; }
+.ap-tafx-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--tafx-ink);
+  color: #fff;
+  font-family: var(--font-base);
+  font-size: 10px;
+  font-weight: 800;
+}
+.ap-tafx-list tr[data-hl] td { background: color-mix(in srgb, var(--tafx-ink) 10%, transparent); }
+
+/* 같은 TEMPO 강조(칸·기둥·카드) */
+.ap-tafx-tempo[data-hl] { outline: 2px solid var(--tafx-ink); outline-offset: -2px; }
+.ap-tafx-col[data-hl] { background: color-mix(in srgb, var(--tafx-ink) 13%, transparent); }
+.ap-tafx-card[data-hl] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tafx-ink) 35%, transparent); }

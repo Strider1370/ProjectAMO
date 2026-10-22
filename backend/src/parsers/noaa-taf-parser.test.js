@@ -97,6 +97,60 @@ describe('noaa-taf parse', () => {
     assert.equal(r.change_groups.find((g) => g.type === 'TEMPO').vis, 3219)
   })
 
+  // 2026-10-17 AWC 실제 응답. NOAA JSON은 BECMG마다 앞 상태를 채워 CAVOK을 6+/NSW/NSC로 풀고,
+  // timeTo를 다음 변화군 시작으로 준다 — 원문을 읽어야 CAVOK과 BECMG 시각이 맞는다.
+  const RJTT = {
+    icaoId: 'RJTT', issueTime: '2026-10-17T11:05:00.000Z', validTimeFrom: 1792238400, validTimeTo: 1792346400, name: 'Tokyo/Haneda Intl',
+    rawTAF: 'TAF RJTT 171105Z 1712/1818 10006KT CAVOK BECMG 1714/1716 02006KT BECMG 1800/1803 09006KT BECMG 1806/1809 18014KT',
+    fcsts: [
+      { timeFrom: 1792238400, timeTo: 1792245600, timeBec: null, fcstChange: null, probability: null, wdir: 100, wspd: 6, wgst: null, visib: '6+', wxString: 'NSW', clouds: [{ cover: 'NSC', base: null, type: null }] },
+      { timeFrom: 1792245600, timeTo: 1792281600, timeBec: 1792252800, fcstChange: 'BECMG', probability: null, wdir: 20, wspd: 6, wgst: null, visib: '6+', wxString: 'NSW', clouds: [{ cover: 'NSC', base: null, type: null }] },
+      { timeFrom: 1792281600, timeTo: 1792303200, timeBec: 1792292400, fcstChange: 'BECMG', probability: null, wdir: 90, wspd: 6, wgst: null, visib: '6+', wxString: 'NSW', clouds: [{ cover: 'NSC', base: null, type: null }] },
+      { timeFrom: 1792303200, timeTo: 1792346400, timeBec: 1792314000, fcstChange: 'BECMG', probability: null, wdir: 180, wspd: 14, wgst: null, visib: '6+', wxString: 'NSW', clouds: [{ cover: 'NSC', base: null, type: null }] },
+    ],
+  }
+  const RJCC = {
+    icaoId: 'RJCC', issueTime: '2026-10-17T11:06:00.000Z', validTimeFrom: 1792238400, validTimeTo: 1792346400, name: 'Sapporo/Chitose Arpt',
+    rawTAF: 'TAF RJCC 171106Z 1712/1818 32006KT 9999 FEW020 BKN040 BECMG 1712/1714 15004KT BECMG 1815/1818 15014KT',
+    fcsts: [
+      { timeFrom: 1792238400, timeTo: 1792346400, timeBec: null, fcstChange: null, probability: null, wdir: 320, wspd: 6, wgst: null, visib: '6+', wxString: null, clouds: [{ cover: 'FEW', base: 2000, type: null }, { cover: 'BKN', base: 4000, type: null }] },
+      { timeFrom: 1792238400, timeTo: 1792335600, timeBec: 1792245600, fcstChange: 'BECMG', probability: null, wdir: 150, wspd: 4, wgst: null, visib: '6+', wxString: null, clouds: [{ cover: 'FEW', base: 2000, type: null }, { cover: 'BKN', base: 4000, type: null }] },
+      { timeFrom: 1792335600, timeTo: 1792346400, timeBec: 1792346400, fcstChange: 'BECMG', probability: null, wdir: 150, wspd: 14, wgst: null, visib: '6+', wxString: null, clouds: [{ cover: 'FEW', base: 2000, type: null }, { cover: 'BKN', base: 4000, type: null }] },
+    ],
+  }
+  const hourOf = (r, iso) => r.timeline.find((t) => t.time === iso)
+
+  it('원문을 읽어 바람만 바뀌는 BECMG 뒤에도 CAVOK을 잇는다 (RJTT 실제)', () => {
+    const r = parse(RJTT)
+    assert.equal(r.header.parsed_from, 'TAC')
+    assert.ok(r.timeline.every((t) => t.visibility.cavok), 'TAF 내내 CAVOK')
+    assert.equal(r.change_groups[0].clouds_touched, false)
+    assert.equal(r.change_groups[0].end, '2026-10-17T16:00:00Z') // timeTo(00Z)가 아니라 원문 1714/1716의 끝
+    assert.equal(hourOf(r, '2026-10-18T06:00:00Z').wind.raw, '18014KT')
+    // 해석 모델(forecast)도 같은 원문 해석에서 나온다: BECMG 끝마다 바람만 바뀌고 CAVOK은 이어진다
+    assert.deepEqual(r.forecast.prevailing.map((p) => [p.end, p.display.wind, p.visibility.cavok]), [
+      ['2026-10-17T16:00:00Z', '10006KT', true],
+      ['2026-10-18T03:00:00Z', '02006KT', true],
+      ['2026-10-18T09:00:00Z', '09006KT', true],
+      ['2026-10-18T18:00:00Z', '18014KT', true],
+    ])
+    assert.deepEqual(r.forecast.temporary, [])
+  })
+
+  it('유효시작과 같이 시작한 BECMG를 변화 시간대 끝에 적용한다 (RJCC 실제)', () => {
+    const r = parse(RJCC)
+    assert.equal(r.change_groups[0].end, '2026-10-17T14:00:00Z')
+    assert.equal(hourOf(r, '2026-10-17T13:00:00Z').wind.raw, '32006KT')
+    assert.equal(hourOf(r, '2026-10-17T14:00:00Z').wind.raw, '15004KT') // 이전: 18/15Z까지 32006KT
+  })
+
+  it('원문을 못 읽으면 JSON으로 대신하고 BECMG 끝은 timeBec에서 읽는다', () => {
+    const r = parse({ ...RJCC, rawTAF: 'TAF RJCC ...' })
+    assert.equal(r.header.parsed_from, 'JSON')
+    assert.equal(r.change_groups[0].end, '2026-10-17T14:00:00Z')
+    assert.equal(hourOf(r, '2026-10-17T14:00:00Z').wind.raw, '15004KT')
+  })
+
   it('입력 불량 → null', () => {
     assert.equal(parse(null), null)
     assert.equal(parse({ icaoId: 'RJTT', fcsts: [] }), null)

@@ -39,7 +39,7 @@ function formatTafWind(slot) {
   return `${dir}${speed}${wind.gust ? `G${wind.gust}` : ''}${wind.unit || 'KT'}`
 }
 
-function tafSlotView(slot, icao) {
+export function tafSlotView(slot, icao) {
   const visibility = slot?.visibility?.value ?? null
   const ceiling = getTafCeiling(slot)
   const flight = getFlightCategory(visibility, ceiling, icao)

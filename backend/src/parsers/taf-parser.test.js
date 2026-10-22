@@ -29,6 +29,12 @@ test('IWXXM no-significant-weather 변화군을 NSW TAC으로 재구성한다', 
   `)
 
   assert.equal(taf.change_groups[0].nsw_flag, true)
+  // 해석 모델(forecast): NSW BECMG는 변화 시간대 끝(11Z)에 주 예보의 현상을 지운다
+  assert.deepEqual(taf.forecast.prevailing.map((p) => [p.end, p.display.weather]), [
+    ['2026-08-23T11:00:00Z', 'RA'],
+    ['2026-08-24T03:00:00Z', ''],
+  ])
+  assert.deepEqual(taf.forecast.prevailing[1].change, { index: 0, type: 'BECMG', start: '2026-08-23T09:00:00Z', end: '2026-08-23T11:00:00Z' })
   assert.match(buildTafTac(taf), /BECMG 2309\/2311 NSW/)
   assert.match(buildTafTac(taf), /TX25\/2315Z TNM03\/2400Z/)
 })
