@@ -9,7 +9,8 @@ const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 const shortName = (icao) => (AIRPORT_NAME_KO[icao] ?? icao ?? '').replace('국제공항', '').replace('공항', '')
 
 // 지도 왼쪽 위 브리핑 패널. 위험 판단은 위험 막대가 맡고, 여기는 요약 한 줄만 둔다.
-export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose, onDocumentView, onSave, onEdit, onEnd, onSelectSummary }) {
+// cardsAllCollapsed·onToggleAllCards: 공항 카드 모두 접기/펼치기(지도를 넓게 보고 싶을 때 한 번에).
+export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose, onDocumentView, onSave, onEdit, onEnd, onSelectSummary, cardsAllCollapsed = false, onToggleAllCards }) {
   const { tz } = useTimeZone()
   const { meta, sections } = briefing
   const hhmm = (iso) => formatBriefingTime(iso, tz).replace(` ${tz}`, '').replace('Z', '')
@@ -58,7 +59,10 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
         {onSave && <button type="button" className="mb-btn" onClick={onSave}>저장</button>}
         <button type="button" className="mb-btn" onClick={onEdit}>수정</button>
       </div>
-      <button type="button" className="mb-end" onClick={onEnd}>브리핑 종료 · 경로 입력으로</button>
+      <div className="mb-panel-links">
+        {onToggleAllCards && <button type="button" className="mb-end" onClick={onToggleAllCards}>{cardsAllCollapsed ? '공항 카드 모두 펼치기' : '공항 카드 모두 접기'}</button>}
+        <button type="button" className="mb-end" onClick={onEnd}>브리핑 종료 · 경로 입력으로</button>
+      </div>
     </aside>
   )
 }

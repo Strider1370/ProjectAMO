@@ -7,6 +7,7 @@ import BriefingDock from './BriefingDock.jsx'
 import HazardPopover from './HazardPopover.jsx'
 import AirportCards from './AirportCards.jsx'
 import { frameAdvisoryId, layerToastText, selectionDetail } from './mapBriefingModel.js'
+import { readCollapsedRoles, writeCollapsedRoles } from './airportCardModel.js'
 import './MapBriefing.css'
 
 const TOAST_MS = 8000
@@ -26,6 +27,13 @@ export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt
   const [profileAdvisoryId, setProfileAdvisoryId] = useState(null)
   const [hiddenRows, setHiddenRows] = useState([])
   const [toast, setToast] = useState(null) // { ids, at }
+  const [collapsedRoles, setCollapsedRoles] = useState(readCollapsedRoles)
+  useEffect(() => { writeCollapsedRoles(collapsedRoles) }, [collapsedRoles])
+  // 이 브리핑에 있는 공항 역할(교체공항이 없으면 출발·도착만) — "모두 접기/펼치기" 기준.
+  const cardRoles = [...new Set((briefing?.sections?.current?.airports ?? []).map((airport) => airport.role))]
+  const cardsAllCollapsed = cardRoles.length > 0 && cardRoles.every((role) => collapsedRoles.includes(role))
+  const toggleCollapse = (role) => setCollapsedRoles((roles) => roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role])
+  const toggleAllCards = () => setCollapsedRoles((roles) => cardsAllCollapsed ? roles.filter((role) => !cardRoles.includes(role)) : [...new Set([...roles, ...cardRoles])])
   const ribbon = briefing?.sections?.enroute?.ribbon ?? null
   const hhmm = (iso) => formatBriefingTime(iso, tz).replace(` ${tz}`, '').replace('Z', '')
 
@@ -75,10 +83,12 @@ export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt
 
   return (
     <>
-      <AirportCards briefing={briefing} mapRef={mapRef} airports={airports} routeSamples={verticalProfile?.axis?.samples ?? null} onOpenAirport={onOpenAirport} />
+      <AirportCards briefing={briefing} mapRef={mapRef} airports={airports} routeSamples={verticalProfile?.axis?.samples ?? null} onOpenAirport={onOpenAirport}
+        collapsedRoles={collapsedRoles} onToggleCollapse={toggleCollapse} />
       {panelOpen && (
         <MapBriefingPanel briefing={briefing} distanceNm={distanceNm} tasKt={tasKt} onClose={onClosePanel}
-          onDocumentView={onDocumentView} onSave={onSave} onEdit={onEdit} onEnd={onEnd} onSelectSummary={selectSummary} />
+          onDocumentView={onDocumentView} onSave={onSave} onEdit={onEdit} onEnd={onEnd} onSelectSummary={selectSummary}
+          cardsAllCollapsed={cardsAllCollapsed} onToggleAllCards={cardRoles.length ? toggleAllCards : null} />
       )}
       {toastText && (
         <div className={`mb-toast${panelOpen ? ' is-beside-panel' : ''}`} role="status">

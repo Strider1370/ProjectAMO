@@ -240,7 +240,9 @@
 /* ── 공항 카드(6단계, spec §2.3): 공항 옆 접힌 3줄 + 지시선. 위치는 AirportCards가 계산한다. ── */
 .mb-airport-layer { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
 .mb-airport-leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.mb-airport-leaders line { stroke: var(--text-2); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.mb-airport-leaders line { stroke: var(--text-1); stroke-width: 2; stroke-linecap: round; }
+.mb-airport-leaders line.is-halo { stroke: #fff; stroke-width: 5; }
+.mb-airport-leaders circle { fill: var(--text-1); stroke: #fff; stroke-width: 2; }
 .mb-airport-card {
   --mb-ac-cat: var(--text-3);
   position: absolute; display: flex; flex-direction: column; gap: var(--space-s); box-sizing: border-box;
@@ -275,11 +277,32 @@
 .mb-ac-more:hover:not(:disabled) { background: var(--bg-3); }
 .mb-ac-more:disabled { color: var(--text-3); cursor: default; }
 
+/* 카드 접기 버튼(머리 오른쪽 끝)과 접은 칩: 같은 자리·같은 지시선 끝에 색 띠·ICAO·비행등급·경보 점·⌃ — 카드가 줄어든 것으로 보이게. */
+.mb-ac-fold { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-right: -6px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); cursor: pointer; }
+.mb-ac-fold:hover { background: var(--bg-3); color: var(--text-1); }
+.mb-airport-chip {
+  --mb-ac-cat: var(--text-3);
+  position: absolute; display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; padding: 0 6px 0 10px;
+  border: 0; border-left: 5px solid var(--mb-ac-cat); border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); color: var(--text-1); font-family: var(--app-font, system-ui, sans-serif); white-space: nowrap; cursor: pointer; pointer-events: auto;
+}
+.mb-airport-chip:hover { box-shadow: 0 0 0 2px var(--accent), 0 4px 12px rgba(15, 23, 42, 0.2); }
+.mb-airport-chip.is-vfr { --mb-ac-cat: var(--cat-vfr); }
+.mb-airport-chip.is-mvfr { --mb-ac-cat: var(--cat-mvfr); }
+.mb-airport-chip.is-ifr { --mb-ac-cat: var(--cat-ifr); }
+.mb-airport-chip.is-lifr { --mb-ac-cat: var(--cat-lifr); }
+.mb-airport-chip strong { font-size: var(--fs-300); font-weight: var(--fw-bold); }
+.mb-airport-chip .mb-ac-cat { margin-left: 0; padding: 0 6px; font-size: var(--fs-100); line-height: 16px; }
+.mb-airport-chip svg { color: var(--text-2); }
+.mb-chip-alert { width: 8px; height: 8px; border-radius: 50%; background: var(--level-red); box-shadow: 0 0 0 2px var(--level-red-bg); }
+.mb-panel-links { display: flex; flex-direction: column; align-items: center; }
+.mb-panel-links .mb-end:not(:last-child) { padding-bottom: 2px; }
+
 /* 브리핑 중 공항 패널: 오른쪽 전체 높이 서랍 대신 지도 영역 안의 떠 있는 카드 — 독(위험 막대·단면도)을 가리지 않는다(사용자 결정, 2026-10-22).
-   폭은 원래 설계(화면 절반, 560~960) 그대로 — 560으로 줄였더니 위쪽 사진·탭 칸이 눌려 어설퍼 보였다.
+   폭은 600~760(1920에서 약 730) — 560은 위쪽 사진·탭 칸이 눌려 어설프고, 원래 폭(화면 절반)은 지도를 너무 가렸다(사용자 검토, 10-22).
    공항 패널은 지도 영역 밖(앱 최상위)이라 독 높이는 MapBriefingView가 :root에 올린 --mb-dock-h-app으로 읽는다. 시간 막대 40 + 틈 12. */
 .app.is-map-briefing .airport-panel {
   top: 12px; right: 12px; bottom: calc(40px + var(--mb-dock-h-app, 0px) + 12px); height: auto;
-  width: min(var(--panel-drawer-lg), calc(100vw - var(--active-sidebar-width, 56px) - 24px));
+  width: min(clamp(600px, 38vw, 760px), calc(100vw - var(--active-sidebar-width, 56px) - 24px));
   border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
 }

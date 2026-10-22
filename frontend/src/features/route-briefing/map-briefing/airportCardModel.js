@@ -60,3 +60,25 @@ export function airportCards(briefing, { airportList = [], nameFor = (icao) => i
 export function changeLines(changes, formatHour = (iso) => iso) {
   return (changes ?? []).map((change) => `${change.type} ${formatHour(change.start)}${change.end ? `–${formatHour(change.end)}` : ''} ${change.text ?? ''}`.trim())
 }
+
+// 접은 카드 기억: 공항이 아니라 역할(출발·도착·교체)로 — 다음 브리핑에서도 "도착 카드는 접어 둠"이 이어지게.
+// 저장소가 막혀 있어도 모두 펼친 상태로 동작한다.
+const COLLAPSED_KEY = 'projectamo.airportCardsCollapsed'
+const ROLES = ['departure', 'arrival', 'alternate']
+export function readCollapsedRoles(storage = globalThis.localStorage) {
+  try {
+    const saved = JSON.parse(storage?.getItem(COLLAPSED_KEY) ?? '[]')
+    return Array.isArray(saved) ? saved.filter((role) => ROLES.includes(role)) : []
+  } catch { return [] }
+}
+export function writeCollapsedRoles(roles, storage = globalThis.localStorage) {
+  try { storage?.setItem(COLLAPSED_KEY, JSON.stringify(roles.filter((role) => ROLES.includes(role)))) } catch { /* 기억만 못 할 뿐 */ }
+}
+
+// 접은 칩 폭(자리 계산용): 색 띠·여백 + ICAO + 비행등급 칩 + 경보 점 + 펼치기 표시.
+export function chipWidth(card) {
+  return 30 + card.icao.length * 10 + (card.category ? card.category.length * 8 + 14 : 0) + (hasAlertFlag(card) ? 12 : 0) + 18
+}
+export function hasAlertFlag(card) {
+  return Boolean(card.flags.windshear || card.flags.warnings.length)
+}
