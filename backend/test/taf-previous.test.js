@@ -52,25 +52,17 @@ test('issued가 같으면 previous를 건드리지 않는다 — 같은 TAF 재�
     '재수신에 previous가 덮이면 비교 기준이 사라진다')
 })
 
-test('previous.timeline에는 비교에 필요한 값만 담는다', () => {
-  const out = attachPrevious(
-    { RKSI: taf('2026-07-28T12:00:00Z', 1200) },
-    { RKSI: taf('2026-07-28T06:00:00Z', 9999) }
-  )
-  const kept = out.RKSI.previous.timeline[0]
-  assert.deepEqual(Object.keys(kept).sort(), ['clouds', 'time', 'visibility', 'weather', 'wind'])
-  assert.equal(kept.display, undefined, 'display 문자열은 제외한다')
-})
-
-test('previous.header에는 네 값만 담는다', () => {
-  const out = attachPrevious(
-    { RKSI: taf('2026-07-28T12:00:00Z', 1200) },
-    { RKSI: taf('2026-07-28T06:00:00Z', 9999) }
-  )
-  assert.deepEqual(
-    Object.keys(out.RKSI.previous.header).sort(),
-    ['issued', 'report_status', 'valid_end', 'valid_start']
-  )
+test('previous에는 직전 발표를 원문·변화군·표시 문자열까지 그대로 담고, 그 안의 previous는 뺀다', () => {
+  const cached = { ...taf('2026-07-28T06:00:00Z', 9999), previous: { header: { issued: '2026-07-28T00:00:00Z' }, timeline: [] } }
+  cached.header.raw_text = 'TAF RKSI 280500Z 2806/2912 27010KT 9999 BKN030'
+  cached.change_groups = [{ type: 'TEMPO', start: '2026-07-28T15:00:00Z', end: '2026-07-28T18:00:00Z', vis: 4000 }]
+  const out = attachPrevious({ RKSI: taf('2026-07-28T12:00:00Z', 1200) }, { RKSI: cached })
+  const previous = out.RKSI.previous
+  assert.equal(previous.header.raw_text, 'TAF RKSI 280500Z 2806/2912 27010KT 9999 BKN030')
+  assert.equal(previous.header.icao, 'RKSI')
+  assert.equal(previous.change_groups.length, 1)
+  assert.deepEqual(previous.timeline[0].display, { wind: '27010KT' })
+  assert.equal(previous.previous, undefined, '세대가 줄줄이 쌓이지 않는다')
 })
 
 test('취소 통보는 취소 직전의 마지막 정상 TAF를 previous로 들고 간다', () => {

@@ -5,29 +5,12 @@
 
 const CANCELLATION = "CANCELLATION";
 
-// previous.timeline에는 비교에 필요한 값만 담는다. 화면 표시용 문자열(display)과
-// 원문은 제외한다 — 저장 파일과 전송량이 그만큼 줄어든다.
-function trimTimeline(timeline) {
-  return (timeline || []).map((slot) => ({
-    time: slot.time,
-    wind: slot.wind,
-    visibility: slot.visibility,
-    weather: slot.weather,
-    clouds: slot.clouds,
-  }));
-}
-
-function trimHeader(header) {
-  return {
-    issued: header?.issued ?? null,
-    valid_start: header?.valid_start ?? null,
-    valid_end: header?.valid_end ?? null,
-    report_status: header?.report_status ?? null,
-  };
-}
-
+// previous에는 직전 발표를 원문·변화군·표시 문자열까지 그대로 담는다(그 안의 previous만 뺀다 — 세대가 줄줄이 쌓이지 않게).
+// 예전에는 비교에 필요한 값만 남겨 저장량을 줄였는데, 그러면 공항 패널·카드의 TAF 과거 보기에서 직전 발표의
+// 원문·TEMPO/BECMG를 보여 줄 수 없었다(사용자 결정, 2026-10-22). 변화 비교(알림)는 timeline 값을 그대로 쓴다.
 function snapshot(taf) {
-  return { header: trimHeader(taf.header), timeline: trimTimeline(taf.timeline) };
+  const { previous: _nested, ...rest } = taf;
+  return rest;
 }
 
 /**
