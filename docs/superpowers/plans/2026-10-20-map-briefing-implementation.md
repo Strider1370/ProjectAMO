@@ -105,6 +105,16 @@
 
 **확인**: `NwpSliderBar.test.js`·`useTimelineRail.test.js` 확장(FL↔기압면 위치, 창 위치), 브리핑 밖 화면에서 두 컨트롤이 그대로인지 회귀.
 
+**실제로 한 것 (2026-10-22, 계획과 달라진 점)**
+- 고도 슬라이더: 기존 `PressureLevelSlider`에 브리핑 표시를 얹었다. 표시 자료는 `AltitudeMarksContext`(weather-overlays/lib)로 넘긴다 — MapView → 레일 → 슬라이더로 속성을 네 단계 내려보내지 않으려고. `LevelSlider`에 `decorations`(축 위 구간)·`valueNote`(값 아래 한 줄), `LevelSliderPanel`에 `header`(축 위 "전 고도" 칩).
+  - 표시 규칙(`map-briefing/briefingAltitudeModel.js`): 모델 = 칠함(순항 단계면 꽉 찬 색, 상승·강하는 빗금), SIGMET = 테두리(내 고도 실선·다른 고도 점선), 비행 범위 SFC~순항 상자, 대류(고도 없음)·태풍은 축 위 칩. 위치는 `pressureLevelModel.js` `altitudePositionPct`(눈금이 기압면 간격이라 이웃 기압면 사이를 표준대기 고도로 보간).
+  - 말풍선: "순항 FL250 → 지도 FL240 · SIGMET 심한 난기류"(그 기압면 ±1,000ft에서 가장 센 위험).
+  - KIM 레이어가 모두 꺼져 있으면 레이어 색인이 없어 기압면 목록이 없다 → `BriefingLevelRail`이 고정 목록 `KIM_PRESSURE_LEVELS`(백엔드 `KIM_NWP_LEVELS`의 기압면과 같음)로 슬라이더를 띄운다. 고른 기압면은 레이어를 켜면 그대로 쓰인다.
+- 기본값: 브리핑을 열 때 **한 번만**(브리핑 ribbon이 바뀔 때) 고도 = 순항고도에 가장 가까운 기압면, 시간 = ETD(지났으면 실시간). 이후 사용자 조작만. `useBriefingMapLink`.
+- 시간 막대: `TimelineRail` `flightWindow` — ETD~ETA 테두리 상자, 글은 상자 **오른쪽**(시간 띠가 넘침을 잘라 상자 위에 둘 수 없고, 상자 안 눈금을 가리지 않으려고).
+- 4단계 보완: "이 구간으로"에서 순항 단계 모델 막대는 가운데 고도가 아니라 순항고도로(상승 끝에서 시작하는 막대가 FL210으로 가던 것).
+- 확인: 단위 테스트(`briefingAltitudeModel.test.js`, `pressureLevelModel.test.js`), 운영 자료 화면(`.artifacts/map-briefing-check/`, git 무시). 브라우저 계약은 4단계 것과 함께 미작성.
+
 ## 6단계 — 공항 카드 (TAF 개편 정리 후)
 
 > **2026-10-22 사용자 결정 (spec §2.3)**: 카드는 접힌 3줄 요약 + 자리 계산 + 깃발까지만. "상세"는 기존 공항 패널을 연다(펼친 카드·AMOS·이륙예보 상세는 만들지 않음). 아래 2번 "펼침"은 이 결정으로 대체된다. 백엔드 ±1h TAF 구간(1번)은 그대로. 카드 TAF 한 줄만 TAF 개편과 맞물리고, 공항 패널 TAF 탭에 ETD/ETA 시각을 넘기는 연결이 추가된다.

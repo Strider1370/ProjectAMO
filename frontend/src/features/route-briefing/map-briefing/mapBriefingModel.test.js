@@ -148,6 +148,7 @@ test('"이 구간으로": 모델은 구간 가운데 고도·시각, 내 고도 
   assert.equal(focusTarget({ kind: 'frame', item: sigmetFrame }, { cruiseAltitudeFt: 25000 }).altitudeFt, 25000)
   assert.equal(focusTarget({ kind: 'frame', item: { ...sigmetFrame, mine: false } }, { cruiseAltitudeFt: 9000 }).altitudeFt, 23000)
   assert.equal(focusTarget({ kind: 'model', item: { ...descentSegment, altitudeFt: null, phase: null } }).altitudeFt, null)
+  assert.equal(focusTarget({ kind: 'model', item: { ...descentSegment, altitudeFt: { from: 19200, to: 25000 }, phase: 'cruise' } }, { cruiseAltitudeFt: 25000 }).altitudeFt, 25000)
 })
 
 test('켠 레이어 안내: KIM 기압면 레이어만 고도를 붙이고, 구름·착빙 묶음은 이름 하나로', () => {

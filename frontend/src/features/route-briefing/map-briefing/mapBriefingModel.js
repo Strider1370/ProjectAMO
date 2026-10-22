@@ -268,7 +268,7 @@ export function frameAdvisoryId(frame) {
   return frame?.source === 'SIGMET' || frame?.source === 'AIRMET' ? (frame.sourceId ?? null) : null
 }
 
-// "지도·슬라이더를 이 구간으로": 시간 = 구간 통과 가운데 시각, 고도 = 모델 구간 가운데 고도 /
+// "지도·슬라이더를 이 구간으로": 시간 = 구간 통과 가운데 시각, 고도 = 모델 순항 구간은 순항고도·상승/강하 구간은 가운데 고도 /
 // 내 고도 발표는 순항고도 / 다른 고도 발표는 발표 고도대 가운데. 고도 없는 대류·태풍은 시간만.
 export function focusTarget(selection, { cruiseAltitudeFt = null } = {}) {
   const item = selection?.item
@@ -276,7 +276,8 @@ export function focusTarget(selection, { cruiseAltitudeFt = null } = {}) {
   const from = Date.parse(item.passFrom), to = Date.parse(item.passTo)
   const timeMs = Number.isFinite(from) && Number.isFinite(to) ? Math.round((from + to) / 2) : null
   let altitudeFt = null
-  if (selection.kind === 'model' && item.altitudeFt) altitudeFt = (item.altitudeFt.from + item.altitudeFt.to) / 2
+  // 순항 단계 막대는 상승 끝에서 시작해도 순항고도로(가운데 고도로 하면 상승 중 고도가 섞인다).
+  if (selection.kind === 'model' && item.altitudeFt) altitudeFt = item.phase === 'cruise' && Number.isFinite(cruiseAltitudeFt) ? cruiseAltitudeFt : (item.altitudeFt.from + item.altitudeFt.to) / 2
   else if (selection.kind === 'frame' && item.source !== 'TYPHOON') {
     if (item.mine && Number.isFinite(cruiseAltitudeFt)) altitudeFt = cruiseAltitudeFt
     else if (Number.isFinite(item.bandFt?.highFt)) altitudeFt = ((item.bandFt.lowFt ?? 0) + item.bandFt.highFt) / 2

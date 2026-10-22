@@ -1074,6 +1074,32 @@
   background: rgba(51, 65, 85, 0.38);
 }
 
+/* 지도형 브리핑: ETD~ETA 창(설계 §3.6). 눈금 위에 테두리 상자, 글은 창 바로 오른쪽(시간 띠가 넘침을 자르므로 창 위에 둘 수 없다 — 창 안 눈금은 가리지 않게). */
+.timeline-rail__flight-window {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  z-index: 2;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  pointer-events: none;
+}
+.timeline-rail__flight-window span {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 4px);
+  transform: translateY(-50%);
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .timeline-rail__availability-segment {
   position: absolute;
   top: 0;
@@ -1534,6 +1560,19 @@
 }
 .pressure-level-slider__value strong { font-weight: 800; }
 .pressure-level-slider__value small { color: var(--text-2); font-size: 9px; font-weight: 700; }
+/* 지도형 브리핑: 축 위 위험 고도(설계 §3.4). 모델 = 칠함(내 고도 꽉 참, 다른 고도 빗금), SIGMET = 테두리(내 고도 실선, 다른 고도 점선),
+   비행 범위 = 축을 감싸는 상자. 값 아래 한 줄은 순항 대비 지도 고도와 그 고도의 위험. */
+.pressure-level-slider__mark { position: absolute; left: 50%; min-height: 4px; transform: translate(-50%, 0); box-sizing: border-box; }
+.pressure-level-slider__mark.is-flight-range { width: 24px; border: 1.5px solid var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.pressure-level-slider__mark.is-model { width: 10px; border-radius: 2px; background: var(--mark-color, var(--level-red)); transform: translate(-50%, -2px); }
+.pressure-level-slider__mark.is-model.is-other { background: repeating-linear-gradient(135deg, var(--mark-color, var(--level-red)) 0 3px, transparent 3px 6px); }
+.pressure-level-slider__mark.is-frame { width: 18px; border: 2px solid var(--level-red); border-radius: 3px; }
+.pressure-level-slider__mark.is-frame.is-other { border-style: dashed; }
+.pressure-level-slider__mark.is-frame.is-airmet { border-color: var(--level-amber); }
+.pressure-level-slider__value em { max-width: 180px; overflow: hidden; color: var(--text-2); font-size: 10px; font-style: normal; font-weight: 700; text-overflow: ellipsis; }
+.pressure-level-slider__value em.has-hazard { color: var(--level-red); }
+.pressure-level-slider__header { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; margin: 0 8px 6px 0; }
+.pressure-level-slider__header span { padding: 1px 6px; border-left: 3px solid var(--chip-color, var(--level-red)); border-radius: 3px; background: rgba(255, 255, 255, 0.9); color: var(--text-1); font-size: 10px; font-weight: 700; white-space: nowrap; }
 .pressure-level-slider__thumb {
   position: absolute;
   left: 50%;

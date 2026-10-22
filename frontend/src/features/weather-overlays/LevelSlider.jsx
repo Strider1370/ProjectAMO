@@ -4,7 +4,9 @@ import { useRef } from 'react'
 // look as the KIM pressure slider, but works with any `items` list (already sorted).
 // Ticks are spaced evenly by index, so the track always fills the same fixed height
 // regardless of how many items exist (fewer items just means wider gaps).
-function LevelSlider({ items = [], activeValue, onSelect, ariaLabel }) {
+// decorations: 축 위에 겹쳐 그릴 구간({ key, top, height (%), className, color, title }) — 지도형 브리핑의 위험 고도.
+// valueNote: 손잡이 옆 값 아래 한 줄({ text, hazard: { color } }).
+function LevelSlider({ items = [], activeValue, onSelect, ariaLabel, decorations = [], valueNote = null }) {
   const trackRef = useRef(null)
 
   if (items.length <= 1) return null
@@ -40,7 +42,7 @@ function LevelSlider({ items = [], activeValue, onSelect, ariaLabel }) {
       aria-valuemin={0}
       aria-valuemax={items.length - 1}
       aria-valuenow={activeIndex}
-      aria-valuetext={active.secondary ? `${active.primary} · ${active.secondary}` : active.primary}
+      aria-valuetext={[active.primary, active.secondary, valueNote?.text].filter(Boolean).join(' · ')}
       onKeyDown={onKeyDown}
       onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); selectFromPointer(event) }}
       onPointerMove={(event) => { if (event.currentTarget.hasPointerCapture(event.pointerId)) selectFromPointer(event) }}
@@ -48,6 +50,10 @@ function LevelSlider({ items = [], activeValue, onSelect, ariaLabel }) {
       onDragStart={(event) => event.preventDefault()}
     >
       <span className="pressure-level-slider__rail" aria-hidden="true" />
+      {decorations.map((mark) => (
+        <span key={mark.key} className={`pressure-level-slider__mark ${mark.className ?? ''}`} title={mark.title}
+          style={{ top: `${mark.top}%`, height: `${mark.height}%`, ...(mark.color ? { '--mark-color': mark.color } : null) }} />
+      ))}
       {items.map((item, index) => (
         <span
           key={item.id}
@@ -63,6 +69,7 @@ function LevelSlider({ items = [], activeValue, onSelect, ariaLabel }) {
       <span className="pressure-level-slider__value" style={{ top: `${positionFor(activeIndex)}%` }} aria-hidden="true">
         <strong>{active.primary}</strong>
         {active.secondary && <small>{active.secondary}</small>}
+        {valueNote?.text && <em className={valueNote.hazard ? 'has-hazard' : undefined} style={valueNote.hazard?.color ? { '--note-color': valueNote.hazard.color } : undefined}>{valueNote.text}</em>}
       </span>
       <span className="pressure-level-slider__thumb" style={{ top: `${positionFor(activeIndex)}%` }} aria-hidden="true" />
     </div>

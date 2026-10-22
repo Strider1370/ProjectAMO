@@ -170,6 +170,8 @@ const BriefingView = lazy(() => import('../route-briefing/BriefingView.jsx'))
 const SaveBriefingDialog = lazy(() => import('../route-briefing/SaveBriefingDialog.jsx'))
 const MapBriefingView = lazy(() => import('../route-briefing/map-briefing/MapBriefingView.jsx'))
 import { useBriefingMapLink } from '../route-briefing/map-briefing/useBriefingMapLink.js'
+import BriefingLevelRail from '../route-briefing/map-briefing/BriefingLevelRail.jsx'
+import { AltitudeMarksContext } from '../weather-overlays/lib/altitudeMarksContext.js'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -805,12 +807,15 @@ const MapView = forwardRef(function MapView({
     syncLegHighlight(map, coordinates, { pinned: Boolean(highlightedLeg?.pinned) })
   }, [highlightedLeg, routeResult, isStyleReady, styleRevision])
 
+  // KIM 고도 슬라이더가 떠 있는지 — 지도형 브리핑에서 레이어가 모두 꺼져 있으면 브리핑용 슬라이더(BriefingLevelRail)를 대신 띄운다.
+  const kimSliderActive = Boolean(enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing || metVisibility.turbulence) && sliderLevels.length > 1)
   // 지도형 브리핑 ↔ 지도(경로 위 위험 색 띠, 막대 구간 강조, SIGMET 면 강조, "이 구간으로"). 로직은 map-briefing/에.
   const briefingMapLink = useBriefingMapLink({
     mapRef, isStyleReady, styleRevision, active: mapBriefingActive,
     ribbon: routeBriefing.state.briefing?.sections?.enroute?.ribbon ?? null,
     routeSamples: routeBriefing.state.verticalProfile?.axis?.samples ?? null, previewGeojson: routeResult?.previewGeojson,
     cruiseAltitudeFt: routeBriefing.state.briefing?.sections?.enroute?.plannedCruiseAltitudeFt ?? null,
+    etd: routeBriefing.state.briefing?.meta?.etd ?? null, eta: routeBriefing.state.briefing?.meta?.eta ?? null, nowMs: demoMode ? demoNowMs : null,
     fitPadding: fitPaddingFor, setTimelineMs: setWeatherTimelineSelectedMs,
     nwpSelection, setNwpSelection, sliderLevels, sliderTimes,
   })
@@ -2203,6 +2208,7 @@ const MapView = forwardRef(function MapView({
         onPlayPause={toggleWeatherTimelinePlay}
         referenceNowMs={demoMode ? demoNowMs : null}
         availableFrameEntries={timelineAvailableFrameEntries}
+        flightWindow={briefingMapLink.flightWindow}
       />}
       <QpfStatusCard status={weatherOverlayModel.qpfStatus} tz={tz} />
 
@@ -2231,7 +2237,9 @@ const MapView = forwardRef(function MapView({
         </div>
       )}
 
+      <AltitudeMarksContext.Provider value={briefingMapLink.altitudeMarks}>
       <VerticalLevelRailStack>
+        {mapBriefingActive && !kimSliderActive && <BriefingLevelRail selection={nwpSelection} onSelectionChange={setNwpSelection} />}
         <RadarWindVerticalRail
           kimActive={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing || metVisibility.turbulence)}
           levels={sliderLevels}
@@ -2268,6 +2276,7 @@ const MapView = forwardRef(function MapView({
           </div>
         )}
       </VerticalLevelRailStack>
+      </AltitudeMarksContext.Provider>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
       <EchoTopCard selection={echoTopOverlay.selection} tz={tz} />
       {metVisibility.typhoon && (

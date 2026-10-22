@@ -40,6 +40,8 @@ function TimelineRail({
   onPlayPause,
   referenceNowMs = null,
   availableFrameEntries = [],
+  // 지도형 브리핑: ETD~ETA 테두리 창과 "ETD 20:30 → ETA 21:14" 글. { startMs, endMs, label }
+  flightWindow = null,
 }) {
   const { tz } = useTimeZone()
   // 모바일은 좁은 폭에 12h가 빡빡 → 6h만 노출해 시간당 간격을 2배로(드래그로 더 볼 수 있음).
@@ -151,6 +153,17 @@ function TimelineRail({
             />
           )
         })}
+        {flightWindow && Number.isFinite(flightWindow.startMs) && Number.isFinite(flightWindow.endMs) && (() => {
+          const startPct = pct(flightWindow.startMs)
+          const endPct = pct(flightWindow.endMs)
+          if (endPct < 0 || startPct > 100) return null
+          return (
+            <span className="timeline-rail__flight-window" style={{ left: `${startPct}%`, width: `${Math.max(0.4, endPct - startPct)}%` }}
+              title={flightWindow.label} aria-hidden="true">
+              <span>{flightWindow.label}</span>
+            </span>
+          )
+        })()}
         {pastTicksMs.map((ms) => (
           <span key={`p-${ms}`} className="timeline-rail__frame" style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
         ))}

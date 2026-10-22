@@ -5,7 +5,7 @@ import LevelSlider from './LevelSlider.jsx'
 // Vertical level slider anchored top-right of the map (KIM, 난류, 운정고도 all share this).
 // On mobile there's no room for tick labels, so it occupies the gap between
 // the top controls and whichever bottom-right control begins first.
-export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLabel }) {
+export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLabel, decorations, header, valueNote }) {
   const wrapperRef = useRef(null)
   const [mobileBounds, setMobileBounds] = useState(null)
 
@@ -61,7 +61,12 @@ export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLab
         ...(Number.isFinite(mobileBounds.right) ? { '--pressure-mobile-right': `${mobileBounds.right}px` } : null),
       } : undefined}
     >
-      <LevelSlider items={items} activeValue={activeValue} onSelect={onSelect} ariaLabel={ariaLabel} />
+      {header?.length > 0 && (
+        <div className="pressure-level-slider__header">
+          {header.map((chip) => <span key={chip.key} style={chip.color ? { '--chip-color': chip.color } : undefined}>{chip.text}</span>)}
+        </div>
+      )}
+      <LevelSlider items={items} activeValue={activeValue} onSelect={onSelect} ariaLabel={ariaLabel} decorations={decorations} valueNote={valueNote} />
     </div>
   )
 }
