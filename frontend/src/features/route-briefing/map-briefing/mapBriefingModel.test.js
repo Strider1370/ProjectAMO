@@ -115,26 +115,27 @@ test('경로 위 색 띠 색은 위험 막대와 같은 원천(GKTG·착빙·대
 const descentSegment = { level: 'MOD', startNm: 300, endNm: 318, from: 'TOD', to: 'RKPC', passFrom: '2026-10-20T12:20:00Z', passTo: '2026-10-20T12:24:00Z', altitudeFt: { from: 4000, to: 2000 }, phase: 'descent' }
 const sigmetFrame = { source: 'SIGMET', sourceId: 'RKSI-C01-2026-10-20T111700Z', code: 'SEV_TURB', label: 'SEV TURB', bandFt: { lowFt: 16000, highFt: 30000 }, mine: true, startNm: 40, endNm: 120, from: 'BOPTA', to: 'SOLEN', passFrom: '2026-10-20T11:40:00Z', passTo: '2026-10-20T11:52:00Z', validFrom: '2026-10-20T11:17:00Z', validTo: '2026-10-20T13:00:00Z' }
 
-test('팝오버: 강하 구간 모델 위험은 고도 슬라이더 안내, 자료 회차·유효 시각', () => {
+test('팝오버: 머리 = 현상·강도, 본문 = 언제·어디서·어느 고도, 강하 구간은 고도 슬라이더 안내, 아래 = 출처·근거', () => {
   const detail = selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'model', item: descentSegment }, {
     runs: { ktg: { tmfc: '2026102000', validTime: '2026-10-20T12:00:00Z' } }, formatTime: (iso) => iso.slice(11, 16), tzLabel: 'UTC',
   })
-  assert.equal(detail.source, 'KIM GKTG · 모델')
-  assert.equal(detail.mine, true)
+  assert.equal(detail.title, '난류 MOD')
+  assert.equal(detail.when, '12:20–12:24 UTC · 4분')
   assert.equal(detail.route, 'TOD → RKPC')
-  assert.equal(detail.pass, '12:20–12:24 UTC · 4분')
-  assert.equal(detail.altitude, '4,000ft→2,000ft · 강하')
+  assert.equal(detail.altitude, '4,000ft→2,000ft 강하 · 내 비행 고도')
   assert.equal(detail.note, '이 위험은 4,000–2,000ft · 고도 슬라이더로 확인')
-  assert.equal(detail.data, 'KIM GKTG · 10/20 00Z 회차 · 유효 12:00 UTC')
+  assert.equal(detail.source, 'KIM GKTG 10/20 00Z · 유효 12:00 UTC')
+  assert.equal(detail.basis, '300–318NM · 통과 시각은 바람 미반영')
 })
 
-test('팝오버: SIGMET 틀은 발표 고도대·유효 시각, 순항 모델 위험에는 고도 안내가 없다', () => {
+test('팝오버: SIGMET 틀은 발표 고도대·내 고도 여부·유효 시각, 순항 모델 위험에는 고도 안내가 없다', () => {
   const frame = selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'frame', item: sigmetFrame }, { formatTime: (iso) => iso.slice(11, 16) })
-  assert.equal(frame.source, 'SIGMET · 예보관 발표')
-  assert.equal(frame.altitude, 'FL160–300')
-  assert.equal(frame.data, '유효 11:17–13:00')
+  assert.equal(frame.title, 'SIGMET 심한 난기류')
+  assert.equal(frame.altitude, 'FL160–300 · 내 비행 고도')
+  assert.equal(frame.source, 'SIGMET 발표 · 유효 11:17–13:00')
+  assert.equal(selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'frame', item: { ...sigmetFrame, mine: false } }).altitude, 'FL160–300 · 다른 고도')
   const cruise = selectionDetail({ row: { key: 'turbulence', label: '난류' }, kind: 'model', item: { ...descentSegment, altitudeFt: { from: 25000, to: 25000 }, phase: 'cruise' } })
-  assert.equal(cruise.altitude, 'FL250 · 순항')
+  assert.equal(cruise.altitude, 'FL250 순항 · 내 비행 고도')
   assert.equal(cruise.note, null)
 })
 

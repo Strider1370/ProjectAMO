@@ -11,7 +11,7 @@ const NO_FOCUS = { hover: null, selection: null, advisoryId: null, hiddenRows: [
 
 // 지도형 브리핑 ↔ 지도 연동. MapView는 이 훅을 부르고 콜백만 MapBriefingView에 넘긴다.
 // - 경로 위 위험 색 띠, 막대를 가리키거나 누른 구간 강조·이름표, 가리킨 SIGMET 면 강조
-// - goTo: 팝오버 "지도·슬라이더를 이 구간으로" — 누를 때만 지도·시간·고도를 옮긴다.
+// - goTo: 팝오버 "지도·고도·시간 맞추기" — 누를 때만 지도·시간·고도를 옮긴다.
 // - mapStatus: 켠 레이어 안내에 쓸 지금 지도 고도(KIM 기압면)·시각
 // - 5단계: 브리핑을 열 때 한 번 고도 손잡이 = 순항고도에 가장 가까운 기압면, 시간 손잡이 = ETD(지났으면 지금 시각).
 //   그 뒤로는 사용자가 움직일 때만 바뀐다. altitudeMarks(고도 슬라이더 표시)·flightWindow(시간 막대 ETD~ETA 창).

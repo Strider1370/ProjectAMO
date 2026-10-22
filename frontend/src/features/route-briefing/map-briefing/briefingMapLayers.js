@@ -123,7 +123,7 @@ export function clearBriefingMapLayers(map) {
   for (const id of [MB_FOCUS_SOURCE, MB_BAND_SOURCE]) if (map.getSource(id)) map.removeSource(id)
 }
 
-// 좌표 묶음의 경계 [[서,남],[동,북]] — "지도·슬라이더를 이 구간으로"에서 지도를 맞출 때.
+// 좌표 묶음의 경계 [[서,남],[동,북]] — "지도·고도·시간 맞추기"에서 지도를 맞출 때.
 export function coordinatesBounds(coordinates) {
   if (!coordinates?.length) return null
   let [west, south, east, north] = [Infinity, Infinity, -Infinity, -Infinity]

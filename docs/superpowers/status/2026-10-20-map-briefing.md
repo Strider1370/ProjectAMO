@@ -47,7 +47,7 @@
 - 열린 질문(spec §9): 브리핑 단면도에 비행 시간 밖 SIGMET을 그릴지.
 
 ## 4단계 완료 (2026-10-21) — a9c5a85c · 57bfd4cd · 4e8b2c2e
-경로 위 위험 색 띠, 막대·틀 가리키기/누르기(구간 강조·이름표·레이어 켜기·안내·기상정보 배지), 팝오버("지도·슬라이더를 이 구간으로"), SIGMET 마우스 올림 강조(단면 상자 ↔ 위험 막대 틀 ↔ 지도 면). 달라진 점은 계획 4단계 "실제로 한 것".
+경로 위 위험 색 띠, 막대·틀 가리키기/누르기(구간 강조·이름표·레이어 켜기·안내·기상정보 배지), 팝오버("지도·고도·시간 맞추기", 10-22 정리), SIGMET 마우스 올림 강조(단면 상자 ↔ 위험 막대 틀 ↔ 지도 면). 달라진 점은 계획 4단계 "실제로 한 것".
 - 코드 위치: `map-briefing/briefingMapLayers.js`(띠·강조·이름표, 거리→좌표), `useBriefingMapLink.js`(MapView가 부르는 훅), `HazardPopover.jsx`, `mapBriefingModel.js`(`selectionDetail`·`focusTarget`·`layerToastText`·`pickRibbonTarget`·`hazardLineColor`), `lib/hazardLayers.js` `ribbonItemLayers`, `lib/profileAdvisoryFocus.js`, `advisoryLayers.js` `setAdvisoryHighlight`.
 - 사용자 검토 후 고친 것:
   - 57bfd4cd: 출발 구간 강조가 경로 밖에 그려짐 → 지도 preview 선(SID·STAR 없는 직선) 대신 **연직단면도 경로 축(`verticalProfile.axis.samples`)**으로 자른다. 위험 막대 거리와 같은 축.

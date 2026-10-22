@@ -106,6 +106,7 @@
 **확인**: `NwpSliderBar.test.js`·`useTimelineRail.test.js` 확장(FL↔기압면 위치, 창 위치), 브리핑 밖 화면에서 두 컨트롤이 그대로인지 회귀.
 
 **실제로 한 것 (2026-10-22, 계획과 달라진 점)**
+- 4단계 보완 — 막대 팝오버 정리(사용자 검토 "조잡하다", 10-22): 배지(강도 칩·출처 칩·빨간 "내 비행 고도에서 만남")와 이름 칸 표를 없애고, 머리 = "난류 MOD"/"SIGMET 심한 착빙"(왼쪽 색 띠 = 막대 색), 본문 = 언제(가장 크게)·어디서·어느 고도("FL250 순항 · 내 비행 고도", 다른 고도는 회색), 아래 옅은 두 줄 = 출처·유효 시각과 NM·바람 미반영. 글씨를 키우고(20/16px) 버튼은 테두리만 있는 "지도·고도·시간 맞추기"로(설계의 "지도·슬라이더를 이 구간으로"와 같은 동작).
 - 고도 슬라이더: 기존 `PressureLevelSlider`에 브리핑 표시를 얹었다. 표시 자료는 `AltitudeMarksContext`(weather-overlays/lib)로 넘긴다 — MapView → 레일 → 슬라이더로 속성을 네 단계 내려보내지 않으려고. `LevelSlider`에 `decorations`(축 위 구간)·`valueNote`(값 아래 한 줄), `LevelSliderPanel`에 `header`(축 위 "전 고도" 칩).
   - 표시 규칙(`map-briefing/briefingAltitudeModel.js`): 모델 = 칠함(순항 단계면 꽉 찬 색, 상승·강하는 빗금), SIGMET = 테두리(내 고도 실선·다른 고도 점선), 비행 범위 SFC~순항 상자, 대류(고도 없음)·태풍은 축 위 칩. 위치는 `pressureLevelModel.js` `altitudePositionPct`(눈금이 기압면 간격이라 이웃 기압면 사이를 표준대기 고도로 보간).
   - 말풍선: "순항 FL250 → 지도 FL240 · SIGMET 심한 난기류"(그 기압면 ±1,000ft에서 가장 센 위험).

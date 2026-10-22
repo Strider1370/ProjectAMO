@@ -221,7 +221,8 @@ function formatRunCycle(tmfc) {
   return match ? `${match[1]}/${match[2]} ${match[3]}Z` : null
 }
 
-// 막대·틀 상세 팝오버 내용. formatTime(iso) → 'HH:mm', tzLabel → 'KST'.
+// 막대·틀 상세 팝오버 내용(2026-10-22 사용자 검토로 정리): 머리 = 현상·강도 하나, 본문 = 언제·어디서·어느 고도,
+// 아래 옅은 두 줄 = 출처·근거. formatTime(iso) → 'HH:mm', tzLabel → 'KST'.
 export function selectionDetail(selection, { runs = {}, formatTime = (iso) => iso, tzLabel = '' } = {}) {
   if (!selection?.item) return null
   const { row, kind, item } = selection
@@ -229,23 +230,23 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
   const level = kind === 'model' ? item.level : typhoon ? 'TC' : 'SEV'
   const minutes = minutesBetween(item.passFrom, item.passTo)
   const tz = tzLabel ? ` ${tzLabel}` : ''
+  const mine = kind === 'model' ? true : Boolean(item.mine) // 수치예보 막대는 내 비행 고도 단면에서 뽑은 것
   const detail = {
     level,
-    title: kind === 'model' ? row.label : (typhoon ? (item.label ?? '태풍') : (phenomenonKo(item.code) ?? item.label ?? row.label)),
-    source: kind === 'model' ? `${MODEL_SOURCE[row.key] ?? 'KIM'} · 모델` : (typhoon ? '태풍 정보' : `${item.source}${item.overseas ? '(해외)' : ''} · 예보관 발표`),
-    // 수치예보 막대는 내 비행 고도 단면에서 뽑은 것이라 항상 "만남".
-    mine: kind === 'model' ? true : Boolean(item.mine),
-    route: item.from && item.to ? `${item.from} → ${item.to}` : null,
-    rangeNm: `${item.startNm}–${item.endNm}NM`,
-    pass: item.passFrom && item.passTo ? `${formatTime(item.passFrom)}–${formatTime(item.passTo)}${tz}${minutes ? ` · ${minutes}분` : ''}` : null,
+    // 모델: "난류 MOD" / 발표: "SIGMET 심한 난기류" / 태풍: 이름
+    title: kind === 'model' ? `${row.label} ${item.level}` : typhoon ? (item.label ?? '태풍') : `${item.source}${item.overseas ? '(해외)' : ''} ${phenomenonKo(item.code) ?? item.label ?? row.label}`,
+    mine,
+    when: item.passFrom && item.passTo ? `${formatTime(item.passFrom)}–${formatTime(item.passTo)}${tz}${minutes ? ` · ${minutes}분` : ''}` : null,
+    route: item.from && item.to ? `${item.from} → ${item.to}` : `${item.startNm}–${item.endNm}NM`,
     altitude: null,
     note: null,
-    data: null,
+    source: null,
+    basis: `${item.startNm}–${item.endNm}NM · 통과 시각은 바람 미반영`,
   }
+  let altitude
   if (kind === 'model') {
     const from = formatAltitudeFt(item.altitudeFt?.from), to = formatAltitudeFt(item.altitudeFt?.to)
-    const altitude = !item.altitudeFt ? '전 고도' : item.phase === 'cruise' || from === to ? to : `${from}→${to}`
-    detail.altitude = item.phase ? `${altitude} · ${PHASE_KO[item.phase]}` : altitude
+    altitude = !item.altitudeFt ? '전 고도' : item.phase === 'cruise' || from === to ? `${to} 순항` : `${from}→${to} ${PHASE_KO[item.phase] ?? ''}`.trim()
     // 상승·강하 중 위험은 순항고도로 그려진 지도 레이어에 안 보일 수 있다. 고도는 바꾸지 않고 안내만.
     if (item.phase && item.phase !== 'cruise' && from && to) {
       const [low, high] = item.altitudeFt.from <= item.altitudeFt.to ? [from, to] : [to, from]
@@ -255,11 +256,13 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
     const run = runs?.[MODEL_RUN[row.key]]
     const cycle = formatRunCycle(run?.tmfc)
     const valid = run?.validTime ? `유효 ${formatTime(run.validTime)}${tz}` : null
-    detail.data = [MODEL_SOURCE[row.key], cycle && `${cycle} 회차`, valid].filter(Boolean).join(' · ') || null
+    detail.source = [`${MODEL_SOURCE[row.key] ?? 'KIM'}${cycle ? ` ${cycle}` : ''}`, valid].filter(Boolean).join(' · ')
   } else {
-    detail.altitude = typhoon ? '전 고도' : formatBand(item.bandFt)
-    detail.data = item.validFrom && item.validTo ? `유효 ${formatTime(item.validFrom)}–${formatTime(item.validTo)}${tz}` : null
+    altitude = typhoon ? '전 고도' : formatBand(item.bandFt)
+    const valid = item.validFrom && item.validTo ? `유효 ${formatTime(item.validFrom)}–${formatTime(item.validTo)}${tz}` : null
+    detail.source = [typhoon ? '태풍 정보' : `${item.source} 발표`, valid].filter(Boolean).join(' · ')
   }
+  detail.altitude = `${altitude} · ${mine ? '내 비행 고도' : '다른 고도'}`
   return detail
 }
 
@@ -268,7 +271,7 @@ export function frameAdvisoryId(frame) {
   return frame?.source === 'SIGMET' || frame?.source === 'AIRMET' ? (frame.sourceId ?? null) : null
 }
 
-// "지도·슬라이더를 이 구간으로": 시간 = 구간 통과 가운데 시각, 고도 = 모델 순항 구간은 순항고도·상승/강하 구간은 가운데 고도 /
+// "지도·고도·시간 맞추기": 시간 = 구간 통과 가운데 시각, 고도 = 모델 순항 구간은 순항고도·상승/강하 구간은 가운데 고도 /
 // 내 고도 발표는 순항고도 / 다른 고도 발표는 발표 고도대 가운데. 고도 없는 대류·태풍은 시간만.
 export function focusTarget(selection, { cruiseAltitudeFt = null } = {}) {
   const item = selection?.item

@@ -188,28 +188,30 @@
 /* 단면도에서 가리킨 SIGMET과 같은 발표의 틀 */
 .mb-frame.is-linked { z-index: 3; border-width: 3px; background: rgba(220, 38, 38, 0.12); }
 
-/* 막대·틀 상세 팝오버: 누른 칸 바로 위(화면 기준 고정 위치) */
+/* 막대·틀 상세 팝오버: 누른 칸 바로 위(화면 기준 고정 위치). 머리 = 현상·강도(왼쪽 색 띠), 본문 = 언제·어디서·어느 고도(크게),
+   아래 = 출처·근거(작고 옅게) + 보조 버튼. 빨간 강조는 SEV·내 고도 SIGMET에만. */
 .mb-popover {
-  position: fixed; z-index: 30; width: 360px; display: flex; flex-direction: column; gap: var(--space-s);
-  padding: var(--space-m) var(--space-l); border-radius: var(--radius-lg); background: var(--bg-1); color: var(--text-1);
-  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.25); font-family: var(--app-font, system-ui, sans-serif); font-size: var(--fs-200);
+  --mb-pop-stripe: var(--level-red);
+  position: fixed; z-index: 30; width: 340px; display: flex; flex-direction: column;
+  border-left: 6px solid var(--mb-pop-stripe); border-radius: var(--radius-lg); background: var(--bg-1); color: var(--text-1);
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.25); font-family: var(--app-font, system-ui, sans-serif);
 }
-.mb-popover::after { content: ""; position: absolute; left: var(--mb-pop-arrow, 50%); bottom: -7px; width: 14px; height: 14px; background: var(--bg-1); transform: translateX(-50%) rotate(45deg); }
-.mb-pop-head { display: flex; align-items: center; gap: var(--space-s); }
-.mb-pop-head strong { font-size: var(--fs-400); }
+.mb-popover.is-typhoon { --mb-pop-stripe: var(--mb-typhoon, #6d28d9); }
+.mb-popover::after { content: ""; position: absolute; left: calc(var(--mb-pop-arrow, 50%) - 6px); bottom: -7px; width: 14px; height: 14px; background: var(--bg-1); transform: translateX(-50%) rotate(45deg); }
+.mb-pop-head { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-m) var(--space-m) 0 var(--space-l); }
+.mb-pop-head strong { font-size: var(--fs-500); font-weight: var(--fw-bold); line-height: 1.2; }
 .mb-pop-head .mb-icon-btn { margin-left: auto; }
-.mb-pop-level { padding: 1px 6px; border-radius: var(--radius-sm); background: var(--level-red); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); }
-.mb-pop-level.is-tc { background: var(--mb-typhoon, #6d28d9); }
-.mb-pop-src { padding: 0 6px; border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
-.mb-pop-enc { align-self: flex-start; padding: 2px 8px; border-radius: var(--radius-md); background: var(--bg-3); color: var(--text-2); font-size: var(--fs-100); font-weight: var(--fw-bold); }
-.mb-pop-enc.is-mine { background: var(--level-red-bg); color: var(--level-red); }
-.mb-pop-list { display: grid; grid-template-columns: 36px 1fr; gap: 4px var(--space-m); margin: 0; }
-.mb-pop-list dt { color: var(--text-3); }
-.mb-pop-list dd { margin: 0; font-variant-numeric: tabular-nums; }
-.mb-pop-dim { color: var(--text-3); font-size: var(--fs-100); }
-.mb-pop-note { margin: 0; padding: var(--space-xs) var(--space-s); border-left: 3px solid var(--accent); background: var(--bg-2); color: var(--text-2); }
-.mb-pop-go { align-self: flex-start; padding: 5px 12px; border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent); color: #fff; font: inherit; font-weight: var(--fw-semibold); cursor: pointer; }
-.mb-pop-go:hover { filter: brightness(1.08); }
+.mb-pop-main { display: flex; flex-direction: column; gap: 2px; padding: var(--space-s) var(--space-l) var(--space-m); }
+.mb-pop-main p { margin: 0; }
+.mb-pop-when { font-size: var(--fs-500); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.mb-pop-route { font-size: var(--fs-400); font-weight: var(--fw-semibold); }
+.mb-pop-alt { color: var(--text-1); font-size: var(--fs-400); }
+.mb-pop-alt.is-other { color: var(--text-3); }
+.mb-pop-note { margin-top: var(--space-s) !important; padding: var(--space-xs) var(--space-s); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text-2); font-size: var(--fs-300); }
+.mb-pop-foot { padding: var(--space-s) var(--space-l) var(--space-m); border-top: 1px solid var(--stroke-2); }
+.mb-pop-foot p { margin: 0; color: var(--text-3); font-size: var(--fs-200); line-height: 1.5; }
+.mb-pop-go { align-self: flex-end; margin-top: var(--space-s); padding: 5px 10px; border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-1); font: inherit; font-size: var(--fs-300); font-weight: var(--fw-semibold); cursor: pointer; }
+.mb-pop-go:hover { border-color: var(--accent); color: var(--accent); }
 
 /* 막대를 눌러 레이어를 켰다는 안내: 지도 위쪽, 패널이 열려 있으면 그 오른쪽 */
 .mb-toast {
