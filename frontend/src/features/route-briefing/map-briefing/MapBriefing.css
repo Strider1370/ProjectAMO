@@ -167,7 +167,9 @@
   .mb-panel { width: 264px; }
 }
 
-/* 지도형 브리핑 중에는 범례·기본지도·확대 버튼을 독 위 지도 아래 모서리로 올린다(독과 시간 막대 사이에 떠 있던 것).
+/* 지도형 브리핑 중에는 범례·지점 정보 버튼을 독 위 지도 왼쪽 아래로 올린다(독과 시간 막대 사이에 떠 있던 것).
+   확대·현재 위치·방위·기본지도 버튼은 원래 자리(오른쪽 아래)에 둔다 — 독이 펼쳐져 있으면 독에 가리고, 독을 접으면 보인다.
+   자주 누르지 않는 데다(휠로 확대), 독을 따라 올리면 고도 슬라이더와 겹쳤다(사용자 결정, 2026-10-22).
    재생 버튼은 숨긴다 — 화면이 스스로 움직이지 않는다(설계 원칙). */
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
 .map-view-wrapper[data-map-briefing='true'] .active-route-chip,
@@ -177,8 +179,9 @@
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__viewport,
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__playhead { height: 28px; }
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__tick-label { top: 9px; font-size: 10.5px; }
-.map-view-wrapper[data-map-briefing='true'] .basemap-switcher.is-right-edge { bottom: calc(48px + var(--mb-dock-h, 0px)); }
-.map-view-wrapper[data-map-briefing='true'] .mapboxgl-ctrl-bottom-right { bottom: calc(12px + var(--mb-dock-h, 0px)); }
+/* 고도 슬라이더는 독 위 공간에 맞춘다(위험 막대 줄이 늘어 독이 커져도 독에 가리지 않게). 독 윗변 = 화면 − 시간 막대 40 − 독 높이,
+   슬라이더 윗변 ≈ 117, "전 고도" 칩·여유 ≈ 80. 최소 160px. MapView.css 데스크톱 규칙(.app … .vertical-level-rail-stack …)보다 특이도를 높인다. */
+.app .map-view-wrapper[data-map-briefing='true'] .vertical-level-rail-stack .pressure-level-slider__track { height: clamp(160px, calc(100vh - 240px - var(--mb-dock-h, 0px)), 400px); min-height: 0; }
 
 /* 틀 이름표: 넓으면 전체, 좁으면 "SIG 차폐뇌우", 아주 좁으면 숨김(전체는 툴팁). */
 .mb-frame-tag .is-short { display: none; }
