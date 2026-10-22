@@ -110,10 +110,12 @@ test.describe('briefing-view', () => {
     await expect(page.getByTestId('route-weather-leg-card')).toHaveCount(2)
     await expect(page.locator('.bv-main-navlog-table [data-label="위험기상"]').first()).toBeVisible()
 
-    // 연직단면도는 구름·착빙·등온선·바람·권계면·제트·SIGMET/AIRMET이 켜진 채로 열린다.
-    await expect(page.locator('.cs-toggle').first()).toBeVisible()
-    for (const label of ['구름', '착빙', '등온선', '바람깃', '등풍속선', '권계면·제트', 'SIGMET/AIRMET']) {
-      await expect(page.locator('.cs-toggle[aria-pressed="true"]').filter({ hasText: label }).first()).toBeVisible()
+    // 연직단면도는 착빙·등온선·바람·권계면·제트·SIGMET/AIRMET이 켜진 채로 열린다(구름은 꺼진 채 — BriefingView 기본값).
+    // 10-16 단면도 통합 이후 레이어 버튼은 `.vpc-layer-controls`의 aria-pressed 버튼이다(예전 `.cs-toggle`).
+    const layerButtons = page.getByRole('group', { name: '기상 레이어' }).first().getByRole('button')
+    await expect(layerButtons.first()).toBeVisible()
+    for (const label of ['착빙', '등온선', '바람깃', '등풍속선', '권계면·제트', 'SIGMET/AIRMET']) {
+      await expect(layerButtons.filter({ hasText: label }).first()).toHaveAttribute('aria-pressed', 'true')
     }
     expect(requests.crossSection.bodies.length).toBeGreaterThan(0)
     for (const body of requests.crossSection.bodies) {
