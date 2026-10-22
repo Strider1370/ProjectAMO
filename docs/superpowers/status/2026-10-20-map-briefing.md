@@ -76,12 +76,15 @@ METAR·TAF 과거 보기: API·보관 방식(시간 기준)·공항 카드 이�
 - 운영 서버 SSH: 집 IP가 바뀌어(`59.16.216.137` → `59.16.216.244`) 접속 시간 초과 → 사용자 승인으로 보안 그룹 `sg-0144bd538dfba7047`에 `59.16.216.244/32` 22번 규칙 추가(`sgr-09be441f7abe5b1df`, 설명 home-2026-10-22). AWS CLI는 Windows `aws.exe`, 로그인은 `aws login --remote`(시크릿 창).
 - 과거 보기 확인용 자료: `.artifacts/prod-history-20261022/`(운영 METAR·TAF 보관본, 읽기만) + `.artifacts/prod-data-20261022-hist/`(10-20 사본에 위 METAR·TAF를 연결) → `DATA_PATH=$PWD/.artifacts/prod-data-20261022-hist npm run dev:test`, 오늘 시계로. 스크립트 `.artifacts/map-briefing-check/brief-now.mjs ./history-real.mjs`.
 
+## 8단계 완료 (2026-10-22) — 개편 구현 끝, 배포 전
+브라우저 계약(map-briefing 6개·문서형 briefing-view 7개 데스크톱 통과), 문서(Architecture·contracts·spec 상태) 정리, `npm run check` 통과. 자세한 건 계획 8단계 "실제로 한 것".
+
 ## 다음 할 일
-1. 브라우저 계약: 4단계 2개(위 "남은 것") + 5단계(슬라이더 표시·시간 창) 1개 + 6단계(카드 → 상세 → 공항 패널) 1개.
-1-1. 공항 패널 TAF 탭에 ETD/ETA 표시 — TAF 개편 정리 후.
-2. 7단계 남은 것(보관 방식 배포) → 8단계(마무리).
-3. 따로: 문서형 `briefing-view` 계약 3개 실패(10-16 단면 통합 이후 갱신 안 됨, 1개는 수정 전 HEAD에서도 실패 확인).
-4. spec §9 열린 질문은 사용자 인터뷰 후(인터뷰는 개편 이후).
+1. **운영 배포**(사용자 결정 대기): 지도형 브리핑 1~8단계 + METAR·TAF 보관 방식(시간 기준) + 직전 TAF 원문 저장 + TAF 개편(c89d7868)이 함께 나간다. 빠른 배포(의존성 변경 없음), KIM 수집 중인지 먼저 확인. TAF 개편의 "헷갈리는 부분" 검토를 배포 전에.
+2. 공항 패널 TAF 탭에 ETD/ETA 시각 표시(6단계에서 미룬 것 — TAF 개편이 커밋돼 이제 가능).
+3. 문서형 단면도가 1440×900에서 납작함(그림 높이 약 100px) — 10-16 단면도 통합 이후부터, 따로 볼 문제.
+4. 운영 SSH 규칙: 10-22 `59.16.216.244/32` 추가(`sgr-09be441f7abe5b1df`). 예전 집 IP `.137` 규칙 정리 여부 미정.
+5. spec §9 열린 질문은 사용자 인터뷰 후(인터뷰는 개편 이후).
 
 ## 참고
 - 테스트는 Orca 내장 브라우저로 진행(`orca-ide` CLI). WSL이라 Claude in Chrome은 연결 안 됨.

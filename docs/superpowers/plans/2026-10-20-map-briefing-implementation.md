@@ -3,7 +3,7 @@
 - 작성: 2026-10-20
 - 설계: [specs/2026-10-20-map-briefing-design.md](../specs/2026-10-20-map-briefing-design.md) (최종 시안 v8)
 - 진행 기록: [status/2026-10-20-map-briefing.md](../status/2026-10-20-map-briefing.md)
-- 상태: 계획 작성, 구현 전
+- 상태: **1~8단계 완료(2026-10-22), 운영 배포 전**
 
 ## 0. 전제
 
@@ -160,6 +160,12 @@
 - spec 상태를 "구현 완료"로, status 문서 갱신.
 - `npm run check`, 데스크톱 브라우저 계약. 4개 화면 폭 확인은 레이아웃 테스트에서만.
 - 배포는 의존성 변경이 없으면 빠른 배포. 수집기(KIM) 실행 중인지 먼저 확인.
+
+**실제로 한 것 (2026-10-22)**
+- 브라우저 계약 `map-briefing`에 4개 추가(막대 누름·SIGMET 마우스 올림·고도 슬라이더/시간 창·공항 카드 → 공항 패널). `route-fixture.mjs`에 `patchBriefing`(브리핑 응답에 정해진 ribbon) 옵션. 데스크톱 6개 통과.
+- 문서형 `briefing-view` 계약: 10-16 단면도 통합 이후 낡은 부분 수정 — 레이어 버튼 선택자(`.cs-toggle` → '기상 레이어' 그룹), 구름 기본 꺼짐, KIM CLD 데스크톱 기준 이미지 갱신(세션 시작 커밋에서도 같은 모습임을 확인). 데스크톱 7개 통과. 문서형 단면도가 1440×900에서 그림 높이 약 100px로 납작한 것은 10-16 이후 그대로라 따로 볼 문제로 남김.
+- `Architecture.md`(map-briefing 모듈·과거 보기 API·TAF ±1h), `contracts.md`(map-briefing 행) 갱신. spec 상태 "구현 완료".
+- `npm run check` 통과. **운영 배포는 사용자 결정 대기**(보관 방식 변경·직전 TAF 원문 저장·TAF 개편이 함께 나감).
 
 ## 순서와 커밋
 
