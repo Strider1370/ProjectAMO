@@ -33,9 +33,9 @@ import videoPrecip from './assets/precip.webm'
 import videoRoute from './assets/route.webm'
 import videoAirport from './assets/airport.webm'
 
-const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['ai', 'AI 챗봇'], ['alerts', '알림']]
+const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
-const PIN_SCREENS = { gis: 4.8, brief: 4.2, custom: 3, ai: 3.8, alerts: 3.2 }
+const PIN_SCREENS = { gis: 4.8, brief: 4.2, custom: 3, alerts: 3.2 }
 
 // 캡처 시각(2026-09-28 운영 서버 화면) 기준 레이어 시퀀스
 const LAYERS = [
@@ -55,7 +55,6 @@ const LEGEND = [
 ]
 const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
 const BRIEF_STEPS = [0.2, 0.38, 0.56, 0.76]
-const QUESTION = '오늘 오후에 인천 착륙 괜찮을까?'
 
 function Arrow() {
   return (
@@ -201,10 +200,6 @@ export default function IntroPage() {
     const briefCallouts4 = $$('#br-4 .pt')
     const briefCallouts5 = $$('#br-5 .pt')
     const customFrames = [$('#cu-1'), $('#cu-2')]
-    const question = $('#ai-q')
-    const answer = $('#ai-a')
-    const answerLines = $$('#ai-a p, #ai-a .cite')
-    const highlights = $$('.hl')
     const notis = $$('.noti').reverse() // 오래된 알림부터 도착해 위에 쌓인다
     const notiHeights = notis.map((noti) => noti.scrollHeight)
 
@@ -275,16 +270,6 @@ export default function IntroPage() {
         const lounge = easeInOut(segment(p, 0.35, 0.7))
         css(customFrames[1], { opacity: lounge, transform: `scale(${1.06 - 0.06 * lounge})` })
       },
-      ai(p) {
-        question.textContent = QUESTION.slice(0, Math.round(segment(p, 0.05, 0.3) * QUESTION.length))
-        css(answer, { opacity: segment(p, 0.3, 0.34) })
-        answerLines.forEach((line, index) => {
-          const e = segment(p, 0.34 + index * 0.08, 0.4 + index * 0.08)
-          css(line, { opacity: e, transform: `translateY(${8 * (1 - e)}px)` })
-        })
-        const lit = stepIndex(p, [0.62, 0.72, 0.82])
-        highlights.forEach((element) => element.classList.toggle('lit', Number(element.dataset.k) === lit))
-      },
       alerts(p) {
         notis.forEach((noti, index) => {
           const e = easeOut(segment(p, 0.15 + index * 0.25, 0.27 + index * 0.25))
@@ -329,7 +314,6 @@ export default function IntroPage() {
       cancelAnimationFrame(frame)
       // 연출을 끄면 바꾼 속성을 되돌려 일반 흐름(최종 상태)으로 보인다.
       touched.forEach((element) => { element.style.opacity = ''; element.style.transform = ''; element.style.height = '' })
-      question.textContent = QUESTION
     }
   }, [motion, compact])
 
@@ -505,38 +489,12 @@ export default function IntroPage() {
           </div>
         </section>
 
-        <section className="band navy pin" id="ai" style={pinStyle('ai')} aria-labelledby="ai-title">
-          <div className="wrap feature">
-            <div className="copy">
-              <h2 id="ai-title" style={{ color: '#fff' }}>궁금한 건 AI에게 물어보세요</h2>
-              <p>"오후에 인천 착륙 괜찮을까?"라고 물으면 METAR와 TAF를 근거로 답하고, 참고한 전문을 함께 보여드려요.</p>
-              <span className="ai-note">로그인 후 설정 &gt; 실험실에서 기상이를 켜고 직접 써볼 수 있어요. 아래 대화는 사용 예시예요.</span>
-            </div>
-            <div className="stage">
-              <div className="ai fit">
-                <div className="chat">
-                  <div className="bubble q" id="ai-q">{QUESTION}</div>
-                  <div className="bubble a" id="ai-a">
-                    <p>15시부터 18시(06–09Z) 사이에 <span className="hl" data-k="1">일시적인 강한 뇌우</span>가 예보돼 있어요.</p>
-                    <p>이 시간에는 <span className="hl" data-k="2">돌풍 28kt, 시정 2km, 운고 800ft</span>까지 나빠질 수 있어요.</p>
-                    <p><span className="hl" data-k="3">18시(09Z)부터 점차 회복</span>돼 20시쯤에는 시정 8km 이상이 예상돼요.</p>
-                    <div className="cite">근거: TAF RKSI 230500Z</div>
-                  </div>
-                </div>
-                <div className="src">
-                  <h3>TAF RKSI 230500Z</h3>
-                  <pre>TAF RKSI 230500Z 2306/2412 27012KT 5000 -RA BKN015{'\n  '}<span className="hl" data-k="1">TEMPO 2306/2309</span> <span className="hl" data-k="2">27018G28KT 2000</span> <span className="hl" data-k="1">+TSRA</span> <span className="hl" data-k="2">BKN008</span> FEW015CB{'\n  '}<span className="hl" data-k="3">BECMG 2309/2311</span> 29010KT 8000 NSW SCT020</pre>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section className="band grey pin" id="alerts" style={pinStyle('alerts')} aria-labelledby="alerts-title">
           <div className="wrap feature">
             <div className="copy">
-              <h2 id="alerts-title">예보가 바뀌면 먼저 알려드려요</h2>
-              <p>저장한 비행의 예보가 달라지면 알림센터와 텔레그램으로 바로 알려드려요. 벽면 모니터용 상황판에서는 공항 상태를 한눈에 볼 수 있어요.</p>
+              <h2 id="alerts-title">지정한 공항과 경로에 변화가 생기면 알려드려요</h2>
+              <p>공항 패널이나 경로 생성 화면의 종 버튼으로 감시 조건을 정해 두면, METAR 기준 도달, 새 TAF·AMD 발표, 공항경보와 주변 낙뢰, 경로에 걸리는 SIGMET을 웹 팝업과 휴대폰 푸시로 알려드려요. 알림을 누르면 해당 공항이나 경로의 그 자료로 바로 이동해요.</p>
+              <p>벽면 모니터용 상황판에서는 공항 상태를 한눈에 볼 수 있어요.</p>
             </div>
             <div className="stage">
               <div className="alerts-vis">
@@ -546,9 +504,9 @@ export default function IntroPage() {
                     <div className="lock"><div className="lock-date">9월 23일 수요일</div><div className="lock-time">14:20</div></div>
                     <div className="phone-tag">알림 예시</div>
                     <div className="notis">
-                      <Notification source="ProjectAMO 알림센터" when="지금" title="SIGMET 발효" body="저장한 경로 RKSI → RKPC의 2구간을 지나요." />
-                      <Notification telegram source="텔레그램 ProjectAMO 봇" when="6분 전" title="저장한 비행 RKSI → RKPC" body="경로 판정이 충족에서 주의로 바뀌었어요." />
-                      <Notification source="ProjectAMO 알림센터" when="8분 전" title="RKSI TAF 갱신" body="06–09Z TEMPO +TSRA가 추가됐어요." />
+                      <Notification when="지금" title="SIGMET · RKSI → RKPC" body="심한 착빙 FL150–230이 경로 2구간과 겹쳐요. 13:00–17:00 KST" />
+                      <Notification when="6분 전" title="RKSI TAF AMD 발표" body="230520Z · TEMPO 2306/2309 27018G28KT 2000 +TSRA BKN008" />
+                      <Notification when="8분 전" title="RKPC METAR 기준 도달" body="시정 1200m(기준 1600m) · 운고 400ft(기준 500ft) · 14:00 KST 관측" />
                     </div>
                   </div>
                 </div>
@@ -599,11 +557,11 @@ export default function IntroPage() {
   )
 }
 
-function Notification({ source, when, title, body, telegram = false }) {
+function Notification({ when, title, body }) {
   return (
     <div className="noti">
       <div className="noti-in">
-        <small><i className={`app-icon${telegram ? ' tg' : ''}`} aria-hidden="true" /><span>{source}</span><span className="when">{when}</span></small>
+        <small><i className="app-icon" aria-hidden="true" /><span>ProjectAMO</span><span className="when">{when}</span></small>
         <b>{title}</b><br />{body}
       </div>
     </div>
