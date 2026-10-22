@@ -135,24 +135,43 @@ function getMaxFilesForType(type) {
   return config.storage.max_files_by_type?.[type] || config.storage.max_files_per_category
 }
 
-function rotateFiles(dir, maxCount = config.storage.max_files_per_category) {
-  const files = fs
+// 파일 이름의 저장 시각(…_20261020T113000000Z.json). 없으면 null.
+function savedAtMs(name) {
+  const match = /_(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})Z\.json$/.exec(name)
+  return match ? Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6], +match[7]) : null
+}
+
+// 지울 파일: 개수 상한을 넘는 것 + (보관 시간이 정해진 종류면) 그보다 오래된 것. 단 가장 최근 minKeep개는 남긴다.
+// names는 latest.json 등을 뺀 스냅샷 파일 이름.
+export function snapshotsToDelete(names, { maxCount, maxAgeMs = null, minKeep = 0, nowMs = Date.now() } = {}) {
+  const sorted = [...names].sort((a, b) => b.localeCompare(a))
+  return sorted.filter((name, index) => {
+    if (index >= maxCount) return true
+    if (!Number.isFinite(maxAgeMs) || index < minKeep) return false
+    const at = savedAtMs(name)
+    return Number.isFinite(at) && nowMs - at > maxAgeMs
+  })
+}
+
+function rotateFiles(dir, maxCount = config.storage.max_files_per_category, type = null) {
+  const names = fs
     .readdirSync(dir)
     .filter((name) => name.endsWith('.json') && name !== 'latest.json'
       && !name.startsWith('fronts_meta_') && !name.startsWith('clouds_meta_'))
-    .map((name) => ({ name, fullPath: path.join(dir, name) }))
-    .sort((a, b) => b.name.localeCompare(a.name))
-
-  for (const file of files.slice(maxCount)) {
-    fs.unlinkSync(file.fullPath)
-  }
+  const maxAgeHours = config.storage.max_age_hours_by_type?.[type]
+  const doomed = snapshotsToDelete(names, {
+    maxCount,
+    maxAgeMs: Number.isFinite(maxAgeHours) ? maxAgeHours * 3600_000 : null,
+    minKeep: config.storage.min_files_by_age ?? 0,
+  })
+  for (const name of doomed) fs.unlinkSync(path.join(dir, name))
 }
 
 function saveAndUpdateLatest(dir, filename, data, type = null) {
   const filePath = path.join(dir, filename)
   writeJson(filePath, data)
   writeJson(path.join(dir, 'latest.json'), data)
-  rotateFiles(dir, getMaxFilesForType(type))
+  rotateFiles(dir, getMaxFilesForType(type), type)
   return filePath
 }
 

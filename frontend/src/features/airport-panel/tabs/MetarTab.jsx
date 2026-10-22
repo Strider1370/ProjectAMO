@@ -1,10 +1,33 @@
-import { MoveUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MoveUp } from 'lucide-react'
 import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
 import { buildMetarViewModel, buildMetarTacSegments } from '../lib/metarViewModel.js'
 import { formatRvr } from '../../../shared/weather/helpers.js'
+import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
+import './MetarHistory.css'
 
-export default function MetarTab({ metar, amosData, icao, airportMeta }) {
-  if (!metar) return <div className="ap-empty">METAR 데이터 없음</div>
+// 과거 관측 보기(◀▶): 최근 3시간 보관 METAR·SPECI를 한 건씩. 과거를 보는 동안 위에 주황 띠.
+function MetarHistoryBar({ history }) {
+  const { tz } = useTimeZone()
+  const item = history.item
+  const time = item ? new Date(item.time) : null
+  const hhmm = time ? (tz === 'KST'
+    ? `${String((time.getUTCHours() + 9) % 24).padStart(2, '0')}:${String(time.getUTCMinutes()).padStart(2, '0')} KST`
+    : `${String(time.getUTCHours()).padStart(2, '0')}${String(time.getUTCMinutes()).padStart(2, '0')}Z`) : null
+  return (
+    <div className={`ap-metar-history${item ? ' is-past' : ''}`}>
+      <span>{item ? `과거 관측 보는 중 · ${history.offset}건 전${item.kind === 'SPECI' ? ' SPECI' : ''} · ${hhmm}` : '최신 관측'}</span>
+      {item && <button type="button" className="ap-metar-history-latest" onClick={history.latest}>최신으로</button>}
+      <button type="button" onClick={history.older} disabled={!history.canOlder} aria-label="이전 관측" title={history.canOlder ? '이전 관측' : '최근 3시간까지만 보관'}><ChevronLeft size={16} aria-hidden="true" /></button>
+      <button type="button" onClick={history.newer} disabled={!history.canNewer} aria-label="다음 관측"><ChevronRight size={16} aria-hidden="true" /></button>
+    </div>
+  )
+}
+
+export default function MetarTab({ metar: latestMetar, amosData, icao, airportMeta }) {
+  const history = useAirportHistory(icao, 'metar', { currentTime: latestMetar?.header?.observation_time })
+  if (!latestMetar) return <div className="ap-empty">METAR 데이터 없음</div>
+  const metar = history.item?.report ?? latestMetar
 
   const vm = buildMetarViewModel({ metar, amosData, icao, airportMeta })
   const {
@@ -39,6 +62,7 @@ export default function MetarTab({ metar, amosData, icao, airportMeta }) {
 
   return (
     <div className="ap-metar-v2">
+      {icao && <MetarHistoryBar history={history} />}
       {/* ── TAC 원문 — 임계값 색칠, 비행조건 배지는 섹션 헤더에 표시 ── */}
       {rawText && (
         <div className="ap-metar-tac-block">

@@ -262,12 +262,24 @@
 .mb-ac-name { overflow: hidden; color: var(--text-2); font-size: var(--fs-300); text-overflow: ellipsis; }
 .mb-ac-cat { margin-left: auto; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--mb-ac-cat); color: #fff; font-size: var(--fs-200); font-weight: var(--fw-bold); }
 /* 2·3줄: 왼쪽 이름 칸(METAR 20:00 / TAF ETD±1h), 오른쪽 본문 14px */
-.mb-ac-rows { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: 4px var(--space-s); margin: 0; }
+.mb-ac-rows { display: grid; grid-template-columns: 78px 1fr; align-items: baseline; gap: 4px var(--space-s); margin: 0; }
 .mb-ac-rows dt { display: flex; flex-direction: column; color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-bold); line-height: 1.15; }
-.mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
+.mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); white-space: nowrap; }
 .mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mb-ac-rows dd, .mb-ac-rows dd span { overflow: hidden; text-overflow: ellipsis; }
 .mb-ac-rows dd em { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-style: normal; font-weight: var(--fw-bold); }
+/* 과거 보기(7단계): 줄 끝 ◀▶, 과거를 보는 줄은 연한 주황 바탕 + "n건 전 · 시각" + "최신" */
+.mb-ac-nav { display: inline-flex; flex: none; align-items: center; gap: 1px; margin-left: auto; }
+.mb-ac-nav button { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
+.mb-ac-nav button:hover:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
+.mb-ac-nav button:disabled { color: var(--stroke-2); cursor: default; }
+.mb-ac-nav .mb-ac-latest { padding: 0 5px; color: var(--accent); font-size: var(--fs-100); font-weight: var(--fw-bold); }
+.mb-ac-rows dd em + .mb-ac-nav { margin-left: 2px; }
+.mb-ac-rows dt.is-past, .mb-ac-rows dd.is-past { background: #fff4e5; }
+.mb-ac-rows dt.is-past { margin-left: -4px; padding-left: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.mb-ac-rows dd.is-past { margin-right: -4px; padding-right: 4px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.mb-ac-rows dt.is-past small { color: #b45309; }
+
 /* 맨 아래: 깃발 + 상세 */
 .mb-ac-foot { display: flex; align-items: center; gap: var(--space-xs); margin-top: auto; }
 .mb-ac-flag { padding: 1px 6px; border: 1px solid var(--level-amber); border-radius: var(--radius-sm); color: var(--level-amber); font-size: var(--fs-200); font-weight: var(--fw-bold); }

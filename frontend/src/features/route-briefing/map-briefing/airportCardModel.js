@@ -5,7 +5,7 @@
 const ROLE_KO = { departure: '출발', arrival: '도착', alternate: '교체' }
 const CATEGORY_LEVEL = { VFR: 'vfr', MVFR: 'mvfr', IFR: 'ifr', LIFR: 'lifr' }
 
-function metarText(metar) {
+export function metarText(metar) {
   const obs = metar?.observation
   if (!obs) return null
   const d = obs.display ?? {}
@@ -44,8 +44,8 @@ export function airportCards(briefing, { airportList = [], nameFor = (icao) => i
       canOpenPanel: Boolean(listed),
       metar: { text: metarText(airport.metar), time: airport.observationTime ?? null, speci: airport.reportType === 'SPECI' },
       taf: window
-        ? { basis: window.basis, text: window.outOfRange ? 'TAF 유효기간 밖' : (window.at?.text ?? null), changes: window.changes ?? [], outOfRange: Boolean(window.outOfRange), previous: Boolean(window.previous) }
-        : { basis: airport.role === 'departure' ? 'ETD' : 'ETA', text: null, changes: [], outOfRange: false, previous: false },
+        ? { basis: window.basis, time: window.time ?? null, issued: window.issued ?? null, text: window.outOfRange ? 'TAF 유효기간 밖' : (window.at?.text ?? null), changes: window.changes ?? [], outOfRange: Boolean(window.outOfRange), previous: Boolean(window.previous) }
+        : { basis: airport.role === 'departure' ? 'ETD' : 'ETA', time: null, issued: null, text: null, changes: [], outOfRange: false, previous: false },
       flags: {
         warnings: warnings.filter((hazard) => hazard.code !== 'WIND_SHEAR').map((hazard) => hazard.label),
         windshear: warnings.some((hazard) => hazard.code === 'WIND_SHEAR'),
@@ -81,4 +81,37 @@ export function chipWidth(card) {
 }
 export function hasAlertFlag(card) {
   return Boolean(card.flags.windshear || card.flags.warnings.length)
+}
+
+// ── 과거 보기(7단계): 보관 보고를 카드 한 줄로 ──
+
+// 과거 TAF의 기준 시각(ETD/ETA) 예보 한 줄: 시간별 타임라인에서 30분 안의 가장 가까운 항목. 유효기간 밖이면 그렇게 적는다.
+export function tafTextAt(report, iso) {
+  const at = Date.parse(iso)
+  const start = Date.parse(report?.header?.valid_start), end = Date.parse(report?.header?.valid_end)
+  if (Number.isFinite(start) && Number.isFinite(end) && (at < start || at > end)) return '그 발표의 유효기간 밖'
+  let best = null
+  for (const entry of report?.timeline ?? []) {
+    const delta = Math.abs(Date.parse(entry.time) - at)
+    if (Number.isFinite(delta) && (!best || delta < best.delta)) best = { delta, entry }
+  }
+  if (!best || best.delta > 30 * 60 * 1000) return null
+  const { entry } = best
+  if (entry.display) {
+    const d = entry.display
+    return [d.wind, d.visibility, d.weather && d.weather !== '-' ? d.weather : null, d.clouds].filter(Boolean).join(' ') || null
+  }
+  const cavok = entry.visibility?.cavok
+  const vis = cavok ? 'CAVOK' : Number.isFinite(entry.visibility?.value) ? String(entry.visibility.value).padStart(4, '0') : null
+  return [entry.wind?.raw, vis, (entry.weather ?? []).map((w) => w.raw ?? w).join(' ') || null, cavok ? null : (entry.clouds ?? []).map((c) => c.raw).join(' ') || null]
+    .filter(Boolean).join(' ') || null
+}
+
+// 줄 이름 칸에 붙는 "몇 번째 과거인지 시각"(이름 칸이 좁아 짧게): METAR "1건 전 19:30"(SPECI면 "SPECI"), TAF "직전 05Z"·"2개 전 23Z"(AMD면 "AMD").
+export function historyLabel(type, offset, item, formatTime = (iso) => iso) {
+  if (!item) return null
+  if (type === 'metar') return `${offset}건 전${item.kind === 'SPECI' ? ' SPECI' : ''} ${formatTime(item.time)}`
+  const issued = new Date(item.time)
+  const z = `${String(issued.getUTCHours()).padStart(2, '0')}Z`
+  return `${offset === 1 ? '직전' : `${offset}개 전`}${item.kind === 'AMD' ? ' AMD' : ''} ${z}`
 }

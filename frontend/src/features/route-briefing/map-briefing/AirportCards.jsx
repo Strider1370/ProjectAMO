@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import { formatBriefingTime } from '../lib/briefingTime.js'
-import { airportCards, changeLines, chipWidth, hasAlertFlag } from './airportCardModel.js'
+import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
+import { airportCards, changeLines, chipWidth, hasAlertFlag, historyLabel, metarText, tafTextAt } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
-const CARD_W = 320
+const CARD_W = 360
 const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄
 const CHIP_H = 28 // 접은 칩
 // 카드가 피할 화면 요소(지도 위에 뜬 것들). 공항 패널이 열려 있으면 카드는 숨긴다(아래).
@@ -95,39 +96,68 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
             </button>
           )
         }
-        return (
-          <article key={card.icao} className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_W, height: CARD_H }}
-            aria-label={`${card.roleLabel} ${card.icao} ${card.name}`}>
-            <header className="mb-ac-head">
-              <span className={`mb-ac-role is-${card.role}`}>{card.roleLabel}</span>
-              <strong>{card.icao}</strong>
-              <span className="mb-ac-name">{card.name}</span>
-              {card.category && <span className="mb-ac-cat">{card.category}</span>}
-              <button type="button" className="mb-ac-fold" onClick={() => onToggleCollapse?.(card.role)} title="카드 접기" aria-label={`${card.icao} 카드 접기`} aria-expanded="true">
-                <ChevronDown size={16} aria-hidden="true" />
-              </button>
-            </header>
-            <dl className="mb-ac-rows">
-              <dt>{card.metar.speci ? 'SPECI' : 'METAR'}<small>{card.metar.time ? hhmm(card.metar.time) : ''}</small></dt>
-              <dd title={card.metar.text ?? undefined}>{card.metar.text ?? '자료 없음'}</dd>
-              <dt title={card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>TAF<small>{card.taf.basis}±1h{card.taf.previous ? ' · 직전' : ''}</small></dt>
-              <dd title={[card.taf.text, ...changes].filter(Boolean).join('\n') || undefined}>
-                <span>{card.taf.text ?? '자료 없음'}</span>
-                {changes.length > 0 && <em>변화 {changes.length}</em>}
-              </dd>
-            </dl>
-            <footer className="mb-ac-foot">
-              {card.flags.windshear && <span className="mb-ac-flag is-red" title="윈드시어 경보">윈드시어</span>}
-              {card.flags.warnings.length > 0 && <span className="mb-ac-flag" title={card.flags.warnings.join(' · ')}>공항경보 {card.flags.warnings.length}</span>}
-              {card.flags.notams > 0 && <span className="mb-ac-flag is-notam" title="공항 NOTAM">NOTAM {card.flags.notams}</span>}
-              <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)}
-                title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>
-                상세<ChevronRight size={15} aria-hidden="true" />
-              </button>
-            </footer>
-          </article>
-        )
+        return <AirportCard key={card.icao} card={card} place={place} changes={changes} hhmm={hhmm} onOpenAirport={onOpenAirport} onToggleCollapse={onToggleCollapse} />
       })}
     </div>
+  )
+}
+
+// METAR·TAF 줄의 ◀▶: 한 건씩 과거로(METAR 최근 3시간, TAF 직전 2개 발표). 과거를 보는 줄은 주황 바탕 + "n건 전 · 시각" + "최신".
+function HistoryNav({ history, label }) {
+  return (
+    <span className="mb-ac-nav">
+      {history.offset > 0 && <button type="button" className="mb-ac-latest" onClick={history.latest} aria-label={`${label} 최신으로`}>최신</button>}
+      <button type="button" onClick={history.older} disabled={!history.canOlder} aria-label={`${label} 이전`}
+        title={history.canOlder ? `이전 ${label}` : label === 'METAR' ? '최근 3시간까지만 보관' : '직전 2개 발표까지만 보관'}><ChevronLeft size={15} aria-hidden="true" /></button>
+      <button type="button" onClick={history.newer} disabled={!history.canNewer} aria-label={`${label} 다음`}><ChevronRight size={15} aria-hidden="true" /></button>
+    </span>
+  )
+}
+
+function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollapse }) {
+  const metarHistory = useAirportHistory(card.icao, 'metar', { currentTime: card.metar.time })
+  const tafHistory = useAirportHistory(card.icao, 'taf', { currentTime: card.taf.issued })
+  const pastMetar = metarHistory.item
+  const pastTaf = tafHistory.item
+  const metarShown = pastMetar ? (metarText(pastMetar.report) ?? '자료 없음') : (card.metar.text ?? '자료 없음')
+  const tafShown = pastTaf ? (tafTextAt(pastTaf.report, card.taf.time) ?? '자료 없음') : (card.taf.text ?? '자료 없음')
+  const zHour = (iso) => `${String(new Date(iso).getUTCHours()).padStart(2, '0')}Z`
+  return (
+    <article className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_W, height: CARD_H }}
+      aria-label={`${card.roleLabel} ${card.icao} ${card.name}`}>
+      <header className="mb-ac-head">
+        <span className={`mb-ac-role is-${card.role}`}>{card.roleLabel}</span>
+        <strong>{card.icao}</strong>
+        <span className="mb-ac-name">{card.name}</span>
+        {card.category && <span className="mb-ac-cat">{card.category}</span>}
+        <button type="button" className="mb-ac-fold" onClick={() => onToggleCollapse?.(card.role)} title="카드 접기" aria-label={`${card.icao} 카드 접기`} aria-expanded="true">
+          <ChevronDown size={16} aria-hidden="true" />
+        </button>
+      </header>
+      <dl className="mb-ac-rows">
+        <dt className={pastMetar ? 'is-past' : undefined}>{(pastMetar?.kind ?? (card.metar.speci ? 'SPECI' : 'METAR')) === 'SPECI' ? 'SPECI' : 'METAR'}
+          <small>{pastMetar ? historyLabel('metar', metarHistory.offset, pastMetar, hhmm) : (card.metar.time ? hhmm(card.metar.time) : '')}</small></dt>
+        <dd className={pastMetar ? 'is-past' : undefined}>
+          <span title={metarShown}>{metarShown}</span>
+          <HistoryNav history={metarHistory} label="METAR" />
+        </dd>
+        <dt className={pastTaf ? 'is-past' : undefined} title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>TAF
+          <small>{pastTaf ? historyLabel('taf', tafHistory.offset, pastTaf) : `${card.taf.basis}±1h${card.taf.previous ? ' 직전' : ''}${card.taf.issued ? ` ${zHour(card.taf.issued)}` : ''}`}</small></dt>
+        <dd className={pastTaf ? 'is-past' : undefined}>
+          <span title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}>{tafShown}</span>
+          {!pastTaf && changes.length > 0 && <em>변화 {changes.length}</em>}
+          <HistoryNav history={tafHistory} label="TAF" />
+        </dd>
+      </dl>
+      <footer className="mb-ac-foot">
+        {card.flags.windshear && <span className="mb-ac-flag is-red" title="윈드시어 경보">윈드시어</span>}
+        {card.flags.warnings.length > 0 && <span className="mb-ac-flag" title={card.flags.warnings.join(' · ')}>공항경보 {card.flags.warnings.length}</span>}
+        {card.flags.notams > 0 && <span className="mb-ac-flag is-notam" title="공항 NOTAM">NOTAM {card.flags.notams}</span>}
+        <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)}
+          title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>
+          상세<ChevronRight size={15} aria-hidden="true" />
+        </button>
+      </footer>
+    </article>
   )
 }

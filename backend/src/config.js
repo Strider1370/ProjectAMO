@@ -620,8 +620,21 @@ export const storage = {
   // 시연 전용 백엔드(dev/demo-instance.js)가 읽는 자료 위치. 이 브라우저에서만 시연할 때 쓴다.
   demo_active_path: path.join(resolveDataPath(process.env.DATA_PATH), '.demo-active'),
   max_files_per_category: 10,
+  // METAR·TAF(국내·해외)는 개수가 아니라 저장 시각으로 보관한다 — 공항 카드·패널의 과거 보기(METAR 최근 3시간,
+  // TAF 직전 2개 발표)가 공항·발표 간격과 무관하게 덮이도록(2026-10-22). 개수 상한은 폭주 방지용 안전판.
+  max_age_hours_by_type: {
+    metar: 6,
+    metar_overseas: 6,
+    taf: 30,
+    taf_overseas: 30,
+  },
+  // 오래돼도 가장 최근 이만큼은 남긴다 — 수집이 한동안 멈춰도 과거 보기가 통째로 비지 않게.
+  min_files_by_age: 10,
   max_files_by_type: {
-    metar: 60,
+    metar: 400,
+    metar_overseas: 400,
+    taf: 200,
+    taf_overseas: 200,
     amos: 60,
     lightning: 48,
     sigwx_low: 12,

@@ -1,0 +1,8 @@
+/* METAR 과거 보기 띠. AirportPanel.css는 TAF 개편이 고치는 중이라 따로 둔다. */
+.ap-metar-history { display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-s); padding: 4px var(--space-s); border-radius: var(--radius-md); color: var(--text-3); font-size: var(--fs-200); }
+.ap-metar-history > span { margin-right: auto; }
+.ap-metar-history.is-past { background: #fff4e5; color: #b45309; font-weight: var(--fw-semibold); }
+.ap-metar-history button { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px; border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); background: var(--bg-1); color: var(--text-2); font: inherit; cursor: pointer; }
+.ap-metar-history button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.ap-metar-history button:disabled { color: var(--stroke-2); cursor: default; }
+.ap-metar-history .ap-metar-history-latest { border-color: var(--accent); color: var(--accent); font-weight: var(--fw-bold); }
