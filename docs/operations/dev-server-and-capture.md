@@ -53,6 +53,12 @@ Use `npm run dev:serve` for persistent development. `npm run dev:test` disables 
 
 Playwright contracts use a separate managed path. `npm run dev:contract -- --grep <contract-id>` checks that 3001 and 5173 are free, then Playwright owns the verification backend and frontend. It does not reuse or stop a human-run server.
 
+## Viewing a past data copy (dev only)
+
+A copied data snapshot (for example `DATA_PATH=$PWD/.artifacts/prod-data-20261020 npm run dev:test`) is in the past, so with the real clock the map asks for KIM fields the copy does not have and layers stay empty. Open the app with `?devNow=<ISO time>` (for example `http://127.0.0.1:5173/?devNow=2026-10-20T20:30:00%2B09:00`) to start this tab's clock at that time; it keeps running, a badge at the top says so, and `?devNow=off` or closing the tab clears it. It only works on the Vite dev server (`frontend/src/app/devClock.js`).
+
+When copying only some forecast hours, prune the copied KIM indexes to the hours present (`kim_nwp*/index.json` `availability`/`times` and `kim_nwp*/derived/*/latest.json` `entries`). Otherwise the map first selects a listed but missing hour, gets 404, and does not move on.
+
 ## Preflight
 
 Check whether the ports are already taken:

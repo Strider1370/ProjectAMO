@@ -1,3 +1,4 @@
+import './app/devClock.js' // 개발 서버 전용 시각 바꾸기(?devNow=) — 맨 먼저 읽어야 한다
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { FluentProvider } from '@fluentui/react-components'
