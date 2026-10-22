@@ -3,8 +3,8 @@ import { installRouteBriefingFixtures } from './route-fixture.mjs'
 import { CURRENT_VERSION } from '../src/features/about/changelog.js'
 
 // RKSS→RKPK(SEL) 경로로 브리핑을 만든다. view: 'document'(기존 BriefingView) | 'map'(지도형, 폭 1280 이상 기본).
-export async function createBriefing(page, { view = 'document' } = {}) {
-  const requests = await installRouteBriefingFixtures(page)
+export async function createBriefing(page, { view = 'document', patchBriefing = null } = {}) {
+  const requests = await installRouteBriefingFixtures(page, { patchBriefing })
   // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
   // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
   // 소스의 상수를 그대로 쓴다.

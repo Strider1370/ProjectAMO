@@ -200,7 +200,8 @@ const exposure = {
 
 // Contract precondition: the route is built from committed navdata; weather and terrain
 // requests below are deterministic so dev:test collection state cannot affect assertions.
-export async function installRouteBriefingFixtures(page, { altitudeResponse = altitudeComparison } = {}) {
+// patchBriefing(briefing) → briefing: 계약마다 브리핑 응답 일부(예: 위험 막대 ribbon)를 정해진 값으로 바꿀 때.
+export async function installRouteBriefingFixtures(page, { altitudeResponse = altitudeComparison, patchBriefing = null } = {}) {
   const exposureRequests = { single: new Map(), batch: new Map() }
   const crossSectionRequests = { count: 0, bodies: [] }
   const nwpTimeRefreshRequests = { count: 0, bodies: [] }
@@ -250,6 +251,9 @@ export async function installRouteBriefingFixtures(page, { altitudeResponse = al
       nwpTimeAvailability: { status: 'available' },
     })
   })
-  await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))
+  await page.route('**/api/route-briefing', (route) => {
+    const briefing = briefingFor(requestJson(route))
+    return fulfill(route, patchBriefing ? patchBriefing(briefing) : briefing)
+  })
   return { ...exposureRequests, crossSection: crossSectionRequests, nwpTimeRefresh: nwpTimeRefreshRequests }
 }

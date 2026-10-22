@@ -2,6 +2,41 @@ import { test, expect } from '../fixtures.mjs'
 import { createBriefing } from '../briefing-flow.mjs'
 
 // 지도형 브리핑(폭 1280 이상 기본): 패널·위험 막대·연직단면도 독, 문서형 전환, 따로 접기.
+// 위험 막대·SIGMET이 걸린 브리핑: 픽스처 브리핑(모델 단면 없음)에 정해진 ribbon을 넣고, 같은 id의 SIGMET 둘을 지도·단면에 띄운다.
+// 난류: 모델 SEV 막대(순항) + SIGMET 틀(내 고도), 착빙: SIGMET 틀(다른 고도). 착빙 영역이 난류보다 작아 겹친 곳에서 착빙이 골라진다.
+const HOUR = 3600_000
+function hazardScenario(page) {
+  const now = Date.now()
+  const iso = (ms) => new Date(ms).toISOString()
+  const advisory = (id, code, coords, lower, upper) => ({
+    id, phenomenon_code: code, sequence_number: id.slice(-1), valid_from: iso(now - HOUR), valid_to: iso(now + 3 * HOUR),
+    altitude: { lower_fl: lower, upper_fl: upper }, geometry: { type: 'Polygon', coordinates: [coords] },
+  })
+  page.route('**/api/sigmet', (route) => route.fulfill({ json: { items: [
+    advisory('contract-turb', 'SEV_TURB', [[125, 34], [130, 34], [130, 38.5], [125, 38.5], [125, 34]], 50, 150),
+    advisory('contract-ice', 'SEV_ICE', [[127.6, 34], [130, 34], [130, 36.2], [127.6, 36.2], [127.6, 34]], 20, 80),
+  ] } }))
+  return (briefing) => {
+    const total = briefing.sections.enroute.ribbon?.totalDistanceNm ?? 150
+    const at = (nm) => iso(Date.parse(briefing.meta.etd) + (Date.parse(briefing.meta.eta) - Date.parse(briefing.meta.etd)) * (nm / total))
+    const place = (startNm, endNm) => ({ startNm, endNm, from: 'RKSS', to: 'RKPK', passFrom: at(startNm), passTo: at(endNm) })
+    const frame = (sourceId, code, lowFt, highFt, mine, startNm, endNm) => ({
+      source: 'SIGMET', sourceId, overseas: false, code, label: code, bandFt: { lowFt, highFt }, mine,
+      validFrom: iso(now - HOUR), validTo: iso(now + 3 * HOUR), ...place(startNm, endNm),
+    })
+    const model = { level: 'SEV', ...place(Math.round(total * 0.2), Math.round(total * 0.5)), altitudeFt: { from: 9000, to: 9000 }, phase: 'cruise' }
+    briefing.sections.enroute.ribbon = {
+      totalDistanceNm: total, windApplied: false, runs: {},
+      rows: [
+        { key: 'turbulence', label: '난류', status: 'found', model: [model], missing: [], frames: [frame('contract-turb', 'SEV_TURB', 5000, 15000, true, 0, Math.round(total * 0.9))] },
+        { key: 'icing', label: '착빙', status: 'none', model: [], missing: [], frames: [frame('contract-ice', 'SEV_ICE', 2000, 8000, false, Math.round(total * 0.6), total)] },
+      ],
+      summary: { status: 'hazard', top: { ...model, kind: 'model', row: 'turbulence', label: '난류' }, unavailable: [], partial: [] },
+    }
+    return briefing
+  }
+}
+
 test.describe('map-briefing', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', '지도형은 폭 1280 이상 데스크톱만')
@@ -57,5 +92,59 @@ test.describe('map-briefing', () => {
     await expect(page.getByRole('region', { name: '경로상 위험과 연직단면도' })).toHaveCount(0)
     await page.getByRole('button', { name: '경로상 위험·연직단면도 펼치기' }).click()
     await expect(page.getByRole('region', { name: '경로상 위험과 연직단면도' })).toBeVisible()
+  })
+
+  test('pressing a ribbon bar opens its detail and turns on the related layer', async ({ page }) => {
+    await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
+    // 막대 버튼은 마우스를 받지 않는다(줄이 위치로 고름) — 키보드로 누른다.
+    const bar = page.locator('[data-ribbon-id="turbulence:model:0"]')
+    await bar.focus()
+    await page.keyboard.press('Enter')
+    const popover = page.getByRole('dialog', { name: '난류 상세' })
+    await expect(popover).toBeVisible()
+    await expect(popover.getByText('SEV', { exact: true })).toBeVisible()
+    await expect(popover.getByText('내 고도', { exact: true })).toBeVisible()
+    await expect(popover.getByRole('button', { name: '지도·고도·시간 맞추기' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: '레이어를 켰습니다' })).toContainText('난류(KIM GKTG)')
+    await page.keyboard.press('Escape')
+    await expect(popover).toHaveCount(0)
+  })
+
+  test('hovering a SIGMET box in the profile highlights that advisory and dims the others', async ({ page }) => {
+    await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
+    const ice = page.locator('.mb-profile-body [data-testid="profile-advisory-boundary"][data-advisory-id="contract-ice"]').first()
+    await expect(ice).toBeAttached()
+    const box = await ice.boundingBox()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height * 0.8)
+    await expect(ice).toHaveAttribute('data-focus', 'focus')
+    await expect(page.locator('.mb-profile-body [data-advisory-id="contract-turb"]').first()).toHaveAttribute('data-focus', 'dim')
+    await expect(page.locator('.mb-frame[data-advisory-id="contract-ice"]')).toHaveClass(/is-linked/)
+    await page.mouse.move(5, 5)
+    await expect(ice).not.toHaveAttribute('data-focus', /./)
+  })
+
+  test('marks the flight on the level slider and the timeline', async ({ page }) => {
+    await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
+    // KIM 레이어가 꺼져 있어도 브리핑 중에는 고도 슬라이더가 뜨고, 비행 범위·발표 고도대가 축에 표시된다.
+    await expect(page.locator('.pressure-level-slider__mark.is-flight-range')).toHaveCount(1)
+    await expect(page.locator('.pressure-level-slider__mark.is-frame').first()).toBeAttached()
+    await expect(page.locator('.pressure-level-slider__track')).toHaveAttribute('aria-valuetext', /순항 9,000ft/)
+    await expect(page.locator('.timeline-rail__flight-mark.is-etd')).toHaveText(/^ETD \d{2}:\d{2}$/)
+    await expect(page.locator('.timeline-rail__flight-mark.is-eta')).toHaveText(/^ETA \d{2}:\d{2}$/)
+  })
+
+  test('airport cards open the airport panel and fold into chips', async ({ page }) => {
+    await createBriefing(page, { view: 'map' })
+    await page.evaluate(() => localStorage.removeItem('projectamo.airportCardsCollapsed'))
+    const arrival = page.getByRole('article', { name: /도착 RKPK/ })
+    await expect(arrival).toBeVisible()
+    await arrival.getByRole('button', { name: 'RKPK 카드 접기' }).click()
+    await expect(page.getByRole('button', { name: 'RKPK 카드 펼치기' })).toBeVisible()
+    await page.getByRole('button', { name: 'RKPK 카드 펼치기' }).click()
+    await page.getByRole('button', { name: 'RKPK 상세' }).click()
+    await expect(page.locator('.airport-panel')).toBeVisible()
+    // 공항 패널이 열린 동안 카드는 숨고, 위쪽 버튼(브리핑 패널 켜기)은 남는다.
+    await expect(page.locator('.mb-airport-card')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '브리핑 패널' })).toBeVisible()
   })
 })
