@@ -99,3 +99,21 @@
 @media (prefers-reduced-motion: reduce) {
   .tour-hole { transition: none; }
 }
+
+/* 첫 화면(대상 없는 스텝): 화면 전체 스크림 + 가운데 카드. */
+.tour-scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.42); pointer-events: auto; }
+.tour-tip--center { top: 50%; left: 50%; width: min(480px, calc(100vw - 32px)); transform: translate(-50%, -50%); padding: var(--space-xl); }
+.tour-tip-title { margin: 0 0 var(--space-m); font-size: var(--fs-500); font-weight: var(--fw-bold); color: var(--text-1); }
+.tour-tip-caution { display: flex; flex-direction: column; gap: 2px; margin: 0 0 var(--space-l); padding: var(--space-s) var(--space-m); border-left: 3px solid var(--level-amber); border-radius: var(--radius-md); background: var(--level-amber-bg); color: var(--text-1); font-size: var(--fs-200); line-height: var(--lh-200); }
+.tour-tip-caution strong { color: var(--level-amber); }
+.tour-tip-note { margin: calc(-1 * var(--space-m)) 0 var(--space-l); color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); }
+
+/* 예시 위험 요약 배지 — 실제 막대(지도 위 가운데)와 같은 자리·모양(빨강 SIGMET, 갈색 AIRMET). */
+.tour-demo-advisory { position: fixed; top: 14px; left: calc(var(--active-sidebar-width, 56px) + (100vw - var(--active-sidebar-width, 56px)) / 2); display: flex; align-items: center; gap: 8px; transform: translateX(-50%); font-family: var(--font-base); }
+.tour-demo-advisory span { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 999px; font-size: var(--fs-300); font-weight: var(--fw-semibold); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15); }
+.tour-demo-advisory .is-sigmet { background: var(--level-red-bg); color: var(--level-red); }
+.tour-demo-advisory .is-airmet { background: var(--level-amber-bg); color: var(--level-amber); }
+.tour-demo-advisory b { min-width: 18px; padding: 0 5px; border-radius: 999px; background: currentColor; color: #fff; font-size: var(--fs-100); text-align: center; line-height: 18px; }
+.tour-demo-advisory .is-sigmet b { background: var(--level-red); }
+.tour-demo-advisory .is-airmet b { background: var(--level-amber); }
+.tour-demo-advisory em { padding: 1px 6px; border-radius: var(--radius-sm); background: var(--text-1); color: #fff; font-size: var(--fs-100); font-style: normal; font-weight: var(--fw-bold); }

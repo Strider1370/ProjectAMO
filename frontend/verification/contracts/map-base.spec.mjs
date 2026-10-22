@@ -62,7 +62,7 @@ test.describe('map-base', () => {
     const visibleMeta = page.waitForResponse('**/data/satellite/visible/visible_meta.json')
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await Promise.all([infraredMeta, visibleMeta])
-    await page.getByRole('button', { name: '기상정보' }).click()
+    await page.getByRole('button', { name: '기상정보', exact: true }).click()
     for (const label of ['레이더', '적외영상', '가시영상']) {
       const button = page.getByRole('button', { name: label, exact: true })
       if (await button.getAttribute('aria-pressed') !== 'true') await button.click()
@@ -188,7 +188,7 @@ test.describe('map-base', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
 
     const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
-    await page.getByRole('button', { name: weatherEntry }).click()
+    await page.getByRole('button', { name: weatherEntry, exact: true }).click()
 
     const radar = page.getByRole('button', { name: '레이더', exact: true })
     await expect(radar).toBeVisible()
@@ -213,7 +213,7 @@ test.describe('map-base', () => {
     await installConvectiveFixture(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
-    await page.getByRole('button', { name: weatherEntry }).click()
+    await page.getByRole('button', { name: weatherEntry, exact: true }).click()
     const ci = page.getByRole('button', { name: '대류 가능성', exact: true })
     const ctps = page.getByRole('button', { name: '구름 꼭대기', exact: true })
     await ci.click(); await ctps.click()

@@ -26,17 +26,23 @@ test('firstVisibleFrom: 역방향은 이전 존재 스텝, 없으면 -1', () => 
   assert.equal(firstVisibleFrom(S, none, 2, -1), -1)
 })
 
-test('shouldAutoStart: 첫 방문에도 자동으로 시작하지 않음', () => {
-  assert.equal(shouldAutoStart({ done: false, isMobile: false, isFirstVisit: true }), false)
+test('shouldAutoStart: 데스크톱 첫 방문자만 자동 시작(업데이트 내역 대신)', () => {
+  assert.equal(shouldAutoStart({ done: false, isMobile: false, isFirstVisit: true }), true)
   assert.equal(shouldAutoStart({ done: true, isMobile: false, isFirstVisit: true }), false)
   assert.equal(shouldAutoStart({ done: false, isMobile: true, isFirstVisit: true }), false)
   // 기존 사용자(재방문)는 자동발동 안 함 — 업데이트 내역 유지, 투어는 도움말로.
   assert.equal(shouldAutoStart({ done: false, isMobile: false, isFirstVisit: false }), false)
 })
 
-test('TOUR_STEPS: 진행은 전부 수동 — advance 필드 없음(자동진행 없이 [다음])', () => {
+test('TOUR_STEPS: 첫 화면은 소개·주의 카드, 진행은 전부 수동, 위험 요약은 없을 때 예시로', () => {
   for (const s of TOUR_STEPS) assert.equal('advance' in s, false, `${s.id} should have no advance`)
-  // airport 스텝은 지도 마커(클릭형), advisory는 optional(부재 시 skip)
+  const [welcome] = TOUR_STEPS
+  assert.equal(welcome.center, true)
+  assert.match(welcome.caution, /실제 운항 판단에는 사용하지/)
   assert.equal(TOUR_STEPS.find((s) => s.id === 'airport').mapAirport, 'RKSI')
-  assert.equal(TOUR_STEPS.find((s) => s.id === 'advisory').optional, true)
+  const advisory = TOUR_STEPS.find((s) => s.id === 'advisory')
+  assert.equal(advisory.demo, 'advisory')
+  assert.equal(advisory.optional, undefined, '없다고 건너뛰지 않는다')
+  // 레이어 패널은 패널 전체(머리 포함)를 강조한다 — 안쪽 목록이 아니라.
+  for (const id of ['met', 'aviation']) assert.match(TOUR_STEPS.find((s) => s.id === id).revealSelector, /^\.layer-drawer\[aria-label=/)
 })

@@ -22,6 +22,7 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
   const [rect, setRect] = useState(null)
   const [pos, setPos] = useState(null)
   const [revealed, setRevealed] = useState(false)
+  const [demoShown, setDemoShown] = useState(false)
   const tipRef = useRef(null)
   const nextBtnRef = useRef(null)
   const focusedStepRef = useRef(null)
@@ -35,6 +36,8 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
     focusedStepRef.current = null
     let raf
     const measure = () => {
+      // 예시가 있는 스텝은 실제 대상(예: 발표 중인 위험 요약 막대)이 없을 때만 예시를 띄운다.
+      setDemoShown(Boolean(step.demo && step.target && !document.querySelector(step.target)))
       const rev = isRevealed(step)
       setRevealed(rev) // 값 같으면 React가 리렌더 생략
       const r = resolveTargetRect(step, getAirportPoint)
@@ -64,7 +67,36 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
     if (active && step) nextBtnRef.current?.focus()
   }, [active, step])
 
-  if (!active || !step || !rect) return null
+  if (!active || !step) return null
+
+  // 첫 화면 등 대상 없는 스텝: 화면 전체를 어둡게 하고 가운데 카드.
+  if (step.center) {
+    return (
+      <div className="tour-root" role="presentation">
+        <div className="tour-scrim" />
+        <div className="tour-tip tour-tip--center" role="dialog" aria-modal="true" aria-label="사용 안내">
+          {step.title && <h2 className="tour-tip-title">{step.title}</h2>}
+          <p className="tour-tip-text" aria-live="polite">{step.text}</p>
+          {step.caution && <p className="tour-tip-caution" role="note"><strong>주의</strong>{step.caution}</p>}
+          <div className="tour-tip-actions">
+            <button type="button" className="tour-btn tour-btn-ghost" onClick={skip}>건너뛰기</button>
+            <div className="tour-tip-spacer" />
+            <button type="button" className="tour-btn tour-btn-primary" ref={nextBtnRef} onClick={next}>{step.nextLabel ?? '다음'}</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 예시 배지(발표된 SIGMET·AIRMET이 없을 때): 실제 위험 요약 막대와 같은 자리(지도 위 가운데)에 띄워 강조한다.
+  const demo = demoShown && step.demo === 'advisory' && (
+    <div className="tour-demo-advisory" data-tour-demo="advisory" aria-hidden="true">
+      <span className="is-sigmet">SIGMET <b>2</b></span>
+      <span className="is-airmet">AIRMET <b>1</b></span>
+      <em>예시</em>
+    </div>
+  )
+  if (!rect) return demo ? <div className="tour-root" role="presentation">{demo}</div> : null
 
   // 마커 단계(패널 열리기 전)에만 원형·클릭형 구멍. 패널 열리면 일반 하이라이트(패널 그대로 조작 가능).
   const showMarker = step.mapAirport && !revealed
@@ -74,6 +106,7 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
       {/* 스포트라이트 구멍: box-shadow가 바깥 전체를 딤. 사이드바/지도 스텝은 pointer-events:none로
           밑 대상 클릭 통과. mapAirport 스텝은 구멍 자체를 버튼으로 — canvas 마커 히트테스트에 의존하지 않고
           클릭 시 해당 공항 선택(실제 패널 열림)→watch 진행. 하이라이트 밖(딤 영역)의 다른 마커는 여전히 직접 클릭 가능. */}
+      {demo}
       <div
         className={`tour-hole${showMarker ? ' tour-hole--round tour-hole--clickable' : ''}`}
         style={{
@@ -95,6 +128,7 @@ export default function TourOverlay({ tour, getAirportPoint, onFocusAirport, onS
         >
           <div className="tour-tip-progress">{stepNumber} / {total}</div>
           <p className="tour-tip-text" aria-live="polite">{step.text}</p>
+          {demoShown && step.demoText && <p className="tour-tip-note">{step.demoText}</p>}
           <div className="tour-tip-actions">
             <button type="button" className="tour-btn tour-btn-ghost" onClick={skip}>건너뛰기</button>
             <div className="tour-tip-spacer" />

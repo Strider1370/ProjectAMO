@@ -73,7 +73,8 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
   const renderBottomItem = (item) => {
     const panelId = PANEL_MAP[item.label]
     const handleClick = panelId ? () => onPanelToggle(panelId)
-      : item.label === '도움말' ? onHelp
+      // 도움말(사용 안내)을 톱니 메뉴에서 열면 메뉴를 닫는다 — 안 닫으면 안내 화면 위에 메뉴가 남는다.
+      : item.label === '도움말' ? () => { setIsUtilityOpen(false); onHelp?.() }
       : undefined
     return (
       <SidebarButton

@@ -13,6 +13,7 @@ export function firstVisibleFrom(steps, isPresent, from, dir = 1) {
 // 최초 접속 자동 발동 조건: 미완료 + 데스크톱 + 앱 최초 방문(lastSeen 없음).
 // isFirstVisit 게이트로 "진짜 처음 들어온 사람"만 투어를 받고, 기존 사용자는 업데이트 내역을 유지한다
 // (기존 사용자는 도움말 버튼으로 투어를 재실행). hasUpdate는 여기서 안 본다 — 첫 방문자는 항상 true라 조율은 App이 willAutoStart로.
-export function shouldAutoStart() {
-  return false
+// 7/16부터 꺼 두었다가(무조건 false) 2026-10-22에 되살림: 첫 방문자에게 업데이트 내역 대신 프로젝트 소개·주의·화면 안내를 띄운다.
+export function shouldAutoStart({ done = false, isMobile = false, isFirstVisit = false } = {}) {
+  return !done && !isMobile && isFirstVisit
 }

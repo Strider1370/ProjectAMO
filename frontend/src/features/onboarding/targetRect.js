@@ -1,5 +1,6 @@
 // 스텝 → 뷰포트 기준 rect(스포트라이트 구멍용) 또는 null.
 // 우선순위: ① revealSelector(열린 패널) — 클릭으로 패널이 열리면 그 패널을 강조(대상을 가리므로).
+//          (center 스텝 = 대상 없는 가운데 카드라 rect를 쓰지 않는다 — TourOverlay가 따로 그린다.)
 //          ② mapAirport(지도 마커) — 좌표 투영.  ③ target(DOM 셀렉터).
 const MARKER_R = 28 // 마커 스포트라이트 반경(px)
 
@@ -33,7 +34,8 @@ export function resolveTargetRect(step, getAirportPoint) {
     }
   }
   if (typeof document === 'undefined' || !step?.target) return null
-  const el = document.querySelector(step.target)
+  // 실제 대상이 없고 예시가 있는 스텝(발표 없는 위험 요약)은 TourOverlay가 띄운 예시를 강조한다.
+  const el = document.querySelector(step.target) ?? (step.demo ? document.querySelector(`[data-tour-demo="${step.demo}"]`) : null)
   if (!el) return null
   return rectOf(el.getBoundingClientRect())
 }
