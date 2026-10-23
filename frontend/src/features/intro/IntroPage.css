@@ -138,6 +138,11 @@
 .intro .tabs span.on{color:var(--ink); font-weight:600; border-color:var(--ink)}
 .intro:not(.motion) .tabs span{color:var(--muted)}
 .intro .flow{position:relative}
+/* 경로 생성 장면: 두 장을 겹쳐 두고(앞 장면 → 경로가 찍힌 장면) 묶음째 확대한다. */
+.intro .zoom{position:relative; overflow:hidden; aspect-ratio:16/10}
+.intro .zoom-in{position:absolute; inset:0}
+.intro .zoom-in img{position:absolute; inset:0; height:100%}
+.intro:not(.motion) .route-before{display:none}
 .intro .flow > .frame{position:absolute; inset:0}
 .intro .flow > .frame:first-child{position:relative}
 /* AI */

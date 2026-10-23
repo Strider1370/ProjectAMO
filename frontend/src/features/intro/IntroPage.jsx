@@ -22,7 +22,8 @@ import imgSat2 from './assets/sat-2.webp'
 import imgSat3 from './assets/sat-3.webp'
 import imgAirport from './assets/airport.webp'
 import imgModels from './assets/models.webp'
-import imgRoute from './assets/route.webp'
+import imgRouteBefore from './assets/route-before.webp'
+import imgRouteAfter from './assets/route-after.webp'
 import imgCompare from './assets/compare.webp'
 import imgPrep from './assets/prep.webp'
 import imgResult from './assets/result.webp'
@@ -35,7 +36,7 @@ import videoAirport from './assets/airport.webm'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
-const PIN_SCREENS = { gis: 4.8, brief: 4.2, custom: 3, alerts: 3.2 }
+const PIN_SCREENS = { gis: 4.8, brief: 4.8, custom: 3, alerts: 3.2 }
 
 // 캡처 시각(2026-09-28 운영 서버 화면) 기준 레이어 시퀀스
 const LAYERS = [
@@ -54,7 +55,11 @@ const LEGEND = [
   ['#DCE6EE', '기본 지도와 공항, FIR'],
 ]
 const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
-const BRIEF_STEPS = [0.2, 0.38, 0.56, 0.76]
+const BRIEF_STEPS = [0.22, 0.38, 0.56, 0.76]
+// 경로 생성 장면: 전체 화면에서 경로가 찍힌 뒤 왼쪽 패널 자리로 확대된다. 확대가 끝나는 자리는
+// 경로 비교 이후 캡처와 같은 영역(화면 x 56~1112, y 0~660 / 1600×1000)이라 이음새 없이 넘어간다.
+const ROUTE_ZOOM = 1600 / 1056
+const ROUTE_ZOOM_ORIGIN = `${((ROUTE_ZOOM * (56 / 1600)) / (ROUTE_ZOOM - 1)) * 100}% 0%`
 
 function Arrow() {
   return (
@@ -197,6 +202,8 @@ export default function IntroPage() {
     const briefTabStrip = $('#brief .tabs')
     const briefTabs = $$('#brief .tabs span')
     let briefTabShown = -1
+    const routeAfter = $('#br-1 .route-after')
+    const routeZoom = $('#br-1 .zoom-in')
     const briefCallouts4 = $$('#br-4 .pt')
     const briefCallouts5 = $$('#br-5 .pt')
     const customFrames = [$('#cu-1'), $('#cu-2')]
@@ -248,7 +255,10 @@ export default function IntroPage() {
         }
       },
       brief(p) {
-        css(briefFrames[1], { opacity: segment(p, 0.2, 0.26) })
+        // 공항만 고른 화면 → 경로가 찍힌 화면 → 왼쪽 패널 쪽으로 확대 → 경로 비교
+        css(routeAfter, { opacity: easeOut(segment(p, 0.05, 0.11)) })
+        css(routeZoom, { transform: `scale(${lerp(1, ROUTE_ZOOM, easeInOut(segment(p, 0.13, 0.21)))})` })
+        css(briefFrames[1], { opacity: segment(p, 0.22, 0.26) })
         css(briefFrames[2], { opacity: segment(p, 0.38, 0.44) })
         const result = easeOut(segment(p, 0.56, 0.64))
         css(briefFrames[3], { opacity: result, transform: `translateX(${6 * (1 - result)}%)` })
@@ -461,7 +471,14 @@ export default function IntroPage() {
                 {BRIEF_TABS.map((tab, index) => <span key={tab} className={index === 0 ? 'on' : undefined}>{tab}</span>)}
               </div>
               <div className="flow fit">
-                <Frame id="br-1" title={briefTitle(0)}><img src={imgRoute} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 SID, 항로, STAR가 경로칸에 알약으로 들어간 화면" /></Frame>
+                <Frame id="br-1" title={briefTitle(0)}>
+                  <div className="zoom">
+                    <div className="zoom-in" style={{ transformOrigin: ROUTE_ZOOM_ORIGIN }}>
+                      <img className="route-before" src={imgRouteBefore} alt="" />
+                      <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 SID, 항로, STAR가 경로칸에 알약으로 들어가고 지도에 경로가 그려진 화면" />
+                    </div>
+                  </div>
+                </Frame>
                 <Frame id="br-2" title={briefTitle(1)}><img src={imgCompare} alt="경로 비교: 총 거리 330NM, 소요시간 44분, 위험기상 2건" /></Frame>
                 <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도, 교체공항" /></Frame>
                 <Frame id="br-4" title="비행 전 브리핑">
