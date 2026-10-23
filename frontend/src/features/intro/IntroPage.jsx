@@ -22,7 +22,6 @@ import imgSat2 from './assets/sat-2.webp'
 import imgSat3 from './assets/sat-3.webp'
 import imgAirport from './assets/airport.webp'
 import imgModels from './assets/models.webp'
-import imgRouteBefore from './assets/route-before.webp'
 import imgRouteAfter from './assets/route-after.webp'
 import imgCompare from './assets/compare.webp'
 import imgPrep from './assets/prep.webp'
@@ -56,7 +55,7 @@ const LEGEND = [
 ]
 const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
 const BRIEF_STEPS = [0.22, 0.38, 0.56, 0.76]
-// 경로 생성 장면: 전체 화면에서 경로가 찍힌 뒤 왼쪽 패널 자리로 확대된다. 확대가 끝나는 자리는
+// 경로 생성 장면: 경로가 찍힌 전체 화면에서 왼쪽 패널 자리로 확대된다. 확대가 끝나는 자리는
 // 경로 비교 이후 캡처와 같은 영역(화면 x 56~1112, y 0~660 / 1600×1000)이라 이음새 없이 넘어간다.
 const ROUTE_ZOOM = 1600 / 1056
 const ROUTE_ZOOM_ORIGIN = `${((ROUTE_ZOOM * (56 / 1600)) / (ROUTE_ZOOM - 1)) * 100}% 0%`
@@ -202,7 +201,6 @@ export default function IntroPage() {
     const briefTabStrip = $('#brief .tabs')
     const briefTabs = $$('#brief .tabs span')
     let briefTabShown = -1
-    const routeAfter = $('#br-1 .route-after')
     const routeZoom = $('#br-1 .zoom-in')
     const briefCallouts4 = $$('#br-4 .pt')
     const briefCallouts5 = $$('#br-5 .pt')
@@ -255,9 +253,8 @@ export default function IntroPage() {
         }
       },
       brief(p) {
-        // 공항만 고른 화면 → 경로가 찍힌 화면 → 왼쪽 패널 쪽으로 확대 → 경로 비교
-        css(routeAfter, { opacity: easeOut(segment(p, 0.05, 0.11)) })
-        css(routeZoom, { transform: `scale(${lerp(1, ROUTE_ZOOM, easeInOut(segment(p, 0.13, 0.21)))})` })
+        // 경로가 찍힌 전체 화면 → 왼쪽 패널 쪽으로 확대 → 경로 비교
+        css(routeZoom, { transform: `scale(${lerp(1, ROUTE_ZOOM, easeInOut(segment(p, 0.08, 0.2)))})` })
         css(briefFrames[1], { opacity: segment(p, 0.22, 0.26) })
         css(briefFrames[2], { opacity: segment(p, 0.38, 0.44) })
         const result = easeOut(segment(p, 0.56, 0.64))
@@ -475,7 +472,6 @@ export default function IntroPage() {
                 <Frame id="br-1" title={briefTitle(0)}>
                   <div className="zoom">
                     <div className="zoom-in" style={{ transformOrigin: ROUTE_ZOOM_ORIGIN }}>
-                      <img className="route-before" src={imgRouteBefore} alt="" />
                       <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 SID, 항로, STAR가 경로칸에 알약으로 들어가고 지도에 경로가 그려진 화면" />
                     </div>
                   </div>
@@ -486,6 +482,7 @@ export default function IntroPage() {
                   <img src={imgResult} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 위험 요약 카드와 공항 카드, 경로상 위험 막대" />
                   <div className="co">
                     <Callout x="25.8%" y="46%">내 고도에 걸리는 위험을 차례로</Callout>
+                    <Callout x="83%" y="64%" side="left">출발·도착·교체 공항 카드</Callout>
                     <Callout x="53%" y="86%" side="up">경로상 위험 구간과 SIGMET</Callout>
                   </div>
                 </Frame>
@@ -494,7 +491,7 @@ export default function IntroPage() {
                   <div className="co">
                     <Callout x="50.7%" y="36.4%" side="up">내 고도에 걸린 SIGMET 심한 난류</Callout>
                     <Callout x="75.6%" y="67%" side="left">착빙 구역</Callout>
-                    <Callout x="55.4%" y="76.6%" side="left">난류 강도(GKTG)</Callout>
+                    <Callout x="55.4%" y="76.6%" side="left">난류 구역</Callout>
                   </div>
                 </Frame>
               </div>
