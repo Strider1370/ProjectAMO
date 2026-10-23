@@ -820,11 +820,14 @@ const MapView = forwardRef(function MapView({
     nwpSelection, setNwpSelection, sliderLevels, sliderTimes,
   })
 
+  // 자동 생성 중(초안 → 경로 확정)에는 미리보기 선에 맞추지 않는다. 확정되면 전체 경로에 한 번 맞추므로
+  // 여기서도 움직이면 두 번 움직인다 — 해외 목적지는 미리보기가 출발 절차뿐이라 출발 공항으로 확대했다가 다시 축소됐다.
+  const routeBeingGenerated = Boolean(routeBriefing.state.autoApplyPending || routeBriefing.state.routeLoading)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
     const { fitCoordinates } = syncRoutePreviewLayers(map, routePreviewModel)
-    if (fitCoordinates.length > 0 && !routeResult) {
+    if (fitCoordinates.length > 0 && !routeResult && !routeBeingGenerated) {
       const bounds = boundsFromCoords(fitCoordinates)
       setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
@@ -836,7 +839,7 @@ const MapView = forwardRef(function MapView({
     if (!map || !isStyleReady) return
 
     const { fitCoordinates } = syncBoundaryFixPreview(map, routePreviewModel)
-    if (fitCoordinates.length > 0 && !routeResult) {
+    if (fitCoordinates.length > 0 && !routeResult && !routeBeingGenerated) {
       const bounds = boundsFromCoords(fitCoordinates)
       setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
