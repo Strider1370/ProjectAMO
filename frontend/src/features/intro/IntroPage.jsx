@@ -8,6 +8,7 @@ import { approach, clamp01, easeInOut, easeOut, lerp, pinnedProgress, segment, s
 import './IntroPage.css'
 
 import imgMain from './assets/main.webp'
+import imgHero from './assets/hero.webp'
 import imgHumid0 from './assets/humid-0.webp'
 import imgHumid1 from './assets/humid-1.webp'
 import imgHumid2 from './assets/humid-2.webp'
@@ -30,7 +31,6 @@ import imgMyMap from './assets/mymap.webp'
 import imgLounge from './assets/lounge.webp'
 import imgMonitoring from './assets/monitoring.webp'
 import videoPrecip from './assets/precip.webm'
-import videoRoute from './assets/route.webm'
 import videoAirport from './assets/airport.webm'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
@@ -291,10 +291,17 @@ export default function IntroPage() {
         if (next !== pin.shown) { pin.shown = next; render[pin.id](next) }
         if (next !== target) moving = true
       }
-      // 첫 화면 캡처는 화면에 들어오며 바로 선다.
-      const heroP = clamp01((viewport * 0.9 - heroShot.getBoundingClientRect().top) / (viewport * 0.65))
-      css(tilt, { transform: `rotateX(${20 * (1 - heroP)}deg) scale(${lerp(0.94, 1, heroP)})` })
-      popIn(heroCallouts, segment(heroP, 0.6, 1))
+      // 넓은 화면: 첫 화면 오른쪽에 기울어 있던 캡처가 스크롤하면 평평하게 펴진다. 말풍선은 처음부터 보인다.
+      // 좁은 화면: 캡처가 글 아래에 있으므로 화면에 들어오며 선다.
+      if (compact) {
+        const heroP = clamp01((viewport * 0.9 - heroShot.getBoundingClientRect().top) / (viewport * 0.65))
+        css(tilt, { transform: `rotateX(${20 * (1 - heroP)}deg) scale(${lerp(0.94, 1, heroP)})` })
+        popIn(heroCallouts, segment(heroP, 0.6, 1))
+      } else {
+        const heroP = clamp01(top / (viewport * 0.55))
+        css(tilt, { transform: `rotateY(${-16 * (1 - heroP)}deg) rotateX(${5 * (1 - heroP)}deg) scale(${lerp(0.97, 1, heroP)})` })
+        popIn(heroCallouts, 1)
+      }
       if (pairEl) {
         const rect = pairEl.getBoundingClientRect()
         const through = clamp01((viewport - rect.top) / (viewport + rect.height))
@@ -361,7 +368,8 @@ export default function IntroPage() {
 
       <main>
         <section className="band hero" id="top" aria-labelledby="intro-title">
-          <div className="wrap">
+          <div className="wrap hero-grid">
+            <div className="hero-copy">
             <h1 id="intro-title" className="hero-anim">항공기상, 지도 한&nbsp;장으로 확인하세요</h1>
             <p className="lede hero-anim" style={{ animationDelay: '.09s' }}>레이더와 위성, 수치예보부터 METAR, TAF, SIGMET까지 비행 전에 필요한 기상정보를 한 화면에서 보고, 경로별 브리핑까지 받을 수 있어요.</p>
             <div className="actions hero-anim" style={{ animationDelay: '.18s' }}>
@@ -379,14 +387,16 @@ export default function IntroPage() {
               </p>
             )}
             <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.6.0</b>지도 위에서 보는 비행 전 브리핑과 공항 카드가 추가됐어요. 2026년 10월 23일</p>
-            <div className="hero-shot hero-anim" style={{ animationDelay: '.35s' }}>
+            </div>
+            {/* 첫 화면 오른쪽에 제품 화면을 크게, 기울여 둔다. 스크롤하면 평평하게 펴진다(넓은 화면). */}
+            <div className="hero-shot hero-anim" style={{ animationDelay: '.3s' }}>
               <div className="tilt">
                 <Frame title="ProjectAMO">
-                  <img src={imgMain} alt="ProjectAMO 지도 화면: 국내 공항 비행 등급과 FIR 경계" />
+                  <img src={imgHero} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 레이더 위 경로, 위험기상 요약, 경로상 위험 막대와 연직단면도" />
                   <div className="co" id="co-hero">
-                    <Callout x="15.8%" y="3.7%">기상정보와 항공정보 레이어</Callout>
-                    <Callout x="45.6%" y="37.8%">마커 색으로 공항 비행 등급을 표시해요</Callout>
-                    <Callout x="37.3%" y="56.4%" side="left">인천 FIR 경계와 공역</Callout>
+                    <Callout x="20.5%" y="32%">내 고도에 걸리는 위험을 차례로 요약해요</Callout>
+                    <Callout x="52%" y="59%" side="left">경로를 따라 위험 구간을 막대로</Callout>
+                    <Callout x="62%" y="43%">출발·도착·교체 공항 카드</Callout>
                   </div>
                 </Frame>
               </div>
@@ -444,29 +454,29 @@ export default function IntroPage() {
           <div className="wrap feature">
             <div className="copy">
               <h2 id="brief-title">경로만 입력하면 브리핑이 정리돼요</h2>
-              <p>출발 공항과 도착 공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 브리핑은 지도 위에서 열려 경로를 따라 현상별 위험 구간과 연직단면도, 출발·도착 공항의 METAR·TAF를 함께 보여주고, 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
+              <p>출발·도착 공항과 교체공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 브리핑은 지도 위에서 열려 내 고도에 걸리는 위험을 차례로 요약하고, 경로를 따라 현상별 위험 구간과 연직단면도, 공항 카드의 METAR·TAF를 함께 보여줘요. 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
             </div>
             <div className="stage">
               <div className="tabs fit" aria-hidden="true">
                 {BRIEF_TABS.map((tab, index) => <span key={tab} className={index === 0 ? 'on' : undefined}>{tab}</span>)}
               </div>
               <div className="flow fit">
-                <Frame id="br-1" title={briefTitle(0)}><LoopVideo src={videoRoute} poster={imgRoute} label="출발, 도착 공항을 입력하고 경로를 자동 생성하는 화면" /></Frame>
-                <Frame id="br-2" title={briefTitle(1)}><img src={imgCompare} alt="경로 비교: 총 거리 240NM, 소요시간 32분" /></Frame>
-                <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도" /></Frame>
+                <Frame id="br-1" title={briefTitle(0)}><img src={imgRoute} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 SID, 항로, STAR가 경로칸에 알약으로 들어간 화면" /></Frame>
+                <Frame id="br-2" title={briefTitle(1)}><img src={imgCompare} alt="경로 비교: 총 거리 330NM, 소요시간 44분, 위험기상 2건" /></Frame>
+                <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도, 교체공항" /></Frame>
                 <Frame id="br-4" title="비행 전 브리핑">
-                  <img src={imgResult} alt="RKSI에서 RKPC 비행 전 브리핑 결과" />
+                  <img src={imgResult} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 위험 요약 카드와 공항 카드, 경로상 위험 막대" />
                   <div className="co">
-                    <Callout x="55%" y="20.6%" side="left">경로와 시간대 전체의 비행 등급 판정</Callout>
-                    <Callout x="70%" y="65.6%" side="left">출발과 도착 공항 실황</Callout>
+                    <Callout x="25.8%" y="46%">내 고도에 걸리는 위험을 차례로</Callout>
+                    <Callout x="53%" y="86%" side="up">경로상 위험 구간과 SIGMET</Callout>
                   </div>
                 </Frame>
                 <Frame id="br-5" title="연직단면도">
-                  <img src={imgProfile} alt="경로 연직단면도" />
+                  <img src={imgProfile} alt="경로 연직단면도: 구름, 착빙, 난류와 순항고도" />
                   <div className="co">
-                    <Callout x="67.8%" y="64.9%">강하 시작점(TOD) 자동 표시</Callout>
-                    <Callout x="45%" y="66.5%">계획 순항고도 31,000ft</Callout>
-                    <Callout x="30%" y="76.5%">0°C 등온선</Callout>
+                    <Callout x="38.6%" y="63.9%" side="left">계획 순항고도 25,000ft</Callout>
+                    <Callout x="31%" y="75.5%">0°C 등온선</Callout>
+                    <Callout x="57%" y="40%" side="up">내 고도에 걸린 SIGMET</Callout>
                   </div>
                 </Frame>
               </div>

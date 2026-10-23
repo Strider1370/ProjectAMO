@@ -85,6 +85,17 @@
 .intro .news b{color:var(--ink); font-weight:600; margin-right:6px}
 .intro .hero-shot{margin-top:clamp(48px, 6vw, 80px); width:calc(100% + 10vw); margin-bottom:-12%; perspective:1800px}
 .intro .tilt{transform-origin:50% 0}
+/* 넓은 화면 첫 화면: 왼쪽 글, 오른쪽 제품 화면. 화면은 오른쪽 끝을 넘어가게 크게 둔다. */
+@media (min-width: 1100px){
+.intro .hero .wrap.hero-grid{max-width:1760px; display:grid; grid-template-columns:minmax(0, 0.82fr) minmax(0, 1.18fr); column-gap:clamp(32px, 4vw, 72px); align-items:center; min-height:calc(100vh - var(--head)); padding-block:clamp(32px, 4vw, 64px)}
+.intro .hero-grid h1{font-size:clamp(40px, 4.1vw, 68px); max-width:9.5em}
+.intro .hero-grid .hero-shot{margin:0; width:132%; perspective:2400px}
+.intro .hero-grid .live{gap:8px 10px}
+.intro .hero-grid .live span{gap:10px}
+.intro .hero-grid .tilt{transform-origin:0 50%}
+.intro.motion .hero-grid .tilt{transform:rotateY(-16deg) rotateX(5deg) scale(.97)} /* 움직임 줄이기에서는 평평하게 */
+.intro .hero-grid .hero-shot .frame{box-shadow:0 40px 80px -40px rgba(15,23,42,.45), 0 12px 24px -16px rgba(15,23,42,.2)}
+}
 .intro .hero-shot .frame{box-shadow:0 24px 48px -32px rgba(15,23,42,.35)}
 /* feature layout */
 .intro .wrap.feature, .intro #airport .wrap{max-width:1760px}
