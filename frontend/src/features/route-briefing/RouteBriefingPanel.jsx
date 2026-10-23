@@ -552,10 +552,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   }, [])
   const flightDuration = formatFlightDuration(derived.plannedDistanceNm, tasKt)
   const etdFields = briefingTimeFields(etd, tz)
-  // 교체공항은 IFR·VFR 모두 브리핑 준비 단계에서 고른다(출발·도착 공항은 뺀다).
-  const alternateOptions = [{ value: '', label: '선택 안 함' }, ...KNOWN_AIRPORTS
-    .filter((ap) => ap !== routeForm.departureAirport && ap !== routeForm.arrivalAirport)
-    .map((ap) => ({ value: ap, label: AIRPORT_KO[ap] ? `${ap} ${AIRPORT_KO[ap]}` : ap }))]
   const briefingPreparation = (
     <section className="rb-briefing-preparation" aria-label="브리핑 준비 요약">
       <h3>브리핑 준비</h3>
@@ -607,8 +603,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <div className="rb-prep-row">
           <span className="k">교체공항</span>
           <span>
-            <FDropdown className="rb-prep-altn" aria-label="교체공항" value={alternateAirport} onChange={setAlternateAirport} placeholder="선택 안 함"
-              options={alternateOptions} />
+            <span className="v">{alternateAirport ? `${alternateAirport}${AIRPORT_KO[alternateAirport] ? ` ${AIRPORT_KO[alternateAirport]}` : ''}` : '선택 안 함'}</span>
           </span>
         </div>
         <div className="rb-prep-row">
@@ -748,6 +743,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // showGenerate: desktop keeps the 브리핑 생성 button inside this section; mobile
   // moves it to the sheet footer (progressive primary action), so pass false there.
   // ── Desktop panel ──
+  // 교체공항은 출발·도착과 함께 경로 생성 단계에서 고른다. 'FIR' 자리의 버튼을 '선택 안 함'으로
+  // 쓰면 빈 값일 때 그 이름이 그대로 보인다. FIR 이탈(도착 공항 없음)일 때는 고를 게 없다.
+  const alternateOptions = allAirportOptions.filter((o) => o.value !== routeForm.departureAirport && o.value !== routeForm.arrivalAirport)
+  const alternatePicker = isFirExitMode ? null : (
+    <AirportPickerField label={isMobile ? '교체' : '교체 공항'} value={alternateAirport} options={alternateOptions}
+      firOption={{ value: '', label: '선택 안 함' }} onChange={setAlternateAirport} />
+  )
   function renderDesktopAirportSelect(label, value, onChange, firSentinel, firLabel, disabledValue, align) {
     return (
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -826,6 +828,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               onClick={swapAirports}>⇄</Button>
             {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', arrivalPickerLock, 'right')}
           </div>
+          {alternatePicker && <div className="rb-altn-row">{alternatePicker}</div>}
           {isIfr && (
             <div className={s.grid}>
               <Field className={s.field} label={isFirInMode ? '진입 FIX' : visibleSidOptions.length > 0 ? 'SID' : '진입 FIX'}>{depProcControl}</Field>
@@ -931,6 +934,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             <div className="rb-swap"><button type="button" className="rb-swap-btn" onClick={swapAirports} disabled={firOnEitherSide} aria-label="출발 도착 교환">⇅</button></div>
             <AirportPickerField label="도착" value={routeForm.arrivalAirport} options={allAirportOptions} firOption={{ value: FIR_EXIT_AIRPORT, label: 'FIR 이탈' }} onChange={handleArrivalAirportChange} disabledValue={arrivalPickerLock} align="right" />
           </div>
+          {alternatePicker && <div className="rb-altn-row">{alternatePicker}</div>}
           {(!isIfr || step1MoreOpen || (depChosen && arrChosen)) ? (
             <>
               {isIfr && perfFields}

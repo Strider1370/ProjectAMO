@@ -2100,4 +2100,5 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   grid-column: 1 / -1;
   margin: 0;
 }
-.rb-prep-altn { min-width: 0; width: min(100%, 260px); }
+.rb-altn-row { margin-top: var(--space-s); max-width: 50%; }
+@media (max-width: 767px) { .rb-altn-row { max-width: none; } }
