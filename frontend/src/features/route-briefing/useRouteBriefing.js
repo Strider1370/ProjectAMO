@@ -822,10 +822,24 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     })
   }, [])
 
+  // 공항이 바뀌면 그 공항에 딸린 절차 알약(출발 쪽 SID, 도착 쪽 STAR)은 새 공항에 없다.
+  // 남겨 두면 '그런 지점이 없습니다' 오류로 남는다. 바뀌기 전 공항의 SID·STAR 목록으로 알아보고 지운다.
+  function dropEndpointProcedureToken(end) {
+    const departure = end === 'departure'
+    setRouteTokenTexts((texts) => {
+      const index = departure ? 1 : texts.length - 2
+      const text = texts[index]
+      if (index < 1 || !text) return texts
+      const owned = findProcedureByToken(text, departure ? sidOptions : starOptions)
+      return owned ? texts.filter((_, i) => i !== index) : texts
+    })
+  }
+
   function handleDepartureAirportChange(value) {
     const changes = { departureAirport: value, ...(value === FIR_IN_AIRPORT ? { entryFix: '' } : {}) }
     if (requestContextChange(changes, '출발 공항')) return
     setIapCandidates([])
+    if (value !== routeForm.departureAirport) dropEndpointProcedureToken('departure')
     setEndpointAirportToken('departure', value)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
@@ -834,6 +848,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const changes = { arrivalAirport: value, ...(value === FIR_EXIT_AIRPORT ? { exitFix: '' } : {}) }
     if (requestContextChange(changes, '도착 공항')) return
     setIapCandidates([])
+    if (value !== routeForm.arrivalAirport) dropEndpointProcedureToken('arrival')
     setEndpointAirportToken('arrival', value)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
@@ -842,6 +857,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const changes = { departureAirport: routeForm.arrivalAirport, arrivalAirport: routeForm.departureAirport }
     if (requestContextChange(changes, '출발·도착 공항')) return
     setIapCandidates([])
+    dropEndpointProcedureToken('arrival')
+    dropEndpointProcedureToken('departure')
     setEndpointAirportToken('departure', routeForm.arrivalAirport)
     setEndpointAirportToken('arrival', routeForm.departureAirport)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
