@@ -521,6 +521,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const selectedRouteDesign = routeDesigns.find((design) => design.id === selectedRouteDesignId)
   const selectedAltitudeRow = altitudeComparison?.rows?.find((row) => Number(row.altFt ?? row.altitudeFt) === Number(cruiseAltitudeFt))
   const selectedHazards = selectedAltitudeRow?.hazards ?? []
+  // 고도 비교 서버는 평균 바람 성분을 averageKt로 준다(AltitudeWeatherComparison과 같은 순서로 읽는다).
+  // meanComponentKt만 보면 고도를 비교하고 골라도 늘 '바람 자료 없음'이었다.
+  const cruiseWindKt = selectedAltitudeRow?.wind?.meanComponentKt ?? selectedAltitudeRow?.wind?.averageKt
   // 방향 규칙 밖 고도는 브리핑 준비로 넘어가기 전에 한 번 더 확인받는다(경고 후 같은 버튼 다시 누름).
   const offRuleAltitude = (selectedAltitudeRow?.candidateStatus ?? selectedAltitudeRow?.status) === 'input_invalid'
   const [offRuleConfirmedFt, setOffRuleConfirmedFt] = useState(null)
@@ -599,7 +602,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <div>
           <span className="k">순항고도</span>
           <span className="v">{Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Math.round(Number(cruiseAltitudeFt))} ft`}</span>
-          <span className="s">{selectedAltitudeRow?.wind?.meanComponentKt != null ? `평균 ${windLabel(selectedAltitudeRow.wind.meanComponentKt)}` : '고도 기상 비교 자료 없음'}</span>
+          <span className="s">{Number.isFinite(cruiseWindKt) ? `평균 ${windLabel(cruiseWindKt)}` : '바람 자료 없음'}</span>
         </div>
       </div>
 

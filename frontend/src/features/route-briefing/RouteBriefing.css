@@ -1960,7 +1960,8 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   white-space: nowrap;
 }
 .rb-prep-stats .v .unit { margin-left: 2px; color: var(--text-2); font-size: var(--fs-300); font-weight: var(--fw-semibold); }
-.rb-prep-stats .s { color: var(--text-2); font-size: var(--fs-300); white-space: nowrap; }
+/* 칸 폭이 좁아 긴 보조 문구가 잘렸다 — 줄을 넘겨 다 보이게. */
+.rb-prep-stats .s { color: var(--text-2); font-size: var(--fs-300); line-height: 1.35; overflow-wrap: anywhere; }
 
 .rb-prep-rows { display: flex; flex-direction: column; gap: var(--space-m); }
 .rb-prep-row { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: var(--space-l); align-items: baseline; }
