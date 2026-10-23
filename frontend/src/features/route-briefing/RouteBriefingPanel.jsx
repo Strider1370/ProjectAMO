@@ -88,12 +88,13 @@ const useStyles = makeStyles({
 })
 
 // 목록 선택 Dropdown(타이핑 없음) — value↔표시텍스트↔selectedOptions 처리 한 곳에
-function FDropdown({ value, onChange, options, placeholder = '선택', disabled, className }) {
+function FDropdown({ value, onChange, options, placeholder = '선택', disabled, className, "aria-label": ariaLabel }) {
   const v = String(value ?? '')
   const sel = options.find((o) => String(o.value) === v)
   return (
     <Dropdown
       className={className}
+      aria-label={ariaLabel}
       disabled={disabled}
       value={sel ? sel.label : placeholder}
       selectedOptions={[v]}
@@ -551,6 +552,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   }, [])
   const flightDuration = formatFlightDuration(derived.plannedDistanceNm, tasKt)
   const etdFields = briefingTimeFields(etd, tz)
+  // 교체공항은 IFR·VFR 모두 브리핑 준비 단계에서 고른다(출발·도착 공항은 뺀다).
+  const alternateOptions = [{ value: '', label: '선택 안 함' }, ...KNOWN_AIRPORTS
+    .filter((ap) => ap !== routeForm.departureAirport && ap !== routeForm.arrivalAirport)
+    .map((ap) => ({ value: ap, label: AIRPORT_KO[ap] ? `${ap} ${AIRPORT_KO[ap]}` : ap }))]
   const briefingPreparation = (
     <section className="rb-briefing-preparation" aria-label="브리핑 준비 요약">
       <h3>브리핑 준비</h3>
@@ -602,7 +607,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <div className="rb-prep-row">
           <span className="k">교체공항</span>
           <span>
-            <span className="v">{alternateAirport || '선택 안 함'}</span>
+            <FDropdown className="rb-prep-altn" aria-label="교체공항" value={alternateAirport} onChange={setAlternateAirport} placeholder="선택 안 함"
+              options={alternateOptions} />
           </span>
         </div>
         <div className="rb-prep-row">
@@ -783,10 +789,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const briefingCondSection = (
     <div className={s.section}>
       <h3 className={s.sectionTitle}>{`${condNo} 브리핑 조건`}</h3>
-      <Field label="교체 공항">
-        <FDropdown className={s.ctrl} value={alternateAirport} onChange={setAlternateAirport} placeholder="-- 없음 --"
-          options={[{ value: '', label: '-- 없음 --' }, ...KNOWN_AIRPORTS.filter((ap) => ap !== routeForm.departureAirport && ap !== routeForm.arrivalAirport).map((ap) => ({ value: ap, label: ap }))]} />
-      </Field>
       {perfFields}
     </div>
   )
