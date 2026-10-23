@@ -15,7 +15,7 @@ import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.j
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import RouteImportChooser from './RouteImportChooser.jsx'
 import { buildRouteAviationLayerChips } from '../map/layerActions.js'
-import { Folder, Undo2, X } from 'lucide-react'
+import { Folder, Undo2, X, RotateCcw } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import AirportPickerField from '../../shared/ui/AirportPickerField.jsx'
@@ -821,6 +821,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             <h3 className={s.sectionTitle}>{'② 경로'}</h3>
             <div style={{ display: 'flex', gap: 'var(--space-xs, 6px)' }}>
               {importButton}
+              <Button appearance="secondary" size="small" type="button" icon={<RotateCcw size={14} />} onClick={armOrReset} disabled={routeLoading}>{resetArmed ? '초기화 확인' : '초기화'}</Button>
             </div>
           </div>
           <div className={s.routeRow}>
