@@ -67,7 +67,7 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
         {tasKt ? ` · TAS ${tasKt}kt` : ''}
         {` · ${tz}`}
       </p>
-      <div className="mb-callout-wrap" onMouseEnter={() => setHolding(true)} onMouseLeave={() => setHolding(false)}
+      <div className={`mb-callout-wrap${count > 1 ? ' has-steps' : ''}`} onMouseEnter={() => setHolding(true)} onMouseLeave={() => setHolding(false)}
         onFocus={(event) => { if (event.target.matches?.(':focus-visible')) setHolding(true) }} onBlur={() => setHolding(false)}>
         <button type="button" className={`mb-callout is-${callout.tone}`} onClick={callout.item ? () => onSelectSummary?.(callout.item) : undefined} disabled={!callout.item}
           aria-label={count > 1 ? `위험 ${current + 1}/${count}: ${callout.title}, ${callout.detail}` : undefined}>
@@ -77,7 +77,8 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
           </span>
         </button>
         {count > 1 && (
-          // 진행 막대: 위험 하나에 한 칸. 지금 칸이 다 차면 다음으로 넘어간다(누르면 그 위험으로). 멈추면 막대도 멈춘다.
+          // 진행 막대: 칸 안 아래쪽 가는 줄, 위험 하나에 한 칸. 지금 칸이 다 차면 다음으로(누르면 그 위험으로). 멈춤은 칸 오른쪽 위.
+          <>
           <div className={`mb-callout-steps${paused || holding ? ' is-held' : ''}`} role="group" aria-label="경로상 위험 넘기기" style={{ '--mb-rotate': `${ROTATE_MS}ms` }}>
             {callouts.map((line, i) => (
               <button key={i} type="button" className={i < current ? 'is-done' : i === current ? 'is-active' : undefined}
@@ -86,11 +87,12 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
                   key={i === current ? `run-${index}` : 'idle'} data-auto={auto ? 'on' : 'off'} />
               </button>
             ))}
-            <button type="button" className="mb-callout-pause" onClick={() => setPaused((p) => !p)} aria-pressed={paused}
-              aria-label={paused ? '자동 넘김 다시 시작' : '자동 넘김 멈추기'} title={paused ? '자동 넘김 다시 시작' : '자동 넘김 멈추기'}>
-              {paused ? <Play size={11} aria-hidden="true" /> : <Pause size={11} aria-hidden="true" />}
-            </button>
           </div>
+          <button type="button" className="mb-callout-pause" onClick={() => setPaused((p) => !p)} aria-pressed={paused}
+            aria-label={paused ? '자동 넘김 다시 시작' : '자동 넘김 멈추기'} title={paused ? '자동 넘김 다시 시작' : '자동 넘김 멈추기'}>
+            {paused ? <Play size={11} aria-hidden="true" /> : <Pause size={11} aria-hidden="true" />}
+          </button>
+          </>
         )}
       </div>
       <div className="mb-panel-actions">

@@ -35,19 +35,22 @@
 .mb-callout-slide.is-in { animation: mb-callout-in 0.38s cubic-bezier(0.2, 0, 0, 1) both; }
 @keyframes mb-callout-out { to { transform: translateY(-110%); } }
 @keyframes mb-callout-in { from { transform: translateY(110%); } }
-.mb-callout-steps { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
-.mb-callout-steps > button:not(.mb-callout-pause) { flex: 1; padding: 5px 0; border: 0; background: transparent; cursor: pointer; }
-.mb-callout-steps i { display: block; position: relative; height: 3px; overflow: hidden; border-radius: 999px; background: var(--stroke-1); }
+.mb-callout-wrap { position: relative; }
+/* 여러 개일 때: 칸 아래 안쪽에 가는 진행 줄(2px), 오른쪽 위에 멈춤 — 칸 밖에 줄을 따로 두지 않는다. */
+.mb-callout-wrap.has-steps .mb-callout { padding-right: 30px; padding-bottom: 14px; }
+.mb-callout-steps { position: absolute; left: var(--space-m); right: var(--space-m); bottom: 2px; display: flex; gap: 3px; }
+.mb-callout-steps > button { flex: 1; padding: 4px 0; border: 0; background: transparent; cursor: pointer; }
+.mb-callout-steps i { display: block; position: relative; height: 2px; overflow: hidden; border-radius: 999px; background: rgba(15, 23, 42, 0.12); }
 .mb-callout-steps i::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--level-amber); transform: scaleX(0); transform-origin: left; }
 .mb-callout-steps i.is-sev::after { background: var(--level-red); }
-.mb-callout-steps .is-done i::after { transform: scaleX(1); opacity: 0.45; }
+.mb-callout-steps .is-done i::after { transform: scaleX(1); opacity: 0.4; }
 .mb-callout-steps .is-active i::after { transform: scaleX(1); }
 .mb-callout-steps .is-active i[data-auto="on"]::after { animation: mb-callout-fill var(--mb-rotate) linear; }
 .mb-callout-steps.is-held .is-active i::after { animation-play-state: paused; }
-.mb-callout-steps > button:hover i { background: var(--stroke-2); }
+.mb-callout-steps > button:hover i { background: rgba(15, 23, 42, 0.24); }
 @keyframes mb-callout-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.mb-callout-pause { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 2px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; }
-.mb-callout-pause:hover { background: var(--bg-3); color: var(--text-1); }
+.mb-callout-pause { position: absolute; top: 6px; right: 6px; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; }
+.mb-callout-pause:hover { background: rgba(15, 23, 42, 0.08); color: var(--text-1); }
 @media (prefers-reduced-motion: reduce) { .mb-callout-slide, .mb-callout { animation: none; transition: none; } }
 .mb-callout { display: flex; align-items: center; gap: var(--space-s); width: 100%; min-height: 58px; margin: 0; overflow: hidden; transition: background-color 0.42s cubic-bezier(0.2, 0, 0, 1); padding: var(--space-s) var(--space-m); border: 0; border-radius: var(--radius-md); text-align: left; font: inherit; cursor: pointer; }
 .mb-callout:disabled { cursor: default; }
