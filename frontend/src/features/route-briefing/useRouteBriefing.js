@@ -907,7 +907,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // 바로 아래에서 직접 적용하므로, 토큰 변화를 보고 도는 실시간 적용은 건너뛰게 표시한다.
     // 표시하지 않으면 같은 경로를 두 번 계산해 서버를 두 번 부른다.
     lastAppliedTokenTextRef.current = enroute.join(' ')
-    applyRouteDraft()
+    applyRouteDraft(undefined, { fitRoute: true })
   }, [autoApplyPending, autoRecommendRequested, routeLoading, routeEditor])
 
   function updateRouteDraftText(value) {
@@ -1527,7 +1527,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 이 함수가 매 렌더 새로 만들어져 경로 계산이 끝없이 다시 돈다.
   applyRouteDraftRef.current = applyRouteDraft
 
-  async function applyRouteDraft(text = routeDraftText) {
+  // fitRoute: 자동 생성처럼 경로가 한꺼번에 생길 때만 지도를 그 경로 전체에 맞춘다. 알약을 하나씩
+  // 칠 때마다 지도가 움직이면 읽을 수 없으므로 기본은 옮기지 않는다.
+  async function applyRouteDraft(text = routeDraftText, { fitRoute = false } = {}) {
     const routeText = typeof text === 'string' ? text : routeDraftText
     // 오류가 있으면 지도용 경로를 갱신하지 않는다 — 마지막으로 성립했던 경로가 남는다.
     // "빨간 게 있으면 지도는 내 최신 입력이 아니다"가 이 화면의 한 줄 규칙이다(스펙 결정 5).
@@ -1573,6 +1575,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       })
       applyBaseRoute(base)
       setEtaState(nextEta)
+      // 확정 직전 미리보기 선에 맞춘 시점은 해외 목적지에서 출발 절차 부분만 담아 출발 공항으로 확대됐다.
+      if (fitRoute && routeGeometry?.coordinates?.length > 0) {
+        setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: routeGeometry.coordinates, maxZoom: 8 })
+      }
       return true
     } catch (error) {
       if (requestId === routeSearchRequestRef.current) setRouteError(error.message)
