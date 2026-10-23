@@ -255,6 +255,9 @@ test.describe('route-token-input', () => {
 
     // 우회안을 만들면 항로 문자열 편집칸이 뜬다.
     await page.getByRole('button', { name: /우회안 만들기/ }).click()
+    // 모바일은 우회안을 만들면 시트를 내려 지도를 보여 준다(터치로 선을 끌어 고치는 흐름, 103e7774).
+    // 글자로 고치려면 시트를 다시 올린다.
+    if (testInfo.project.name === 'mobile') await page.locator('.mobile-sheet-peek').click()
     const editor = page.locator('.rtf-box')
     await expect(editor).toHaveCount(1)
     await expect(page.getByText('항로 문자열 직접 편집', { exact: true })).toBeVisible()

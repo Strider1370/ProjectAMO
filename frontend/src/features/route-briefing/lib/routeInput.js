@@ -59,13 +59,17 @@ export function placeEndpoint(texts, end, icao, { isAirport, current = {}, owned
 }
 
 /**
- * IFR 경로에서 양 끝이 아닌 자리에 놓인 공항 알약을 오류로 바꾼다. 그대로 두면 경로 계산이
+ * IFR 경로에서 첫 공항과 마지막 공항 사이에 낀 공항 알약을 오류로 바꾼다. 그대로 두면 경로 계산이
  * 공항을 조용히 건너뛰어, 도착지를 바꾸려고 친 공항이 아무 일도 안 일으킨 것처럼 보인다.
+ * 도착 공항 뒤에 지점을 친 경우(모바일은 커서가 맨 끝에 있다)는 오류가 아니다 — 뒤에 공항이 또 있을 때만 낀 것이다.
  */
 export function flagMisplacedAirports(tokens, flightRule) {
   if (flightRule === 'VFR') return tokens
+  const airportIndexes = tokens.flatMap((token, index) => (token?.kind === TOKEN_KINDS.AIRPORT ? [index] : []))
+  const first = airportIndexes[0]
+  const last = airportIndexes.at(-1)
   return tokens.map((token, index) => (
-    token?.kind === TOKEN_KINDS.AIRPORT && index > 0 && index < tokens.length - 1
+    token?.kind === TOKEN_KINDS.AIRPORT && index !== first && index !== last
       ? { ...token, kind: TOKEN_KINDS.ERROR, reason: `${token.text} — 공항은 경로 양 끝에만 둘 수 있습니다. 도착 공항은 위 도착 칸에서 바꾸세요` }
       : token
   ))

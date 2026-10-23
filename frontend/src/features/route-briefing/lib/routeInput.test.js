@@ -76,3 +76,12 @@ test('an airport in the middle of an IFR route is an error; VFR may pass over ai
   assert.equal(flagged[3].kind, TOKEN_KINDS.AIRPORT)
   assert.equal(flagMisplacedAirports(tokens, 'VFR'), tokens)
 })
+
+test('a fix typed after the arrival airport does not make the arrival an error', () => {
+  const tokens = [
+    { kind: TOKEN_KINDS.AIRPORT, text: 'RKSS' },
+    { kind: TOKEN_KINDS.AIRPORT, text: 'RKPK' },
+    { kind: TOKEN_KINDS.FIX, text: 'SEL' },
+  ]
+  assert.deepEqual(flagMisplacedAirports(tokens, 'IFR'), tokens)
+})

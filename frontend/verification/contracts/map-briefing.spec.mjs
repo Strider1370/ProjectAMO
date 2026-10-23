@@ -78,6 +78,33 @@ test.describe('map-briefing', () => {
     await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
   })
 
+  // 지도형↔문서형 전환, 브리핑 종료 뒤에도 경로가 패널·독에 가리지 않은 지도 영역 안에 다시 맞춰져야 한다.
+  // (2026-10-24: 문서형→지도형은 경로 절반이 독 밑에, 브리핑 종료는 경로 전체가 입력 패널 밑에 숨었다.)
+  test('keeps the route in the uncovered map after switching views and closing the briefing', async ({ page }) => {
+    await createBriefing(page, { view: 'map' })
+    const routeShare = () => page.evaluate(() => {
+      const map = window.__map
+      const line = map.getSource('briefing-route-applied')?._data
+      const coords = (line?.features ?? [line]).flatMap((f) => (f?.geometry?.type === 'LineString' ? f.geometry.coordinates : []))
+      if (!map.isMoving() && coords.length === 0) return 0
+      const box = map.getContainer().getBoundingClientRect()
+      let { left, right, bottom } = box
+      const top = box.top
+      const leftPanel = document.querySelector('.route-check-panel, .mb-panel'); if (leftPanel) left = Math.max(left, leftPanel.getBoundingClientRect().right)
+      const rightPanel = document.querySelector('.briefing-view'); if (rightPanel) right = Math.min(right, rightPanel.getBoundingClientRect().left)
+      const dock = document.querySelector('.mb-dock'); if (dock) bottom = Math.min(bottom, dock.getBoundingClientRect().top)
+      const inside = coords.map((c) => map.project(c)).filter((p) => p.x + box.left >= left && p.x + box.left <= right && p.y + box.top >= top && p.y + box.top <= bottom)
+      return map.isMoving() ? -1 : inside.length / coords.length
+    })
+    await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
+    await page.getByRole('button', { name: '문서형 보기' }).click()
+    await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
+    await page.getByRole('button', { name: '지도형 보기' }).click()
+    await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
+    await page.getByRole('button', { name: /브리핑 종료/ }).click()
+    await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
+  })
+
   test('folds the ribbon and the profile separately and remembers it', async ({ page }) => {
     await createBriefing(page, { view: 'map' })
     await page.getByRole('button', { name: '연직단면도 접기', exact: true }).click()

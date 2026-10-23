@@ -1997,7 +1997,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     if (!inputs.ok) { await loadSavedRoute(saved); return null }
     const resetVersion = routeResetVersionRef.current
     await applySavedRouteState(inputs, resetVersion)
-    return resetVersion === routeResetVersionRef.current ? inputs : null
+    if (resetVersion !== routeResetVersionRef.current) return null
+    // 불러온 경로로 지도를 옮긴다. 안 옮기면 지도가 다른 곳을 보고 있을 때 불러와도 화면에 안 보인다.
+    setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
+    return inputs
   }
 
   // 경로를 통째로 얹을 때 채워야 할 주인은 셋이다 — 공항(routeForm)·절차(procedures)·

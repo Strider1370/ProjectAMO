@@ -902,12 +902,17 @@ const MapView = forwardRef(function MapView({
     }
   }
 
-  // When a briefing is shown, center the route in the visible LEFT map (panel on right).
-  // Use the route coordinates directly — don't wait for the on-demand vertical profile.
-  // Wait for the lazy briefing panel to mount before reading its width for map padding.
+  // 브리핑을 열 때, 지도형↔문서형을 바꿀 때, 브리핑을 닫고 경로 입력으로 돌아올 때마다 경로를
+  // 그 화면에서 가리지 않는 자리에 다시 맞춘다. 바꾼 화면의 패널·독이 붙은 뒤에 재야 그 폭만큼
+  // 비켜 맞출 수 있다 — 붙기 전에 재면 옛 화면 기준으로 맞춰 경로가 독이나 입력 패널 밑에 숨는다.
+  // 단면도 프로파일을 기다리지 않고 경로 좌표를 바로 쓴다.
+  const hadBriefingRef = useRef(false)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isStyleReady || !routeBriefing.state.briefing) return undefined
+    const hasBriefing = Boolean(routeBriefing.state.briefing)
+    const closing = hadBriefingRef.current && !hasBriefing
+    hadBriefingRef.current = hasBriefing
+    if (!map || !isStyleReady || (!hasBriefing && !closing)) return undefined
     const st = routeBriefing.state
     // VFR은 모든 경유점을 포함해 fit(경유점이 dep→arr 직선 밖으로 멀리 나가도 다 보이게).
     // IFR은 fitBoundsRequest가 이미 전체 항로 경로를 담고 있음. fitBounds가 필요만큼 축소/확대.
@@ -916,20 +921,29 @@ const MapView = forwardRef(function MapView({
       : (fitBoundsRequest?.coordinates ?? [])
     ).filter((c) => Number.isFinite(c?.[0]) && Number.isFinite(c?.[1]))
     if (coords.length === 0) return undefined
-    const fitForBriefingPanel = () => {
-      if (!map.getContainer().ownerDocument.querySelector('.briefing-view, .mb-dock')) return false
+    // 모바일은 브리핑도 시트 안에 뜬다 — 시트가 다시 붙은 뒤에 맞춘다.
+    const target = isMobile ? '.mobile-sheet' : !hasBriefing ? '.route-check-panel' : mapBriefingActive ? '.mb-dock' : '.briefing-view'
+    // 모바일 시트는 단계가 바뀔 때 높이가 0.25초 동안 변한다(MobileSheet.css). 변하는 도중에
+    // 재면 다 펼친 시트 높이로 비켜 맞춰져 경로가 시트 밑에 숨으므로, 시트가 멈춘 뒤에 맞춘다.
+    let settleTimer = null
+    const fit = () => {
       setShowKoreaHome(true)
       map.fitBounds(boundsFromCoords(coords), { padding: fitPaddingFor(60), maxZoom: 8, duration: 600 })
+    }
+    const fitForView = () => {
+      const doc = map.getContainer().ownerDocument
+      if (!doc.querySelector(target)) return false
+      if (doc.querySelector('.mobile-sheet')) settleTimer = setTimeout(fit, 350)
+      else fit()
       return true
     }
-    if (fitForBriefingPanel()) return undefined
     const observer = new MutationObserver(() => {
-      if (fitForBriefingPanel()) observer.disconnect()
+      if (fitForView()) observer.disconnect()
     })
-    observer.observe(map.getContainer().ownerDocument.body, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    if (!fitForView()) observer.observe(map.getContainer().ownerDocument.body, { childList: true, subtree: true })
+    return () => { observer.disconnect(); clearTimeout(settleTimer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeBriefing.state.briefing, isStyleReady])
+  }, [routeBriefing.state.briefing, mapBriefingActive, isMobile, isStyleReady])
 
   const { warnedAirports, warningLabels } = useAirportWarningOverlay({
     mapRef, isStyleReady, styleRevision, airports, warningData,
