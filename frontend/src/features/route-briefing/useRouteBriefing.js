@@ -554,6 +554,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenEndpointAirports, routeForm.departureAirport, routeForm.arrivalAirport])
 
+  // 교체공항이 출발·도착과 같아지면 지운다. 목록에서 빠진 값이 칸에 '선택'으로 보이면서
+  // 브리핑에는 그대로 실려 가는 일이 생긴다.
+  useEffect(() => {
+    if (alternateAirport && (alternateAirport === routeForm.departureAirport || alternateAirport === routeForm.arrivalAirport)) {
+      setAlternateAirport('')
+    }
+  }, [alternateAirport, routeForm.departureAirport, routeForm.arrivalAirport])
+
   // 절차 토큰 → 선택기. 절차를 치면 위쪽 SID/STAR 칸도 그 절차를 보여야 한다.
   // 값이 같으면 멈추므로 선택기로 고른 경우와 서로 밀고 당기지 않는다.
   const procedureTokenTexts = useMemo(() => routeTokens
@@ -677,9 +685,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     lastSyncedRawTextRef.current = text
     if (text === enrouteTokenText) return
     const parts = text.split(/\s+/)
-    setRouteTokenTexts(routeForm.flightRule === 'VFR'
-      ? parts
-      : [routeForm.departureAirport, ...parts, routeForm.arrivalAirport].filter(Boolean))
+    // IFR 문자열에는 절차가 없다. 알약에 있던 SID·STAR를 제자리(공항 바로 옆)에 다시 끼운다 —
+    // 빼먹으면 STAR 알약 하나를 지웠는데 손대지 않은 SID 알약까지 사라졌다.
+    setRouteTokenTexts((texts) => {
+      if (routeForm.flightRule === 'VFR') return parts
+      const sid = texts.find((value) => findProcedureByToken(value, sidOptions))
+      const star = texts.find((value) => findProcedureByToken(value, starOptions))
+      return [routeForm.departureAirport, sid, ...parts, star, routeForm.arrivalAirport].filter(Boolean)
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeDraftText])
 
@@ -1008,6 +1021,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setAvailableSidIds(null)
     setAutoRecommendRequested(false)
     setPendingContextChange(null)
+    setAlternateAirport('')
     setHoveredWpInfo(null)
     setImportCandidates([])
     setImportNotices([])
