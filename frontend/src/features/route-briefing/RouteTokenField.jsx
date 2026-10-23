@@ -10,6 +10,7 @@ import './RouteTokenField.css'
 // 지도도, 서버도 모른다.
 export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false, hint = null }) {
   const inputRef = useRef(null)
+  const boxRef = useRef(null)
   const [draft, setDraft] = useState('')
   // 입력칸이 놓인 자리. tokens.length면 맨 끝이다.
   const [caret, setCaret] = useState(tokens.length)
@@ -31,6 +32,18 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
     const lastIsAirport = tokens.length > 1 && tokens.at(-1)?.kind === TOKEN_KINDS.AIRPORT
     setCaret(lastIsAirport ? tokens.length - 1 : tokens.length)
   }, [tokens])
+
+  // 칸은 높이가 정해져 있고 넘치면 칸 안에서 스크롤된다(RouteTokenField.css). 알약을 치거나 지우면
+  // 입력 커서가 있는 줄이 보이도록 칸 안에서만 따라간다 — scrollIntoView는 바깥 패널까지 움직인다.
+  useEffect(() => {
+    const box = boxRef.current
+    const input = inputRef.current
+    if (!box || !input) return
+    const top = input.offsetTop
+    const bottom = top + input.offsetHeight
+    if (top < box.scrollTop) box.scrollTop = top - 6
+    else if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = bottom - box.clientHeight + 6
+  }, [caret, tokens])
 
   const commit = (value) => {
     const trimmed = value.trim()
@@ -124,7 +137,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
           {hint && <span className="rtf-hint">{hint}</span>}
         </span>
       )}
-      <div className="rtf-box" onMouseDown={moveCaret(tokens.length)}>
+      <div ref={boxRef} className="rtf-box" onMouseDown={moveCaret(tokens.length)}>
         {tokens.slice(0, at).map(renderPill)}
         {/* 알약 사이에 커서가 있고 아직 아무것도 치지 않았을 때만 세로선을 보인다.
             치기 시작하면 글자 자체가 자리를 알리므로 선은 사라진다. */}

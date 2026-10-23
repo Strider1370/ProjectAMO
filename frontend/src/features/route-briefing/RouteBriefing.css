@@ -2042,7 +2042,7 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   cursor: pointer;
 }
 /* 숫자가 바뀔 때 자리가 흔들리지 않도록 고정폭 숫자를 쓴다. */
-.rtf-status-right { font-variant-numeric: tabular-nums; }
+.rtf-status-right { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .rtf-error-list {
   margin: 6px 0 0;
   padding: 8px 10px 8px 24px;

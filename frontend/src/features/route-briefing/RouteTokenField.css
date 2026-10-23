@@ -12,6 +12,12 @@
   align-items: center;
   gap: 4px;
   min-height: 44px; /* iPad 터치 타깃 */
+  /* 긴 경로도 알약 네 줄 높이에서 멈추고 칸 안에서 스크롤한다 — 칸이 계속 커지면 패널이 늘어나
+     아래 시각·속도 입력이 밀려난다. position은 커서 줄을 따라가는 계산(offsetTop)의 기준이다. */
+  max-height: 140px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: relative;
   padding: 6px 8px;
   border: 1px solid var(--stroke-1);
   border-radius: 8px;

@@ -61,7 +61,8 @@ const useStyles = makeStyles({
   fieldFull: { gridColumn: '1 / -1', minWidth: 0 },
   // ⇄ 교환 버튼은 가운데 전용 칸(auto). 출발/도착은 좌우 대칭. (1fr 1fr로 키우면 ⇄ 자리가 없어 겹침)
   routeRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: tokens.spacingHorizontalS, alignItems: 'end' },
-  altnCell: { gridColumn: '3', minWidth: 0 },
+  altnCell: { gridColumn: '3', gridRow: '2', minWidth: 0 },
+  layerCell: { gridColumn: '1', gridRow: '2', minWidth: 0, alignSelf: 'center', display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS },
   swapBtn: { minWidth: '32px', marginBottom: tokens.spacingVerticalXS },
   actions: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: tokens.spacingHorizontalS },
   draftActions: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
@@ -327,7 +328,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             ? '출발공항 없음 — 절차·공항 기상은 표시되지 않습니다'
             : '')}
         </span>
-        <span className="rtf-status-right">{routeSummaryText}</span>
+        <span className="rtf-status-right">
+          {routeSummaryText}
+          {/* 되돌리기는 거리·도착시각 줄 끝에 작게 — 따로 한 줄을 차지하면 경로칸 아래가 너무 길어진다. */}
+          {!isMobile && <Button size="small" appearance="subtle" type="button" icon={<Undo2 size={14} />} onClick={undoBaseRoute} disabled={!canUndoBase}>되돌리기</Button>}
+        </span>
       </div>
       {errorsOpen && routeTokenErrors.length > 0 && (
         <ul className="rtf-error-list">
@@ -809,11 +814,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           감싸는 겹을 더하지 않으므로 폭·스크롤 구조는 그대로다. */}
       {workflowStep === 'settings' && <form className={s.form} data-step-dir={stepMotion} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
         <div className={s.section}>
-          <h3 className={s.sectionTitle}>{'① 비행 규칙'}</h3>
-          <TabList selectedValue={routeForm.flightRule} onTabSelect={(_, d) => switchFlightRule(d.value)}>
-            <Tab value="IFR">IFR</Tab>
-            <Tab value="VFR">VFR</Tab>
-          </TabList>
+          <div className={s.sectionHead}>
+            <h3 className={s.sectionTitle}>{'① 비행 규칙'}</h3>
+            <TabList size="small" selectedValue={routeForm.flightRule} onTabSelect={(_, d) => switchFlightRule(d.value)}>
+              <Tab value="IFR">IFR</Tab>
+              <Tab value="VFR">VFR</Tab>
+            </TabList>
+          </div>
         </div>
 
         <div className={s.section}>
@@ -830,7 +837,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               disabled={routeForm.departureAirport === FIR_IN_AIRPORT || routeForm.arrivalAirport === FIR_EXIT_AIRPORT}
               onClick={swapAirports}>⇄</Button>
             {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', arrivalPickerLock, 'right')}
-            {/* 교체는 도착 칸 바로 아래, 같은 열이라 폭도 도착과 같다. */}
+            {/* 출발 칸 아래 빈자리: 경로 입력에 쓰는 지도 레이어. 교체는 도착 칸 바로 아래, 같은 열이라 폭도 도착과 같다. */}
+            {onToggleAviation && <div className={s.layerCell}><span className={s.toolLabel}>지도 레이어</span><LayerToggleChips items={aviationLayerChips} ariaLabel="경로 입력 지도 레이어" /></div>}
             {alternatePicker && <div className={`${s.altnCell} rb-altn-cell`}>{alternatePicker}</div>}
           </div>
           {isIfr && (
@@ -849,9 +857,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               적용과 별개 기능이라 그대로 남는다. */}
           <div className={s.fieldFull}>
               {routeTokenField}
-              <div className={s.draftActions}>
-                <Button appearance="secondary" type="button" icon={<Undo2 size={16} />} onClick={undoBaseRoute} disabled={!canUndoBase}>되돌리기</Button>
-              </div>
               {pendingRouteEdit && !pendingRouteEdit.mapCoordinates && <div className="rb-route-edit-confirm" role="status"><span>{pendingRouteEdit.message}</span><div><Button size="small" appearance="primary" type="button" onClick={() => applyRouteDraft(pendingRouteEdit.text)}>적용</Button><Button size="small" appearance="secondary" type="button" onClick={cancelPendingRouteEdit}>취소</Button></div></div>}
           </div>
         </div>
@@ -868,7 +873,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             </div>
           </div>
         )}
-        {onToggleAviation && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-s)', flexWrap: 'wrap', marginBottom: 'var(--space-s)' }}><span>지도 레이어</span><LayerToggleChips items={aviationLayerChips} ariaLabel="경로 입력 지도 레이어" /></div>}
         {pendingContextChange && <div className="rb-route-edit-confirm" role="alert"><span>적용된 기본 경로와 대체 경로를 지우고 {pendingContextChange.label}을 바꿀까요?</span><div><Button size="small" appearance="primary" type="button" onClick={confirmContextChange}>계속</Button><Button size="small" appearance="secondary" type="button" onClick={() => setPendingContextChange(null)}>취소</Button></div></div>}
         {isIfr && <div className={s.section}><h3 className={s.sectionTitle}>{'③ 출발 시각·속도'}</h3>{perfFields}</div>}
 
