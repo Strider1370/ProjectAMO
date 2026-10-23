@@ -43,14 +43,17 @@ const NONE_OPTION = { value: '', label: '-- 없음 --' }
 
 // 데스크톱 폼 레이아웃 — 커스텀 .css 대신 Fluent griffel + 토큰
 const useStyles = makeStyles({
-  form: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL} ${tokens.spacingVerticalXXL}` },
+  form: {
+    display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL} ${tokens.spacingVerticalXXL}`,
+    // 칸 이름은 단계 제목(sectionTitle)보다 한 단계 작고 흐리게 — 제목이 먼저 읽히도록.
+    '& .fui-Field__label, & .rtf-label': { fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground2 },
+  },
   section: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   sectionTitle: {
     margin: 0,
-    fontSize: tokens.fontSizeBase200,
+    fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground3,
-    letterSpacing: '0.04em',
+    color: tokens.colorNeutralForeground1,
   },
   grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: tokens.spacingHorizontalM, alignItems: 'end' },
   sectionHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: tokens.spacingHorizontalS },
@@ -64,7 +67,7 @@ const useStyles = makeStyles({
   draftActions: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
   draftApply: { flexGrow: 1 },
   toolSection: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
-  toolLabel: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
+  toolLabel: { color: tokens.colorNeutralForeground2, fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
   performance: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'start' },
   etaReset: { alignSelf: 'end' },
   // DatePicker/TimePicker 내부 Combobox 기본 min-width(250px)를 눌러 좁은 패널에서 한 줄에 맞춤
@@ -866,7 +869,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         )}
         {onToggleAviation && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-s)', flexWrap: 'wrap', marginBottom: 'var(--space-s)' }}><span>지도 레이어</span><LayerToggleChips items={aviationLayerChips} ariaLabel="경로 입력 지도 레이어" /></div>}
         {pendingContextChange && <div className="rb-route-edit-confirm" role="alert"><span>적용된 기본 경로와 대체 경로를 지우고 {pendingContextChange.label}을(를) 바꿀까요?</span><div><Button size="small" appearance="primary" type="button" onClick={confirmContextChange}>계속</Button><Button size="small" appearance="secondary" type="button" onClick={() => setPendingContextChange(null)}>취소</Button></div></div>}
-        {isIfr && <div className={s.section}>{perfFields}</div>}
+        {isIfr && <div className={s.section}><h3 className={s.sectionTitle}>{'③ 출발 시각·속도'}</h3>{perfFields}</div>}
 
         {importFeedback}
         {errorBlock}
