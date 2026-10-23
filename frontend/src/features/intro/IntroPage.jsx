@@ -377,8 +377,8 @@ export default function IntroPage() {
         <section className="band hero" id="top" aria-labelledby="intro-title">
           <div className="wrap hero-grid">
             <div className="hero-copy">
-            <h1 id="intro-title" className="hero-anim">항공기상, 지도 한&nbsp;장으로 확인하세요</h1>
-            <p className="lede hero-anim" style={{ animationDelay: '.09s' }}>레이더와 위성, 수치예보부터 METAR, TAF, SIGMET까지 비행 전에 필요한 기상정보를 한 화면에서 보고, 경로별 브리핑까지 받을 수 있어요.</p>
+            <h1 id="intro-title" className="hero-anim">비행에 필요한 기상을 한&nbsp;화면에</h1>
+            <p className="lede hero-anim" style={{ animationDelay: '.09s' }}>경로를 고르면 레이더와 위성 위에 경로가 그려지고, 그 경로에 걸리는 난류·착빙·대류와 SIGMET, 출발·도착·교체 공항의 METAR·TAF, 고도별 연직단면도가 한 화면에 함께 나와요. 여러 사이트와 화면을 오가며 맞춰 볼 필요가 없어요.</p>
             <div className="actions hero-anim" style={{ animationDelay: '.18s' }}>
               <button className="btn btn-primary" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
               <a className="btn btn-line" href="#gis" onClick={(event) => scrollToId(event, 'gis')}>기능 살펴보기</a>
@@ -461,8 +461,8 @@ export default function IntroPage() {
         <section className="band grey pin" id="brief" style={pinStyle('brief')} aria-labelledby="brief-title">
           <div className="wrap feature">
             <div className="copy">
-              <h2 id="brief-title">경로만 입력하면 브리핑이 정리돼요</h2>
-              <p>출발·도착 공항과 교체공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 브리핑은 지도 위에서 열려 내 고도에 걸리는 위험을 차례로 요약하고, 경로를 따라 현상별 위험 구간과 연직단면도, 공항 카드의 METAR·TAF를 함께 보여줘요. 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
+              <h2 id="brief-title">경로 하나에 걸린 기상을 한 화면에서</h2>
+              <p>출발·도착 공항과 교체공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 브리핑을 열면 지도 위 경로, 내 고도에 걸리는 위험 요약, 경로를 따라 이어지는 위험 막대, 연직단면도, 공항 카드가 한 화면에 모여요. 같은 구간을 지도와 막대, 단면도에서 함께 짚어 볼 수 있고, 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
             </div>
             <div className="stage">
               <div className="tabs fit" aria-hidden="true">
