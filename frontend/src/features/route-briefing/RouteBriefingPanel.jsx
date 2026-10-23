@@ -15,7 +15,7 @@ import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.j
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import RouteImportChooser from './RouteImportChooser.jsx'
 import { buildRouteAviationLayerChips } from '../map/layerActions.js'
-import { Folder, Undo2, X, RotateCcw } from 'lucide-react'
+import { Folder, Undo2, X } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import AirportPickerField from '../../shared/ui/AirportPickerField.jsx'
@@ -58,6 +58,7 @@ const useStyles = makeStyles({
   fieldFull: { gridColumn: '1 / -1', minWidth: 0 },
   // ⇄ 교환 버튼은 가운데 전용 칸(auto). 출발/도착은 좌우 대칭. (1fr 1fr로 키우면 ⇄ 자리가 없어 겹침)
   routeRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: tokens.spacingHorizontalS, alignItems: 'end' },
+  altnCell: { gridColumn: '3', minWidth: 0 },
   swapBtn: { minWidth: '32px', marginBottom: tokens.spacingVerticalXS },
   actions: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: tokens.spacingHorizontalS },
   draftActions: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
@@ -65,7 +66,6 @@ const useStyles = makeStyles({
   toolSection: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
   toolLabel: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
   performance: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'start' },
-  etaReadout: { gridColumn: '1 / -1' },
   etaReset: { alignSelf: 'end' },
   // DatePicker/TimePicker 내부 Combobox 기본 min-width(250px)를 눌러 좁은 패널에서 한 줄에 맞춤
   picker: {
@@ -697,7 +697,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           </Field>
         </>
       ) : (
-        <Field label={`추정 도착시각 (${tz})`} className={s.etaReadout}>
+        <Field label={`추정 도착시각 (${tz})`}>
           <Input className={s.ctrl} value={etaDisplay} placeholder="경로 거리·TAS 기준 추정값" readOnly onClick={() => etaIso && setEtaEditing(true)} onFocus={() => etaIso && setEtaEditing(true)} aria-label={`추정 도착시각 (${tz}) 편집`} />
         </Field>
       )}
@@ -818,7 +818,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             <h3 className={s.sectionTitle}>{'② 경로'}</h3>
             <div style={{ display: 'flex', gap: 'var(--space-xs, 6px)' }}>
               {importButton}
-              <Button appearance="secondary" size="small" type="button" icon={<RotateCcw size={14} />} onClick={armOrReset} disabled={routeLoading}>{resetArmed ? '초기화 확인' : '초기화'}</Button>
             </div>
           </div>
           <div className={s.routeRow}>
@@ -827,8 +826,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               disabled={routeForm.departureAirport === FIR_IN_AIRPORT || routeForm.arrivalAirport === FIR_EXIT_AIRPORT}
               onClick={swapAirports}>⇄</Button>
             {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', arrivalPickerLock, 'right')}
+            {/* 교체는 도착 칸 바로 아래, 같은 열이라 폭도 도착과 같다. */}
+            {alternatePicker && <div className={s.altnCell}>{alternatePicker}</div>}
           </div>
-          {alternatePicker && <div className="rb-altn-row">{alternatePicker}</div>}
           {isIfr && (
             <div className={s.grid}>
               <Field className={s.field} label={isFirInMode ? '진입 FIX' : visibleSidOptions.length > 0 ? 'SID' : '진입 FIX'}>{depProcControl}</Field>
@@ -934,7 +934,14 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             <div className="rb-swap"><button type="button" className="rb-swap-btn" onClick={swapAirports} disabled={firOnEitherSide} aria-label="출발 도착 교환">⇅</button></div>
             <AirportPickerField label="도착" value={routeForm.arrivalAirport} options={allAirportOptions} firOption={{ value: FIR_EXIT_AIRPORT, label: 'FIR 이탈' }} onChange={handleArrivalAirportChange} disabledValue={arrivalPickerLock} align="right" />
           </div>
-          {alternatePicker && <div className="rb-altn-row">{alternatePicker}</div>}
+          {/* 교체는 도착 아래 같은 열·같은 폭. 출발·⇅ 자리는 보이지 않는 자리표시로 맞춘다. */}
+          {alternatePicker && (
+            <div className="rb-route rb-altn-row">
+              <div className="apf" aria-hidden="true" />
+              <div className="rb-swap" aria-hidden="true"><button type="button" className="rb-swap-btn" tabIndex={-1} disabled>⇅</button></div>
+              {alternatePicker}
+            </div>
+          )}
           {(!isIfr || step1MoreOpen || (depChosen && arrChosen)) ? (
             <>
               {isIfr && perfFields}

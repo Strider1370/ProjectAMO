@@ -2100,5 +2100,5 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   grid-column: 1 / -1;
   margin: 0;
 }
-.rb-altn-row { margin-top: var(--space-s); max-width: 50%; }
-@media (max-width: 767px) { .rb-altn-row { max-width: none; } }
+/* 모바일: 출발·도착 아래 교체공항. 빈 자리표시는 자리만 차지한다. */
+.rb-mobile .rb-altn-row > [aria-hidden="true"] { visibility: hidden; }
