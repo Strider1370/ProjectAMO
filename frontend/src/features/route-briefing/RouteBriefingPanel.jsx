@@ -10,7 +10,7 @@ import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
 } from './lib/routeBriefingModel.js'
-import { Button, Field, Dropdown, Combobox, Option, Input, SpinButton, TabList, Tab, Badge, MessageBar, MessageBarBody, DatePicker, TimePicker, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem, Divider, Dialog, DialogSurface, DialogTitle, DialogBody, DialogContent, makeStyles, tokens } from '../../shared/ui/fluent.js'
+import { Button, Field, Dropdown, Combobox, Option, Input, SpinButton, Badge, MessageBar, MessageBarBody, DatePicker, TimePicker, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem, Divider, Dialog, DialogSurface, DialogTitle, DialogBody, DialogContent, makeStyles, tokens } from '../../shared/ui/fluent.js'
 import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.js'
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import RouteImportChooser from './RouteImportChooser.jsx'
@@ -44,7 +44,8 @@ const NONE_OPTION = { value: '', label: '-- 없음 --' }
 // 데스크톱 폼 레이아웃 — 커스텀 .css 대신 Fluent griffel + 토큰
 const useStyles = makeStyles({
   form: {
-    display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL} ${tokens.spacingVerticalXXL}`,
+    // 단계(①②③) 사이는 한 칸 넓게 — 좁으면 단계 구분이 안 보이고 한 덩어리로 읽힌다.
+    display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXL, padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL} ${tokens.spacingVerticalXXL}`,
     // 칸 이름은 단계 제목(sectionTitle)보다 한 단계 작고 흐리게 — 제목이 먼저 읽히도록.
     '& .fui-Field__label, & .rtf-label': { fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground2 },
   },
@@ -816,10 +817,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <div className={s.section}>
           <div className={s.sectionHead}>
             <h3 className={s.sectionTitle}>{'① 비행 규칙'}</h3>
-            <TabList size="small" selectedValue={routeForm.flightRule} onTabSelect={(_, d) => switchFlightRule(d.value)}>
-              <Tab value="IFR">IFR</Tab>
-              <Tab value="VFR">VFR</Tab>
-            </TabList>
+            {/* 글자 탭은 무엇이 골라졌는지 잘 안 보였다 — 골라진 쪽을 채운 두 칸 버튼. 역할은 탭 그대로. */}
+            <div className="rb-rule-seg" role="tablist" aria-label="비행 규칙">
+              {['IFR', 'VFR'].map((rule) => (
+                <button key={rule} type="button" role="tab" aria-selected={routeForm.flightRule === rule}
+                  className={routeForm.flightRule === rule ? 'is-active' : ''} onClick={() => switchFlightRule(rule)}>{rule}</button>
+              ))}
+            </div>
           </div>
         </div>
 
