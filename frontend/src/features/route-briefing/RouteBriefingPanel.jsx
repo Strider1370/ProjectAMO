@@ -751,7 +751,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const alternateOptions = allAirportOptions.filter((o) => o.value !== routeForm.departureAirport && o.value !== routeForm.arrivalAirport)
   const alternatePicker = isFirExitMode ? null : (
     <AirportPickerField label={isMobile ? '교체' : '교체 공항'} value={alternateAirport} options={alternateOptions}
-      firOption={{ value: '', label: '선택 안 함' }} onChange={setAlternateAirport} />
+      firOption={{ value: '', label: '선택 안 함' }} onChange={setAlternateAirport} align="right" />
   )
   function renderDesktopAirportSelect(label, value, onChange, firSentinel, firLabel, disabledValue, align) {
     return (
@@ -830,7 +830,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               onClick={swapAirports}>⇄</Button>
             {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', arrivalPickerLock, 'right')}
             {/* 교체는 도착 칸 바로 아래, 같은 열이라 폭도 도착과 같다. */}
-            {alternatePicker && <div className={s.altnCell}>{alternatePicker}</div>}
+            {alternatePicker && <div className={`${s.altnCell} rb-altn-cell`}>{alternatePicker}</div>}
           </div>
           {isIfr && (
             <div className={s.grid}>

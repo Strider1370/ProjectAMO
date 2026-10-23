@@ -2102,3 +2102,13 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 }
 /* 모바일: 출발·도착 아래 교체공항. 빈 자리표시는 자리만 차지한다. */
 .rb-mobile .rb-altn-row > [aria-hidden="true"] { visibility: hidden; }
+/* 교체공항 선택 창: FIR 자리 버튼을 '선택 안 함'으로 쓴다. 공용 선택 창은 그 버튼을 숨기므로
+   여기서만 보이고, 지역 목록 맨 위에 둔다 — 고른 교체공항을 지울 길이 이것뿐이다. */
+.rb-altn-cell .apf-region--fir,
+.rb-altn-row .apf-region--fir {
+  display: block;
+  order: -1;
+  margin-top: 0;
+  border-top: none;
+  border-bottom: 1px solid var(--stroke-1);
+}
