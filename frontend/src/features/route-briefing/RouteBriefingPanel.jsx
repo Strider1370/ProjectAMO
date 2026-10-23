@@ -5,7 +5,7 @@ import { KNOWN_AIRPORTS } from './lib/procedureData.js'
 const WORKFLOW_STEP_ORDER = ['settings', 'compare', 'altitude', 'briefing']
 import { loadOverseasAirports } from './lib/routePlanner.js'
 import { calcVfrDistance } from './lib/routePreview.js'
-import { windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
+import { windLabel } from './lib/routeComparison.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
@@ -520,7 +520,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   )
   const selectedRouteDesign = routeDesigns.find((design) => design.id === selectedRouteDesignId)
   const selectedAltitudeRow = altitudeComparison?.rows?.find((row) => Number(row.altFt ?? row.altitudeFt) === Number(cruiseAltitudeFt))
-  const selectedHazards = selectedAltitudeRow?.hazards ?? []
   // 고도 비교 서버는 평균 바람 성분을 averageKt로 준다(AltitudeWeatherComparison과 같은 순서로 읽는다).
   // meanComponentKt만 보면 고도를 비교하고 골라도 늘 '바람 자료 없음'이었다.
   const cruiseWindKt = selectedAltitudeRow?.wind?.meanComponentKt ?? selectedAltitudeRow?.wind?.averageKt
@@ -532,14 +531,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     if (offRuleAltitude && !offRuleArmed) { setOffRuleConfirmedFt(Number(cruiseAltitudeFt)); return }
     continueToBriefing({ fitRoute: true })
   }
-  // 비교하지 않았거나 자료가 없는 고도를 "위험 없음"으로 읽히게 두지 않는다.
-  const selectedAltitudeHazardText = !selectedAltitudeRow
-    ? '이 고도는 고도 비교에서 확인되지 않음'
-    : selectedAltitudeRow.weatherStatus === 'unavailable'
-      ? '이 고도는 비교 대상이 아니어서 확인되지 않음'
-      : selectedHazards.length
-        ? `주의 기상 ${selectedHazards.map((hazard) => phenomenonLabelKo(hazard.label)).join(' · ')}`
-        : '이 고도에 걸리는 SIGMET·AIRMET 없음'
+  // 브리핑 준비는 고른 경로·조건을 확인하는 단계다. 위험기상은 여기서 알리지 않는다(브리핑 화면의 몫).
   const procedureSummary = [selectedSid?.label, selectedStar?.label, selectedIap?.label].filter(Boolean).join(' · ')
   // 세부경로: routeResult에 legs 키는 없다. 수동 편집 경로는 manualLegs(DCT 포함 전 구간),
   // 자동 계획 경로는 navpointIds + segments(항공로 구간)로 들고 있다. 지점 사슬은
@@ -618,12 +610,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           <span className="k">교체공항</span>
           <span>
             <span className="v">{alternateAirport ? `${alternateAirport}${AIRPORT_KO[alternateAirport] ? ` ${AIRPORT_KO[alternateAirport]}` : ''}` : '선택 안 함'}</span>
-          </span>
-        </div>
-        <div className="rb-prep-row">
-          <span className="k">고도 위험</span>
-          <span>
-            <span className="v">{selectedAltitudeHazardText}</span>
           </span>
         </div>
       </div>
