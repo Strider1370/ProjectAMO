@@ -4,7 +4,7 @@ import { fetchVerticalProfile, fetchCrossSection, fetchNwpTimeRefresh, fetchRout
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavdata, loadNavpoints, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
 import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
-import { buildRouteTokens, flagMisplacedAirports, placeEndpoint, procedureTokenText, readEndpoints } from './lib/routeInput.js'
+import { buildRouteTokens, fieldChangesFromTokens, flagMisplacedAirports, placeEndpoint, procedureTokenText } from './lib/routeInput.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString } from './lib/manualRouteInput.js'
 import { inlineImportedProcedureGeometry } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -538,20 +538,30 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 돌지만 값이 이미 같으므로 아무것도 하지 않는다. 값이 같을 때 멈추는 것이 고리를 끊는다.
   // requestContextChange를 거치지 않는 updateRouteField를 쓴다 — 효과 안에서 확인 창을
   // 띄우면 이용자가 누르지 않은 확인이 뜬다.
-  // 공항 알약이 하나뿐이면 출발인지 도착인지는 지금 칸 값으로 가른다(readEndpoints).
-  const tokenEndpointAirports = useMemo(() => {
-    const airportTexts = new Set(routeTokens.filter((token) => token.kind === TOKEN_KINDS.AIRPORT).map((token) => token.text))
-    return readEndpoints(routeTokens.map((token) => token.text), (value) => airportTexts.has(value), {
-      departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport,
-    })
-  }, [routeTokens, routeForm.departureAirport, routeForm.arrivalAirport])
-
+  // 알약 → 위쪽 칸, 한 방향 한 곳. 무엇을 바꿀지는 lib/routeInput.js의 fieldChangesFromTokens가
+  // 정한다(공항·SID·STAR, "있다가 없어진" 절차 빼기). 여기서는 받은 변경을 적용만 한다.
+  // 값이 이미 같으면 변경이 비어 멈추므로 칸 → 알약 쪽과 서로 밀고 당기지 않는다.
+  // 공항은 updateRouteField로 바꾼다 — 효과 안에서 확인 창을 띄우면 이용자가 누르지 않은 확인이 뜬다.
+  const procedureTokenTexts = useMemo(() => routeTokens
+    .filter((token) => token.kind === TOKEN_KINDS.PROCEDURE)
+    .map((token) => token.text)
+    .join(','), [routeTokens])
+  const previousProcedureTokenTextsRef = useRef('')
   useEffect(() => {
-    const { departure, arrival } = tokenEndpointAirports
-    if (departure && departure !== routeForm.departureAirport) updateRouteField('departureAirport', departure)
-    if (arrival && arrival !== routeForm.arrivalAirport) updateRouteField('arrivalAirport', arrival)
+    const previous = previousProcedureTokenTextsRef.current
+    previousProcedureTokenTextsRef.current = procedureTokenTexts
+    const changes = fieldChangesFromTokens({
+      tokens: routeTokens,
+      previousProcedureTexts: previous ? previous.split(',') : [],
+      current: { departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport, sid: selectedSid, star: selectedStar },
+      sidOptions,
+      starOptions,
+    })
+    for (const [field, value] of Object.entries(changes.airports)) updateRouteField(field, value)
+    if ('sid' in changes) updateEditorContext({ entryFix: changes.sid?.enrouteFix ?? '' }, { procedures: { sid: changes.sid } })
+    if ('star' in changes) updateEditorContext({ exitFix: changes.star?.startFix ?? '' }, { procedures: changes.star ? { star: changes.star } : { star: null, iapKey: null } })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenEndpointAirports, routeForm.departureAirport, routeForm.arrivalAirport])
+  }, [routeTokens, routeForm.departureAirport, routeForm.arrivalAirport, sidOptions, starOptions, selectedSid?.id, selectedStar?.id])
 
   // 교체공항이 출발·도착과 같아지면 지운다. 목록에서 빠진 값이 칸에 '선택'으로 보이면서
   // 브리핑에는 그대로 실려 가는 일이 생긴다.
@@ -560,43 +570,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setAlternateAirport('')
     }
   }, [alternateAirport, routeForm.departureAirport, routeForm.arrivalAirport])
-
-  // 절차 토큰 → 선택기. 절차를 치면 위쪽 SID/STAR 칸도 그 절차를 보여야 한다.
-  // 값이 같으면 멈추므로 선택기로 고른 경우와 서로 밀고 당기지 않는다.
-  const procedureTokenTexts = useMemo(() => routeTokens
-    .filter((token) => token.kind === TOKEN_KINDS.PROCEDURE)
-    .map((token) => token.text)
-    .join(','), [routeTokens])
-
-  // 알약에서 지운 절차는 칸에서도 뺀다. "있다가 없어진" 경우만 본다 — 절차를 고른 직후
-  // 알약이 아직 들어오지 않은 렌더(자동 생성 등)나, 비교안 전환처럼 알약과 상관없이 절차를
-  // 바꾸는 경우에 지우면 안 된다.
-  const previousProcedureTokenTextsRef = useRef('')
-  useEffect(() => {
-    const previous = previousProcedureTokenTextsRef.current ? previousProcedureTokenTextsRef.current.split(',') : []
-    previousProcedureTokenTextsRef.current = procedureTokenTexts
-    const current = procedureTokenTexts ? procedureTokenTexts.split(',') : []
-    const matches = (procedure) => (text) => !!findProcedureByToken(text, [procedure])
-    const removed = (procedure) => !!procedure && previous.some(matches(procedure)) && !current.some(matches(procedure))
-    if (removed(selectedSid)) updateEditorContext({ entryFix: '' }, { procedures: { sid: null } })
-    if (removed(selectedStar)) updateEditorContext({ exitFix: '' }, { procedures: { star: null, iapKey: null } })
-  }, [procedureTokenTexts])
-
-  useEffect(() => {
-    if (!procedureTokenTexts) return
-    for (const text of procedureTokenTexts.split(',')) {
-      const sid = findProcedureByToken(text, sidOptions)
-      if (sid && sid.id !== selectedSid?.id) {
-        updateEditorContext({ entryFix: sid.enrouteFix ?? '' }, { procedures: { sid } })
-        continue
-      }
-      const star = findProcedureByToken(text, starOptions)
-      if (star && star.id !== selectedStar?.id) {
-        updateEditorContext({ exitFix: star.startFix ?? '' }, { procedures: { star } })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [procedureTokenTexts, sidOptions, starOptions, selectedSid?.id, selectedStar?.id])
 
   // 토큰이 확정되면 경로를 만든다. 이것이 「경로 적용」 버튼을 대신하는 방아쇠다 —
   // 버튼만 없애고 이 연결을 빼면 알약은 생기는데 경로는 만들어지지 않는다.

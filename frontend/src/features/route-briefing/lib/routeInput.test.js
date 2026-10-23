@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildRouteTokens, flagMisplacedAirports, placeEndpoint, procedureTokenText, readEndpoints } from './routeInput.js'
+import { buildRouteTokens, fieldChangesFromTokens, flagMisplacedAirports, placeEndpoint, procedureTokenText, readEndpoints } from './routeInput.js'
 import { TOKEN_KINDS } from './routeTokens.js'
 
 const AIRPORTS = ['RKSI', 'RKSS', 'RKPC', 'RKPK']
@@ -84,4 +84,42 @@ test('a fix typed after the arrival airport does not make the arrival an error',
     { kind: TOKEN_KINDS.FIX, text: 'SEL' },
   ]
   assert.deepEqual(flagMisplacedAirports(tokens, 'IFR'), tokens)
+})
+
+const tok = (kind, text) => ({ kind, text })
+const A = (text) => tok(TOKEN_KINDS.AIRPORT, text)
+const P = (text) => tok(TOKEN_KINDS.PROCEDURE, text)
+const F = (text) => tok(TOKEN_KINDS.FIX, text)
+
+test('pills set the airport fields, but an empty end never clears a field', () => {
+  assert.deepEqual(fieldChangesFromTokens({ tokens: [A('RKSI'), F('BOPTA'), A('RKPC')], current: {} }).airports,
+    { departureAirport: 'RKSI', arrivalAirport: 'RKPC' })
+  assert.deepEqual(fieldChangesFromTokens({ tokens: [A('RKSI')], current: { departure: 'RKSI', arrival: 'RKPC' } }).airports, {})
+  // 도착만 고른 상태: 알약 하나가 도착이다 — 출발 칸을 채우지 않는다.
+  assert.deepEqual(fieldChangesFromTokens({ tokens: [A('RKPC')], current: { arrival: 'RKPC' } }).airports, {})
+})
+
+test('a typed procedure pill selects it; an unchanged field is left alone', () => {
+  const changes = fieldChangesFromTokens({ tokens: [A('RKSI'), P(SID_TEXT)], current: { departure: 'RKSI' }, sidOptions: [SID] })
+  assert.equal(changes.sid, SID)
+  assert.equal('star' in changes, false)
+  const same = fieldChangesFromTokens({ tokens: [A('RKSI'), P(SID_TEXT)], current: { departure: 'RKSI', sid: SID }, sidOptions: [SID] })
+  assert.equal('sid' in same, false)
+})
+
+test('a procedure pill that was there and is gone clears its field', () => {
+  const changes = fieldChangesFromTokens({
+    tokens: [A('RKSI'), P(SID_TEXT), F('BOPTA'), A('RKPC')], previousProcedureTexts: [SID_TEXT, STAR_TEXT],
+    current: { departure: 'RKSI', arrival: 'RKPC', sid: SID, star: STAR }, sidOptions: [SID], starOptions: [STAR],
+  })
+  assert.equal(changes.star, null)
+  assert.equal('sid' in changes, false)
+})
+
+test('a selected procedure whose pill has not arrived yet is kept', () => {
+  // 자동 생성: 칸이 먼저 바뀌고 알약은 다음 렌더에 들어온다.
+  const changes = fieldChangesFromTokens({ tokens: [A('RKSI'), A('RKPC')], previousProcedureTexts: [],
+    current: { departure: 'RKSI', arrival: 'RKPC', sid: SID, star: STAR }, sidOptions: [SID], starOptions: [STAR] })
+  assert.equal('sid' in changes, false)
+  assert.equal('star' in changes, false)
 })

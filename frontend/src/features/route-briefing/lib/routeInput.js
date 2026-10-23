@@ -74,3 +74,36 @@ export function flagMisplacedAirports(tokens, flightRule) {
       : token
   ))
 }
+
+/**
+ * 알약 → 위쪽 칸. 알약 목록을 읽어 칸(출발·도착·SID·STAR)을 무엇으로 바꿔야 하는지 돌려준다.
+ * 이 방향 한 길뿐이다 — 칸이 알약을 고치는 길은 placeEndpoint·절차 알약 넣기가 맡는다.
+ *
+ * - 공항: 양 끝 공항이 칸과 다르면 칸을 바꾼다(비어 있는 쪽은 그대로 둔다 — 치는 중인 상태).
+ * - 절차: 알약에 새로 들어온 절차를 칸에 넣는다. 알약에서 "있다가 없어진" 절차는 칸에서 뺀다.
+ *   없다가 계속 없는 것은 건드리지 않는다 — 자동 생성처럼 칸이 먼저 바뀌고 알약이 다음 렌더에
+ *   들어오는 경우, 비교안 전환처럼 알약과 무관하게 절차를 바꾸는 경우를 지우지 않기 위해서다.
+ *
+ * 돌려주는 값: { airports: {departureAirport?, arrivalAirport?}, sid?, star? } — 바꿀 것만 담는다.
+ * sid/star가 null이면 "빼라", 절차 객체면 "이것으로", 키가 없으면 "그대로".
+ */
+export function fieldChangesFromTokens({ tokens, previousProcedureTexts = [], current = {}, sidOptions = [], starOptions = [] }) {
+  const airportTexts = new Set(tokens.filter((token) => token.kind === TOKEN_KINDS.AIRPORT).map((token) => token.text))
+  const ends = readEndpoints(tokens.map((token) => token.text), (value) => airportTexts.has(value), {
+    departure: current.departure, arrival: current.arrival,
+  })
+  const airports = {}
+  if (ends.departure && ends.departure !== current.departure) airports.departureAirport = ends.departure
+  if (ends.arrival && ends.arrival !== current.arrival) airports.arrivalAirport = ends.arrival
+
+  const changes = { airports }
+  const procedureTexts = tokens.filter((token) => token.kind === TOKEN_KINDS.PROCEDURE).map((token) => token.text)
+  const holds = (texts, procedure) => texts.some((text) => !!findProcedureByToken(text, [procedure]))
+  for (const [key, options] of [['sid', sidOptions], ['star', starOptions]]) {
+    const selected = current[key] ?? null
+    const typed = procedureTexts.map((text) => findProcedureByToken(text, options)).find(Boolean) ?? null
+    if (typed && typed.id !== selected?.id) changes[key] = typed
+    else if (selected && holds(previousProcedureTexts, selected) && !holds(procedureTexts, selected)) changes[key] = null
+  }
+  return changes
+}

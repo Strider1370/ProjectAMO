@@ -42,11 +42,10 @@ test('seeding never overwrites a list the user has already typed into', () => {
 })
 
 test('the picker reads the token list, and the sync stops when values already agree', () => {
-  // 값이 같을 때 멈추는 것이 되먹임 고리를 끊는다.
-  assert.match(source, /departure !== routeForm\.departureAirport/)
-  assert.match(source, /arrival !== routeForm\.arrivalAirport/)
+  // 무엇을 바꿀지는 순수 함수가 정하고(값이 같으면 빈 변경 — routeInput.test.js), 훅은 적용만 한다.
+  assert.match(source, /fieldChangesFromTokens\(\{/)
   // 효과 안에서 확인 창을 띄우면 이용자가 누르지 않은 확인이 뜬다.
-  assert.match(source, /updateRouteField\('departureAirport'/)
+  assert.match(source, /for \(const \[field, value\] of Object\.entries\(changes\.airports\)\) updateRouteField\(field, value\)/)
 })
 
 test('FIR entry and exit are not written into the token list', () => {
