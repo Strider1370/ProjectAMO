@@ -920,9 +920,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   function confirmContextChange() {
     const change = pendingContextChange
     if (!change) return
+    const next = { ...routeForm, ...change.changes }
     clearRouteDisplay({ clearEditor: false })
     setIapCandidates([])
-    setRouteEditor(emptyEditorForContext({ ...routeForm, ...change.changes }))
+    setRouteEditor(emptyEditorForContext(next))
+    // 경로 알약이 원본이다. 알약을 그대로 두면 옛 공항 알약이 선택기를 도로 되돌려
+    // '계속'을 눌러도 공항이 안 바뀐다. 경로를 지우는 확인이므로 새 양 끝 공항만 남긴다.
+    setRouteTokenTexts([
+      next.departureAirport !== FIR_IN_AIRPORT ? next.departureAirport : null,
+      next.arrivalAirport !== FIR_EXIT_AIRPORT ? next.arrivalAirport : null,
+    ].filter(Boolean))
     setPendingContextChange(null)
   }
 
