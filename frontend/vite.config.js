@@ -44,6 +44,10 @@ export default defineConfig(({ mode }) => {
         target: backendTarget,
         changeOrigin: true,
       },
+      '/data/sigwx_high/': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       },
     },
   }

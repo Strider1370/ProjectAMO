@@ -8,6 +8,18 @@
 - Data storage: VM local disk at `/opt/projectamo/shared/data`
 - Backend bind: `127.0.0.1`
 
+SIGWX HIGH 실자료: 루트 `.env`에 `WIFS_API_KEY`를 넣고 백엔드를 재시작하면 수집기가 등록된다.
+UTC 12:30에 하루 한 번 최신 KKCI 회차를 확인하고 F06~F36의 11장을 순서대로 받는다.
+메타데이터 조회부터 각 XML 요청 사이에 65초를 두므로 한 회차에 약 12분이 걸린다.
+HTTP 200 이외의 응답(401·403·429 포함), 연결 실패, 형식 오류가 나면 재시도 없이 그 회차의 남은 요청을 중단한다.
+ADMIN → API 사용량에서 UTC 당일 WIFS 요청 수·실패·다운로드량·마지막 HTTP 상태·마지막 예보시간을 확인할 수 있다.
+ADMIN → 자료 수집의 SIGWX HIGH 실행 상세에는 목록/예보 API의 마지막 결과와 오류가 각각 표시된다.
+모두 검증된 뒤에만 `DATA_PATH/sigwx_high/latest.json`을 갱신하며, 실패 시 마지막 정상 회차를 유지한다.
+프런트엔드는 실자료 인덱스가 없을 때만 고정 샘플을 표시한다. 정적 인덱스는 no-cache,
+회차별 프레임은 immutable이다. `WIFS_API_KEY`를 추가해도 서버 시작 즉시 WIFS를 호출하지 않는다.
+서버에 `python3`가 필요하며 추가 Python 패키지는 없다. 운영 nginx의 `/data/sigwx_high/` 캐시 규칙도
+`deploy/nginx/projectamo.conf.example`과 맞춰 적용해야 한다.
+
 KIM 난류는 공통 `kim_nwp` 저장소의 GKTG를 사용한다. Python 환경·발표회차별 키 배분·실패 처리·보존 정책은 [GKTG 운영 안내](kim-gktg.md)를 따른다. 최초 Python 의존성 설치는 full deploy가 필요하다.
 
 격자 영역 확대 시 저장 형식 비교, 계산 메모리 검증, 지도 표시와 수치 조회의 분리는

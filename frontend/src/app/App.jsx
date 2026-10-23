@@ -28,6 +28,8 @@ import CopilotPanel from '../features/copilot/CopilotPanel.jsx'
 import { createUiActionExecutor } from '../features/copilot/uiActions.js'
 import { shouldShowIntro } from '../features/intro/introEntry.js'
 import { QPF_ENABLED } from '../features/weather-overlays/lib/qpfLayers.js'
+import AirportAlertPopup from '../features/notifications/AirportAlertPopup.jsx'
+import AlertTestDetail from '../features/airport-alerts/AlertTestDetail.jsx'
 
 const OrganizationLoungePage = lazy(() => import('../features/organization-lounge/OrganizationLoungePage.jsx'))
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
@@ -40,6 +42,7 @@ const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx
 const ModelComparisonPage = lazy(() => import('../features/airport-model-comparison/ModelComparisonPage.jsx'))
 const IntroPage = lazy(() => import('../features/intro/IntroPage.jsx'))
 const VerticalProfileConcept = lazy(() => import('../features/vertical-profile-concept/PreviewEntry.jsx'))
+const AlertWorkspacePanel = lazy(() => import('../features/airport-alerts/AlertWorkspacePanel.jsx'))
 
 function formatTimeByTz(ms, tz) {
   const d = tz === 'KST' ? new Date(ms + 9 * 3600 * 1000) : new Date(ms)
@@ -51,7 +54,7 @@ function formatTimeByTz(ms, tz) {
   return `${year}/${month}/${day} ${hours}:${mins} ${tz}`
 }
 
-function MainAppShell({ conceptPreview = false }) {
+function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
   const { tz } = useTimeZone()
   const { user, loading: authLoading } = useAuth()
   const [organizationEntryError, setOrganizationEntryError] = useState(null)
@@ -63,6 +66,21 @@ function MainAppShell({ conceptPreview = false }) {
     const p = new URLSearchParams(window.location.search).get('airport')
     return p ? p.toUpperCase() : null
   })
+  const [alertTestId, setAlertTestId] = useState(() => new URLSearchParams(window.location.search).get('alertTest'))
+  const [alertEventId, setAlertEventId] = useState(() => {
+    const value = new URLSearchParams(window.location.search).get('alert')
+    return /^(?:airport|route):[1-9]\d*$/.test(value ?? '') ? value : null
+  })
+  const [alertWorkspace, setAlertWorkspace] = useState(() => initialAlertView ? { view: initialAlertView, airportIcao: null, routeId: null } : null)
+  const openAlertWorkspace = useCallback((detail = {}) => {
+    setAlertWorkspace({ view: detail.view ?? 'list', airportIcao: detail.airportIcao ?? null,
+      routeId: detail.routeId ?? null })
+  }, [])
+  useEffect(() => {
+    const open = (event) => openAlertWorkspace(event.detail ?? {})
+    window.addEventListener('open-alert-panel', open)
+    return () => window.removeEventListener('open-alert-panel', open)
+  }, [openAlertWorkspace])
   // 딥링크: ?flight=<routeId> 로 비행 알림 에스컬레이션 화면 바로 열기 (Task 10)
   // 번호는 deeplinkFlight.js가 페이지 열릴 때 한 번 집어 둔다 — 변경점 띠도 같은 값을 읽는다.
   const [deeplinkFlightId, setDeeplinkFlightId] = useState(deeplinkFlightIdFromUrl)
@@ -87,6 +105,15 @@ function MainAppShell({ conceptPreview = false }) {
   const setActivePanel = useCallback((next) => requestNavigation(() => setActivePanelRaw(next)), [requestNavigation])
   const setSearchOpen = useCallback((next) => next ? requestNavigation(() => setSearchOpenRaw(next)) : setSearchOpenRaw(next), [requestNavigation])
   const isMobile = useIsMobile()
+  const openAlertRoute = useCallback(async (routeId) => {
+    setSelectedAirport(null)
+    setActivePanelRaw('route-check')
+    if (isMobile) setMobileTask('route')
+    try {
+      const route = (await listSavedRoutes()).find((item) => item.id === routeId)
+      if (route) mapRef.current?.loadRouteBriefing?.(route)
+    } catch { /* 경로 원본을 삭제해도 알림 당시 상세는 표시한다. */ }
+  }, [isMobile])
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
   const copilotUiState = useRef(null)
   copilotUiState.current = { ownerId: user?.id, airport: selectedAirport, panel: activePanel, airports: weatherData?.airports }
@@ -267,6 +294,7 @@ function MainAppShell({ conceptPreview = false }) {
         onNavigate={(href) => requestNavigation(() => window.location.assign(href))}
         onProfileClick={() => requestNavigation(() => previewMode ? window.location.assign('/') : (user ? setAccountOpen(true) : setAuthOpen(true)))}
         onHelp={() => requestNavigation(tour.restart)}
+        onAlertsOpen={() => openAlertWorkspace()}
       />
       <main className="map-shell">
         <MapView
@@ -310,9 +338,32 @@ function MainAppShell({ conceptPreview = false }) {
       <AirportPanel
         airport={selectedAirportMeta}
         weatherData={weatherData}
+        nowMs={nowMs}
         onClose={() => setSelectedAirport(null)}
         onRequestDeferredWeatherData={requestDeferredWeatherData}
+        onAlertsOpen={() => openAlertWorkspace({ view: 'settings', airportIcao: selectedAirport })}
       />
+      {alertWorkspace && <Suspense fallback={null}><AlertWorkspacePanel key={`${alertWorkspace.view}:${alertWorkspace.airportIcao}:${alertWorkspace.routeId}`}
+        initialView={alertWorkspace.view} airportIcao={alertWorkspace.airportIcao} routeId={alertWorkspace.routeId}
+        onLogin={() => setAuthOpen(true)}
+        onClose={() => {
+          setAlertWorkspace(null)
+          if (/^\/alerts(?:\/settings)?\/?$/.test(window.location.pathname)) window.history.replaceState(window.history.state, '', '/')
+        }} /></Suspense>}
+      {alertTestId && <AlertTestDetail id={alertTestId} onAirport={setSelectedAirport} onRoute={openAlertRoute} onLogin={() => setAuthOpen(true)}
+        onClose={() => {
+          setAlertTestId(null)
+          const url = new URL(window.location.href)
+          url.searchParams.delete('alertTest')
+          window.history.replaceState(window.history.state, '', url)
+        }} />}
+      {alertEventId && <AlertTestDetail eventId={alertEventId} onAirport={setSelectedAirport} onRoute={openAlertRoute} onLogin={() => setAuthOpen(true)}
+        onClose={() => {
+          setAlertEventId(null)
+          const url = new URL(window.location.href)
+          url.searchParams.delete('alert')
+          window.history.replaceState(window.history.state, '', url)
+        }} />}
 
       {/* 지도형 브리핑 중에는 공항 패널이 지도 영역 안 카드로 떠서(오른쪽) 위쪽 버튼(왼쪽)을 가리지 않는다 — 버튼을 남긴다. */}
       {mobileTask === 'map' && (!selectedAirport || mapBriefingActive) && (
@@ -333,6 +384,7 @@ function MainAppShell({ conceptPreview = false }) {
           onTraffic={() => { setMobileTask('map'); setActivePanel('traffic') }}
           onSettings={() => togglePanel('settings')}
           onUpdates={() => togglePanel('updates')}
+          onAlerts={() => openAlertWorkspace()}
           onAccount={() => previewMode ? window.location.assign('/') : setAuthOpen(true)}
           hasUpdate={hasUpdate}
         />
@@ -346,6 +398,7 @@ function MainAppShell({ conceptPreview = false }) {
         {organizationEntryError && <a href={window.location.pathname + window.location.search}>다시 시도</a>}
       </div>}
       <div className="utc-bar">{formatTimeByTz(nowMs, tz)}</div>
+      {!isMobile && <AirportAlertPopup />}
       <ExitOnDoubleBack />
       <CopilotPanel user={user} airport={selectedAirport} timezone={tz === 'UTC' ? 'UTC' : 'Asia/Seoul'} isMobile={isMobile}
         onUiAction={applyCopilotUiAction}
@@ -421,9 +474,19 @@ function MainAppShell({ conceptPreview = false }) {
   )
 }
 
-const SIDEBAR_INTRO_KEY = 'projectamo.sidebarIntroShown'
+const AlertLabPage = lazy(() => import('../features/alert-lab/AlertLabPage.jsx'))
 
+const SIDEBAR_INTRO_KEY = 'projectamo.sidebarIntroShown'
 function App() {
+  if (/^\/alerts\/settings\/?$/.test(window.location.pathname)) {
+    return <TimeZoneProvider><AuthProvider><MainAppShell initialAlertView="settings" /></AuthProvider></TimeZoneProvider>
+  }
+  if (/^\/alerts\/?$/.test(window.location.pathname)) {
+    return <TimeZoneProvider><AuthProvider><MainAppShell initialAlertView="list" /></AuthProvider></TimeZoneProvider>
+  }
+  if (import.meta.env.DEV && /^\/concepts\/alerts\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={<p role="status">알림 실험실을 불러오는 중…</p>}><AlertLabPage /></Suspense>
+  }
   if (import.meta.env.DEV && /^\/concepts\/vertical-profile\/?$/.test(window.location.pathname)) {
     return <TimeZoneProvider><AuthProvider><MainAppShell conceptPreview /><Suspense fallback={null}><VerticalProfileConcept /></Suspense></AuthProvider></TimeZoneProvider>
   }

@@ -10,7 +10,7 @@ import { trafficStats, hourlyPattern } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
 import { readCollectionTimeline } from './collector-runs.js'
-import { readAlertWatches } from './alert-watches.js'
+import { readUserAlertWatches } from '../user-alerts/admin-view.js'
 import { processHealth } from './process-health.js'
 import { deploymentInfo } from './deployment.js'
 import { readDiskUsage } from './disk-usage.js'
@@ -19,12 +19,12 @@ import store from '../store.js'
 import stats from '../stats.js'
 import { recordDemoEvent, getDemoEvents } from '../dev/demo-mode.js'
 import { getActiveDataContext } from '../dev/data-view.js'
-import { getLastAlertEvaluation } from '../alerts/scheduler.js'
 import { demoSession } from '../dev/demo-session.js'
 import { demoInstance as defaultDemoInstance } from '../dev/demo-instance.js'
 import { deleteSnapshot, listSnapshots, inspectSnapshot, isValidSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
 import config from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
+import wifsUsage from '../wifs-usage.js'
 import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operation-registry.js'
 import { adminRequestKey, createAdminQueryState, setAdminQueryHeaders } from './query-state.js'
 
@@ -99,6 +99,7 @@ export function createAdminRouter({ db = null, demoInstance = defaultDemoInstanc
   })))
   router.get('/api-hub-usage', read('api-hub-usage', () => {
     const snapshot = apiHubUsage.snapshot()
+    snapshot.wifs = { configured: Boolean(config.wifs.api_key), ...wifsUsage.snapshot() }
     const operationStats = stats.getStats().api_operations || {}
     snapshot.onDemandOperations = API_OPERATION_REGISTRY
       .filter((operation) => operation.callContract.kind === 'on_demand')
@@ -116,10 +117,7 @@ export function createAdminRouter({ db = null, demoInstance = defaultDemoInstanc
   // 알림 감시 목록 — 지금 누가 무엇을 감시받고 있는지. 조용한 이유를 짚는 화면이다.
   router.get('/alert-watches', read('alert-watches', () => {
     const activeContext = getActiveDataContext()
-    return readAlertWatches(database(), Date.now(), {
-      automaticEvaluationPaused: activeContext.mode === 'demo',
-      lastEvaluation: getLastAlertEvaluation(),
-    })
+    return readUserAlertWatches(database(), { paused: activeContext.mode === 'demo' })
   }))
   router.get('/users', read('users', () => listUsers(database())))
   router.get('/pending', read('pending', () => listPending(database())))

@@ -2129,7 +2129,7 @@ const MapView = forwardRef(function MapView({
               <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
             </WeatherLayerTimestampBar>
           ) : null}
-          sampleWarning={isMobile && !!metVisibility.sigwxHigh}
+          sampleWarning={isMobile && !!metVisibility.sigwxHigh && sigwxHigh.isSample}
           radarLegendVisible={radarLegendVisible}
           hsrLegendVisible={weatherOverlayModel.hsrLegendVisible}
           hciLegendVisible={weatherOverlayModel.hciLegendVisible}
@@ -2364,6 +2364,7 @@ const MapView = forwardRef(function MapView({
                   onToggleAviation={toggleAviation}
                   metVisibility={metVisibility}
                   onToggleMet={toggleMet}
+                  onRequestLogin={onRequestLogin}
                   onClose={onClosePanel}
                 />
               </Suspense>
@@ -2615,6 +2616,10 @@ const MapView = forwardRef(function MapView({
           isLayerDisabled={isMetLayerDisabled}
           sigwxHighFilter={sigwxHigh.filter}
           onSigwxHighFilterChange={sigwxHigh.toggleType}
+          sigwxHighIsSample={sigwxHigh.isSample}
+          sigwxHighIsPreview={sigwxHigh.isPreview}
+          sigwxHighFrameCount={sigwxHigh.frameCount}
+          sigwxHighMaxForecastHour={sigwxHigh.maxForecastHour}
           getLayerBadge={metLayerBadge}
           showWind={enableWindOverlay}
           surfaceChartNote={surfaceChart.unavailableReason}

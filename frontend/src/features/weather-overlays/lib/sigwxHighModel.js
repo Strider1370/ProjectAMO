@@ -22,6 +22,16 @@ export function pickHighFrame(frames, targetMs) {
     !best || Math.abs(item.ms - targetMs) < Math.abs(best.ms - targetMs) ? item : best
   ), null)
 }
+export function pickLiveHighFrame(frames, targetMs) {
+  if (!frames?.length || !Number.isFinite(targetMs)) return null
+  return frames.map(frame => ({ frame, ms: Date.parse(frame.validTime) }))
+    .filter(item => Number.isFinite(item.ms))
+    .reduce((best, item) => !best || Math.abs(item.ms - targetMs) < Math.abs(best.ms - targetMs) ? item : best, null)
+}
+export function liveHighTimelineEntries(frames, nowMs) {
+  return (frames || []).map(frame => ({ ms: Date.parse(frame.validTime), cadenceMs: 3 * HIGH_HOUR_MS }))
+    .filter(({ ms }) => Number.isFinite(ms) && ms >= nowMs - 6 * HIGH_HOUR_MS && ms <= nowMs + 36 * HIGH_HOUR_MS)
+}
 export function highTimelineEntries(frames, nowMs) {
   return repeatedHighFrames(frames, nowMs)
     .filter(({ ms }) => ms >= nowMs - 6 * HIGH_HOUR_MS && ms <= nowMs + 48 * HIGH_HOUR_MS)

@@ -1,0 +1,98 @@
+.alert-lab { height: 100dvh; overflow: auto; box-sizing: border-box; padding: var(--space-xxxl); background: var(--bg-2); color: var(--text-1); font-family: var(--font-base); font-size: var(--fs-300); }
+.alert-lab * { box-sizing: border-box; }
+.alert-lab header { display: flex; justify-content: space-between; align-items: start; gap: var(--space-xl); }
+.alert-lab h1 { font-size: var(--fs-600); margin: 0; }
+.alert-lab h2 { font-size: var(--fs-400); margin: 0 0 var(--space-l); }
+.alert-lab p { color: var(--text-2); line-height: 1.6; }
+.alert-lab a { color: var(--accent); white-space: nowrap; }
+.alert-lab .al-eyebrow { font-weight: var(--fw-semibold); margin-top: 0; }
+.alert-lab button, .alert-lab input, .alert-lab select { font: inherit; }
+.alert-lab button, .alert-lab select, .alert-lab input[type=number] { min-height: var(--touch-min); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); padding: var(--space-s); background: var(--bg-1); color: var(--text-1); }
+.alert-lab button { cursor: pointer; }
+.alert-lab button:hover { background: var(--bg-3); }
+.alert-lab button:disabled { opacity: .5; cursor: not-allowed; }
+.alert-lab :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.alert-lab input[type=checkbox] { margin-right: var(--space-s); accent-color: var(--accent); }
+.alert-lab .al-primary { background: var(--accent); color: var(--bg-1); margin-right: var(--space-s); }
+.alert-lab .al-primary:hover { background: var(--accent); color: var(--bg-1); filter: brightness(1.15); }
+.al-panel { padding: var(--space-xl); border: 1px solid var(--stroke-2); border-radius: var(--radius-lg); background: var(--bg-1); }
+.al-airport { display: grid; gap: var(--space-s); }
+.al-rule { display: flex; justify-content: space-between; align-items: center; gap: var(--space-s); min-height: 60px; border-bottom: 1px solid var(--stroke-2); }
+.al-rule input[type=number] { width: 100px; }
+.al-presets { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.alert-lab .al-hint { font-size: var(--fs-200); color: var(--text-3); }
+.al-state { display: grid; gap: var(--space-xs); padding: var(--space-m); border-bottom: 1px solid var(--stroke-2); }
+.al-state.is-active { background: var(--level-amber-bg); color: var(--level-amber); }
+@media (max-width: 719px) { .alert-lab { padding: var(--space-l); } .alert-lab header { flex-direction: column; } .al-panel { padding: var(--space-m); } .alert-lab h1 { font-size: var(--fs-500); } }
+/* Controls stay outside the simulated device screens. */
+.al-workbench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-xxl); align-items: start; }
+.al-controls { display: grid; gap: var(--space-m); }
+.al-controls .al-panel { padding: var(--space-l); }
+.al-controls .al-rule { min-height: 52px; }
+.al-controls .al-panel p { font-size: var(--fs-200); }
+.al-scenarios h2 { margin-bottom: var(--space-m); }
+.al-scenarios .al-airport { font-size: var(--fs-200); font-weight: var(--fw-semibold); }
+.al-scenarios .al-hint { margin: var(--space-s) 0 var(--space-m); }
+.al-scenario { padding: var(--space-m) 0; border-top: 1px solid var(--stroke-2); }
+.al-scenario > strong { font-size: var(--fs-300); }
+.al-scenario p { margin: 2px 0 var(--space-s); }
+.al-scenario-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.al-scenario-actions button { min-height: 40px; padding: 7px 10px; font-size: var(--fs-200); }
+.al-feedback { margin: var(--space-s) 0 0; font-weight: var(--fw-semibold); }
+.al-feedback:empty { display: none; }
+.al-metars-test summary { cursor: pointer; font-weight: var(--fw-semibold); }
+.al-metars-test > form, .al-metars-test > h3 { margin-top: var(--space-m); }
+.al-metars-test h3 { font-size: var(--fs-300); }
+.al-metars-test .al-channel-check { display: flex; align-items: center; margin: var(--space-m) 0; }
+.al-metars-test .al-presets { margin-bottom: var(--space-s); }
+.al-metars-test .al-evaluation { margin-top: var(--space-l); border-top: 1px solid var(--stroke-2); }
+.al-metars-test .al-state { padding-inline: 0; }
+.al-preview-stage { position: sticky; top: 0; display: grid; grid-template-columns: minmax(0, 1fr) 406px; gap: var(--space-xl); align-items: start; padding: var(--space-xl); background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--radius-xl); }
+.al-stage-heading { grid-column: 1 / -1; }
+.al-stage-heading h2 { margin-bottom: var(--space-xs); }
+.al-stage-heading p { margin: 0; font-size: var(--fs-200); }
+.al-device-preview { min-width: 0; }
+.al-device-preview h3 { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-200); font-weight: var(--fw-semibold); margin: 0 0 var(--space-m); }
+.al-device-frame { border: 8px solid var(--accent); border-radius: 12px; overflow: hidden; background: var(--bg-1); }
+.al-browser-bar { display: flex; gap: var(--space-l); padding: var(--space-s); background: var(--bg-4); font-size: var(--fs-100); color: var(--text-3); }
+.al-device-screen { position: relative; height: 490px; overflow: hidden; display: flex; flex-direction: column; }
+.al-monitor-stand { height: 40px; display: flex; justify-content: center; position: relative; }
+.al-monitor-stand span { width: 65px; background: var(--stroke-1); }
+.al-monitor-stand::after { content: ''; position: absolute; bottom: 0; width: 150px; height: 8px; background: var(--accent); border-radius: var(--radius-md); }
+.al-device-phone .al-device-frame { border-radius: 36px; }
+.al-phone-status { display: flex; align-items: center; justify-content: space-between; padding: var(--space-m); font-size: var(--fs-100); }
+.al-phone-status > span:last-child { display: flex; gap: 3px; align-items: center; }
+.al-camera { width: 65px; height: 16px; background: var(--accent); border-radius: 12px; }
+.al-device-phone .al-device-screen { height: 500px; }
+.al-home-indicator { display: flex; justify-content: center; padding: 5px 0 10px; }
+.al-home-indicator span { height: 4px; width: 90px; border-radius: 3px; background: var(--accent); }
+.alert-lab .al-device-caption { font-size: var(--fs-200); color: var(--text-3); }
+@media (max-width: 1350px) { .al-preview-stage { grid-template-columns: minmax(0, 1fr); } .al-device-phone { width: min(446px, 100%); justify-self: center; } }
+@media (max-width: 850px) { .al-workbench { grid-template-columns: minmax(0, 1fr); } .al-preview-stage { position: static; } }
+@media (max-width: 719px) { .al-preview-stage { padding: var(--space-m); } }
+/* Render at a fixed CSS viewport, then scale the entire frame including typography. */
+.al-device-tools { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-bottom: var(--space-s); }
+.al-device-tools label { display: grid; gap: var(--space-xs); font-size: var(--fs-200); }
+.al-scale-label { font-size: var(--fs-200); font-variant-numeric: tabular-nums; }
+.al-device-host { width: 100%; min-width: 0; overflow: auto; }
+.al-device-host.is-actual { max-height: 760px; }
+.al-scaled-space { position: relative; margin-inline: auto; }
+.al-device-native { position: absolute; inset: 0 auto auto 0; transform-origin: top left; font-size: 14px; }
+.al-device-native .al-device-frame { width: calc(var(--device-width) + 16px); height: calc(var(--device-height) + 16px); border-width: 8px; }
+.al-device-native .al-browser-bar { height: 36px; align-items: center; flex-shrink: 0; }
+.al-device-native .al-device-screen { width: var(--device-width); height: calc(var(--device-height) - 36px); }
+.al-device-phone .al-device-native .al-device-screen { height: calc(var(--device-height) - 68px); }
+.al-device-native .al-phone-status { height: 44px; padding-inline: 20px; font-size: 12px; }
+.al-device-native .al-home-indicator { height: 24px; align-items: center; padding: 0; }
+.al-open-device { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-200); }
+.alert-lab.al-standalone { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.al-standalone > .ad-app { flex: 1; min-height: 0; height: auto; }
+.al-demo-toolbar { flex-shrink: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 12px; background: var(--bg-4); border-bottom: 1px solid var(--stroke-2); font-size: 12px; }
+.al-demo-toolbar > span { color: var(--text-3); }
+.al-demo-toolbar > button { margin-left: auto; }
+.al-demo-toolbar > a { display: flex; align-items: center; min-height: 44px; }
+.al-standalone .ad-mobile > .ad-navigation { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+/* The controls stay outside the simulated phone viewport without consuming its height. */
+.al-demo-toolbar { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.al-demo-toolbar > a, .al-demo-toolbar > span, .al-demo-toolbar > button { flex: none; white-space: nowrap; }
+.al-demo-toolbar > button { margin-left: 0; }

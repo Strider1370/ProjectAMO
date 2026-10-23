@@ -48,7 +48,7 @@ export default function SigwxHighDetails({ model }) {
       <summary>원본 속성</summary>
       <pre>{active.details || '미제공'}</pre>
       <p className="sigwx-high-note">기호: <a href="https://github.com/OGCMetOceanDWG/WorldWeatherSymbols" target="_blank" rel="noreferrer">OGC / WMO·ICAO</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · 색상·크기 조정</p>
-      <p className="sigwx-high-note">출처: WAFC Washington / WIFS 공개 샘플 (IWXXM 2025-2)</p>
+      <p className="sigwx-high-note">출처: WAFC Washington / {model.isSample ? 'WIFS 공개 샘플' : 'WIFS'} (IWXXM 2025-2)</p>
     </details>
   </section>
 }

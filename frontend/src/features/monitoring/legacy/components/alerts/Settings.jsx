@@ -1,9 +1,4 @@
-import { useEffect, useId, useState } from "react";
-import {
-  resolveSettings,
-  savePersonalSettings,
-  clearPersonalSettings,
-} from "../../utils/alerts";
+import { useEffect, useState } from "react";
 import { BASEMAP_OPTIONS, knownBasemapId } from "../../../../map/mapConfig.js";
 import {
   SIGMET_FILTER_GROUPS,
@@ -17,17 +12,6 @@ import {
   MONITORING_SLIDE_LABELS,
   validateMonitoringSlideshowConfig,
 } from "../../../lib/monitoringSlideshow.js";
-
-const TRIGGER_LABELS = {
-  low_visibility: "시정이 나빠지면 알림",
-  high_wind: "바람이 강해지면 알림",
-  weather_phenomenon: "특이기상(TS/SN/FG)이 나타나면 알림",
-  low_ceiling: "구름고도가 낮아지면 알림",
-  taf_adverse_weather: "예보에 악기상이 들어오면 알림",
-  lightning_detected: "공항 주변 낙뢰가 발생하면 알림",
-  taf_change: "TAF가 바뀌어 위험이 늘면 알림",
-  taf_new_period: "TAF 새 구간에 위험이 있으면 알림",
-};
 
 const TRAFFIC_ALTITUDE_OPTIONS = [
   "0-10000",
@@ -69,44 +53,16 @@ const SIGWX_FILTER_LABELS = {
   jet_stream:           "제트기류",
 };
 
-const ALERT_USER_SECTIONS = [
-  {
-    id: "method",
-    title: "알림 방식",
-    description: "알림이 어떤 방식으로 표시될지 정합니다.",
-  },
-  {
-    id: "current-risk",
-    title: "현재 위험",
-    description: "현재 관측이나 주변 상황이 위험해질 때 알립니다.",
-    triggerIds: ["low_visibility", "low_ceiling", "high_wind", "weather_phenomenon", "lightning_detected"],
-  },
-  {
-    id: "forecast-official",
-    title: "예고 / 공식 알림",
-    description: "앞으로 대비해야 할 상황이나 공식 경보를 알려줍니다.",
-    triggerIds: ["taf_adverse_weather", "taf_change", "taf_new_period"],
-  },
-  {
-    id: "repeat",
-    title: "반복 알림 방식",
-    description: "한 번 알린 뒤 언제 다시 알릴지 정합니다.",
-  },
-];
-
 const SETTINGS_TABS = [
   { id: "general", label: "일반" },
-  { id: "alert", label: "알림" },
   { id: "traffic", label: "항적" },
   { id: "advisory", label: "공역예보" },
   { id: "slideshow", label: "화면 전환" },
 ];
 
 export default function Settings({
-  defaults,
   onClose,
   onSettingsChange,
-  onPreviewAlert,
   groundForecastDisplayMode,
   setGroundForecastDisplayMode,
   timeZone,
@@ -136,21 +92,6 @@ export default function Settings({
   isGroundMode = false,
 }) {
   const isInline = variant === "inline";
-  const current = resolveSettings(defaults);
-  // The panel renders inline and as a modal at the same time, so row ids must not collide.
-  const rowIdBase = useId();
-
-  const [globalEnabled, setGlobalEnabled] = useState(current.global.alerts_enabled);
-  const [cooldown, setCooldown] = useState(current.global.cooldown_seconds);
-  const [pollInterval, setPollInterval] = useState(current.global.poll_interval_seconds);
-  const [quietStart, setQuietStart] = useState(current.global.quiet_hours?.start || "");
-  const [quietEnd, setQuietEnd] = useState(current.global.quiet_hours?.end || "");
-
-  const [popupEnabled, setPopupEnabled] = useState(current.dispatchers.popup.enabled);
-  const [highlightSeconds, setHighlightSeconds] = useState(current.dispatchers.popup.highlight_seconds);
-  const [soundEnabled, setSoundEnabled] = useState(current.dispatchers.sound.enabled);
-  const [volume, setVolume] = useState(current.dispatchers.sound.volume);
-
   const [localTimeZone, setLocalTimeZone] = useState(timeZone || "KST");
   const [localMapTheme, setLocalMapTheme] = useState(mapTheme || localStorage.getItem("map_theme") || "light");
   const [localGroundForecastDisplayMode, setLocalGroundForecastDisplayMode] = useState(groundForecastDisplayMode || localStorage.getItem("ground_forecast_display_mode") || "signage");
@@ -161,7 +102,6 @@ export default function Settings({
     advisoryFilter || getDefaultAdvisoryFilterSettings()
   );
   const [activeTab, setActiveTab] = useState("general");
-  const [openAlertHelp, setOpenAlertHelp] = useState({});
   const visibleTabs = isGroundMode
     ? SETTINGS_TABS.filter((tab) => tab.id === "general" || tab.id === "slideshow")
     : SETTINGS_TABS;
@@ -169,31 +109,6 @@ export default function Settings({
   useEffect(() => {
     if (!visibleTabs.some((tab) => tab.id === activeTab)) setActiveTab("general");
   }, [activeTab, visibleTabs]);
-
-  const [triggers, setTriggers] = useState(() => {
-    const nextTriggers = {};
-    for (const [id, cfg] of Object.entries(current.triggers)) {
-      nextTriggers[id] = { enabled: cfg.enabled, params: { ...cfg.params } };
-    }
-    return nextTriggers;
-  });
-
-  function toggleTrigger(id) {
-    setTriggers((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], enabled: !prev[id].enabled },
-    }));
-  }
-
-  function updateTriggerParam(id, key, value) {
-    setTriggers((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        params: { ...prev[id].params, [key]: value },
-      },
-    }));
-  }
 
   function toggleTrafficAltitudeBand(band) {
     setLocalTrafficAltitudeBands((prev) => (
@@ -218,21 +133,6 @@ export default function Settings({
   }
 
   function applySettings() {
-    const overrides = {
-      global: {
-        alerts_enabled: globalEnabled,
-        cooldown_seconds: Number(cooldown),
-        poll_interval_seconds: Number(pollInterval),
-        quiet_hours: quietStart && quietEnd ? { start: quietStart, end: quietEnd } : null,
-      },
-      dispatchers: {
-        popup: { enabled: popupEnabled, highlight_seconds: Number(highlightSeconds) },
-        sound: { enabled: soundEnabled, volume: Number(volume) },
-      },
-      triggers,
-    };
-
-    savePersonalSettings(overrides);
     localStorage.setItem("time_zone", localTimeZone);
     localStorage.setItem("map_theme", localMapTheme);
     localStorage.setItem("ground_forecast_display_mode", localGroundForecastDisplayMode);
@@ -249,7 +149,7 @@ export default function Settings({
     setTrafficAltitudeBands?.(localTrafficAltitudeBands);
     setAdvisoryFilter?.(localAdvisoryFilter);
 
-    onSettingsChange?.(overrides);
+    onSettingsChange?.();
   }
 
   function handleApply() {
@@ -262,7 +162,6 @@ export default function Settings({
   }
 
   function handleReset() {
-    clearPersonalSettings();
     localStorage.removeItem("time_zone");
     localStorage.removeItem("map_theme");
     localStorage.removeItem("ground_forecast_display_mode");
@@ -281,176 +180,6 @@ export default function Settings({
 
     onSettingsChange?.(null);
     if (!isInline) onClose?.();
-  }
-
-  function toggleAlertHelp(sectionId) {
-    setOpenAlertHelp((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
-  }
-
-  function renderAlertSectionHeader(sectionId, title, description) {
-    const isOpen = Boolean(openAlertHelp[sectionId]);
-
-    return (
-      <>
-        <legend className="alert-settings-section-head">
-          <span>{title}</span>
-          <button
-            type="button"
-            className={`alert-settings-info-btn${isOpen ? " is-open" : ""}`}
-            onClick={() => toggleAlertHelp(sectionId)}
-            aria-label={`${title} 설명 보기`}
-            aria-expanded={isOpen}
-          >
-            i
-          </button>
-        </legend>
-        {isOpen && <p className="alert-settings-help">{description}</p>}
-      </>
-    );
-  }
-
-  function renderTriggerFields(id, cfg) {
-    if (cfg.enabled && id === "low_visibility") {
-      return (
-        <label className="alert-settings-row alert-settings-sub">
-          <span>시정 임계치(m)</span>
-          <input
-            type="number"
-            min={100}
-            max={10000}
-            step={100}
-            value={cfg.params.threshold}
-            onChange={(e) => updateTriggerParam(id, "threshold", Number(e.target.value))}
-          />
-        </label>
-      );
-    }
-
-    if (cfg.enabled && id === "high_wind") {
-      return (
-        <>
-          <label className="alert-settings-row alert-settings-sub">
-            <span>풍속 임계치(kt)</span>
-            <input
-              type="number"
-              min={10}
-              max={100}
-              value={cfg.params.speed_threshold}
-              onChange={(e) => updateTriggerParam(id, "speed_threshold", Number(e.target.value))}
-            />
-          </label>
-          <label className="alert-settings-row alert-settings-sub">
-            <span>돌풍 임계치(kt)</span>
-            <input
-              type="number"
-              min={10}
-              max={100}
-              value={cfg.params.gust_threshold}
-              onChange={(e) => updateTriggerParam(id, "gust_threshold", Number(e.target.value))}
-            />
-          </label>
-        </>
-      );
-    }
-
-    if (cfg.enabled && id === "low_ceiling") {
-      return (
-        <label className="alert-settings-row alert-settings-sub">
-          <span>운고 임계치(ft)</span>
-          <input
-            type="number"
-            min={100}
-            max={5000}
-            step={100}
-            value={cfg.params.threshold}
-            onChange={(e) => updateTriggerParam(id, "threshold", Number(e.target.value))}
-          />
-        </label>
-      );
-    }
-
-    if (cfg.enabled && id === "taf_adverse_weather") {
-      return (
-        <label className="alert-settings-row alert-settings-sub">
-          <span>TAF 시정 임계치(m)</span>
-          <input
-            type="number"
-            min={500}
-            max={10000}
-            step={500}
-            value={cfg.params.vis_threshold}
-            onChange={(e) => updateTriggerParam(id, "vis_threshold", Number(e.target.value))}
-          />
-        </label>
-      );
-    }
-
-    return null;
-  }
-
-  function renderTriggerToggle(id) {
-    const cfg = triggers[id];
-    if (!cfg) return null;
-
-    return (
-      <div key={id} className="alert-settings-trigger">
-        <label className="alert-settings-row">
-          <span>{TRIGGER_LABELS[id] || id}</span>
-          <input type="checkbox" checked={cfg.enabled} onChange={() => toggleTrigger(id)} />
-        </label>
-        {renderTriggerFields(id, cfg)}
-      </div>
-    );
-  }
-
-  // A <label> wrapping this row would claim the 예시 button as the control it labels, replacing the
-  // button's accessible name with the row text and leaving the checkbox with no name at all. The
-  // row is a plain div and the text is tied to the checkbox by id, so clicking the text still
-  // toggles it. The 예시 buttons also need distinct names — three bare "예시" are ambiguous.
-  function renderDispatcherRow(channel, text, checked, setChecked) {
-    const inputId = `${rowIdBase}-${channel}`
-    // 지상 모드에서는 판정이 멈춰 있다. 목록 예시는 판정을 우회하므로 함께 막는다.
-    const blocked = channel === "popup" && isGroundMode
-    return (
-      <div className="alert-settings-row">
-        <label htmlFor={inputId}>{text}</label>
-        <span className="alert-settings-inline-actions">
-          <button
-            type="button"
-            className="alert-settings-preview-btn"
-            aria-label={`${text} 예시`}
-            disabled={blocked}
-            title={blocked ? "지상 모드에서는 알람이 동작하지 않습니다" : undefined}
-            onClick={() => onPreviewAlert?.(channel, getPreviewDispatchers())}
-          >
-            예시
-          </button>
-          <input
-            id={inputId}
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => setChecked(e.target.checked)}
-          />
-        </span>
-      </div>
-    )
-  }
-
-  function getPreviewDispatchers() {
-    return {
-      popup: {
-        enabled: popupEnabled,
-        highlight_seconds: Number(highlightSeconds),
-      },
-      sound: {
-        enabled: soundEnabled,
-        volume: Number(volume),
-        repeat_count: current.dispatchers.sound.repeat_count,
-      },
-    };
   }
 
   const settingsContent = (
@@ -506,55 +235,8 @@ export default function Settings({
                     <option value="classic">기존 카드형</option>
                   </select>
                 </label>}
+                <p className="alert-settings-help">공항·경로 기상 알림은 <a href="/alerts/settings">통합 알림 설정</a>에서 관리합니다.</p>
               </fieldset>
-            )}
-
-            {activeTab === "alert" && (
-              <>
-                <fieldset className="alert-settings-section">
-                  {renderAlertSectionHeader("method", ALERT_USER_SECTIONS[0].title, ALERT_USER_SECTIONS[0].description)}
-                  <label className="alert-settings-row">
-                    <span>알림 사용</span>
-                    <input type="checkbox" checked={globalEnabled} onChange={(e) => setGlobalEnabled(e.target.checked)} />
-                  </label>
-                  {renderDispatcherRow("popup", "알람 목록 표시", popupEnabled, setPopupEnabled)}
-                  {renderDispatcherRow("sound", "소리 사용", soundEnabled, setSoundEnabled)}
-                  <label className="alert-settings-row">
-                    <span>야간 시작</span>
-                    <input type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} />
-                  </label>
-                  <label className="alert-settings-row">
-                    <span>야간 종료</span>
-                    <input type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} />
-                  </label>
-                  <label className="alert-settings-row">
-                    <span>볼륨 ({volume}%)</span>
-                    <input type="range" min={0} max={100} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
-                  </label>
-                </fieldset>
-
-                <fieldset className="alert-settings-section">
-                  {renderAlertSectionHeader("current-risk", ALERT_USER_SECTIONS[1].title, ALERT_USER_SECTIONS[1].description)}
-                  {ALERT_USER_SECTIONS[1].triggerIds.map((id) => renderTriggerToggle(id))}
-                </fieldset>
-
-                <fieldset className="alert-settings-section">
-                  {renderAlertSectionHeader("forecast-official", ALERT_USER_SECTIONS[2].title, ALERT_USER_SECTIONS[2].description)}
-                  {ALERT_USER_SECTIONS[2].triggerIds.map((id) => renderTriggerToggle(id))}
-                </fieldset>
-
-                <fieldset className="alert-settings-section">
-                  {renderAlertSectionHeader("repeat", ALERT_USER_SECTIONS[3].title, ALERT_USER_SECTIONS[3].description)}
-                  <label className="alert-settings-row">
-                    <span>같은 상태가 이어질 때 다시 알리는 간격(초)</span>
-                    <input type="number" min={0} max={3600} value={cooldown} onChange={(e) => setCooldown(e.target.value)} />
-                  </label>
-                  <label className="alert-settings-row">
-                    <span>새 알람 강조 시간(초)</span>
-                    <input type="number" min={0} max={60} value={highlightSeconds} onChange={(e) => setHighlightSeconds(e.target.value)} />
-                  </label>
-                </fieldset>
-              </>
             )}
 
             {activeTab === "traffic" && (

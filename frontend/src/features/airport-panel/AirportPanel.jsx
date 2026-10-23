@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, BarChart3, Cloud, Clock, Gauge, FileText, Info, Moon, ChevronDown } from 'lucide-react'
+import { AlertTriangle, BarChart3, BellRing, Cloud, Clock, Gauge, FileText, Info, Moon, ChevronDown } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
 import { MODEL_COMPARISON_AIRPORTS } from '../../api/modelComparisonApi.js'
 import { fmtKstShort, formatElevationFt } from './lib/formatters.js'
@@ -16,6 +16,8 @@ import AirportInfoTab from './tabs/AirportInfoTab.jsx'
 import NotamTab from './tabs/NotamTab.jsx'
 import MoonSection from './tabs/MoonSection.jsx'
 import WarningCarousel from './WarningCarousel.jsx'
+import WarningLightningCarousel from './WarningLightningCarousel.jsx'
+import { buildAirportLightningModel } from './lib/airportLightningModel.js'
 import { resolveAirportBanner } from './lib/airportBanner.js'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import { AirportModelComparisonSection } from '../airport-model-comparison/ModelComparisonSummary.jsx'
@@ -55,7 +57,7 @@ function AirportOperationsStrip({ airport, tz, now = new Date() }) {
 
 // Phase 1: 탭 → 단일 스크롤 + 스크롤스파이 레일. 섹션 순서 = 위험도/시급성(스펙 §4).
 // 각 섹션은 기존 탭 컴포넌트를 그대로 감쌈(§12 세부 표시는 Phase 2~4에서). 현재날씨는 해체(렌더 제외).
-function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherData }) {
+function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredWeatherData, onAlertsOpen }) {
   const { tz } = useTimeZone()
   const icao = airport?.icao
   const isFullFeature = FULL_FEATURE_AIRPORTS.has(icao)
@@ -155,6 +157,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const amos = weatherData?.amos?.airports?.[icao] || null
   const warning = weatherData?.warning?.airports?.[icao] || null
   const warnCount = warning?.warnings?.length || 0
+  const lightning = buildAirportLightningModel(weatherData?.lightning, airport, demoNowMs ?? nowMs ?? Date.now())
 
   const metarTime = metar?.header?.observation_time || metar?.header?.issue_time
   const tafValid = taf?.header?.valid_start
@@ -165,7 +168,9 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const tafAmd = taf?.header?.report_status === 'AMENDMENT' // 정정 → 제목을 TAF AMD로
 
   // 탭 배지(스펙 §10 / 프로토타입 badges() 이식): 숫자 = 주의 필요 항목 수, 색 = 최악 심각도. 0/null이면 배지 없음.
-  const warnBadge = warnCount ? { count: warnCount, severity: 'red' } : null // 공항경보=무조건 적
+  const warnBadge = warnCount
+    ? { count: warnCount + (lightning.active ? 1 : 0), severity: 'red' }
+    : lightning.active ? { count: 1, severity: 'amber' } : null
   const metarViewModel = metar ? buildMetarViewModel({ metar, amosData: amos, icao, airportMeta: airport }) : null
   const metarBadge = metarViewModel ? countMetarHazards(metarViewModel) : null
   const tafBadge = taf ? countTafHazardPeriods(buildTafViewModel(taf, icao, demoNowMs).slots) : null
@@ -174,7 +179,9 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const infoLoading = infoRequested && !weatherData?.airportInfo
 
   const sections = [
-    { id: 'warn', label: '공항경보', badge: warnBadge, node: <WarningCarousel warning={warning} /> },
+    { id: 'warn', label: lightning.active ? '경보·낙뢰' : '공항경보', titleText: lightning.active ? '공항경보 / 낙뢰관측' : '공항경보', badge: warnBadge, node: lightning.active
+      ? <WarningLightningCarousel warning={warning} lightning={lightning} airportKey={icao} />
+      : <WarningCarousel warning={warning} /> },
     { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', flightCategory: metarViewModel?.flightCat?.category, badge: metarBadge, node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
     { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, node: <EnhancedTafTab taf={taf} icao={icao} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
@@ -209,6 +216,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
           <span className="airport-panel-name">{headerNameEn}</span>
         </div>
         <AirportOperationsStrip airport={airport} tz={tz} />
+        <button type="button" className="airport-panel-alerts" onClick={onAlertsOpen} aria-label={`${headerNameKo} 알림 설정`} title="이 공항 알림 설정"><BellRing size={19} /></button>
         <button className="airport-panel-close" onClick={onClose} aria-label="닫기">×</button>
       </header>
 

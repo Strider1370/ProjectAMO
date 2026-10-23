@@ -78,6 +78,8 @@
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
 }
+.airport-panel-alerts { position: relative; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; flex: none; border: 0; border-radius: 8px; background: var(--bg-3); color: var(--text-2); cursor: pointer; }
+.airport-panel-alerts:hover { color: var(--accent); }
 
 .airport-panel-head {
   position: relative;
@@ -570,6 +572,105 @@
   flex-wrap: wrap;
   white-space: normal;
   align-items: flex-start;
+}
+
+.ap-observation-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px 16px;
+  border-radius: 6px;
+}
+
+.ap-observation-carousel--warning {
+  background: var(--level-red);
+  color: #fff;
+}
+
+.ap-observation-carousel--lightning {
+  background: var(--level-amber-bg);
+  color: var(--level-amber);
+  border: 1px solid color-mix(in srgb, var(--level-amber) 35%, var(--level-amber-bg));
+}
+
+.ap-observation-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ap-observation-content > svg { flex: 0 0 auto; }
+
+.ap-observation-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ap-observation-heading {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.ap-observation-detail,
+.ap-observation-source-status {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ap-observation-near { font-weight: 800; }
+.ap-observation-source-status { font-weight: 700; }
+
+.ap-observation-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.ap-observation-dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ap-observation-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.ap-observation-dot.is-active::before {
+  width: 9px;
+  height: 9px;
+  opacity: 1;
+}
+
+.ap-observation-dot:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 0;
+  border-radius: 4px;
+}
+
+@media (max-width: 540px) {
+  .ap-observation-carousel { align-items: flex-start; padding: 12px; }
+  .ap-observation-content { gap: 8px; }
+  .ap-observation-controls { max-width: 56px; }
 }
 
 .ap-current-flight-card {

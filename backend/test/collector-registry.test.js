@@ -32,6 +32,13 @@ test('radar graphics follows the scheduler enabled condition as well as the key'
   assert.equal(withoutGraphics.some((collector) => collector.type === 'wissdom'), false)
 })
 
+test('WIFS HIGH runs only with its own key, once daily in UTC', () => {
+  assert.equal(activeCollectorRegistry({ wifs: { api_key: '' } }).some(item => item.type === 'sigwx_high'), false)
+  const entry = activeCollectorRegistry({ wifs: { api_key: 'test-key' } }).find(item => item.type === 'sigwx_high')
+  assert.equal(entry.schedule.expression, '30 12 * * *')
+  assert.equal(entry.schedule.timezone, 'Etc/UTC')
+})
+
 test('radar graphics watchdog follows the configured scheduler cadence', () => {
   const graphics = activeCollectorRegistry({
     api: { radar_satellite_auth_key: 'key' },

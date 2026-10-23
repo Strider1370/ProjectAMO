@@ -13,6 +13,22 @@ const MINIMA_KO = {
 }
 
 export function formatNotification(n) {
+  if (n.source === 'organization') {
+    const p = n.payload ?? {}
+    return p.description || p.title || `${n.type ?? '기관 기상'} 알림`
+  }
+  if (n.source === 'route' || n.type === 'sigmet') {
+    const p = n.payload ?? {}
+    return `${p.phenomenon ?? 'SIGMET'} · 유효 ${p.validFrom ?? '시각 미상'} – ${p.validTo ?? '시각 미상'}`
+  }
+  if (n.source === 'airport') {
+    const p = n.payload ?? {}
+    if (n.type === 'metar') return (p.metrics ?? []).map((m) => m.direction === 'event'
+      ? `${m.label} 관측` : `${m.label} ${m.value}${m.unit} · 기준 ${m.threshold}${m.unit} ${m.direction === 'below' ? '미만' : '이상'}`).join(' / ')
+    if (n.type === 'airport_warning') return p.warning?.wrng_type_name ?? p.title ?? '공항경보'
+    if (n.type === 'taf') return `${p.reportType === 'AMD' ? 'TAF AMD' : '새 TAF'} · 발표 ${p.issuedAt ?? '시각 미상'}`
+    if (n.type === 'lightning') return `${p.radiusKm}km 이내 낙뢰 ${p.count}건 · 최근 ${p.windowMinutes}분`
+  }
   switch (n.type) {
     case 'MINIMA': return `${at(n)} ${MINIMA_KO[n.toVal] ?? '최저치 미만'} 예보`
     case 'TS': return `${at(n)} 뇌전 예보`

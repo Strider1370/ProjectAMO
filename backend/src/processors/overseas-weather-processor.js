@@ -81,15 +81,17 @@ export async function processSigmet() {
   const nowMs = Date.now()
 
   let incoming = []
+  let fetched = false
   try {
     const entries = await apiClient.fetchNoaaSigmet()
     incoming = noaaSigmetParser.parse(entries, firs)
+    fetched = true
   } catch (error) {
     console.warn(`sigmet_overseas: NOAA fetch failed: ${error.message}`)
   }
 
   const items = mergeAdvisories(previous?.items, incoming, nowMs)
-  const result = { type: 'sigmet_overseas', fetched_at: new Date().toISOString(), items }
+  const result = { type: 'sigmet_overseas', fetched_at: fetched ? new Date().toISOString() : previous?.fetched_at ?? null, items }
   const saveResult = store.save('sigmet_overseas', result)
   return {
     type: 'sigmet_overseas',

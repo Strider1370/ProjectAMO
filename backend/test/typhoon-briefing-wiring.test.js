@@ -18,9 +18,10 @@ test('브리핑 요청 처리부가 태풍 스냅샷을 data에 넣는다', () =
     "server.js의 브리핑 data 조립에 typhoon이 빠지면 브리핑에 태풍이 영구히 안 뜬다")
 })
 
-test('개발용 시나리오 진입점도 태풍 스냅샷을 넣는다', () => {
+test('개발용 시나리오는 퇴역한 비행 알림 브리핑 계산을 실행하지 않는다', () => {
   const source = readSource('src/dev/scenario.js')
-  assert.match(source, /typhoon:\s*getCached\('typhoon'\)/)
+  assert.match(source, /runUserAlertTick/)
+  assert.doesNotMatch(source, /composeBriefing/)
 })
 
 test('composeBriefing이 data.typhoon을 읽어 위험기상에 태풍을 낸다', () => {

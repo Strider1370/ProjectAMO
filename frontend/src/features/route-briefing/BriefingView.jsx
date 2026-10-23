@@ -8,7 +8,6 @@ import {
 } from '../../shared/ui/fluent.js'
 import VerticalProfileViewer from './VerticalProfileViewer.jsx'
 import BriefingBanner from './BriefingBanner.jsx'
-import BriefingChangeStrip from '../notifications/BriefingChangeStrip.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import DataProvenance from '../../shared/ui/DataProvenance.jsx'
@@ -772,7 +771,6 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             {frozenNotice}
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
             {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
-        {!organizationContext && !frozenNotice && <BriefingChangeStrip />}
             <BriefingBanner banner={weatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
             {nav}{board}{layerAction}{adverse}{currentDesktop}{enroute}{notamSection}{destination}
             {!organizationContext && !frozenNotice && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
@@ -823,7 +821,6 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
         </div>
         {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
         {frozenNotice}
-        {!organizationContext && !frozenNotice && <BriefingChangeStrip />}
         <BriefingBanner banner={weatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
         {nav}{board}{layerAction}{adverse}{currentDesktop}{enroute}{notamSection}{destination}
         {!organizationContext && !frozenNotice && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}

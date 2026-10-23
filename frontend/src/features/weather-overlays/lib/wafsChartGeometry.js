@@ -6,6 +6,20 @@ export function windParts(speed) {
   return { pennants: Math.floor(rounded / 50), full: Math.floor((rounded % 50) / 10), half: rounded % 10 >= 5 ? 1 : 0 }
 }
 
+// Retain the strongest nearby annotation at a given screen scale. Axis lines
+// and source features remain intact; labels use a wider gap than barbs.
+export function visibleJetWinds(winds, zoom, { labels = false } = {}) {
+  const spacing = labels
+    ? zoom < 4 ? 260 : zoom < 5 ? 220 : zoom < 6 ? 150 : zoom < 7 ? 80 : 0
+    : zoom < 4 ? 190 : zoom < 5 ? 150 : zoom < 6 ? 100 : 0
+  if (!spacing) return new Set(winds.map(({ feature }) => feature))
+  const selected = []
+  for (const item of [...winds].sort((a, b) => (b.feature.properties.speedKt || 0) - (a.feature.properties.speedKt || 0))) {
+    if (selected.every(other => distance(item.point, other.point) >= spacing)) selected.push(item)
+  }
+  return new Set(selected.map(({ feature }) => feature))
+}
+
 export function nearestTangent(point, paths) {
   let best = null
   for (const path of paths) for (let i = 1; i < path.length; i++) {

@@ -45,6 +45,18 @@ test('each canonical operation URL resolves to exactly its declared operation', 
   }
 })
 
+test('WIFS metadata and IWXXM requests resolve to separate monitored operations', () => {
+  const metadata = resolveApiOperation({ url: 'https://aviationweather.gov/wifs/api/collections/kkci_iwxxm_forecasts?f=json' })
+  const forecast = resolveApiOperation({ url: 'https://aviationweather.gov/wifs/api/collections/kkci_iwxxm_forecasts/locations/GLOBAL?f=iwxxm&datetime=2026-10-23T12%3A00%3A00Z' })
+  assert.equal(metadata.id, 'wifs_sigwx_metadata')
+  assert.equal(forecast.id, 'wifs_sigwx_forecast')
+  for (const operation of [metadata, forecast]) {
+    assert.equal(operation.collectorType, 'sigwx_high')
+    assert.deepEqual(operation.dataHealthKeys, ['sigwx_high'])
+    assert.equal(operation.requestPolicy.maxAttempts, 1)
+  }
+})
+
 test('rejects an explicit id when it does not match the request URL', () => {
   assert.throws(() => resolveApiOperation({
     id: 'metar',

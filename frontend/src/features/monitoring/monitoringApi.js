@@ -51,10 +51,6 @@ export async function loadMonitoringData({ signal } = {}) {
   }
 }
 
-export async function loadMonitoringAlertDefaults({ signal } = {}) {
-  return fetchJson('/api/alert-defaults', { signal })
-}
-
 export async function fetchMonitoringSnapshotMeta({ signal } = {}) {
   return fetchCurrentSnapshotMeta({ signal })
 }
@@ -67,11 +63,7 @@ export async function loadChangedMonitoringData(changes, { signal } = {}) {
 }
 
 export async function loadMonitoringInitialData({ signal } = {}) {
-  const [data, alertDefaults] = await Promise.all([
-    loadMonitoringData({ signal }),
-    loadMonitoringAlertDefaults({ signal }),
-  ])
-  return { data, alertDefaults }
+  return { data: await loadMonitoringData({ signal }) }
 }
 
 function hashOf(entry) {

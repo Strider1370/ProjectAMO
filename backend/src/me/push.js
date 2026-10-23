@@ -22,15 +22,28 @@ export function createPushRouter({ db = null } = {}) {
     res.json({ key })
   })
 
+  router.get('/push/subscribe', (req, res) => {
+    const endpoint = typeof req.query.endpoint === 'string' ? req.query.endpoint : ''
+    if (!endpoint) return res.status(400).json({ error: 'invalid_input' })
+    const registered = Boolean(database().prepare('SELECT 1 FROM push_subscriptions WHERE user_id=? AND endpoint=?')
+      .get(req.session.userId, endpoint))
+    res.json({ registered })
+  })
+
   router.post('/push/subscribe', (req, res) => {
     const parsed = subscribeSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: 'invalid_input' })
     const { endpoint, keys } = parsed.data
-    database().prepare(`
-      INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at)
-      VALUES (?,?,?,?,?)
-      ON CONFLICT(user_id, endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth
-    `).run(req.session.userId, endpoint, keys.p256dh, keys.auth, new Date().toISOString())
+    const db2 = database()
+    db2.transaction(() => {
+      // 한 브라우저 구독을 다른 계정으로 재등록하면 이전 계정으로 알림이 새지 않게 소유권을 옮긴다.
+      db2.prepare('DELETE FROM push_subscriptions WHERE endpoint=? AND user_id<>?').run(endpoint, req.session.userId)
+      db2.prepare(`
+        INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at)
+        VALUES (?,?,?,?,?)
+        ON CONFLICT(user_id, endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth
+      `).run(req.session.userId, endpoint, keys.p256dh, keys.auth, new Date().toISOString())
+    })()
     res.status(201).json({ ok: true })
   })
 

@@ -62,12 +62,16 @@ test('admin endpoints require admin and return data', async () => {
     assert.ok(apiHubUsage.keys.every((key) => Array.isArray(key.endpoints)))
     assert.ok(apiHubUsage.keys.every((key) => !('credential' in key) && !('url' in key)))
     assert.ok(apiHubUsage.keys.every((key) => key.endpoints.every((endpoint) => Object.keys(endpoint).every((field) => ['label', 'bytes', 'requests', 'successes', 'failures', 'lastCalledAt'].includes(field)))))
+    assert.match(apiHubUsage.wifs.day, /^\d{4}-\d{2}-\d{2}$/)
+    assert.equal(typeof apiHubUsage.wifs.configured, 'boolean')
+    assert.ok(!('credential' in apiHubUsage.wifs))
 
     const health = await (await fetch(at(server, '/api/admin/data-health'), getWith(cookie))).json()
     assert.ok(Array.isArray(health.rows) && health.rows.length > 0)
     assert.ok(health.rows.every((r) => 'key' in r && 'label' in r && 'status' in r))
     assert.ok(health.rows.every((r) => r.provenance?.display && r.provenance?.liveCollection))
     assert.ok(health.rows.every((r) => r.stats?.executionCounters?.period?.kind === 'stats_lifetime_since_reset'))
+    assert.deepEqual(health.rows.find((row) => row.key === 'sigwx_high').operations.map((operation) => operation.id), ['wifs_sigwx_metadata', 'wifs_sigwx_forecast'])
     assert.equal(health.counts.total, health.rows.length)
     assert.ok(Array.isArray(health.groups.source) && health.groups.source.length > 0)
     assert.ok(Array.isArray(health.groups.character) && health.groups.character.length > 0)
@@ -83,7 +87,7 @@ test('admin endpoints require admin and return data', async () => {
     assert.equal(trends.measurement.businessDay, 'UTC_calendar_day')
 
     const watches = await (await fetch(at(server, '/api/admin/alert-watches'), getWith(cookie))).json()
-    assert.equal(watches.evaluation.currentSelection.policy, 'one_earliest_route_per_user_within_configured_window')
+    assert.equal(watches.summary.configured, 0)
     assert.ok(Array.isArray(watches.watches))
 
     assert.equal((await fetch(at(server, `/api/admin/users/${pending[0].id}/approve`), postWith(cookie))).status, 200)

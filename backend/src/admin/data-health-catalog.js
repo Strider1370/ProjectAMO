@@ -1,4 +1,4 @@
-// 자료 34종의 판정 기준표. 스펙 2026-08-10-admin-console-redesign-design.md의 표가 원본이다.
+// 자료별 판정 기준표. 스펙 2026-08-10-admin-console-redesign-design.md의 표가 원본이다.
 // cron 식을 시간 간격으로 번역하는 코드는 두지 않는다 — 발표 지연 같은 현장 사정은 사람이 조정해야 하고,
 // 숫자를 직접 적는 편이 짧고 정직하다. 수집 주기를 바꾸면 이 표도 같이 고칠 것.
 const m = (min) => min * 60_000
@@ -52,6 +52,7 @@ export const CATALOG = [
   { key: 'sigmet', label: 'SIGMET 국내', source: 'kma_aviation', character: 'hazard', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), eventDriven: true },
   { key: 'airmet', label: 'AIRMET', source: 'kma_aviation', character: 'hazard', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), eventDriven: true },
   { key: 'sigwx_low', label: 'SIGWX', source: 'kma_aviation', character: 'hazard', normalMs: h(6), lateMs: h(9), stoppedMs: h(18) },
+  { key: 'sigwx_high', label: 'SIGWX HIGH', source: 'external', character: 'hazard', normalMs: h(24), lateMs: h(30), stoppedMs: h(50), meta: 'sigwx_high/latest.json', disabledWhen: c => !c.wifs?.api_key },
   { key: 'amos', label: 'AMOS', source: 'kma_aviation', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },
   { key: 'warning', label: '기상특보', source: 'kma_aviation', character: 'hazard', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), eventDriven: true },
   { key: 'kma_special_warning', label: '기상특보(KMA)', source: 'kma_aviation', character: 'hazard', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), eventDriven: true },

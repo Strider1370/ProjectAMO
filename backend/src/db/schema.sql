@@ -157,6 +157,96 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user ON triggered_alerts(user_id, detected
 CREATE INDEX IF NOT EXISTS idx_alerts_dedup ON triggered_alerts(route_id, dedup_key);
 CREATE INDEX IF NOT EXISTS idx_pushsub_user ON push_subscriptions(user_id);
 
+-- 개인 공항 감시. 경로 알림과 별도로 상시 평가하며, 사용자별 설정과 판정 상태를 보존한다.
+CREATE TABLE IF NOT EXISTS airport_alert_watches (
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  icao          TEXT NOT NULL CHECK (length(icao)=4),
+  enabled       INTEGER NOT NULL DEFAULT 1,
+  rules         TEXT NOT NULL,
+  state         TEXT NOT NULL DEFAULT '{}',
+  last_evaluated_at TEXT,
+  updated_at    TEXT NOT NULL,
+  PRIMARY KEY (user_id, icao)
+);
+
+CREATE TABLE IF NOT EXISTS airport_alert_events (
+  id            INTEGER PRIMARY KEY,
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  icao          TEXT NOT NULL,
+  kind          TEXT NOT NULL CHECK (kind IN ('metar','taf','airport_warning','lightning')),
+  source_key    TEXT,
+  payload       TEXT NOT NULL,
+  active        INTEGER NOT NULL DEFAULT 1,
+  detected_at   TEXT NOT NULL,
+  resolved_at   TEXT,
+  read_at       TEXT,
+  pushed_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_airport_alert_events_user ON airport_alert_events(user_id, detected_at);
+CREATE INDEX IF NOT EXISTS idx_airport_alert_events_active ON airport_alert_events(user_id, icao, active);
+
+-- 운영 사이트에서 본인에게만 보내는 모의 알림. 실황 감시 상태와 발생 이력에서 분리한다.
+CREATE TABLE IF NOT EXISTS user_alert_test_runs (
+  id          TEXT PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type TEXT NOT NULL CHECK (target_type IN ('airport','route')),
+  target_id   TEXT NOT NULL,
+  scenario    TEXT NOT NULL,
+  kind        TEXT NOT NULL,
+  payload     TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  expires_at  TEXT NOT NULL,
+  push_status TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_user_alert_test_runs_owner ON user_alert_test_runs(user_id, created_at);
+
+-- 저장한 비행경로별 SIGMET 감시. 생성 시의 경로·시간·고도 스냅샷을 보존한다.
+CREATE TABLE IF NOT EXISTS route_sigmet_watches (
+  id                INTEGER PRIMARY KEY,
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  route_id          INTEGER NOT NULL,
+  route_name        TEXT NOT NULL,
+  route_snapshot    TEXT NOT NULL,
+  enabled           INTEGER NOT NULL DEFAULT 1,
+  state             TEXT NOT NULL DEFAULT '{}',
+  last_evaluated_at TEXT,
+  deleted_at        TEXT,
+  updated_at        TEXT NOT NULL,
+  UNIQUE(user_id, route_id)
+);
+CREATE TABLE IF NOT EXISTS route_sigmet_events (
+  id          INTEGER PRIMARY KEY,
+  watch_id    INTEGER NOT NULL REFERENCES route_sigmet_watches(id) ON DELETE CASCADE,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  route_id    INTEGER NOT NULL,
+  source_key  TEXT NOT NULL,
+  payload     TEXT NOT NULL,
+  active      INTEGER NOT NULL DEFAULT 1,
+  detected_at TEXT NOT NULL,
+  resolved_at TEXT,
+  read_at     TEXT,
+  pushed_at   TEXT,
+  UNIQUE(watch_id,source_key)
+);
+CREATE INDEX IF NOT EXISTS idx_route_sigmet_events_user ON route_sigmet_events(user_id,detected_at);
+
+-- 공항·경로 사건의 기기별 전달 기록. 판정 상태는 종류별 테이블에 남기되,
+-- 발송 재시도와 중복 방지는 한 곳에서 관리한다.
+CREATE TABLE IF NOT EXISTS user_alert_deliveries (
+  source          TEXT NOT NULL CHECK (source IN ('airport','route')),
+  event_id        INTEGER NOT NULL,
+  subscription_id INTEGER NOT NULL,
+  endpoint        TEXT NOT NULL,
+  user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  state           TEXT NOT NULL DEFAULT 'queued' CHECK (state IN ('queued','retry','sent','expired','failed')),
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at TEXT NOT NULL,
+  sent_at         TEXT,
+  last_error      TEXT,
+  PRIMARY KEY (source,event_id,subscription_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_alert_deliveries_pending ON user_alert_deliveries(state,next_attempt_at);
+
 -- 개인 지도는 기관 공유본과 분리한다. snapshot은 가져온 KML 원문 메타데이터의
 -- 중복 키·배열 순서를 잃지 않도록 JSON 하나로 보관하고, 목록용 수치만 별도 열에 둔다.
 CREATE TABLE IF NOT EXISTS personal_maps (

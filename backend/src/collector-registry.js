@@ -57,6 +57,7 @@ export const COLLECTOR_REGISTRY = [
     (config) => config.kim_nwp?.enabled !== false && config.kim_expanded?.enabled === true, [], EMPTY_ALLOWED_RESULT_OUTCOMES)),
   collector('kim_gktg', utc('kim_gktg_interval', 4 * HOUR, 35 * MINUTE), config => config.kim_nwp?.enabled !== false && config.kim_gktg?.enabled !== false),
   collector('kim_tropopause', utc('kim_tropopause_interval', 4 * HOUR, 35 * MINUTE), config => config.kim_nwp?.enabled !== false && config.kim_tropopause?.enabled !== false),
+  collector('sigwx_high', utc('sigwx_high_interval', 24 * HOUR, HOUR), config => Boolean(config.wifs?.api_key)),
   collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE), enabled, ['aviation']),
   collector('terminal_flights', kst('terminal_flight_interval', MINUTE, MINUTE, EARLY_MORNING)),
   collector('overseas_forecast', kst('overseas_forecast_interval', HOUR, 35 * MINUTE, EARLY_MORNING)),

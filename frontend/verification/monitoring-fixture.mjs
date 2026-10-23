@@ -1,5 +1,4 @@
 // Fixed fixture for deterministic monitoring page contract testing
-import alertDefaults from '../../shared/alert-defaults.js'
 
 const HASH_METAR = 'metar-stable-hash-001'
 const HASH_METAR_OVERSEAS = 'metar-overseas-stable-hash-001'
@@ -331,10 +330,6 @@ export async function installMonitoringFixture(page, { now = MONITORING_FIXTURE_
         wind_shear: { label: '윈드시어' },
       },
     })
-  })
-
-  await page.route('**/api/alert-defaults', (route) => {
-    fulfill(route, alertDefaults)
   })
 
   await page.route('**/api/snapshot-meta', (route) => fulfill(route, buildSnapshotMeta()))

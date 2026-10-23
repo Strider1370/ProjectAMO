@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { windParts, nearestTangent, resamplePath, createBoundaryPatterns, insideArea, nearBoundary, clipPolarRing } from './wafsChartGeometry.js'
+import { windParts, visibleJetWinds, nearestTangent, resamplePath, createBoundaryPatterns, insideArea, nearBoundary, clipPolarRing } from './wafsChartGeometry.js'
 
 test('jet wind symbols retain 5/10/50 kt contributions, including multiple flags', () => {
   for (const speed of [0, 5, 10, 45, 50, 95, 100, 135, 155, 200]) {
@@ -10,6 +10,18 @@ test('jet wind symbols retain 5/10/50 kt contributions, including multiple flags
   assert.deepEqual(windParts(133), { pennants: 2, full: 3, half: 1 })
   assert.equal(windParts(null), null)
   assert.equal(windParts(-10), null)
+})
+test('continental jet view keeps the strongest nearby wind and restores symbols when zoomed in', () => {
+  const winds = [[90, 0], [150, 30], [110, 230]].map(([speed, x]) => ({
+    feature: { properties: { speedKt: speed } }, point: { x, y: 0 },
+  }))
+  const broad = visibleJetWinds(winds, 3)
+  assert.equal(broad.size, 2)
+  assert.ok(broad.has(winds[1].feature))
+  assert.ok(broad.has(winds[2].feature))
+  assert.equal(visibleJetWinds(winds, 3, { labels: true }).size, 1)
+  assert.equal(visibleJetWinds(winds, 7).size, 3)
+  assert.equal(visibleJetWinds(winds, 7, { labels: true }).size, 3)
 })
 test('tangent follows axis direction and closest segment, ignoring duplicate points', () => {
   const path = [[{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: -100 }]]

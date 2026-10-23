@@ -53,6 +53,38 @@ function ensureColumns(database) {
     const alertCols = database.prepare('PRAGMA table_info(organization_alerts)').all().map((c) => c.name)
     if (!alertCols.includes('acknowledged_version')) database.exec('ALTER TABLE organization_alerts ADD COLUMN acknowledged_version INTEGER')
   }
+
+  if (tableExists('route_sigmet_watches')) {
+    const watchCols = database.prepare('PRAGMA table_info(route_sigmet_watches)').all().map((column) => column.name)
+    if (!watchCols.includes('deleted_at')) database.exec('ALTER TABLE route_sigmet_watches ADD COLUMN deleted_at TEXT')
+  }
+
+  if (tableExists('user_alert_deliveries')) {
+    const columns = database.prepare('PRAGMA table_info(user_alert_deliveries)').all().map((column) => column.name)
+    if (!columns.includes('endpoint')) {
+      database.exec("ALTER TABLE user_alert_deliveries ADD COLUMN endpoint TEXT NOT NULL DEFAULT ''")
+      database.exec(`UPDATE user_alert_deliveries SET endpoint=COALESCE(
+        (SELECT s.endpoint FROM push_subscriptions s WHERE s.id=user_alert_deliveries.subscription_id), '')`)
+    }
+  }
+
+  // SQLite CHECK는 ALTER로 확장할 수 없다. 기존 사용자 알림 이력을 그대로 옮겨 TAF를 허용한다.
+  const airportEventsSql = database.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='airport_alert_events'").get()?.sql
+  if (airportEventsSql?.includes("'metar','airport_warning','lightning'")) {
+    database.transaction(() => {
+      database.exec(`CREATE TABLE airport_alert_events_next (
+        id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        icao TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('metar','taf','airport_warning','lightning')),
+        source_key TEXT, payload TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+        detected_at TEXT NOT NULL, resolved_at TEXT, read_at TEXT, pushed_at TEXT
+      )`)
+      database.exec(`INSERT INTO airport_alert_events_next
+        (id,user_id,icao,kind,source_key,payload,active,detected_at,resolved_at,read_at,pushed_at)
+        SELECT id,user_id,icao,kind,source_key,payload,active,detected_at,resolved_at,read_at,pushed_at FROM airport_alert_events`)
+      database.exec('DROP TABLE airport_alert_events')
+      database.exec('ALTER TABLE airport_alert_events_next RENAME TO airport_alert_events')
+    })()
+  }
 }
 
 // 기상이 하루 질문 수 표는 처음에 "0~5"로 묶여 있었다. SQLite는 CHECK를 고칠 수 없어서

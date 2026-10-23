@@ -10,6 +10,7 @@ import kmaSpecialWarningProcessor from './processors/kma-special-warning-process
 import sigmetProcessor from './processors/sigmet-processor.js'
 import airmetProcessor from './processors/airmet-processor.js'
 import sigwxLowProcessor from './processors/sigwx-low-processor.js'
+import sigwxHighProcessor from './processors/sigwx-high-processor.js'
 import amosProcessor from './processors/amos-processor.js'
 import lightningProcessor from './processors/lightning-processor.js'
 import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
@@ -200,6 +201,7 @@ const processorBindings = {
   metar: metarProcessor.processAll, taf: tafProcessor.processAll, warning: warningProcessor.process,
   kma_special_warning: kmaSpecialWarningProcessor.process, sigmet: sigmetProcessor.process, airmet: airmetProcessor.process,
   sigwx_low: sigwxLowProcessor.process, amos: amosProcessor.process, lightning: lightningProcessor.process,
+  sigwx_high: sigwxHighProcessor.process,
   wissdom: radarGraphicsProcessor.processWissdom, qpf: radarGraphicsProcessor.processQpf, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
   echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
   kim_surface_chart: kimSurfaceChartProcessor.process,

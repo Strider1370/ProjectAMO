@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { HIGH_HOUR_MS as H, pickHighFrame, highTimelineEntries, highStamp, highHeight, highLegendEntries } from './sigwxHighModel.js'
+import { HIGH_HOUR_MS as H, pickHighFrame, pickLiveHighFrame, highTimelineEntries, liveHighTimelineEntries, highStamp, highHeight, highLegendEntries } from './sigwxHighModel.js'
 import { WAFS_CHART_PALETTES, wafsChartPalette } from './wafsChartPalette.js'
 import { OUTLINE_BASEMAP_PALETTES } from '../../map/lib/outlineBasemapStyle.js'
 import { buildOrderedTimes, nextPlaybackTime } from './useTimelineRail.js'
@@ -50,6 +50,14 @@ test('nearest sample repeats every 48h with original timestamps intact, includin
   assert.equal(JSON.stringify(index), before)
   assert.equal(pickHighFrame([], base), null)
   assert.equal(pickHighFrame(index.frames, NaN), null)
+})
+test('live HIGH uses actual valid times and stops at F36', () => {
+  const base = Date.UTC(2026, 9, 23, 6)
+  const frames = Array.from({ length: 11 }, (_, i) => ({ forecastHour: 6 + i * 3, validTime: new Date(base + (6 + i * 3) * H).toISOString() }))
+  assert.equal(pickLiveHighFrame(frames, base + 7 * H).frame.forecastHour, 6)
+  assert.equal(pickLiveHighFrame(frames, base + 37 * H).frame.forecastHour, 36)
+  assert.deepEqual(liveHighTimelineEntries(frames, base + 9 * H).map(entry => entry.ms), frames.map(frame => Date.parse(frame.validTime)))
+  assert.equal(pickLiveHighFrame([], base), null)
 })
 test('unified playback visits all sample frames and wraps while preserving other weather times', () => {
   const now = Date.UTC(2026, 8, 29, 3)

@@ -130,7 +130,7 @@ export default function OrganizationLoungePage() {
     })
     Promise.all([
       organizationRequest(route.orgId, '', { signal: controller.signal }),
-      get('/flights', 'flights'), get('/materials', 'materials'), get('/alerts', 'alerts'),
+      get('/flights', 'flights'), get('/materials', 'materials'), get('/alerts?includeInactive=true', 'alerts'),
       get('/briefings', 'briefings'), get('/notices', 'notices'), get('/members', 'members'), get('/interests', 'interests'),
       organizationRequest(route.orgId, '/situation', { signal: controller.signal }).catch((reason) => { if (reason.name === 'AbortError') throw reason; partial.push('/situation'); return null }),
     ]).then(([org, flights, materials, alerts, briefings, notices, members, interests, situation]) => {

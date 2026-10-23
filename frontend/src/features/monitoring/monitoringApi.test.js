@@ -11,7 +11,7 @@ import {
 const REQUIRED_INITIAL_URLS = [
   '/api/airports', '/api/metar', '/api/taf', '/api/amos', '/api/warning', '/api/kma-special-warning',
   '/api/sigmet', '/api/airmet', '/api/lightning', '/api/ground-forecast', '/api/ground-overview',
-  '/api/environment', '/api/airport-info', '/api/warning-types', '/api/alert-defaults',
+  '/api/environment', '/api/airport-info', '/api/warning-types',
   '/data/radar/hsr/hsr_meta.json', '/data/radar/hci/hci_meta.json', '/data/satellite/sat_meta.json',
   '/data/satellite/visible/visible_meta.json',
 ]

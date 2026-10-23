@@ -9,6 +9,7 @@ import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 // 항공·레이더위성·수치예보 셋뿐이라 NOAA와 공항공사는 이 화면에 나오지 않는다 —
 // 공항공사는 별도 호출 한도를 쓰지만 지금 아무도 세고 있지 않다(2단계).
 const gb = (bytes) => (bytes / 1024 ** 3).toFixed(2)
+const mb = (bytes) => (bytes / 1024 ** 2).toFixed(2)
 const STATUS_WORD = { active: '정상', blocked: '차단됨', unconfigured: '열쇠 없음' }
 
 export default function ApiUsageScreen({ adminQuery, health }) {
@@ -41,6 +42,7 @@ export default function ApiUsageScreen({ adminQuery, health }) {
   const usage = usageState.data
   const problems = health?.apiProblems ?? []
   const keys = usage?.keys ?? []
+  const wifs = usage?.wifs
   const busiest = keys.reduce((best, key) => (key.bytes > (best?.bytes ?? -1) ? key : best), null)
   const share = busiest?.limitBytes ? Math.round((busiest.bytes / busiest.limitBytes) * 100) : 0
 
@@ -68,6 +70,28 @@ export default function ApiUsageScreen({ adminQuery, health }) {
       </p>}
 
       {usage && <>
+      {wifs && <section className="ac-sec ac-flush">
+        <h2>WIFS SIGWX HIGH<em>오늘 · UTC {wifs.day}</em></h2>
+        <p className="ac-sub">
+          {wifs.configured ? '하루 1회 · F06~F36 · 요청 사이 65초' : 'WIFS 열쇠 없음 · 수집 비활성'}
+          {wifs.configured && ` · 이 서버 예보 요청 ${wifs.endpoints?.forecast?.requests || 0}/5,000회`}
+          {wifs.endpoints?.forecast?.lastForecastHour != null && ` · 마지막 F${String(wifs.endpoints.forecast.lastForecastHour).padStart(2, '0')}`}
+        </p>
+        <p className="ac-sub">동일한 키를 다른 시스템에서 사용한 호출은 이 기록에 포함되지 않습니다.</p>
+        <table className="ac-t">
+          <thead><tr><th>요청</th><th className="ac-r">호출</th><th className="ac-r">실패</th><th className="ac-r">다운로드</th><th className="ac-r">마지막 응답</th></tr></thead>
+          <tbody>{[['metadata', '회차 목록'], ['forecast', 'IWXXM 예보']].map(([id, label]) => {
+            const row = wifs.endpoints?.[id] || {}
+            return <tr key={id}>
+              <td className="ac-nm">{label}</td>
+              <td className="ac-r n">{row.requests || 0}</td>
+              <td className="ac-r n" style={row.failures > 0 ? { color: 'var(--ac-bad)' } : undefined}>{row.failures || 0}</td>
+              <td className="ac-r n">{mb(row.bytes || 0)} MB</td>
+              <td className="ac-r ac-muted">{row.lastCalledAt ? `${row.lastStatus == null ? '요청 오류' : `HTTP ${row.lastStatus}`} · ${formatDateTime(row.lastCalledAt)}` : '미호출'}</td>
+            </tr>
+          })}</tbody>
+        </table>
+      </section>}
       <div className="ac-hero">
         <div>
           <div className="ac-big n">{share}<s>%</s></div>

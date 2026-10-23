@@ -58,6 +58,10 @@ function WeatherOverlayPanel({
   surfaceChartNote = null,
   sigwxHighFilter = {},
   onSigwxHighFilterChange,
+  sigwxHighIsSample = true,
+  sigwxHighIsPreview = false,
+  sigwxHighFrameCount = 0,
+  sigwxHighMaxForecastHour = null,
   cloudIcingStatuses = {},
   selectedKimLevel = null,
 }) {
@@ -172,11 +176,12 @@ function WeatherOverlayPanel({
             })}
           </div>
           {group.id === 'hazards' && visibility.sigwxHigh && <details className="sigwx-high-filters">
-            <summary>SIGWX HIGH 표시 요소 · 고정 샘플</summary>
+            <summary>SIGWX HIGH 표시 요소 · {sigwxHighIsSample ? '고정 샘플' : sigwxHighIsPreview ? 'WIFS 부분 수집' : 'WIFS 실자료'}</summary>
             <div>{HIGH_TYPES.map(type => <label key={type.id}>
               <input type="checkbox" checked={!!sigwxHighFilter[type.id]} onChange={() => onSigwxHighFilterChange?.(type.id)} />{type.label}
             </label>)}</div>
-            <p className="sigwx-high-note">T+6~T+48 · 3시간 간격 15장 · 하단 타임라인으로 재생</p>
+            <p className="sigwx-high-note">F06~F{String(sigwxHighMaxForecastHour ?? (sigwxHighIsSample ? 48 : 36)).padStart(2, '0')} · 3시간 간격 {sigwxHighFrameCount || (sigwxHighIsSample ? 15 : 11)}장 · 하단 타임라인으로 재생</p>
+            <p className="sigwx-high-note">넓은 지도에서는 제트 바람깃과 고도 표기를 간략화합니다. 확대하면 세부 표기가 나타납니다.</p>
           </details>}
           {group.id === 'terrain' && visibility.terrainHazard && (
             <p className="terrain-hazard-note">

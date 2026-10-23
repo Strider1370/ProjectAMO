@@ -1,0 +1,10 @@
+.alert-workspace-shade { position: fixed; inset: 0; z-index: 1800; display: flex; justify-content: flex-end; background: #101d3370; }
+.alert-workspace { width: min(940px, 100vw); height: 100dvh; overflow: hidden; background: var(--bg-2); box-shadow: -16px 0 40px #0003; }
+.alert-workspace .aa-page { height: 100%; padding: 18px 22px 56px; }
+.alert-workspace .aa-shell { width: 100%; }
+.alert-workspace .aa-page-head { padding-top: 0; }
+.alert-workspace .aa-page-head > button:first-child { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; padding: 8px 0; color: var(--text-2); cursor: pointer; white-space: nowrap; font-size: 13px; }
+.aa-target-tabs { display: flex; gap: 4px; margin: 0 0 24px; border-bottom: 1px solid var(--stroke-1); }
+.aa-target-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-2); padding: 10px 18px; cursor: pointer; font: inherit; font-weight: 600; }
+.aa-target-tabs button.is-active { border-bottom-color: var(--accent, #34517d); color: var(--text-1); }
+@media (max-width: 719px) { .alert-workspace { width: 100vw; } .alert-workspace .aa-page { padding: 12px 12px 65px; } }

@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
+import { installMonitoringFixture, MONITORING_FIXTURE_NOW } from '../monitoring-fixture.mjs'
 
 test.describe('airport-panel', () => {
   test('opens the RKSI airport panel from its direct link', async ({ page }, testInfo) => {
@@ -68,4 +69,52 @@ test.describe('airport-panel', () => {
     await expect(page.getByText('도쿄 나리타 · RJAA', { exact: true })).toBeVisible()
     await expect(page.getByRole('group', { name: '공항 운항정보' })).toHaveCount(0)
   })
+})
+
+test('airport-panel: warning and nearby lightning rotate, then lightning expires', async ({ page }) => {
+  const now = MONITORING_FIXTURE_NOW.getTime()
+  const iso = (minutesAgo) => new Date(now - minutesAgo * 60_000).toISOString()
+  await page.clock.install({ time: MONITORING_FIXTURE_NOW })
+  await page.addInitScript((version) => {
+    localStorage.setItem('amo.tour.v1.done', 'true')
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
+  await installMonitoringFixture(page, { warning: { airports: {
+    RKSI: { warnings: [{ wrng_type_key: 'STRONG_WIND', valid_start: iso(60), valid_end: iso(-60) }] },
+  } } })
+  await page.route('**/api/lightning', (route) => route.fulfill({ json: {
+    content_hash: 'airport-lightning-test',
+    airports: { RKSI: { strikes: [{ time: iso(10), distance_km: 7.4, zone: 'alert' }] } },
+    nationwide: { strikes: [], coverage: {
+      status: 'complete', to: iso(5),
+      successfulWindows: [{ from: iso(240), to: iso(5) }],
+    } },
+  } }))
+  await page.route('**/api/demo-mode', (route) => route.fulfill({ json: { on: false, now: iso(0) } }))
+
+  await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
+  const section = page.locator('#sec-warn')
+  await expect(section.getByRole('heading', { name: '공항경보 / 낙뢰관측' })).toBeVisible()
+  await expect(section.locator('.ap-observation-heading')).toHaveText('공항경보 · 강풍경보')
+  await page.clock.fastForward(6100)
+  await expect(section.locator('.ap-observation-heading')).toHaveText('최근 15분 낙뢰 관측')
+  await section.getByRole('button', { name: '1번째 안내: 강풍경보' }).click()
+  await expect(section.locator('.ap-observation-heading')).toHaveText('공항경보 · 강풍경보')
+  await section.getByRole('button', { name: '2번째 안내: 낙뢰 관측' }).click()
+  await expect(section.locator('.ap-observation-heading')).toHaveText('최근 15분 낙뢰 관측')
+  await expect(section.locator('.ap-observation-detail')).toContainText('최단 7.4km')
+
+  await page.clock.fastForward(6 * 60_000)
+  await expect(section.locator('.ap-observation-heading')).toHaveText('최근 30분 낙뢰 관측')
+  await page.clock.fastForward(15 * 60_000)
+  await expect(section.getByRole('heading', { name: '공항경보', exact: true })).toBeVisible()
+  await expect(section.locator('.ap-observation-carousel')).toHaveCount(0)
+  await expect(section.locator('.ap-current-warning--danger')).toBeVisible()
+
+  await page.route('**/api/warning', (route) => route.fulfill({ json: { airports: {} } }))
+  await page.clock.setFixedTime(MONITORING_FIXTURE_NOW)
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(section.getByRole('heading', { name: '공항경보 / 낙뢰관측' })).toBeVisible()
+  await expect(section.locator('.ap-observation-heading')).toHaveText('최근 15분 낙뢰 관측')
+  await expect(section.locator('.ap-current-warning--ok')).toHaveCount(0)
 })

@@ -53,7 +53,7 @@ const hhmmZ = (iso) => {
 
 // 저장한 브리핑 한 줄. 여는 시각은 갈라지는 버튼 하나로 고른다 — 나란한 버튼 둘은 5줄이면
 // 10개가 되고 둘이 비슷하게 생겨 잘못 누르기 쉽다. 기본값은 상황에 맞게 자동으로 정해진다.
-function BriefingRow({ entry, watched, onOpen, onShare, onDelete, canShare }) {
+function BriefingRow({ entry, onOpen, onShare, onDelete, canShare }) {
   const s = useStyles()
   const past = isSavedEtdPast(entry)
   const savedEtd = hhmmZ(entry.etd)
@@ -63,16 +63,11 @@ function BriefingRow({ entry, watched, onOpen, onShare, onDelete, canShare }) {
       <span className={s.body}>
         <div className={s.name}>{entry.name}</div>
         <div className={s.meta}>{relativeTime(entry.savedAt)} 저장</div>
-        {(past || watched) && (
+        {past && (
           <div className={s.chips}>
             {past && (
               <span className={s.chip} style={{ color: 'var(--level-gray)', background: 'var(--level-gray-bg)' }}>
                 출발시각 지남
-              </span>
-            )}
-            {watched && (
-              <span className={s.chip} style={{ color: 'var(--level-amber)', background: 'var(--level-amber-bg)' }}>
-                알림 감시중
               </span>
             )}
           </div>
@@ -130,20 +125,9 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
   const [membershipsLoaded, setMembershipsLoaded] = useState(false)
   const [organizationError, setOrganizationError] = useState('')
   const [sharing, setSharing] = useState(null)
-  // 어느 브리핑이 알림 감시 중인지. 감시 행은 등록 시점의 복제본이라 sourceBriefingId로만
-  // 원본을 가리킨다 — 그게 없으면 삭제할 때 "알림도 끝났겠지"라는 오해를 못 막는다.
-  const [watched, setWatched] = useState(() => new Set())
-
   const refresh = useCallback(async () => {
     try { setBriefings(await listSavedRoutes({ kind: 'briefing' })) }
     catch { /* best-effort: 목록을 못 받아도 개인설정은 쓸 수 있어야 한다 */ }
-    try {
-      const res = await fetch('/api/me/alerts', { credentials: 'include' })
-      if (res.ok) {
-        const { flights = [] } = await res.json()
-        setWatched(new Set(flights.map((f) => f.sourceBriefingId).filter((id) => id != null)))
-      }
-    } catch { /* best-effort: 칩이 안 붙을 뿐 목록은 쓸 수 있다 */ }
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
@@ -167,12 +151,7 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
   }
 
   async function handleDelete(entry) {
-    // 알림은 등록 시점의 복제본을 감시한다. 원본을 지워도 계속 도는데, 사용자는
-    // "지웠으니 알림도 끝"이라고 읽는다 — 그 어긋남을 여기서 말해 준다.
-    const extra = watched.has(entry.id)
-      ? '\n\n이 브리핑으로 등록한 비행 알림은 계속 감시합니다. 알림도 멈추려면 비행 알림에서 따로 지우세요.'
-      : ''
-    if (!window.confirm(`'${entry.name}'을(를) 지울까요?${extra}`)) return
+    if (!window.confirm(`'${entry.name}'을(를) 지울까요?`)) return
     await deleteSavedRoute(entry.id)
     refresh()
   }
@@ -226,7 +205,6 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
                       <BriefingRow
                         key={entry.id}
                         entry={entry}
-                        watched={watched.has(entry.id)}
                         onOpen={handleOpen}
                         onShare={setSharing}
                         canShare={membershipsLoaded && memberships.length > 0 && !organizationError}

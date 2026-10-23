@@ -56,7 +56,7 @@ const PANEL_MAP = {
   설정:            'settings',
 }
 
-function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp, onNavigate }) {
+function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp, onNavigate, onAlertsOpen }) {
   const { user } = useAuth()
   const hasHover = useHasHover()
   const [isUtilityOpen, setIsUtilityOpen] = useState(false)
@@ -147,12 +147,13 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
             </div>
             <div className="sidebar-version" title={`ProjectAMO v${CURRENT_VERSION}`}>v{CURRENT_VERSION}</div>
             <div className="sidebar-utility-actions" role="group" aria-label="알림, 도움말 및 앱 설정">
-              <NotificationCenter isExpanded={false} />
+              <NotificationCenter isExpanded={false} onOpenAlerts={onAlertsOpen} />
               {bottomItems.map(renderBottomItem)}
             </div>
           </>
         ) : (
           <div className="sidebar-collapsed-utility">
+            <NotificationCenter isExpanded={false} onOpenAlerts={onAlertsOpen} />
             <SidebarButton
               item={{ label: '설정', icon: Settings }}
               isExpanded={false}
@@ -160,7 +161,6 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
             />
             {isUtilityOpen && (
               <div className="sidebar-utility-popover" role="group" aria-label="알림, 도움말 및 앱 설정">
-                <NotificationCenter isExpanded={false} />
                 {bottomItems.map(renderBottomItem)}
                 <DeveloperConsoleButton isExpanded={false} />
               </div>

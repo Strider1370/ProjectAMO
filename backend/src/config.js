@@ -455,6 +455,12 @@ export const noaa = {
   ],
 }
 
+// WIFS SIGWX HIGH is collected on the server; never expose this key to Vite.
+export const wifs = {
+  api_key: process.env.WIFS_API_KEY || '',
+  python: process.env.WIFS_PYTHON || 'python3',
+}
+
 export const schedule = {
   // 실행별 공개 지연 후 첫 시도와 1시간 간격 재시도 2회. 모두 UTC.
   nwp_ecmwf_interval: '40 1,2,3,7,8,9,13,14,15,19,20,21 * * *',
@@ -468,6 +474,8 @@ export const schedule = {
   sigmet_interval: '*/5 * * * *',
   airmet_interval: '*/5 * * * *',
   sigwx_low_interval: '5 5,11,17,23 * * *',
+  // One daily run after the 06Z base forecast normally reaches WIFS.
+  sigwx_high_interval: '30 12 * * *',
   // 30분 — 발표는 최단 3시간 간격(실측: 2022년 11호, 2020년 9호). 발표시각 대비 게시 지연은
   // 미측정이므로 창을 노리지 않고 고정 주기로 둔다. 실제 태풍 발생 시 로그로 지연을 재고 조정한다.
   typhoon_interval: '*/30 * * * *',
@@ -653,6 +661,7 @@ export default {
   api,
   airports,
   noaa,
+  wifs,
   notam,
   environment,
   ground_forecast,

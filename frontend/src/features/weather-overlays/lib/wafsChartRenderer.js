@@ -1,4 +1,4 @@
-import { nearestTangent, createBoundaryPatterns, isSelectableHazard, insideArea, nearBoundary } from './wafsChartGeometry.js'
+import { nearestTangent, createBoundaryPatterns, isSelectableHazard, insideArea, nearBoundary, visibleJetWinds } from './wafsChartGeometry.js'
 import { CSS_VARS } from '../../../shared/theme/tokens.js'
 import { outlinedStroke, jetBarb as barb } from './jetSymbols.js'
 
@@ -129,7 +129,7 @@ export function createWafsChartRenderer(map, onError) {
           for (const path of paths) path.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
           if (kind === 'TROPOPAUSE') {
             ctx.setLineDash([6.5, 3.9]); ctx.strokeStyle = palette.tropopause; ctx.lineWidth = 2.2; ctx.stroke(); ctx.setLineDash([])
-          } else outlinedStroke(ctx, palette.ink, 3.5, palette)
+          } else outlinedStroke(ctx, palette.ink, map.getZoom() < 5 ? 2.2 : 3.5, palette)
           continue
         }
         for (let i = 0; i < paths.length; i++) {
@@ -148,15 +148,21 @@ export function createWafsChartRenderer(map, onError) {
     function addHit(p, f, radius = 18) { hitBoxes.push({ x: p.x - radius, y: p.y - radius, w: radius * 2, h: radius * 2, feature: f }) }
     const points = data.features.filter(f => f.geometry.type === 'Point')
       .sort((a, b) => Number(a.properties.role === 'marker') - Number(b.properties.role === 'marker'))
+    const projectedWinds = points.filter(f => f.properties.role === 'wind')
+      .map(feature => ({ feature, point: project(feature.geometry.coordinates) }))
+      .filter(({ point }) => within(point))
+    const visibleWinds = visibleJetWinds(projectedWinds, map.getZoom())
+    const labeledWinds = visibleJetWinds(projectedWinds.filter(({ feature }) => visibleWinds.has(feature)), map.getZoom(), { labels: true })
     for (const f of points) {
       const p = project(f.geometry.coordinates), props = f.properties
       if (!within(p)) continue
+      if (props.role === 'wind' && !visibleWinds.has(f)) continue
       const paths = pathsById.get(props.objectId) || []
       const angle = nearestTangent(p, paths)
       if (props.role === 'wind') {
         barb(ctx, p, angle, props.speedKt, f.geometry.coordinates[1], palette); addHit(p, f, 25); stats.barbs++
         const extra = props.isotachLower && props.isotachUpper ? `${props.isotachLower.replace('FL ', '')}/${props.isotachUpper.replace('FL ', '')}` : ''
-        annotations.push({ f, p, angle, lines: [props.windLevel, extra].filter(Boolean), priority: 1, jet: true })
+        if (labeledWinds.has(f)) annotations.push({ f, p, angle, lines: [props.windLevel, extra].filter(Boolean), priority: 1, jet: true })
       } else if (props.role === 'direction') {
         arrow(ctx, p, angle, palette); addHit(p, f); stats.arrows++
       } else if (props.role === 'marker') {

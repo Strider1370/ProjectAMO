@@ -65,7 +65,20 @@ export function createRoutesRouter({ db = null } = {}) {
   router.delete('/routes/:id', (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_input' })
-    database().prepare('DELETE FROM routes WHERE id = ? AND user_id = ?').run(id, req.session.userId)
+    const db2 = database()
+    db2.transaction(() => {
+      const watch = db2.prepare('SELECT id FROM route_sigmet_watches WHERE route_id=? AND user_id=?').get(id, req.session.userId)
+      if (watch) {
+        const now = new Date().toISOString()
+        db2.prepare('UPDATE route_sigmet_watches SET enabled=0,deleted_at=?,updated_at=? WHERE id=?').run(now, now, watch.id)
+        db2.prepare('UPDATE route_sigmet_events SET active=0,resolved_at=? WHERE watch_id=? AND active=1').run(now, watch.id)
+        // routes.id는 AUTOINCREMENT가 아니므로 삭제 후 같은 ID가 재사용될 수 있다.
+        // 감시와 이력의 경로 ID를 음수 묘비로 바꿔 새 경로에 붙지 않게 한다.
+        db2.prepare('UPDATE route_sigmet_events SET route_id=? WHERE watch_id=?').run(-watch.id, watch.id)
+        db2.prepare('UPDATE route_sigmet_watches SET route_id=? WHERE id=?').run(-watch.id, watch.id)
+      }
+      db2.prepare('DELETE FROM routes WHERE id = ? AND user_id = ?').run(id, req.session.userId)
+    })()
     res.json({ ok: true })
   })
 

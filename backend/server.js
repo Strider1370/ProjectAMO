@@ -19,7 +19,10 @@ import { handleAirportHistory } from './src/airport-history.js'
 import stats from './src/stats.js'
 import config from './src/config.js'
 import { main as startScheduler } from './src/index.js'
-import { startAlertScheduler } from './src/alerts/scheduler.js'
+import { startUserAlertScheduler } from './src/user-alerts/service.js'
+import { createAirportWatchesRouter } from './src/me/airport-watches.js'
+import { createAlertTestRouter, startAlertTestCleanup } from './src/user-alerts/test-router.js'
+import { createRouteAlertRouter } from './src/user-alerts/route-router.js'
 import cors from 'cors'
 import helmet from 'helmet'
 import sharp from 'sharp'
@@ -54,7 +57,6 @@ import { requestObservedApi } from './src/lib/request-observability.js'
 import { sampleQueryGrid, classifyVisibility } from './src/processors/flight-category-processor.js'
 import { classifyCeilingFt } from './src/processors/flight-category/ceiling-kim.js'
 import warningTypes from '../shared/warning-types.js'
-import alertDefaults from '../shared/alert-defaults.js'
 import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
 import { composeBriefing } from './src/briefing/briefing-composer.js'
 import { executeBriefing } from './src/briefing/briefing-service.js'
@@ -98,7 +100,6 @@ import { createWorkerExecutor } from './src/ai/worker-executor.js'
 import { createAiAccess } from './src/ai/access.js'
 import { outputTokenBudget } from './src/ai/output-budget.js'
 import { createSavedRouteTools } from './src/ai/saved-route-tools.js'
-import { createAlertTools } from './src/ai/alert-tools.js'
 import { createCompressedResponseCache, sendCompressedJson } from './src/lib/compressed-response-cache.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -221,6 +222,11 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
+  if (/^sigwx_high\/runs\/\d{10}\/frame-\d{2}\.json$/i.test(relPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
+    return
+  }
+
   if (
     relPath === 'radar/echo_meta.json'
     || relPath === 'radar/echotop/echotop_meta.json'
@@ -230,6 +236,7 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     || relPath === 'radar/qpf/qpf_meta.json'
     || relPath === 'satellite/sat_meta.json'
     || relPath === 'satellite/convective/convective_meta.json'
+    || relPath === 'sigwx_high/latest.json'
     || /^sigwx_low\/(?:fronts_meta|clouds_meta)_\d{10}\.json$/i.test(relPath)
   ) {
     res.setHeader('Cache-Control', 'no-cache')
@@ -278,7 +285,7 @@ function isImmutableKimFieldRequest(req) {
 function isRevalidatedApiRequest(req) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false
   return (
-    /^\/(?:airports|warning-types|alert-defaults)$/i.test(req.path)
+    /^\/(?:airports|warning-types)$/i.test(req.path)
     || /^\/(?:metar|taf|warning|kma-special-warning|sigmet|airmet|sigwx-low|lightning|amos|adsb|ground-forecast|ground-overview|environment|airport-info|typhoon)$/i.test(req.path)
     || /^\/(?:metar|taf|sigmet)-overseas$/i.test(req.path)
     || /^\/sigwx-low-history$/i.test(req.path)
@@ -327,7 +334,6 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/ai', createAiRouter({
     executor: aiExecutor, enabled: aiEnabled, available: () => !isDemoMode(),
     personalRoutes: createSavedRouteTools({ database: getDb, executor: aiExecutor }),
-    personalAlerts: createAlertTools({ database: getDb }),
     maxOutputTokens: aiEnabled ? outputTokenBudget(process.env.AMO_AI_MAX_OUTPUT_TOKENS) : 1600,
     access: createAiAccess({ database: getDb, apiKey: process.env.OPENAI_API_KEY,
       model: process.env.AMO_AI_MODEL, reasoningEffort: process.env.AMO_AI_REASONING_EFFORT }),
@@ -351,6 +357,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/me', createMeRouter()) // 내 프리셋(로그인 필요, 자기 것만)
   app.use('/api/me', createRoutesRouter()) // 내 저장 경로
   app.use('/api/me', createAlertsRouter()) // #13 예정 비행(알림) 등록·관리
+  app.use('/api/me', createAirportWatchesRouter()) // 개인 공항 상시 감시 설정
+  app.use('/api/me', createAlertTestRouter()) // 본인 감시의 운영서버 모의 판정·기기 수신 시험
+  app.use('/api/me', createRouteAlertRouter()) // 저장 경로별 SIGMET 감시
   app.use('/api/me', createPushRouter()) // Web Push(VAPID) 구독·admin 테스트 발송
   app.use('/api/me', createMeRequestsRouter()) // 조종사 문의 생성/상태
   app.use('/api/forecaster', createForecasterRouter()) // 예보관 문의 대기열(담당공항만)
@@ -1267,7 +1276,6 @@ app.get('/api/radar/echo-top-point', (req, res) => {
 
 app.get('/api/airports', (_req, res) => sendStaticConfigJson(res, config.airports, 'airports'))
 app.get('/api/warning-types', (_req, res) => sendStaticConfigJson(res, warningTypes, 'warning-types'))
-app.get('/api/alert-defaults', (_req, res) => sendStaticConfigJson(res, alertDefaults, 'alert-defaults'))
 
 app.get('/api/sigwx-front-meta', (req, res) => sendSigwxOverlayMeta(req, res, 'fronts'))
 app.get('/api/sigwx-cloud-meta', (req, res) => sendSigwxOverlayMeta(req, res, 'clouds'))
@@ -1479,7 +1487,8 @@ if (process.env.NODE_ENV !== 'test' && config.demo_instance.enabled) {
   }, 60_000)
   organizationTimer.unref()
 
-  startAlertScheduler(getDb()) // #13 경로 예보변화 알림: 활성 예정비행 15분 재브리핑 → diff → 알림 적재
+  startUserAlertScheduler(getDb()) // 개인 공항·경로의 단일 판정/발송 주기. 옛 예정비행 엔진은 실행하지 않는다.
+  startAlertTestCleanup(getDb()) // 24시간 지난 모의 수신 시험만 정리
 
   startScheduler().catch((err) => {
     console.error('[server] Scheduler startup error:', err.message)

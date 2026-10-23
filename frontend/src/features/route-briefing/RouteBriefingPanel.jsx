@@ -15,7 +15,7 @@ import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.j
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import RouteImportChooser from './RouteImportChooser.jsx'
 import { buildRouteAviationLayerChips } from '../map/layerActions.js'
-import { Folder, Undo2, X, RotateCcw } from 'lucide-react'
+import { BellRing, Folder, Undo2, X, RotateCcw } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import AirportPickerField from '../../shared/ui/AirportPickerField.jsx'
@@ -24,6 +24,7 @@ import RouteAlternativesStep from './RouteAlternativesStep.jsx'
 import RouteTokenField from './RouteTokenField.jsx'
 import AltitudeWeatherComparison from './AltitudeWeatherComparison.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { useAuth } from '../auth/AuthContext.jsx'
 import { computeEtaIso, formatFlightDuration } from './lib/etaCalc.js'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
 import { briefingTimeFields, buildBriefingTimeIso, formatBriefingTime } from './lib/briefingTime.js'
@@ -127,10 +128,11 @@ function relativeTime(ts) {
   return new Date(ts).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
 }
 
-export default function RouteBriefingPanel({ state, refs = {}, derived, actions, airports = [], aviationVisibility = {}, onToggleAviation, metVisibility = {}, onToggleMet }) {
+export default function RouteBriefingPanel({ state, refs = {}, derived, actions, airports = [], aviationVisibility = {}, onToggleAviation, metVisibility = {}, onToggleMet, onRequestLogin }) {
   const isMobile = useIsMobile()
   const s = useStyles()
   const { tz } = useTimeZone()
+  const { user } = useAuth()
   const [allAirportOptions, setAllAirportOptions] = useState(DOMESTIC_AIRPORT_OPTIONS)
 
   // Load overseas airports and merge with domestic options
@@ -374,10 +376,24 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // 경로 저장/불러오기 (localStorage). 저장은 입력값만; 로드는 재검색으로 복원.
   const [menuOpen, setMenuOpen] = useState(false)
   const [savedRoutes, setSavedRoutes] = useState([])
+  const pendingAlertRouteRef = useRef(null)
   // 경로 메뉴는 경로만 보여준다. 브리핑은 내 계정에서 연다 — 성격이 다른 둘을 한 목록에
   // 섞으면 "이거 누르면 어디로 가지?"가 매번 생기고, 여기 X가 브리핑을 지우게 된다.
   const refreshSaved = async () => setSavedRoutes(await listSavedRoutes({ kind: 'route' }))
-  async function handleSaveCurrentRoute() {
+  function openRouteAlert(routeId) {
+    window.dispatchEvent(new CustomEvent('open-alert-panel', { detail: { view: 'settings', routeId } }))
+  }
+  useEffect(() => {
+    const pending = pendingAlertRouteRef.current
+    if (!user || !pending) return
+    pendingAlertRouteRef.current = null
+    saveRoute(pending.name, pending).then((saved) => {
+      if (!saved || typeof saved.id !== 'number') throw new Error('route_save_failed')
+      refreshSaved()
+      openRouteAlert(saved.id)
+    }).catch(() => window.alert('경로를 계정에 저장하지 못했습니다. 다시 시도해 주세요.'))
+  }, [user])
+  async function handleSaveCurrentRoute(openAlert = false) {
     const def = `${routeForm.departureAirport || '?'} → ${routeForm.arrivalAirport || '?'}`
     const name = window.prompt('경로 이름', def)
     if (name == null) return
@@ -392,7 +408,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       selectedIap,
     })
     const airacCycle = (await loadNavdata()).publicationId ?? null
-    await saveRoute(name.trim() || def, {
+    const saved = await saveRoute(name.trim() || def, {
       version: 3,
       cruiseAltitudeFt, tasKt, etd,
       eta: eta || null, // 사용자가 고친 ETA를 지킨다. 없으면 로드 때 거리·TAS로 계산.
@@ -417,6 +433,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       })),
     })
     refreshSaved()
+    if (openAlert && saved) {
+      if (typeof saved.id === 'number') openRouteAlert(saved.id)
+      else { pendingAlertRouteRef.current = saved; onRequestLogin?.() }
+    }
   }
   const routeMenu = (
     <Menu open={menuOpen} onOpenChange={(_, d) => { setMenuOpen(d.open); if (d.open) refreshSaved() }}>
@@ -425,12 +445,20 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       </MenuTrigger>
       <MenuPopover>
         <MenuList>
-          <MenuItem onClick={handleSaveCurrentRoute} disabled={!routeResult}>{'＋ 현재 경로 저장…'}</MenuItem>
+          <MenuItem onClick={() => handleSaveCurrentRoute()} disabled={!routeResult}>{'＋ 현재 경로 저장…'}</MenuItem>
+          <MenuItem onClick={() => { setMenuOpen(false); handleSaveCurrentRoute(true) }} disabled={!routeResult} icon={<BellRing size={15} />}>{'현재 경로 알림 설정…'}</MenuItem>
           {savedRoutes.length > 0 && <Divider />}
           {savedRoutes.map((r) => (
             <div key={r.id} className="rb-saved-row">
               <span className="rb-saved-name">{r.name}<span className="rb-saved-meta"> · {relativeTime(r.savedAt)}</span></span>
               <button type="button" className="rb-saved-load" onClick={() => { setMenuOpen(false); loadSavedRouteIntoEditor(r) }}>{'로드'}</button>
+              <button type="button" className="rb-saved-load" aria-label={`${r.name} SIGMET 알림 설정`} title="이 경로 SIGMET 알림 설정"
+                onClick={() => {
+                  setMenuOpen(false)
+                  if (typeof r.id === 'number') openRouteAlert(r.id)
+                  else if (user) saveRoute(r.name, r).then((saved) => { refreshSaved(); if (saved?.id) openRouteAlert(saved.id) })
+                  else { pendingAlertRouteRef.current = r; onRequestLogin?.() }
+                }}><BellRing size={15} /></button>
               <button type="button" className="rb-saved-del" aria-label="경로 삭제" onClick={async () => { await deleteSavedRoute(r.id); refreshSaved() }}><X size={14} /></button>
             </div>
           ))}

@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       icon: '/gisang-i/clear_3_avatar.png',
       badge: '/gisang-i/clear_3_avatar.png',
-      // 탭했을 때 갈 곳(=/?flight=<id>). notificationclick이 이걸 읽는다.
+      // 발송 종류별 상세 링크(/?alert=…, /?alertTest=…)를 클릭 핸들러에 전달한다.
       data: { url: data.url || '/' },
     })
   );
@@ -23,7 +23,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  // 발송 payload의 url(=/?flight=<id>)로 간다. 없으면 첫 화면.
+  // 발송 payload의 상세 URL로 간다. 없으면 첫 화면.
   const target = event.notification.data?.url || '/';
   event.waitUntil((async () => {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });

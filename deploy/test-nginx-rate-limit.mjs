@@ -76,3 +76,13 @@ test('metadata remains revalidated rather than inheriting immutable frame cachin
 
   assert.match(block, /add_header Cache-Control "no-cache";/)
 })
+
+test('SIGWX HIGH publishes revalidated run index and immutable frames', () => {
+  const frames = regexLocationContaining('sigwx_high/runs/')
+  const metadata = regexLocationContaining('sigwx_high/latest')
+  assert.match('/data/sigwx_high/runs/2026102306/frame-00.json', frames.matcher)
+  assert.doesNotMatch('/data/sigwx_high/latest.json', frames.matcher)
+  assert.match(locationBlock(frames.line), /public, max-age=10800, immutable/)
+  assert.match('/data/sigwx_high/latest.json', metadata.matcher)
+  assert.match(locationBlock(metadata.line), /Cache-Control "no-cache"/)
+})

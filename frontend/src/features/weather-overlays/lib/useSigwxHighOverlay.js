@@ -4,17 +4,17 @@ import { createWafsChartRenderer } from './wafsChartRenderer.js'
 import { wafsChartPalette } from './wafsChartPalette.js'
 import { selectHazardFill } from './wafsHazardFill.js'
 import { installHighLayers, removeHighLayers, HIGH_LAYERS } from './sigwxHighLayers.js'
-import { HIGH_DEFAULT_FILTER, HIGH_HOUR_MS, highStamp, highTimelineEntries, pickHighFrame } from './sigwxHighModel.js'
+import { HIGH_DEFAULT_FILTER, HIGH_HOUR_MS, highStamp, highTimelineEntries, liveHighTimelineEntries, pickHighFrame, pickLiveHighFrame } from './sigwxHighModel.js'
 
-// /data/는 운영 nginx가 수집 자료 폴더로 보내므로, 빌드에 포함된 고정 샘플은 따로 둔다.
-const ROOT = '/samples/sigwx-high/'
+const SAMPLE_ROOT = '/samples/sigwx-high/'
+const LIVE_ROOT = '/data/sigwx_high/'
 const requests = new Map()
-function readSample(file) {
-  if (!requests.has(file)) requests.set(file, fetch(ROOT + file).then(response => {
-    if (!response.ok) throw new Error(`샘플 불러오기 실패 (${response.status})`)
+function readFrame(url) {
+  if (!requests.has(url)) requests.set(url, fetch(url).then(response => {
+    if (!response.ok) throw new Error(`SIGWX HIGH 자료 불러오기 실패 (${response.status})`)
     return response.json()
-  }).catch(error => { requests.delete(file); throw error }))
-  return requests.get(file)
+  }).catch(error => { requests.delete(url); throw error }))
+  return requests.get(url)
 }
 const EMPTY = { type: 'FeatureCollection', features: [], areas: [], metadata: { bounds: [75, -20, 170, 70] } }
 
@@ -44,32 +44,40 @@ export function useSigwxHighOverlay({ mapRef, isStyleReady, styleRevision, enabl
   useEffect(() => {
     if (!enabled) return undefined
     let cancelled = false
-    setProblem(null)
-    readSample('index.json').then(value => {
-      if (!Array.isArray(value.frames) || !value.frames.length) throw new Error('샘플 시간 목록이 비어 있습니다.')
-      if (!cancelled) setIndex(value)
-    }).catch(error => { if (!cancelled) setProblem(error.message) })
-    return () => { cancelled = true }
+    const load = async () => {
+      try {
+        const response = await fetch(LIVE_ROOT + 'latest.json', { cache: 'no-store' })
+        if (!response.ok && response.status !== 404) throw new Error(`SIGWX HIGH 목록 불러오기 실패 (${response.status})`)
+        const value = response.status === 404
+          ? await readFrame(SAMPLE_ROOT + 'index.json') : await response.json()
+        if (!Array.isArray(value.frames) || !value.frames.length) throw new Error('SIGWX HIGH 시간 목록이 비어 있습니다.')
+        if (!cancelled) { setIndex(value); setProblem(null) }
+      } catch (error) { if (!cancelled) setProblem(error.message) }
+    }
+    load()
+    const timer = window.setInterval(load, 15 * 60_000)
+    return () => { cancelled = true; window.clearInterval(timer) }
   }, [enabled, retry])
-  const picked = useMemo(() => enabled ? pickHighFrame(index?.frames, selectedMs ?? nowMs) : null, [enabled, index, selectedMs, nowMs])
-  const file = picked?.frame.file
+  const isSample = index?.sample !== false
+  const picked = useMemo(() => enabled ? (isSample ? pickHighFrame : pickLiveHighFrame)(index?.frames, selectedMs ?? nowMs) : null, [enabled, isSample, index, selectedMs, nowMs])
+  const file = picked ? (isSample ? SAMPLE_ROOT : LIVE_ROOT) + picked.frame.file : null
   useEffect(() => {
     if (!enabled || !file) return undefined
     let cancelled = false
     setProblem(null)
-    readSample(file).then(data => {
-      if (!Array.isArray(data.features) || !data.metadata?.frameId) throw new Error('샘플 형식이 올바르지 않습니다.')
+    readFrame(file).then(data => {
+      if (!Array.isArray(data.features) || !data.metadata?.frameId) throw new Error('SIGWX HIGH 형식이 올바르지 않습니다.')
       if (!cancelled) setLoaded({ file, data })
     }).catch(error => { if (!cancelled) setProblem(error.message) })
     return () => { cancelled = true }
   }, [enabled, file, retry])
-  // Warm the next frame only; the whole XML-derived series is never in the JS bundle.
+  // Warm the next frame only; the entire converted series stays off the JS bundle.
   useEffect(() => {
     if (!enabled || !loaded || loaded.file !== file || !index) return
-    const position = index.frames.findIndex(frame => frame.file === file)
+    const position = index.frames.findIndex(frame => (isSample ? SAMPLE_ROOT : LIVE_ROOT) + frame.file === file)
     const next = index.frames[(position + 1) % index.frames.length]
-    if (next) readSample(next.file).catch(() => {})
-  }, [enabled, loaded, file, index])
+    if (next) readFrame((isSample ? SAMPLE_ROOT : LIVE_ROOT) + next.file).catch(() => {})
+  }, [enabled, loaded, file, index, isSample])
   // Before the index arrives, both file values are undefined. They must not
   // count as a matching loaded frame (loaded is still null at that point).
   const frame = enabled && file && loaded?.file === file ? loaded.data : null
@@ -134,18 +142,21 @@ export function useSigwxHighOverlay({ mapRef, isStyleReady, styleRevision, enabl
   }, [mapRef, isStyleReady, enabled, frame, selectionKey, hit])
 
   const bucket = Math.floor(nowMs / (3 * HIGH_HOUR_MS)) * 3 * HIGH_HOUR_MS
-  const entries = useMemo(() => enabled ? highTimelineEntries(index?.frames, bucket) : [], [enabled, index, bucket])
+  const entries = useMemo(() => enabled ? (isSample ? highTimelineEntries : liveHighTimelineEntries)(index?.frames, bucket) : [], [enabled, isSample, index, bucket])
+  const stale = !isSample && index?.frames?.length && nowMs > Date.parse(index.frames.at(-1).validTime)
   const timestamp = enabled ? {
-    key: 'sigwxHigh', label: 'SIGWX HIGH · 고정 샘플', timeLabel: '발표',
+    key: 'sigwxHigh', label: isSample ? 'SIGWX HIGH · 고정 샘플' : 'SIGWX HIGH · WIFS', timeLabel: '발표',
     issueLabel: picked ? highStamp(picked.frame.issueTime, tz) : '불러오는 중',
     validLabel: picked ? highStamp(picked.frame.validTime, tz) : null,
     validTimeLabel: '유효',
-    note: problem || (!frame ? '샘플 불러오는 중' : '주의: SIGWX HIGH는 현재 기상 자료가 아닙니다. 고정 샘플을 48시간 주기로 반복 표시합니다.'),
-    noteTone: 'warning',
+    note: problem || (!frame ? '자료 불러오는 중' : isSample ? '주의: SIGWX HIGH는 현재 기상 자료가 아닙니다. 고정 샘플을 48시간 주기로 반복 표시합니다.' : index?.previewOnly ? `부분 수집본: F${String(index.frames[0].forecastHour).padStart(2, '0')}~F${String(index.frames.at(-1).forecastHour).padStart(2, '0')}만 표시합니다.` : stale ? '마지막 수집 자료의 예보 유효범위가 지났습니다.' : null),
+    noteTone: problem || isSample || index?.previewOnly || stale ? 'warning' : undefined,
     onRetry: problem ? () => setRetry(value => value + 1) : null,
   } : null
   return {
-    frame, picked, filter, palette, selection: currentSelection, timestamp, entries,
+    frame, picked, filter, palette, selection: currentSelection, timestamp, entries, isSample,
+    isPreview: Boolean(index?.previewOnly), frameCount: index?.frames?.length || 0,
+    maxForecastHour: index?.frames?.at(-1)?.forecastHour ?? null,
     count: new Set(data.features.map(feature => feature.properties.objectId)).size,
     toggleType: id => setFilter(previous => ({ ...previous, [id]: !previous[id] })),
     clearSelection: () => setSelection(null),

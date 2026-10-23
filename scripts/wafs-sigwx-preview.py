@@ -205,7 +205,7 @@ def elevation(node, tag):
     return (element.get('uom', '') + ' ' + (element.text or '').strip()).strip()
 
 
-def build(path):
+def build(path, source_url=None):
     raw = path.read_bytes()
     root = ET.fromstring(raw)
     if root.tag != '{' + NS['i'] + '}WAFSSignificantWeatherForecast':
@@ -294,7 +294,7 @@ def build(path):
     def time_at(tag):
         return root.find(f'i:{tag}/g:TimeInstant/g:timePosition', NS).text
     return {'type': 'FeatureCollection', 'features': features, 'areas': areas, 'metadata': {
-        'sourceUrl': 'https://aviationweather.gov/data/products/sigwx/sample/' + path.name,
+        'sourceUrl': source_url or 'https://aviationweather.gov/data/products/sigwx/sample/' + path.name,
         'sourceSha256': hashlib.sha256(raw).hexdigest(), 'bounds': BOUNDS,
         'baseTime': time_at('phenomenonBaseTime'), 'issueTime': time_at('issueTime'),
         'validTime': time_at('phenomenonTime'), 'counts': counts, 'sourceCounts': source_counts,

@@ -7,10 +7,7 @@ import { Router } from 'express'
 
 import { getDb } from '../db/index.js'
 import { requireAuth } from '../auth/middleware.js'
-import { buildBriefingRequest, buildSnapshot, runTick, alreadyFired } from '../alerts/scheduler.js'
-import { composeBriefing } from '../briefing/briefing-composer.js'
-import { detectChanges } from '../alerts/diff.js'
-import { dispatchFlightAlerts } from '../alerts/sender.js'
+import { runUserAlertTick } from '../user-alerts/service.js'
 import { getCached, updateCache, canonicalHash, loadLatest } from '../store.js'
 import { getStats } from '../stats.js'
 import { getRequests, aggregateByPath, getCacheStats } from './instrument.js'
@@ -35,8 +32,17 @@ const SIG_PHENOM = {
 }
 const LIFR = { vis: 800, clouds: [{ amount: 'OVC', base: 100, raw: 'OVC001' }], wx: [{ raw: 'TSRA', intensity: 'HEAVY', descriptor: 'TS', phenomena: ['RA'], icon_key: 'TSRA' }] }
 const IFR = { vis: 3000, clouds: [{ amount: 'OVC', base: 600, raw: 'OVC006' }], wx: null }
-const mergeAirports = (a, b) => ({ ...(a?.airports || {}), ...(b?.airports || {}) })
 const visTok = (v) => String(Math.min(9999, Math.round(v))).padStart(4, '0')
+
+function routeWeatherTarget(route) {
+  let payload
+  try { payload = JSON.parse(route.payload ?? '{}') } catch { return null }
+  const routeGeometry = payload.routeGeometry ?? payload.enrouteGeometry
+  if (!routeGeometry?.coordinates?.length) return null
+  const form = payload.base?.routeForm ?? payload.routeForm ?? {}
+  return { departureAirport: form.departureAirport ?? route.dep,
+    arrivalAirport: form.arrivalAirport ?? route.dest, routeGeometry }
+}
 
 function overlayMetar(metar, icao, c) {
   const m = structuredClone(metar); const ap = m?.airports?.[icao]
@@ -102,24 +108,15 @@ function injectNotam(icao, geometry) {
   }]
   updateCache('notam', notam, canonicalHash(notam))
 }
-// 강제 발화용 가짜 직전 상태 — 모든 조건이 안 걸린 상태. 지금 스냅샷과 비교하면
-// 주입된 악기상이 전부 "새로 생긴 조건"이 되어 한 번에 발화한다.
-// 짝짓기는 공항+역할로 하므로 icao/role을 그대로 남겨야 한다(diff.js slotOf).
-function cleanBaseline(curr) {
-  return {
-    airports: (curr?.airports ?? []).map((a) => ({ ...a, minima: false, minimaBound: null, ts: false, fg: false, sn: false })),
-    sigmets: [],
-  }
-}
-function currentData() {
-  return {
-    metar: getCached('metar'), metarOverseas: getCached('metar_overseas'),
-    taf: getCached('taf'), tafOverseas: getCached('taf_overseas'),
-    sigmet: getCached('sigmet'), sigmetOverseas: getCached('sigmet_overseas'),
-    airmet: getCached('airmet'), warning: getCached('warning'),
-    amos: getCached('amos'), takeoff_fcst: getCached('takeoff_fcst'), notam: getCached('notam'),
-    typhoon: getCached('typhoon'),
-  }
+function clearUserAlerts(db, userId) {
+  return db.transaction(() => {
+    const airport = db.prepare('DELETE FROM airport_alert_events WHERE user_id=?').run(userId).changes
+    const route = db.prepare('DELETE FROM route_sigmet_events WHERE user_id=?').run(userId).changes
+    db.prepare('DELETE FROM user_alert_deliveries WHERE user_id=?').run(userId)
+    db.prepare("UPDATE airport_alert_watches SET state='{}',last_evaluated_at=NULL WHERE user_id=?").run(userId)
+    db.prepare("UPDATE route_sigmet_watches SET state='{}',last_evaluated_at=NULL WHERE user_id=?").run(userId)
+    return airport + route
+  })()
 }
 
 export function createDevRouter({ db = null } = {}) {
@@ -127,14 +124,14 @@ export function createDevRouter({ db = null } = {}) {
   const database = () => db || getDb()
   router.use(requireAuth)
 
-  // POST /api/dev/inject { routeId, scenario:{depLifr,destIfr,routeTs} } → store(메모리)에 악기상 주입 + 알림 발화.
+  // 가상 자료 주입 후 새 사용자 알림 판정만 실행한다. 개발 도구에서 외부 푸시는 보내지 않는다.
   router.post('/inject', async (req, res) => {
     const db2 = database()
     const uid = req.session.userId
     const { routeId, scenario = { depLifr: true, routeTs: true } } = req.body ?? {}
     const route = db2.prepare('SELECT * FROM routes WHERE id = ? AND user_id = ?').get(Number(routeId), uid)
     if (!route) return res.status(404).json({ error: 'no_route', hint: '먼저 경로를 저장하세요.' })
-    const request = buildBriefingRequest(route)
+    const request = routeWeatherTarget(route)
     if (!request) return res.status(400).json({ error: 'no_geometry', hint: '이 경로에 항로 좌표가 없습니다.' })
 
     if (scenario.depLifr) injectAirport(request.departureAirport, LIFR)
@@ -143,44 +140,11 @@ export function createDevRouter({ db = null } = {}) {
     if (scenario.routeIce) injectRouteSigmet(request.routeGeometry, SIG_PHENOM.ice)
     if (scenario.destNotam) injectNotam(request.arrivalAirport, request.routeGeometry)
 
-    // 주입된 store로 알림 계산 + 적재 + 발송(알림센터/텔레그램).
-    const data = currentData()
-    const briefing = composeBriefing(request, data)
-    const u = db2.prepare('SELECT min_ceiling_ft, min_visibility_m FROM users WHERE id = ?').get(uid)
-    const minima = { ceilingFt: u?.min_ceiling_ft ?? null, visibilityM: u?.min_visibility_m ?? null }
-    // 판정선은 이제 스냅샷을 만들 때 적용된다 — diff는 상태 전이만 본다.
-    const curr = buildSnapshot(briefing, mergeAirports(data.taf, data.tafOverseas), request, minima)
-    const changes = detectChanges(cleanBaseline(curr), curr)
-
-    const nowIso = new Date().toISOString()
-    // user_id를 반드시 실어야 한다 — 발송이 이것으로 구독자와 관리자 여부를 찾는다.
-    // 빠뜨리면 알림 행은 쌓이는데 폰도 텔레그램도 조용해서 "안 울린다"로만 보인다.
-    const routeCtx = { id: route.id, user_id: uid, name: route.name, eta: route.eta }
-    let suppressed = 0
-    const fired = []
-    for (const c of changes) {
-      // 실제 스케줄러와 같은 중복 방지를 건다. 강제 발화라고 이것까지 건너뛰면 같은 조건이
-      // 누를 때마다 쌓여서, 알림센터에 "뇌전 예보"가 두 줄 보이고 엔진을 의심하게 된다.
-      // 다시 발화시키려면 [알림 삭제]로 이력을 지우면 된다.
-      if (alreadyFired(db2, route.id, c.dedupKey)) { suppressed++; continue }
-      // severity는 고정값, to_val에는 "어느 미니마가 걸렸는지"(bound)가 들어간다 — scheduler.js와 같은 어휘.
-      const id = db2.prepare(`
-        INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-      `).run(uid, route.id, c.type, 'ALERT', c.target ?? null,
-        null, c.bound ?? null,
-        c.role ?? 'dev', c.dedupKey, nowIso).lastInsertRowid
-      fired.push({ ...c, id, route_id: route.id })
-    }
-    // 한 비행의 이번 변화를 **한 건으로 묶어** 보낸다(§5B group_wait) — runTick과 같은 호출이다.
-    // 변화마다 따로 보내면 위험기상 셋에 폰이 세 번 울린다. 실제 스케줄러는 안 그러는데
-    // 이 버튼만 그러면, 검증하는 사람이 없는 문제를 보고 진짜 동작을 못 믿게 된다.
-    if (fired.length) await dispatchFlightAlerts(db2, fired, routeCtx)
+    const summary = await runUserAlertTick(db2, { deliver: false, queue: false, userId: uid })
+    const firedCount = (summary.airport?.created ?? 0) + (summary.route?.created ?? 0)
     res.json({
-      ok: true, routeId: route.id, dep: request.departureAirport, firedCount: fired.length, suppressed,
-      note: suppressed
-        ? `이미 발화된 조건 ${suppressed}건은 건너뜀(실제 스케줄러와 같은 규칙). 다시 보려면 [알림 삭제] 후 주입.`
-        : '지도·브리핑·알림에 반영됨. [초기화]로 실황 복구.',
+      ok: true, routeId: route.id, dep: request.departureAirport, firedCount,
+      note: '지도·브리핑 자료와 저장된 새 공항·경로 감시를 평가했습니다. 개발 도구에서는 외부 푸시를 보내지 않습니다.',
     })
   })
 
@@ -192,21 +156,21 @@ export function createDevRouter({ db = null } = {}) {
       const latest = loadLatest(path.join(base, type))
       if (latest) { updateCache(type, latest, canonicalHash(latest)); restored.push(type) }
     }
-    const deletedAlerts = database().prepare('DELETE FROM triggered_alerts WHERE user_id = ?').run(req.session.userId).changes
+    const deletedAlerts = clearUserAlerts(database(), req.session.userId)
     res.json({ ok: true, restored, deletedAlerts, note: '실황(고정 원본) 복구 + 발생 알림 삭제.' })
   })
 
   // 시연용 스냅샷 저장/복원은 /api/admin/snapshot/*로 이전됨(배포 서버에서도 써야 해서 admin 라우터로 이동).
 
-  // POST /api/dev/tick → 실제 스케줄러 1회 즉시 평가(15분 대기 제거). 첫 tick=baseline, 주입 후 tick=변경 발화.
+  // POST /api/dev/tick → 새 사용자 알림 판정 1회. 외부 푸시는 보내지 않는다.
   router.post('/tick', async (req, res) => {
-    const summary = await runTick(database())
-    res.json({ ok: true, ...summary, note: '스케줄러 1회 평가. 주입 전 1회(baseline) → 주입 → 다시 tick 하면 변경 발화.' })
+    const summary = await runUserAlertTick(database(), { deliver: false, queue: false, userId: req.session.userId })
+    res.json({ ok: true, ...summary, note: '새 공항·경로 감시를 한 번 평가했습니다. 외부 푸시는 보내지 않습니다.' })
   })
 
   // POST /api/dev/clear-alerts → 내 발생 알림만 삭제(store/실황은 유지, reset과 달리 데이터 복구 안 함).
   router.post('/clear-alerts', (req, res) => {
-    const deleted = database().prepare('DELETE FROM triggered_alerts WHERE user_id = ?').run(req.session.userId).changes
+    const deleted = clearUserAlerts(database(), req.session.userId)
     res.json({ ok: true, deleted })
   })
 
