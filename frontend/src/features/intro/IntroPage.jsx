@@ -462,7 +462,7 @@ export default function IntroPage() {
           <div className="wrap feature">
             <div className="copy">
               <h2 id="brief-title">경로 위 기상을 한 화면에서</h2>
-              <p>출발·도착 공항과 교체공항을 고르면 경로를 자동으로 만들어요. 브리핑을 열면 지도 위 경로, 내 고도의 위험 요약, 경로를 따라 이어지는 위험 막대, 연직단면도, 공항 카드가 한 화면에 모여요. 같은 구간을 지도와 막대, 단면도에서 함께 짚어 볼 수 있고, 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
+              <p>출발·도착 공항과 교체공항을 고르면 경로를 자동으로 만들어요. 브리핑을 열면 지도 위 경로, 내 고도의 위험 요약, 경로를 따라 이어지는 위험 막대, 연직단면도, 공항 카드가 한 화면에 모여요. 같은 구간을 지도와 막대, 단면도에서 함께 짚어 볼 수 있고, 공항 날씨가 내 미니마보다 낮은지도 바로 알 수 있어요.</p>
             </div>
             <div className="stage">
               <div className="tabs fit" aria-hidden="true">
@@ -472,7 +472,7 @@ export default function IntroPage() {
                 <Frame id="br-1" title={briefTitle(0)}>
                   <div className="zoom">
                     <div className="zoom-in" style={{ transformOrigin: ROUTE_ZOOM_ORIGIN }}>
-                      <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 SID, 항로, STAR가 경로칸에 알약으로 들어가고 지도에 경로가 그려진 화면" />
+                      <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 경로가 경로칸에 알약으로 들어가고 지도에 경로가 그려진 화면" />
                     </div>
                   </div>
                 </Frame>
