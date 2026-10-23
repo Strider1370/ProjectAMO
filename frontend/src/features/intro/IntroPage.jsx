@@ -404,9 +404,10 @@ export default function IntroPage() {
                 <Frame title="ProjectAMO">
                   <img src={imgHero} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 레이더 위 경로, 위험기상 요약, 경로상 위험 막대와 연직단면도" />
                   <div className="co" id="co-hero">
-                    <Callout x="20.5%" y="32%">내 고도에 걸리는 위험을 차례로 요약해요</Callout>
-                    <Callout x="52%" y="59%" side="left">경로를 따라 위험 구간을 막대로</Callout>
-                    <Callout x="62%" y="43%">출발·도착·교체 공항 카드</Callout>
+                    <Callout x="20.2%" y="30%">내 고도에 걸리는 위험을 차례로 요약해요</Callout>
+                    <Callout x="61.8%" y="45%" side="left">공항 카드에 METAR·TAF</Callout>
+                    <Callout x="32%" y="58.4%" side="up">경로를 따라 위험 구간을 막대로</Callout>
+                    <Callout x="40%" y="79%">연직단면도에 난류·착빙·SIGMET을 고도별로</Callout>
                   </div>
                 </Frame>
               </div>
@@ -489,11 +490,11 @@ export default function IntroPage() {
                   </div>
                 </Frame>
                 <Frame id="br-5" title="연직단면도">
-                  <img src={imgProfile} alt="경로 연직단면도: 구름, 착빙, 난류와 순항고도" />
+                  <img src={imgProfile} alt="경로 연직단면도: 순항고도에 걸린 SIGMET 심한 난류 구간, 착빙 구역, 난류 강도" />
                   <div className="co">
-                    <Callout x="38.6%" y="63.9%" side="left">계획 순항고도 25,000ft</Callout>
-                    <Callout x="31%" y="75.5%">0°C 등온선</Callout>
-                    <Callout x="57%" y="40%" side="up">내 고도에 걸린 SIGMET</Callout>
+                    <Callout x="50.7%" y="36.4%" side="up">내 고도에 걸린 SIGMET 심한 난류</Callout>
+                    <Callout x="75.6%" y="67%" side="left">착빙 구역</Callout>
+                    <Callout x="55.4%" y="76.6%" side="left">난류 강도(GKTG)</Callout>
                   </div>
                 </Frame>
               </div>
