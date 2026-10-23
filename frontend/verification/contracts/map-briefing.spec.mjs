@@ -135,9 +135,13 @@ test.describe('map-briefing', () => {
 
   test('airport cards open the airport panel and fold into chips', async ({ page }) => {
     await createBriefing(page, { view: 'map' })
-    await page.evaluate(() => localStorage.removeItem('projectamo.airportCardsCollapsed'))
+    // 처음에는 모두 접은 칩으로 시작한다.
+    await expect(page.locator('.mb-airport-card')).toHaveCount(0)
+    await page.getByRole('button', { name: 'RKPK 카드 펼치기' }).click()
     const arrival = page.getByRole('article', { name: /도착 RKPK/ })
     await expect(arrival).toBeVisible()
+    // 펼친 카드는 METAR·TAF를 자르지 않는다(글이 칸 안에 다 들어간다).
+    expect(await arrival.locator('.mb-ac-rows dd span').evaluateAll((spans) => spans.every((el) => el.scrollWidth <= el.clientWidth + 1))).toBe(true)
     await arrival.getByRole('button', { name: 'RKPK 카드 접기' }).click()
     await expect(page.getByRole('button', { name: 'RKPK 카드 펼치기' })).toBeVisible()
     await page.getByRole('button', { name: 'RKPK 카드 펼치기' }).click()

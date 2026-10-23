@@ -265,8 +265,9 @@
 .mb-ac-rows { display: grid; grid-template-columns: 78px 1fr; align-items: baseline; gap: 4px var(--space-s); margin: 0; }
 .mb-ac-rows dt { display: flex; flex-direction: column; color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-bold); line-height: 1.15; }
 .mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); white-space: nowrap; }
-.mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.mb-ac-rows dd, .mb-ac-rows dd span { overflow: hidden; text-overflow: ellipsis; }
+/* METAR·TAF는 자르지 않고 띄어쓰기 자리에서 줄을 바꾼다(카드가 아래로 늘어남). */
+.mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; line-height: 1.35; }
+.mb-ac-rows dd span { min-width: 0; overflow-wrap: anywhere; }
 .mb-ac-rows dd em { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-style: normal; font-weight: var(--fw-bold); }
 /* 과거 보기(7단계): 이름 칸 아래 이력 점(왼쪽 과거 → 오른쪽 최신, METAR 점 색 = 비행등급). 과거를 보는 줄은 연한 주황. */
 .mb-ac-rows dt > span { white-space: nowrap; }

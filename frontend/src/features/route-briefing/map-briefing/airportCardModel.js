@@ -63,14 +63,16 @@ export function changeLines(changes, formatHour = (iso) => iso) {
 }
 
 // 접은 카드 기억: 공항이 아니라 역할(출발·도착·교체)로 — 다음 브리핑에서도 "도착 카드는 접어 둠"이 이어지게.
-// 저장소가 막혀 있어도 모두 펼친 상태로 동작한다.
+// 기본은 모두 접은 칩(2026-10-23 사용자 결정). 저장소가 막혀 있어도 접은 상태로 동작한다.
 const COLLAPSED_KEY = 'projectamo.airportCardsCollapsed'
 const ROLES = ['departure', 'arrival', 'alternate']
 export function readCollapsedRoles(storage = globalThis.localStorage) {
   try {
-    const saved = JSON.parse(storage?.getItem(COLLAPSED_KEY) ?? '[]')
-    return Array.isArray(saved) ? saved.filter((role) => ROLES.includes(role)) : []
-  } catch { return [] }
+    const raw = storage?.getItem(COLLAPSED_KEY)
+    if (raw == null) return [...ROLES]
+    const saved = JSON.parse(raw)
+    return Array.isArray(saved) ? saved.filter((role) => ROLES.includes(role)) : [...ROLES]
+  } catch { return [...ROLES] }
 }
 export function writeCollapsedRoles(roles, storage = globalThis.localStorage) {
   try { storage?.setItem(COLLAPSED_KEY, JSON.stringify(roles.filter((role) => ROLES.includes(role)))) } catch { /* 기억만 못 할 뿐 */ }

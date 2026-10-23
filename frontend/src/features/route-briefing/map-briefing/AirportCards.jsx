@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import { formatBriefingTime } from '../lib/briefingTime.js'
@@ -7,7 +7,7 @@ import { airportCards, changeLines, chipWidth, hasAlertFlag, metarText, tafTextA
 import { placeAirportCards } from './airportCardPlacement.js'
 
 const CARD_W = 360
-const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄
+const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄(최소 높이). METAR·TAF가 길면 줄을 바꿔 늘어나고, 자리 계산은 잰 높이를 쓴다.
 const CHIP_H = 28 // 접은 칩
 const LATEST_TAF = {} // TAF 이력 줄의 최신 칸 자리(글은 카드의 ±1시간 한 줄을 쓴다)
 // 카드가 피할 화면 요소(지도 위에 뜬 것들). 공항 패널이 열려 있으면 카드는 숨긴다(아래).
@@ -23,6 +23,8 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
   const layerRef = useRef(null)
   const [frame, setFrame] = useState(0)
   const [layout, setLayout] = useState([])
+  const [heights, setHeights] = useState({}) // 펼친 카드의 실제 높이(ICAO별)
+  const reportHeight = useCallback((icao, height) => setHeights((prev) => (prev[icao] === height ? prev : { ...prev, [icao]: height })), [])
   const hhmm = (iso) => formatBriefingTime(iso, tz).replace(` ${tz}`, '').replace('Z', '')
   const cards = useMemo(() => airportCards(briefing, {
     airportList: airports,
@@ -62,12 +64,12 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
       .map((sample) => { const p = map.project([sample.lon, sample.lat]); return [p.x, p.y] })
     const anchors = cards.filter((card) => card.position).map((card) => {
       const p = map.project(card.position)
-      const size = collapsedRoles.includes(card.role) ? { w: chipWidth(card), h: CHIP_H } : { w: CARD_W, h: CARD_H }
+      const size = collapsedRoles.includes(card.role) ? { w: chipWidth(card), h: CHIP_H } : { w: CARD_W, h: heights[card.icao] ?? CARD_H }
       return { key: card.icao, x: p.x, y: p.y, size }
     })
     const bounds = { left: 8, top: 8, right: origin.width - 8, bottom: origin.height - 8 }
     setLayout(placeAirportCards(anchors, { size: { w: CARD_W, h: CARD_H }, bounds, obstacles, route }))
-  }, [cards, mapRef, routeSamples, frame, collapsedRoles])
+  }, [cards, mapRef, routeSamples, frame, collapsedRoles, heights])
 
   const byKey = new Map(layout.map((place) => [place.key, place]))
   return (
@@ -97,7 +99,7 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
             </button>
           )
         }
-        return <AirportCard key={card.icao} card={card} place={place} changes={changes} hhmm={hhmm} onOpenAirport={onOpenAirport} onToggleCollapse={onToggleCollapse} />
+        return <AirportCard key={card.icao} card={card} place={place} changes={changes} hhmm={hhmm} onOpenAirport={onOpenAirport} onToggleCollapse={onToggleCollapse} onHeight={reportHeight} />
       })}
     </div>
   )
@@ -120,7 +122,18 @@ function HistoryDots({ history, label, describe }) {
   )
 }
 
-function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollapse }) {
+function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollapse, onHeight }) {
+  const cardRef = useRef(null)
+  // 줄바꿈으로 늘어난 높이를 알려 자리 계산(다른 카드·패널 피하기)에 쓰게 한다.
+  useLayoutEffect(() => {
+    const el = cardRef.current
+    if (!el) return undefined
+    const report = () => onHeight?.(card.icao, Math.ceil(el.offsetHeight))
+    report()
+    const observer = new ResizeObserver(report)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [card.icao, onHeight])
   const metarHistory = useAirportHistory(card.icao, 'metar', { latest: card.metar.report, latestTime: card.metar.time, latestKind: card.metar.speci ? 'SPECI' : 'METAR' })
   const tafHistory = useAirportHistory(card.icao, 'taf', { latest: card.taf.issued ? LATEST_TAF : null, latestTime: card.taf.issued })
   const pastMetar = metarHistory.selected && !metarHistory.selected.latest ? metarHistory.selected : null
@@ -130,7 +143,7 @@ function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollap
   const zHour = (iso) => `${String(new Date(iso).getUTCHours()).padStart(2, '0')}Z`
   const metarKind = (pastMetar?.kind ?? (card.metar.speci ? 'SPECI' : 'METAR')) === 'SPECI' ? 'SPECI' : 'METAR'
   return (
-    <article className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_W, height: CARD_H }}
+    <article ref={cardRef} className={`mb-airport-card is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, width: CARD_W, minHeight: CARD_H }}
       aria-label={`${card.roleLabel} ${card.icao} ${card.name}`}>
       <header className="mb-ac-head">
         <span className={`mb-ac-role is-${card.role}`}>{card.roleLabel}</span>

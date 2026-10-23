@@ -61,12 +61,13 @@ test('변화 목록 한 줄씩', () => {
   assert.deepEqual(changeLines([{ type: 'TEMPO', start: 'a', end: 'b', text: '30010KT 6000' }, { type: '변화', start: 'c', end: null, text: 'X' }], (iso) => iso.toUpperCase()), ['TEMPO A–B 30010KT 6000', '변화 C X'])
 })
 
-test('접은 카드는 역할로 기억하고, 저장소가 막혀도 모두 펼친 상태', () => {
+test('접은 카드는 역할로 기억하고, 처음이거나 저장소가 막히면 모두 접은 상태', () => {
   const m = new Map(); const storage = { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v) }
+  assert.deepEqual(readCollapsedRoles(storage), ['departure', 'arrival', 'alternate'])
   writeCollapsedRoles(['arrival', 'bogus'], storage)
   assert.deepEqual(readCollapsedRoles(storage), ['arrival'])
   const broken = { getItem() { throw new Error('x') }, setItem() { throw new Error('x') } }
-  assert.deepEqual(readCollapsedRoles(broken), [])
+  assert.deepEqual(readCollapsedRoles(broken), ['departure', 'arrival', 'alternate'])
   writeCollapsedRoles(['arrival'], broken)
   const card = { icao: 'RKPC', category: 'IFR', flags: { windshear: true, warnings: [], notams: 0 } }
   assert.equal(hasAlertFlag(card), true)
