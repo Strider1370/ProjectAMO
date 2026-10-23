@@ -24,13 +24,26 @@
 .mb-panel-stats dt { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
 .mb-panel-stats dd { margin: 0; font-size: var(--fs-500); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .mb-panel-line { margin: var(--space-s) var(--space-l) 0; color: var(--text-2); text-align: center; font-variant-numeric: tabular-nums; }
-/* 요약 칸: 내 고도의 위험을 차례로 넘겨 보여 준다. 아래 줄에 ‹ n / N › 와 자동 넘김 멈춤. */
+/* 요약 칸: 내 고도의 위험을 차례로 넘겨 보여 준다. 줄이 바뀌면 아래에서 올라오며 나타나고, 바탕색은 강도에 맞춰 천천히 바뀐다.
+   아래 진행 막대(위험 하나에 한 칸)가 다 차면 다음 위험으로 — 마우스를 올리거나 멈추면 막대도 멈춘다. */
 .mb-callout-wrap { margin: var(--space-m) var(--space-l) 0; }
-.mb-callout-nav { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 4px; color: var(--text-2); font-size: var(--fs-200); font-variant-numeric: tabular-nums; }
-.mb-callout-nav span { min-width: 40px; text-align: center; }
-.mb-callout-nav button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); cursor: pointer; }
-.mb-callout-nav button:hover { background: var(--bg-3); color: var(--text-1); }
-.mb-callout { display: flex; align-items: center; gap: var(--space-s); width: 100%; min-height: 58px; margin: 0; padding: var(--space-s) var(--space-m); border: 0; border-radius: var(--radius-md); text-align: left; font: inherit; cursor: pointer; }
+.mb-callout-slide { display: flex; align-items: center; gap: var(--space-s); min-width: 0; animation: mb-callout-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1); }
+@keyframes mb-callout-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.mb-callout-steps { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.mb-callout-steps > button:not(.mb-callout-pause) { flex: 1; padding: 5px 0; border: 0; background: transparent; cursor: pointer; }
+.mb-callout-steps i { display: block; position: relative; height: 3px; overflow: hidden; border-radius: 999px; background: var(--stroke-1); }
+.mb-callout-steps i::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--level-amber); transform: scaleX(0); transform-origin: left; }
+.mb-callout-steps i.is-sev::after { background: var(--level-red); }
+.mb-callout-steps .is-done i::after { transform: scaleX(1); opacity: 0.45; }
+.mb-callout-steps .is-active i::after { transform: scaleX(1); }
+.mb-callout-steps .is-active i[data-auto="on"]::after { animation: mb-callout-fill var(--mb-rotate) linear; }
+.mb-callout-steps.is-held .is-active i::after { animation-play-state: paused; }
+.mb-callout-steps > button:hover i { background: var(--stroke-2); }
+@keyframes mb-callout-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.mb-callout-pause { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 2px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; }
+.mb-callout-pause:hover { background: var(--bg-3); color: var(--text-1); }
+@media (prefers-reduced-motion: reduce) { .mb-callout-slide { animation: none; } }
+.mb-callout { display: flex; align-items: center; gap: var(--space-s); width: 100%; min-height: 58px; margin: 0; overflow: hidden; transition: background-color 0.3s ease; padding: var(--space-s) var(--space-m); border: 0; border-radius: var(--radius-md); text-align: left; font: inherit; cursor: pointer; }
 .mb-callout:disabled { cursor: default; }
 .mb-callout-badge { flex: none; min-width: 32px; padding: 6px 4px; border-radius: var(--radius-md); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); text-align: center; }
 .mb-callout-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
