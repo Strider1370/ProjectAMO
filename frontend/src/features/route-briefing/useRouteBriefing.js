@@ -4,6 +4,7 @@ import { fetchVerticalProfile, fetchCrossSection, fetchNwpTimeRefresh, fetchRout
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavdata, loadNavpoints, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
 import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
+import { buildRouteTokens, flagMisplacedAirports, placeEndpoint, procedureTokenText, readEndpoints } from './lib/routeInput.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString } from './lib/manualRouteInput.js'
 import { inlineImportedProcedureGeometry } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -476,8 +477,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }, [])
 
   const routeTokens = useMemo(
-    () => classifyTokens(routeTokenTexts, tokenLookups),
-    [routeTokenTexts, tokenLookups],
+    () => flagMisplacedAirports(classifyTokens(routeTokenTexts, tokenLookups), routeForm.flightRule),
+    [routeTokenTexts, tokenLookups, routeForm.flightRule],
   )
   const routeTokenErrors = useMemo(
     () => routeTokens.filter((token) => token.reason).map((token) => token.reason),
@@ -537,15 +538,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 돌지만 값이 이미 같으므로 아무것도 하지 않는다. 값이 같을 때 멈추는 것이 고리를 끊는다.
   // requestContextChange를 거치지 않는 updateRouteField를 쓴다 — 효과 안에서 확인 창을
   // 띄우면 이용자가 누르지 않은 확인이 뜬다.
+  // 공항 알약이 하나뿐이면 출발인지 도착인지는 지금 칸 값으로 가른다(readEndpoints).
   const tokenEndpointAirports = useMemo(() => {
-    const airportTokens = routeTokens.filter((token) => token.kind === TOKEN_KINDS.AIRPORT)
-    return {
-      departure: routeTokens[0]?.kind === TOKEN_KINDS.AIRPORT ? routeTokens[0].text : null,
-      arrival: airportTokens.length > 1 && routeTokens.at(-1)?.kind === TOKEN_KINDS.AIRPORT
-        ? routeTokens.at(-1).text
-        : null,
-    }
-  }, [routeTokens])
+    const airportTexts = new Set(routeTokens.filter((token) => token.kind === TOKEN_KINDS.AIRPORT).map((token) => token.text))
+    return readEndpoints(routeTokens.map((token) => token.text), (value) => airportTexts.has(value), {
+      departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport,
+    })
+  }, [routeTokens, routeForm.departureAirport, routeForm.arrivalAirport])
 
   useEffect(() => {
     const { departure, arrival } = tokenEndpointAirports
@@ -568,6 +567,20 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     .filter((token) => token.kind === TOKEN_KINDS.PROCEDURE)
     .map((token) => token.text)
     .join(','), [routeTokens])
+
+  // 알약에서 지운 절차는 칸에서도 뺀다. "있다가 없어진" 경우만 본다 — 절차를 고른 직후
+  // 알약이 아직 들어오지 않은 렌더(자동 생성 등)나, 비교안 전환처럼 알약과 상관없이 절차를
+  // 바꾸는 경우에 지우면 안 된다.
+  const previousProcedureTokenTextsRef = useRef('')
+  useEffect(() => {
+    const previous = previousProcedureTokenTextsRef.current ? previousProcedureTokenTextsRef.current.split(',') : []
+    previousProcedureTokenTextsRef.current = procedureTokenTexts
+    const current = procedureTokenTexts ? procedureTokenTexts.split(',') : []
+    const matches = (procedure) => (text) => !!findProcedureByToken(text, [procedure])
+    const removed = (procedure) => !!procedure && previous.some(matches(procedure)) && !current.some(matches(procedure))
+    if (removed(selectedSid)) updateEditorContext({ entryFix: '' }, { procedures: { sid: null } })
+    if (removed(selectedStar)) updateEditorContext({ exitFix: '' }, { procedures: { star: null, iapKey: null } })
+  }, [procedureTokenTexts])
 
   useEffect(() => {
     if (!procedureTokenTexts) return
@@ -812,47 +825,22 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   //
   // 공항은 경로의 양 끝이다. 이미 그 자리에 공항이 있으면 바꾸고, 없으면 끼워넣는다.
   // FIR 진입·이탈은 실제 공항 코드가 아니라 우리 쪽 표시값이라 토큰으로 넣지 않는다.
-  const setEndpointAirportToken = useCallback((end, icao) => {
+  // 넣기·바꾸기·빼기와 "바뀐 공항의 절차 알약도 뺀다"는 규칙은 placeEndpoint 한 곳에 있다.
+  function setEndpointAirportToken(end, icao) {
     const text = icao && icao !== FIR_IN_AIRPORT && icao !== FIR_EXIT_AIRPORT ? icao : null
-    setRouteTokenTexts((texts) => {
-      const next = [...texts]
-      const isAirport = (value) => (value ? KNOWN_AIRPORTS.includes(value.toUpperCase()) : false)
-      // 도착이 맨 끝 알약을 덮어쓸 수 있는 것은 그 알약이 출발 자리(0번)와 다를 때뿐이다.
-      // 목록에 공항이 하나뿐일 때 이 구분을 빼면 도착이 출발을 지워버려, 출발·도착이 같아지고
-      // 그것이 선택기로 되돌아가 두 칸이 같은 공항을 보여준다.
-      const canReplaceLast = next.length > 1 && isAirport(next.at(-1))
-      const index = end === 'departure' ? 0 : next.length - 1
-      const replaceable = end === 'departure' ? isAirport(next[0]) : canReplaceLast
-
-      if (!text) {
-        if (replaceable) next.splice(index, 1)
-        return next
-      }
-      if (replaceable) next[index] = text
-      else if (end === 'departure') next.unshift(text)
-      else next.push(text)
-      return next
-    })
-  }, [])
-
-  // 공항이 바뀌면 그 공항에 딸린 절차 알약(출발 쪽 SID, 도착 쪽 STAR)은 새 공항에 없다.
-  // 남겨 두면 '그런 지점이 없습니다' 오류로 남는다. 바뀌기 전 공항의 SID·STAR 목록으로 알아보고 지운다.
-  function dropEndpointProcedureToken(end) {
-    const departure = end === 'departure'
-    setRouteTokenTexts((texts) => {
-      const index = departure ? 1 : texts.length - 2
-      const text = texts[index]
-      if (index < 1 || !text) return texts
-      const owned = findProcedureByToken(text, departure ? sidOptions : starOptions)
-      return owned ? texts.filter((_, i) => i !== index) : texts
-    })
+    const current = { departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport }
+    const ownedProcedures = end === 'departure' ? sidOptions : starOptions
+    setRouteTokenTexts((texts) => placeEndpoint(texts, end, text, {
+      isAirport: (value) => (value ? KNOWN_AIRPORTS.includes(value.toUpperCase()) : false),
+      current,
+      ownedProcedures,
+    }))
   }
 
   function handleDepartureAirportChange(value) {
     const changes = { departureAirport: value, ...(value === FIR_IN_AIRPORT ? { entryFix: '' } : {}) }
     if (requestContextChange(changes, '출발 공항')) return
     setIapCandidates([])
-    if (value !== routeForm.departureAirport) dropEndpointProcedureToken('departure')
     setEndpointAirportToken('departure', value)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
@@ -861,7 +849,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const changes = { arrivalAirport: value, ...(value === FIR_EXIT_AIRPORT ? { exitFix: '' } : {}) }
     if (requestContextChange(changes, '도착 공항')) return
     setIapCandidates([])
-    if (value !== routeForm.arrivalAirport) dropEndpointProcedureToken('arrival')
     setEndpointAirportToken('arrival', value)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
@@ -870,10 +857,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const changes = { departureAirport: routeForm.arrivalAirport, arrivalAirport: routeForm.departureAirport }
     if (requestContextChange(changes, '출발·도착 공항')) return
     setIapCandidates([])
-    dropEndpointProcedureToken('arrival')
-    dropEndpointProcedureToken('departure')
-    setEndpointAirportToken('departure', routeForm.arrivalAirport)
-    setEndpointAirportToken('arrival', routeForm.departureAirport)
+    // 방향이 뒤집히면 옛 절차·항로는 쓸 수 없다 — 두 공항만 남긴다.
+    const endpoint = (value) => (value && value !== FIR_IN_AIRPORT && value !== FIR_EXIT_AIRPORT ? value : null)
+    setRouteTokenTexts(buildRouteTokens({ departure: endpoint(routeForm.arrivalAirport), arrival: endpoint(routeForm.departureAirport) }))
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
@@ -914,17 +900,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // 자동 생성 결과가 입력창에 나타나지 않는다 — 지도에는 있는데 글자로는 없는 상태가 된다.
     // 절차는 그 자리에 놓는다: SID는 출발공항 뒤, STAR는 목적지 앞.
     const enroute = routeEditor.rawText.trim().split(/\s+/)
-    const sidText = procedureTokenForms([routeEditor.procedures?.sid].filter(Boolean))
-      .find((form) => form.includes('.')) ?? null
-    const starText = procedureTokenForms([routeEditor.procedures?.star].filter(Boolean))
-      .find((form) => form.includes('.')) ?? null
-    setRouteTokenTexts([
-      routeForm.departureAirport,
-      sidText,
-      ...enroute,
-      starText,
-      routeForm.arrivalAirport,
-    ].filter(Boolean))
+    setRouteTokenTexts(buildRouteTokens({
+      departure: routeForm.departureAirport, sid: routeEditor.procedures?.sid,
+      enroute, star: routeEditor.procedures?.star, arrival: routeForm.arrivalAirport,
+    }))
     // 바로 아래에서 직접 적용하므로, 토큰 변화를 보고 도는 실시간 적용은 건너뛰게 표시한다.
     // 표시하지 않으면 같은 경로를 두 번 계산해 서버를 두 번 부른다.
     lastAppliedTokenTextRef.current = enroute.join(' ')
@@ -956,10 +935,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setRouteEditor(emptyEditorForContext(next))
     // 경로 알약이 원본이다. 알약을 그대로 두면 옛 공항 알약이 선택기를 도로 되돌려
     // '계속'을 눌러도 공항이 안 바뀐다. 경로를 지우는 확인이므로 새 양 끝 공항만 남긴다.
-    setRouteTokenTexts([
-      next.departureAirport !== FIR_IN_AIRPORT ? next.departureAirport : null,
-      next.arrivalAirport !== FIR_EXIT_AIRPORT ? next.arrivalAirport : null,
-    ].filter(Boolean))
+    setRouteTokenTexts(buildRouteTokens({
+      departure: next.departureAirport !== FIR_IN_AIRPORT ? next.departureAirport : null,
+      arrival: next.arrivalAirport !== FIR_EXIT_AIRPORT ? next.arrivalAirport : null,
+    }))
     setPendingContextChange(null)
   }
 
@@ -968,9 +947,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const setProcedureToken = useCallback((end, procedure) => {
     setRouteTokenTexts((texts) => {
       const isAirport = (value) => (value ? KNOWN_AIRPORTS.includes(value.toUpperCase()) : false)
-      const forms = procedure ? procedureTokenForms([procedure]) : []
-      // 가장 완전한 형태(활주로.절차.FIX)를 쓴다. 없으면 절차 이름만.
-      const text = forms.find((form) => form.includes('.')) ?? forms[0] ?? null
+      const text = procedureTokenText(procedure)
       const next = texts.filter((token) => !isProcedureText(token, end === 'departure' ? sidOptions : starOptions))
       if (!text) return next
       if (end === 'departure') {
@@ -1149,8 +1126,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     seededRef.current = true
     lastSyncedRawTextRef.current = editor.rawText.trim()
     lastAppliedTokenTextRef.current = tokens.join(' ')
-    setRouteTokenTexts([plan.flight.departureAirport, editor.procedures.sid?.name, ...tokens,
-      editor.procedures.star?.name, plan.flight.arrivalAirport].filter(Boolean))
+    setRouteTokenTexts(buildRouteTokens({ departure: plan.flight.departureAirport, sid: editor.procedures.sid,
+      enroute: tokens, star: editor.procedures.star, arrival: plan.flight.arrivalAirport }))
     setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: request.routeGeometry.coordinates, maxZoom: 8 })
     return { status: 'imported', resultHash: bundle.resultHash }
   }
@@ -2064,7 +2041,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const enrouteTokens = (inputs.routeString ?? '').trim().split(/\s+/).filter(Boolean)
     // 이미 완성된 선을 얹었으므로 글자로 다시 만들 필요가 없다 — 임포트와 같은 가드.
     skipImportedTokenReapplyRef.current = true
-    setRouteTokenTexts([inputs.departureAirport, procedures.sid?.name, ...enrouteTokens, procedures.star?.name, inputs.arrivalAirport].filter(Boolean))
+    setRouteTokenTexts(buildRouteTokens({ departure: inputs.departureAirport, sid: procedures.sid, enroute: enrouteTokens, star: procedures.star, arrival: inputs.arrivalAirport }))
     lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
     const selectedIap = savedIapData?.iapRoutes?.[procedures.iapKey] ?? null
     if (inputs.etd) setEtd(inputs.etd)

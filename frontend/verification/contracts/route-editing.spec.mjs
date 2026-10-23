@@ -6,7 +6,7 @@ import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 // 경로 생성 단계에서 입력을 바꾸는 조작들. 제안서
 // docs/design/proposals/2026-10-23-route-input-rework.md 5절의 시나리오 표를 그대로 옮겼다.
 // 경로 알약·위쪽 칸(출발·도착·교체·SID·STAR)·경로 결과가 조작 뒤에도 서로 맞는지를 본다.
-// 아직 고치지 않은 것은 test.fail로 둔다 — 고쳐지면 "예상 실패가 통과함"으로 알려 준다.
+// 새로 찾은 버그는 고치기 전까지 test.fail로 둔다 — 고쳐지면 "예상 실패가 통과함"으로 알려 준다.
 
 async function openRoutePanel(page) {
   await installRouteBriefingFixtures(page)
@@ -149,7 +149,6 @@ test.describe('route-editing', () => {
   })
 
   test('9 deleting the STAR pill clears the STAR field and keeps the SID pill', async ({ page }) => {
-    test.fail(true, '알려진 버그(2026-10-23): STAR 알약을 지워도 STAR 칸·경로 계산에 그 STAR가 남는다')
     await openRoutePanel(page)
     await autoGenerate(page, 'RKSI', 'RKPC')
     const pills = await routeTokenTexts(page)
@@ -164,7 +163,6 @@ test.describe('route-editing', () => {
   })
 
   test('10 typing an airport into the middle of the route is reported, not ignored', async ({ page }) => {
-    test.fail(true, '알려진 버그(2026-10-23): 경로 중간에 친 공항이 오류 없이 무시된다')
     await openRoutePanel(page)
     await autoGenerate(page, 'RKSI', 'RKPC')
     await enterRouteTokens(page, ['RKPK'])
@@ -219,7 +217,6 @@ test.describe('route-editing', () => {
   })
 
   test('14b a saved route loads back the same pills', async ({ page }) => {
-    test.fail(true, '알려진 버그(2026-10-23): 불러온 절차 알약이 짧은 이름으로 바뀐다(15L.BOPTA3C.BOPTA → BOPTA3C)')
     await openRoutePanel(page)
     await autoGenerate(page, 'RKSI', 'RKPC')
     await pickAirport(page, '교체 공항', 'RKPK')
@@ -236,7 +233,6 @@ test.describe('route-editing', () => {
   })
 
   test('15 picking the arrival first leaves the departure empty', async ({ page }) => {
-    test.fail(true, '알려진 버그(2026-10-23): 도착만 먼저 고르면 알약 하나뿐이라 출발로 읽혀 출발 칸도 같은 공항이 된다')
     await openRoutePanel(page)
     await pickAirport(page, '도착 공항', 'RKPC')
     await expect.poll(() => fieldText(page, '도착 공항')).toContain('RKPC')

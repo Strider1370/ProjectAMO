@@ -106,6 +106,20 @@
 
 버그 네 건은 계약에 `test.fail`로 들어 있다. 고치면 "예상 실패가 통과함"으로 알려 주므로 그때 `test.fail`을 지운다.
 
+### 5.2 2단계 결과 (2026-10-24)
+
+알약 규칙을 `frontend/src/features/route-briefing/lib/routeInput.js`로 모았다(순수 함수, 시험 `routeInput.test.js`).
+
+- `placeEndpoint`: 출발·도착 넣기·바꾸기·빼기와 "바뀐 공항의 절차 알약도 뺀다"를 한 곳에서. → 15번(도착 먼저 고르기) 해결.
+- `readEndpoints`: 공항 알약이 하나뿐일 때 출발/도착을 칸 값으로 가린다.
+- `buildRouteTokens`·`procedureTokenText`: 자동 생성·저장 경로 불러오기·코파일럿 가져오기·확인창·맞바꾸기가 같은 방법으로 목록을 짠다. → 14b번(짧은 절차 이름) 해결.
+- `flagMisplacedAirports`: IFR 경로 중간의 공항 알약을 오류로 알린다. → 10번 해결.
+- 훅: 알약에서 절차가 "있다가 없어지면" 위쪽 칸에서도 뺀다. → 9번 해결.
+
+`route-editing` 15건 통과(FIR 1건 건너뜀). `route-token-input`·`route-workflow`·`route-import`·`route-touch-draw` 데스크톱도 함께 통과.
+
+아직 남은 것: 편집기(`routeEditor`)가 출발·도착·절차를 따로 들고 있는 구조 자체는 그대로다. 알약 → 편집기 방향의 동기화 효과와, 파일 가져오기(`route-import`)의 목록 짜기는 이번에 손대지 않았다. 다음 단계에서 편집기 쪽 사본을 없애고 알약에서 계산해 읽게 한다.
+
 ## 6. 순서와 크기
 
 1. 동작 시험(4.1)을 지금 코드에 붙이고, 현재 실패하는 칸을 기록 — 하루 이내.

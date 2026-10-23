@@ -29,10 +29,11 @@ test('procedure forms come from the parts, never from the human label', () => {
 
 test('pickers edit the token list through one path, not a parallel copy', () => {
   // 선택기가 자기 상태를 따로 들고 목록과 서로 맞추면 입력이 튄다.
-  assert.match(source, /const setEndpointAirportToken = useCallback/)
+  // 공항 알약 규칙은 lib/routeInput.js의 placeEndpoint 한 곳에 있다(동작 시험: routeInput.test.js).
+  assert.match(source, /placeEndpoint\(texts, end, text/)
   const uses = source.match(/setEndpointAirportToken\(/g) ?? []
-  // 출발 · 도착 · 교환(양쪽) = 4곳
-  assert.equal(uses.length, 4)
+  // 정의 · 출발 · 도착 = 3곳. 교환은 방향이 뒤집혀 두 공항만 남기므로 목록을 새로 짠다.
+  assert.equal(uses.length, 3)
 })
 
 test('seeding never overwrites a list the user has already typed into', () => {
