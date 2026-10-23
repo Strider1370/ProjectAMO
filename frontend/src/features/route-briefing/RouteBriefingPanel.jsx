@@ -49,7 +49,8 @@ const useStyles = makeStyles({
     // 칸 이름은 단계 제목(sectionTitle)보다 한 단계 작고 흐리게 — 제목이 먼저 읽히도록.
     '& .fui-Field__label, & .rtf-label': { fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground2 },
   },
-  section: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
+  // 단계 안 묶음(공항 · SID/STAR · 경로칸 · 작성 도구) 사이 간격. 단계 사이(form gap)보다는 좁게.
+  section: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
   sectionTitle: {
     margin: 0,
     fontSize: tokens.fontSizeBase400,
@@ -87,7 +88,8 @@ const useStyles = makeStyles({
   },
   result: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS, borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`, paddingTop: tokens.spacingVerticalM },
   totalDist: { fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
-  ctrl: { width: '100%', minWidth: 0 },
+  // SpinButton(TAS)만 글씨가 한 단계 작게 나와 옆 입력칸과 달라 보였다 — 같은 크기로.
+  ctrl: { width: '100%', minWidth: 0, '& .fui-SpinButton__input': { fontSize: tokens.fontSizeBase300 } },
   full: { width: '100%' },
   routeText: { width: '100%', minHeight: '132px', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' },
 })
@@ -863,21 +865,21 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               {routeTokenField}
               {pendingRouteEdit && !pendingRouteEdit.mapCoordinates && <div className="rb-route-edit-confirm" role="status"><span>{pendingRouteEdit.message}</span><div><Button size="small" appearance="primary" type="button" onClick={() => applyRouteDraft(pendingRouteEdit.text)}>적용</Button><Button size="small" appearance="secondary" type="button" onClick={cancelPendingRouteEdit}>취소</Button></div></div>}
           </div>
+          {/* ② 안에 둔다 — 밖에 두면 ①②③ 단계 사이 간격이 붙어 새 단계처럼 보였다. 자동 생성은 초안을 만든 뒤 곧바로 기본 경로로 적용까지 이어간다(useRouteBriefing의 autoApplyPending). */}
+          {isIfr && (
+            <div className={s.toolSection}>
+              <span className={s.toolLabel}>경로 작성 도구</span>
+              <div className={s.actions}>
+                <Button appearance="secondary" type="button" onClick={handleAutoRecommend} disabled={routeLoading || !canSearch}
+                  title={canSearch ? undefined : '출발·도착 공항을 먼저 선택하세요'}>{routeLoading ? '생성 중...' : '자동 생성'}</Button>
+                <Button appearance={mapInteractionMode === 'click-add' ? 'primary' : 'secondary'} type="button" onClick={() => setMapInteractionMode(mapInteractionMode === 'click-add' ? null : 'click-add')} disabled={routeLoading || !canSearch}>지도 클릭</Button>
+                <Button appearance={mapInteractionMode === 'draw' ? 'primary' : 'secondary'} type="button" onClick={() => setMapInteractionMode(mapInteractionMode === 'draw' ? null : 'draw')} disabled={routeLoading || !canSearch}>그리기</Button>
+              </div>
+            </div>
+          )}
+          {pendingContextChange && <div className="rb-route-edit-confirm" role="alert"><span>적용된 기본 경로와 대체 경로를 지우고 {pendingContextChange.label}을 바꿀까요?</span><div><Button size="small" appearance="primary" type="button" onClick={confirmContextChange}>계속</Button><Button size="small" appearance="secondary" type="button" onClick={() => setPendingContextChange(null)}>취소</Button></div></div>}
         </div>
 
-        {/* 자동 생성은 초안을 만든 뒤 곧바로 기본 경로로 적용까지 이어간다(useRouteBriefing의 autoApplyPending). */}
-        {isIfr && (
-          <div className={s.toolSection}>
-            <span className={s.toolLabel}>경로 작성 도구</span>
-            <div className={s.actions}>
-              <Button appearance="secondary" type="button" onClick={handleAutoRecommend} disabled={routeLoading || !canSearch}
-                title={canSearch ? undefined : '출발·도착 공항을 먼저 선택하세요'}>{routeLoading ? '생성 중...' : '자동 생성'}</Button>
-              <Button appearance={mapInteractionMode === 'click-add' ? 'primary' : 'secondary'} type="button" onClick={() => setMapInteractionMode(mapInteractionMode === 'click-add' ? null : 'click-add')} disabled={routeLoading || !canSearch}>지도 클릭</Button>
-              <Button appearance={mapInteractionMode === 'draw' ? 'primary' : 'secondary'} type="button" onClick={() => setMapInteractionMode(mapInteractionMode === 'draw' ? null : 'draw')} disabled={routeLoading || !canSearch}>그리기</Button>
-            </div>
-          </div>
-        )}
-        {pendingContextChange && <div className="rb-route-edit-confirm" role="alert"><span>적용된 기본 경로와 대체 경로를 지우고 {pendingContextChange.label}을 바꿀까요?</span><div><Button size="small" appearance="primary" type="button" onClick={confirmContextChange}>계속</Button><Button size="small" appearance="secondary" type="button" onClick={() => setPendingContextChange(null)}>취소</Button></div></div>}
         {isIfr && <div className={s.section}><h3 className={s.sectionTitle}>{'③ 출발 시각·속도'}</h3>{perfFields}</div>}
 
         {importFeedback}
