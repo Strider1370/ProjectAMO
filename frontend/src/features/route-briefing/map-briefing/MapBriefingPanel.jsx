@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Pause, Play, X } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../../api/weatherApi.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
@@ -30,6 +30,15 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
   useEffect(() => { setIndex(0) }, [summary])
   const auto = count > 1 && !reducedMotion()
   const current = index % count
+  // 줄 바꿈 전환: 나가는 줄(leaving)을 잠깐 함께 그려 들어오는 줄과 겹쳐 지나가게 한다(애니메이션이 끝나면 지움).
+  const prevRef = useRef(current)
+  const [leaving, setLeaving] = useState(null)
+  useLayoutEffect(() => { // 그리기 전에 — 새 줄이 애니메이션 없이 한 프레임 보이지 않게
+    if (prevRef.current === current) return
+    if (!reducedMotion()) setLeaving({ index: prevRef.current, id: Date.now() })
+    prevRef.current = current
+  }, [current])
+  const leavingLine = leaving ? callouts[leaving.index] : null
   const duration = formatFlightDuration(distanceNm, tasKt)
 
   return (
@@ -62,13 +71,9 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
         onFocus={(event) => { if (event.target.matches?.(':focus-visible')) setHolding(true) }} onBlur={() => setHolding(false)}>
         <button type="button" className={`mb-callout is-${callout.tone}`} onClick={callout.item ? () => onSelectSummary?.(callout.item) : undefined} disabled={!callout.item}
           aria-label={count > 1 ? `위험 ${current + 1}/${count}: ${callout.title}, ${callout.detail}` : undefined}>
-          {/* key로 줄이 바뀔 때마다 새로 그려 아래에서 올라오며 나타난다. */}
-          <span key={current} className="mb-callout-slide">
-            <span className="mb-callout-badge">{callout.badge}</span>
-            <span className="mb-callout-text">
-              <b>{callout.title}</b>
-              <span>{callout.detail}</span>
-            </span>
+          <span className="mb-callout-stage">
+            {leavingLine && <CalloutLine key={`out-${leaving.id}`} line={leavingLine} className="is-out" onAnimationEnd={(event) => { if (event.target === event.currentTarget) setLeaving(null) }} />}
+            <CalloutLine key={`in-${current}`} line={callout} className={leaving ? 'is-in' : undefined} />
           </span>
         </button>
         {count > 1 && (
@@ -98,5 +103,18 @@ export default function MapBriefingPanel({ briefing, distanceNm, tasKt, onClose,
         <button type="button" className="mb-end" onClick={onEnd}>브리핑 종료 · 경로 입력으로</button>
       </div>
     </aside>
+  )
+}
+
+// 요약 한 줄(배지 · 제목 · 구간과 시각). 강도 색은 줄마다 들고 있어 나가는 줄이 새 색으로 바뀌지 않는다.
+function CalloutLine({ line, className, onAnimationEnd }) {
+  return (
+    <span className={`mb-callout-slide is-${line.tone}${className ? ` ${className}` : ''}`} onAnimationEnd={onAnimationEnd} aria-hidden={className === 'is-out' || undefined}>
+      <span className="mb-callout-badge">{line.badge}</span>
+      <span className="mb-callout-text">
+        <b>{line.title}</b>
+        <span>{line.detail}</span>
+      </span>
+    </span>
   )
 }
