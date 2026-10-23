@@ -66,8 +66,8 @@ export default function MapBriefingView({ briefing, panelOpen, distanceNm, tasKt
   }
   const closePopover = useCallback(() => setSelection(null), [])
 
-  const selectSummary = () => {
-    const top = ribbon?.summary?.top
+  // 요약 칸에서 누른 위험(지금 보이는 줄)을 위험 막대에서 고른다.
+  const selectSummary = (top) => {
     if (!top) return
     const row = ribbon.rows.find((candidate) => candidate.key === top.row)
     const list = top.kind === 'model' ? row?.model : row?.frames

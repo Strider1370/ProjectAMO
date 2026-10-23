@@ -68,9 +68,13 @@ test('summary picks the strongest hazard at my altitude, else clear or unknown',
   assert.equal(hazard.summary.status, 'hazard')
   assert.equal(hazard.summary.top.row, 'turbulence')
   assert.equal(hazard.summary.top.level, 'SEV')
+  // 패널이 차례로 보여 줄 목록: 내 고도의 위험 전부, 경로 순서.
+  assert.ok(hazard.summary.items.length >= 1)
+  assert.ok(hazard.summary.items.some((item) => item.row === 'turbulence' && item.level === 'SEV'))
+  assert.deepEqual(hazard.summary.items.map((item) => item.startNm), [...hazard.summary.items.map((item) => item.startNm)].sort((a, b) => a - b))
 
   const clear = buildHazardRibbon({ ...base, enrouteModel: { elements: [], status: { turbulence: 'none', icing: 'none' } } })
-  assert.deepEqual([clear.summary.status, clear.summary.top], ['clear', null])
+  assert.deepEqual([clear.summary.status, clear.summary.top, clear.summary.items], ['clear', null, []])
 
   const unknown = buildHazardRibbon({ ...base, enrouteModel: null })
   assert.equal(unknown.summary.status, 'unknown')

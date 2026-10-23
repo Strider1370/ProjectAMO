@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
-  segmentTitle, sourceChips, hazardSwatchStyle, hazardChipStyle, frameShortTag, summaryCallout, writeBriefingView, writeDockState, DEFAULT_DOCK,
+  segmentTitle, sourceChips, hazardSwatchStyle, hazardChipStyle, frameShortTag, summaryCallout, summaryCallouts, writeBriefingView, writeDockState, DEFAULT_DOCK,
   hazardLineColor, TYPHOON_LINE_COLOR, selectionDetail, frameAdvisoryId, focusTarget, layerToastText, pickRibbonTarget,
 } from './mapBriefingModel.js'
 import { GKTG_BANDS } from '../../../../../shared/gktg.js'
@@ -171,4 +171,16 @@ test('틀이 모델 막대를 덮어도 가운데는 모델, 테두리·이름�
   assert.deepEqual(pickRibbonTarget(row, 200), { kind: 'frame', index: 0 })
   assert.deepEqual(pickRibbonTarget(row, 40, { edge: true }), { kind: 'model', index: 0 })
   assert.equal(pickRibbonTarget(row, 300), null)
+})
+
+test('요약 칸은 내 고도의 위험을 모두(경로 순서) 한 줄씩, 없으면 상태 한 줄', () => {
+  const a = { kind: 'model', level: 'MOD', label: '착빙', phase: 'climb', from: 'RKSS', to: 'BULTI', startNm: 3, endNm: 8 }
+  const b = { kind: 'frame', source: 'SIGMET', level: 'SEV', label: '난류', phase: null, from: 'MANGI', to: 'DALSU', startNm: 120, endNm: 160 }
+  const lines = summaryCallouts({ status: 'hazard', top: b, items: [a, b] })
+  assert.deepEqual(lines.map((line) => [line.badge, line.item]), [['MOD', a], ['SEV', b]])
+  // 예전에 저장한 브리핑(items 없음)은 top 하나.
+  assert.deepEqual(summaryCallouts({ status: 'hazard', top: b }).map((line) => line.item), [b])
+  const clear = summaryCallouts({ status: 'clear', unavailable: [] })
+  assert.equal(clear.length, 1)
+  assert.equal(clear[0].item, null)
 })

@@ -141,7 +141,11 @@ export function summaryCallout(summary, formatTime = (iso) => iso) {
     if (summary.partial?.length) return { tone: 'unknown', badge: '?', title: '확인된 구간에서 MOD 이상 위험 없음', detail: '일부 구간 모델 자료 없음 · 위험 막대 빗금 확인' }
     return { tone: 'clear', badge: 'OK', title: '내 고도에서 MOD 이상 위험 없음', detail: '수치예보·SIGMET 기준' }
   }
-  const top = summary.top
+  return hazardCallout(summary.top, formatTime)
+}
+
+// 위험 하나 → 요약 한 줄(배지·제목·구간과 지나는 시각).
+function hazardCallout(top, formatTime) {
   const phase = top.phase ? `${PHASE_KO[top.phase]} 중 ` : ''
   const minutes = minutesBetween(top.passFrom, top.passTo)
   const source = top.kind === 'frame' ? `${top.source} ` : ''
@@ -153,6 +157,14 @@ export function summaryCallout(summary, formatTime = (iso) => iso) {
     title: `${phase}${source}${LEVEL_KO[top.level] ?? ''} ${top.label}${minutes ? ` ${minutes}분` : ''}`.replace(/\s+/g, ' ').trim(),
     detail: `${route}${time}`,
   }
+}
+
+// 패널 요약 칸이 차례로 넘겨 보여 줄 줄들: 내 고도의 위험 전부(경로 순서). 위험이 없으면 상태 한 줄.
+// 예전에 저장한 브리핑은 items가 없어 가장 심한 것(top) 하나만 보여 준다. item은 누르면 위험 막대에서 그 항목을 고르는 데 쓴다.
+export function summaryCallouts(summary, formatTime = (iso) => iso) {
+  if (summary?.status !== 'hazard' || !summary.top) return [{ ...summaryCallout(summary, formatTime), item: null }]
+  const items = summary.items?.length ? summary.items : [summary.top]
+  return items.map((item) => ({ ...hazardCallout(item, formatTime), item }))
 }
 
 // 위험 막대 색 = 연직단면도 범례 색. 난류는 단면의 GKTG 칸 색, 착빙은 단면의 착빙 무늬, 대류는 지도 대류영역(실험) 색.

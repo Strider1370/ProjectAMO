@@ -117,7 +117,8 @@ function frameFor(ctx, hazard, interval) {
   }
 }
 
-// 패널 요약에 올릴 순위: 모델 SEV·SIGMET·태풍(내 고도) > 모델 MOD.
+// 가장 심한 것(top) 고르는 순위: 모델 SEV·SIGMET·태풍(내 고도) > 모델 MOD.
+// 패널은 items(내 고도의 위험 전부, 경로 순서)를 차례로 넘겨 보여 준다(2026-10-23) — top은 예전 저장 브리핑 호환용.
 function summaryRank(item) {
   if (item.kind === 'model') return item.level === 'SEV' ? 3 : 2
   return 3
@@ -130,12 +131,13 @@ function buildSummary(rows) {
   ])
   const unavailable = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.status === 'unavailable').map((row) => row.key)
   const partial = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.missing?.length).map((row) => row.key)
-  if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, unavailable, partial }
+  if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, items: [], unavailable, partial }
   const top = candidates.reduce((best, item) => {
     const rank = summaryRank(item), bestRank = summaryRank(best)
     return rank > bestRank || (rank === bestRank && item.startNm < best.startNm) ? item : best
   })
-  return { status: 'hazard', top, unavailable, partial }
+  const items = [...candidates].sort((a, b) => a.startNm - b.startNm || summaryRank(b) - summaryRank(a))
+  return { status: 'hazard', top, items, unavailable, partial }
 }
 
 export function buildHazardRibbon({ enrouteModel = null, convection = null, hazards = [], flightPlanProfile = null, markers = [], cruiseAltitudeFt, totalDistanceNm, etd, eta } = {}) {

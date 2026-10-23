@@ -24,7 +24,13 @@
 .mb-panel-stats dt { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); }
 .mb-panel-stats dd { margin: 0; font-size: var(--fs-500); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .mb-panel-line { margin: var(--space-s) var(--space-l) 0; color: var(--text-2); text-align: center; font-variant-numeric: tabular-nums; }
-.mb-callout { display: flex; align-items: center; gap: var(--space-s); width: calc(100% - 2 * var(--space-l)); margin: var(--space-m) var(--space-l) 0; padding: var(--space-s) var(--space-m); border: 0; border-radius: var(--radius-md); text-align: left; font: inherit; cursor: pointer; }
+/* 요약 칸: 내 고도의 위험을 차례로 넘겨 보여 준다. 아래 줄에 ‹ n / N › 와 자동 넘김 멈춤. */
+.mb-callout-wrap { margin: var(--space-m) var(--space-l) 0; }
+.mb-callout-nav { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 4px; color: var(--text-2); font-size: var(--fs-200); font-variant-numeric: tabular-nums; }
+.mb-callout-nav span { min-width: 40px; text-align: center; }
+.mb-callout-nav button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); cursor: pointer; }
+.mb-callout-nav button:hover { background: var(--bg-3); color: var(--text-1); }
+.mb-callout { display: flex; align-items: center; gap: var(--space-s); width: 100%; min-height: 58px; margin: 0; padding: var(--space-s) var(--space-m); border: 0; border-radius: var(--radius-md); text-align: left; font: inherit; cursor: pointer; }
 .mb-callout:disabled { cursor: default; }
 .mb-callout-badge { flex: none; min-width: 32px; padding: 6px 4px; border-radius: var(--radius-md); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); text-align: center; }
 .mb-callout-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
