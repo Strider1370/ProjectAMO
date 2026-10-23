@@ -378,7 +378,7 @@ export default function IntroPage() {
           <div className="wrap hero-grid">
             <div className="hero-copy">
             <h1 id="intro-title" className="hero-anim">비행에 필요한 기상을 한&nbsp;화면에</h1>
-            <p className="lede hero-anim" style={{ animationDelay: '.09s' }}>경로를 고르면 레이더와 위성 위에 경로가 그려지고, 그 경로에 걸리는 난류·착빙·대류와 SIGMET, 출발·도착·교체 공항의 METAR·TAF, 고도별 연직단면도가 한 화면에 함께 나와요. 여러 사이트와 화면을 오가며 맞춰 볼 필요가 없어요.</p>
+            <p className="lede hero-anim" style={{ animationDelay: '.09s' }}>경로를 고르면 레이더와 위성 위에 경로가 그려지고, 그 경로 위의 난류·착빙·대류와 SIGMET, 출발·도착·교체 공항의 METAR·TAF, 고도별 연직단면도가 한 화면에 함께 나와요. 여러 사이트와 화면을 오가며 맞춰 볼 필요가 없어요.</p>
             <div className="actions hero-anim" style={{ animationDelay: '.18s' }}>
               <button className="btn btn-primary" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
               <a className="btn btn-line" href="#gis" onClick={(event) => scrollToId(event, 'gis')}>기능 살펴보기</a>
@@ -401,7 +401,7 @@ export default function IntroPage() {
                 <Frame title="ProjectAMO">
                   <img src={imgHero} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 레이더 위 경로, 위험기상 요약, 경로상 위험 막대와 연직단면도" />
                   <div className="co" id="co-hero">
-                    <Callout x="20.2%" y="30%">내 고도에 걸리는 위험을 차례로 요약해요</Callout>
+                    <Callout x="20.2%" y="30%">내 고도의 위험을 차례로 요약해요</Callout>
                     <Callout x="61.8%" y="45%" side="left">공항 카드에 METAR·TAF</Callout>
                     <Callout x="32%" y="58.4%" side="up">경로를 따라 위험 구간을 막대로</Callout>
                     <Callout x="40%" y="79%">연직단면도에 난류·착빙·SIGMET을 고도별로</Callout>
@@ -461,8 +461,8 @@ export default function IntroPage() {
         <section className="band grey pin" id="brief" style={pinStyle('brief')} aria-labelledby="brief-title">
           <div className="wrap feature">
             <div className="copy">
-              <h2 id="brief-title">경로 하나에 걸린 기상을 한 화면에서</h2>
-              <p>출발·도착 공항과 교체공항을 고르면 SID와 STAR를 포함한 경로를 자동으로 만들어요. 브리핑을 열면 지도 위 경로, 내 고도에 걸리는 위험 요약, 경로를 따라 이어지는 위험 막대, 연직단면도, 공항 카드가 한 화면에 모여요. 같은 구간을 지도와 막대, 단면도에서 함께 짚어 볼 수 있고, 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
+              <h2 id="brief-title">경로 위 기상을 한 화면에서</h2>
+              <p>출발·도착 공항과 교체공항을 고르면 경로를 자동으로 만들어요. 브리핑을 열면 지도 위 경로, 내 고도의 위험 요약, 경로를 따라 이어지는 위험 막대, 연직단면도, 공항 카드가 한 화면에 모여요. 같은 구간을 지도와 막대, 단면도에서 함께 짚어 볼 수 있고, 내 미니마 기준으로 이륙 가부까지 확인할 수 있어요.</p>
             </div>
             <div className="stage">
               <div className="tabs fit" aria-hidden="true">
@@ -481,15 +481,15 @@ export default function IntroPage() {
                 <Frame id="br-4" title="비행 전 브리핑">
                   <img src={imgResult} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 위험 요약 카드와 공항 카드, 경로상 위험 막대" />
                   <div className="co">
-                    <Callout x="25.8%" y="46%">내 고도에 걸리는 위험을 차례로</Callout>
+                    <Callout x="25.8%" y="46%">내 고도의 위험을 차례로</Callout>
                     <Callout x="83%" y="64%" side="left">출발·도착·교체 공항 카드</Callout>
                     <Callout x="53%" y="86%" side="up">경로상 위험 구간과 SIGMET</Callout>
                   </div>
                 </Frame>
                 <Frame id="br-5" title="연직단면도">
-                  <img src={imgProfile} alt="경로 연직단면도: 순항고도에 걸린 SIGMET 심한 난류 구간, 착빙 구역, 난류 강도" />
+                  <img src={imgProfile} alt="경로 연직단면도: 순항고도의 SIGMET 심한 난류 구간, 착빙 구역, 난류 강도" />
                   <div className="co">
-                    <Callout x="50.7%" y="36.4%" side="up">내 고도에 걸린 SIGMET 심한 난류</Callout>
+                    <Callout x="50.7%" y="36.4%" side="up">내 고도의 SIGMET 심한 난류</Callout>
                     <Callout x="75.6%" y="67%" side="left">착빙 구역</Callout>
                     <Callout x="55.4%" y="76.6%" side="left">난류 구역</Callout>
                   </div>
@@ -518,7 +518,7 @@ export default function IntroPage() {
           <div className="wrap feature">
             <div className="copy">
               <h2 id="alerts-title">지정한 공항과 경로에 변화가 생기면 알려드려요</h2>
-              <p>공항 패널이나 경로 생성 화면의 종 버튼으로 감시 조건을 정해 두면, METAR 기준 도달, 새 TAF·AMD 발표, 공항경보와 주변 낙뢰, 경로에 걸리는 SIGMET을 웹 팝업과 휴대폰 푸시로 알려드려요. 알림을 누르면 해당 공항이나 경로의 그 자료로 바로 이동해요.</p>
+              <p>공항 패널이나 경로 생성 화면의 종 버튼으로 감시 조건을 정해 두면, METAR 기준 도달, 새 TAF·AMD 발표, 공항경보와 주변 낙뢰, 경로와 겹치는 SIGMET을 웹 팝업과 휴대폰 푸시로 알려드려요. 알림을 누르면 해당 공항이나 경로의 그 자료로 바로 이동해요.</p>
               <p>벽면 모니터용 상황판에서는 공항 상태를 한눈에 볼 수 있어요.</p>
             </div>
             <div className="stage">
