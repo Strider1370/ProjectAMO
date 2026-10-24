@@ -234,8 +234,9 @@ export default function IntroPage() {
         css(stack, { transform: `rotateX(${56 * (1 - collapse)}deg) rotateZ(${-34 * (1 - collapse)}deg) scale(${lerp(0.7, 1, collapse)})` })
         const zStep = compact ? stack.offsetWidth * 0.12 : 110
         let top = 0
-        // 레이어는 기본 지도(0) 위로 구름·착빙, 강수, 난류, 위성(4) 순서다. 합친 뒤 위성부터 한 장씩 걷어 낸다.
-        const peelRanges = [null, null, [0.84, 0.92], [0.7, 0.78], [0.56, 0.64]]
+        // 레이어는 기본 지도(0) 위로 구름·착빙, 강수, 난류, 위성(4) 순서다. 합친 뒤 위성부터 한 장씩 걷어 내
+        // 마지막에 기본 지도까지 보여 준다(구름·착빙도 걷어야 목록 맨 아래 '기본 지도'가 차례를 얻는다).
+        const peelRanges = [null, [0.86, 0.93], [0.74, 0.81], [0.62, 0.69], [0.5, 0.57]]
         layers.forEach((layer, index) => {
           const shown = index === 0 ? 1 : segment(appear, (index - 1) / 4, index / 4)
           const peeled = peelRanges[index] ? segment(p, ...peelRanges[index]) : 0
@@ -248,7 +249,7 @@ export default function IntroPage() {
           const count = 1 + Math.floor(appear * 4.99)
           setOn(legend, (index) => 4 - index < count)
         } else {
-          const active = stepIndex(p, [0.6, 0.74, 0.88])
+          const active = stepIndex(p, [0.54, 0.66, 0.78, 0.9])
           setOn(legend, (index) => index === active)
         }
       },
