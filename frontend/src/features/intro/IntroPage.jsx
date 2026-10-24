@@ -35,16 +35,31 @@ import videoAirport from './assets/airport.webm'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
-const PIN_SCREENS = { gis: 4.8, brief: 4.8, custom: 3, alerts: 3.2 }
+const PIN_SCREENS = { gis: 6.4, brief: 4.8, custom: 3, alerts: 3.2 }
 
 // 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
-  { key: 'base', label: '기본 지도', frames: [[imgMain, null]] },
-  { key: 'cloud', label: '구름·착빙', frames: [[imgCloud0, '04:00 KST'], [imgCloud1, '10:00 KST'], [imgCloud2, '21:00 KST']], alt: 'KIM 구름·착빙 예보(FL140)' },
-  { key: 'precip', label: '강수와 등압선', video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자' },
-  { key: 'turb', label: '난류', frames: [[imgTurb0, '04:00 KST'], [imgTurb1, '10:00 KST'], [imgTurb2, '21:00 KST']], alt: 'KIM 난류(GKTG) 예보' },
-  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '00:40 KST'], [imgSat1, '01:40 KST'], [imgSat2, '02:40 KST'], [imgSat3, '03:40 KST']], alt: '적외 위성 영상' },
+  { key: 'base', label: '기본 지도', frames: [[imgMain, null]],
+    callouts: [['45.7%', '37.8%', 'left', '마커 색으로 공항 비행 등급을'], ['83%', '37.6%', 'left', '인천 FIR 경계']] },
+  // 시간이 넘어가는 레이어는 장면마다 위치가 달라 말풍선도 장면(다섯째 값)마다 따로 둔다.
+  { key: 'cloud', label: '구름·착빙', frames: [[imgCloud0, '10/24 04:00 KST'], [imgCloud1, '10/24 10:00 KST'], [imgCloud2, '10/24 21:00 KST']], alt: 'KIM 구름·착빙 예보(FL140)',
+    callouts: [['75%', '56%', 'left', '착빙 구역(점무늬)', 0], ['55%', '69.6%', null, '0°C 선', 0],
+      ['72.5%', '48%', 'left', '착빙 구역(점무늬)', 1], ['19.8%', '70.4%', null, '0°C 선', 1],
+      ['86%', '22%', 'left', '착빙 구역(점무늬)', 2], ['23.5%', '64%', null, '0°C 선', 2]] },
+  { key: 'precip', label: '강수와 등압선', video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자',
+    callouts: [['66%', '22%', 'left', '저기압 중심과 등압선'], ['85%', '73%', 'left', '강수대']] },
+  { key: 'turb', label: '난류', frames: [[imgTurb0, '10/23 15:00 KST'], [imgTurb1, '10/24 10:00 KST'], [imgTurb2, '10/24 21:00 KST']], alt: 'KIM 난류(GKTG) 예보',
+    callouts: [['59%', '86.8%', 'left', '심한 난류(빨강)', 0], ['28%', '80%', null, '보통 난류(노랑)', 0],
+      ['47.5%', '56%', 'left', '심한 난류(빨강)', 1], ['57.5%', '36%', null, '보통 난류(노랑)', 1],
+      ['77.5%', '36%', 'left', '심한 난류(빨강)', 2], ['40%', '76%', null, '보통 난류(노랑)', 2]] },
+  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '00:40 KST'], [imgSat1, '01:40 KST'], [imgSat2, '02:40 KST'], [imgSat3, '03:40 KST']], alt: '적외 위성 영상',
+    callouts: [['72%', '22%', 'left', '밝을수록 높고 차가운 구름'], ['22%', '22%', null, '구름 없는 맑은 지역']] },
 ]
+// 레이어 장면 시간표(기상정보 고정 구간 진행률). 비스듬히 쌓였다가(0~0.2) 하나로 합쳐진 뒤(0.26~0.42),
+// 위 레이어부터 한 장씩 닦아 낸다. 닦는 동안은 짧게, 그 사이는 길게 둬서 한 레이어를 읽을 시간을 준다.
+// 인덱스는 LAYERS 순서(0 기본 지도 … 4 위성).
+const LAYER_WIPE = [null, [0.89, 0.94], [0.76, 0.81], [0.63, 0.68], [0.5, 0.55]]
+const LAYER_DWELL = [0.97, 0.85, 0.72, 0.59, 0.46]
 // 목록은 위에서부터(맨 위 레이어 먼저) 보여 준다.
 const LEGEND = [
   ['linear-gradient(90deg,#222,#EEE)', '적외 위성, 천리안위성 2A호'],
@@ -77,8 +92,8 @@ function Frame({ title, children, className = '', ...rest }) {
   )
 }
 
-function Callout({ x, y, side, children }) {
-  return <span className="pt" data-side={side} style={{ '--x': x, '--y': y }}><i /><em>{children}</em></span>
+function Callout({ x, y, side, frame, children }) {
+  return <span className="pt" data-side={side} data-frame={frame} hidden={frame > 0} style={{ '--x': x, '--y': y }}><i /><em>{children}</em></span>
 }
 
 function LoopVideo({ src, poster, label }) {
@@ -148,20 +163,31 @@ export default function IntroPage() {
         const images = [...seq.querySelectorAll('img')]
         const times = seq.dataset.times.split(',')
         const stamp = seq.parentElement.querySelector('.stamp')
+        const framed = [...seq.parentElement.querySelectorAll('.pt[data-frame]')]
         let index = 0
         let timer = null
+        let stampTimer = null
         const step = () => {
-          images[index].classList.remove('on')
+          if (root.dataset.layerWipe) return
+          // 나가는 사진은 다 보이는 채로 아래에 두고 새 사진만 위에서 나타나게 한다. 둘 다 반쯤 투명해지는
+          // 순간이 없어야 아래 레이어가 비쳐 보이지 않는다.
+          images.forEach((image) => image.classList.remove('prev'))
+          images[index].classList.replace('on', 'prev')
           index = (index + 1) % images.length
           images[index].classList.add('on')
-          if (stamp) stamp.textContent = times[index]
+          // 사진은 1.1초 동안 바뀐다(.seq img transition). 시각과 장면별 말풍선은 절반쯤, 새 사진이 앞설 때 바꾼다.
+          clearTimeout(stampTimer)
+          stampTimer = setTimeout(() => {
+            if (stamp) stamp.textContent = times[index]
+            framed.forEach((pt) => { pt.hidden = Number(pt.dataset.frame) !== index })
+          }, 550)
         }
         const observer = new IntersectionObserver(([entry]) => {
           if (entry.isIntersecting && !timer) timer = setInterval(step, 1900)
           else if (!entry.isIntersecting && timer) { clearInterval(timer); timer = null }
         }, { root, threshold: 0.1 })
         observer.observe(seq)
-        cleanups.push(() => { observer.disconnect(); clearInterval(timer) })
+        cleanups.push(() => { observer.disconnect(); clearInterval(timer); clearTimeout(stampTimer) })
       })
     }
     return () => cleanups.forEach((cleanup) => cleanup())
@@ -195,6 +221,11 @@ export default function IntroPage() {
     const layerLabels = $$('#gis .plane-label')
     const layerNow = $('#gis .now')
     const legend = $$('#gis .legend li')
+    const layerCallouts = $$('#gis .layer-co')
+    const layerStep = $('#gis .layer-step')
+    const wipeLine = $('#gis .wipe')
+    const wipeNext = $('#gis .wipe-next')
+    const wipeCur = $('#gis .wipe-cur')
     const pairSecond = $('.pair figure:last-child')
     const pairEl = $('.pair')
     const briefFrames = [1, 2, 3, 4, 5].map((n) => $(`#br-${n}`))
@@ -229,28 +260,45 @@ export default function IntroPage() {
 
     const render = {
       gis(p) {
-        const appear = segment(p, 0, 0.22)
-        const collapse = easeInOut(segment(p, 0.3, 0.5))
+        const appear = segment(p, 0, 0.2)
+        const collapse = easeInOut(segment(p, 0.26, 0.42))
         css(stack, { transform: `rotateX(${56 * (1 - collapse)}deg) rotateZ(${-34 * (1 - collapse)}deg) scale(${lerp(0.7, 1, collapse)})` })
         const zStep = compact ? stack.offsetWidth * 0.12 : 110
+        // 위 레이어를 왼쪽부터 잘라 내 아래 레이어가 드러나게 한다(닦아 내기). 흐리게 겹치지 않으므로
+        // 어느 순간에도 한 자리에는 한 레이어만 보인다. 경계선에 두 레이어 이름을 붙인다.
         let top = 0
-        // 레이어는 기본 지도(0) 위로 구름·착빙, 강수, 난류, 위성(4) 순서다. 합친 뒤 위성부터 한 장씩 걷어 내
-        // 마지막에 기본 지도까지 보여 준다(구름·착빙도 걷어야 목록 맨 아래 '기본 지도'가 차례를 얻는다).
-        const peelRanges = [null, [0.86, 0.93], [0.74, 0.81], [0.62, 0.69], [0.5, 0.57]]
+        let wiping = -1
+        let wipeAt = 0
         layers.forEach((layer, index) => {
           const shown = index === 0 ? 1 : segment(appear, (index - 1) / 4, index / 4)
-          const peeled = peelRanges[index] ? segment(p, ...peelRanges[index]) : 0
-          if (shown * (1 - peeled) > 0.5) top = index
-          css(layer, { opacity: shown * (1 - peeled), transform: `translateZ(${(index - 2) * zStep * (1 - collapse)}px)` })
+          const wiped = LAYER_WIPE[index] ? easeInOut(segment(p, ...LAYER_WIPE[index])) : 0
+          if (shown > 0.5 && wiped < 0.5) top = index
+          if (wiped > 0 && wiped < 1) { wiping = index; wipeAt = wiped }
+          css(layer, {
+            opacity: shown,
+            clipPath: wiped > 0 ? `inset(0 0 0 ${(wiped * 100).toFixed(2)}%)` : '',
+            transform: `translateZ(${(index - 2) * zStep * (1 - collapse)}px)`,
+          })
           css(layerLabels[index], { opacity: shown * (1 - segment(collapse, 0, 0.3)) })
         })
+        // 말풍선은 합쳐진 뒤, 닦아 내는 중이 아닐 때 맨 위 레이어 것만 보인다.
+        const settled = collapse >= 1 && wiping < 0
+        layerCallouts.forEach((co, index) => co.classList.toggle('on', settled && index === top))
+        css(wipeLine, { opacity: wiping >= 0 ? 1 : 0, left: `${(wipeAt * 100).toFixed(2)}%` })
+        if (wiping >= 0) {
+          if (wipeNext.textContent !== LAYERS[wiping - 1].label) wipeNext.textContent = LAYERS[wiping - 1].label
+          if (wipeCur.textContent !== LAYERS[wiping].label) wipeCur.textContent = LAYERS[wiping].label
+        }
+        // 시간 장면은 닦아 내는 동안 멈춘다(바뀌는 중에 시각까지 바뀌면 무엇이 바뀌는지 읽을 수 없다).
+        root.dataset.layerWipe = wiping >= 0 ? '1' : ''
         if (layerNow.textContent !== LAYERS[top].label) layerNow.textContent = LAYERS[top].label
-        if (p < 0.22) {
+        const stepText = collapse >= 1 ? `${5 - top} / 5  ${LAYERS[top].label}` : ''
+        if (layerStep.textContent !== stepText) layerStep.textContent = stepText
+        if (p < 0.2) {
           const count = 1 + Math.floor(appear * 4.99)
           setOn(legend, (index) => 4 - index < count)
         } else {
-          const active = stepIndex(p, [0.54, 0.66, 0.78, 0.9])
-          setOn(legend, (index) => index === active)
+          setOn(legend, (index) => index === 4 - top)
         }
       },
       brief(p) {
@@ -328,7 +376,7 @@ export default function IntroPage() {
       window.removeEventListener('resize', request)
       cancelAnimationFrame(frame)
       // 연출을 끄면 바꾼 속성을 되돌려 일반 흐름(최종 상태)으로 보인다.
-      touched.forEach((element) => { element.style.opacity = ''; element.style.transform = ''; element.style.height = '' })
+      touched.forEach((element) => { element.style.opacity = ''; element.style.transform = ''; element.style.height = ''; element.style.clipPath = ''; element.style.left = '' })
     }
   }, [motion, compact])
 
@@ -342,6 +390,18 @@ export default function IntroPage() {
     setEntering(true)
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     window.setTimeout(() => window.location.assign('/dashboard'), reduce ? 0 : 750)
+  }
+
+  // 기상정보 목록을 누르면 그 레이어가 맨 위에 보이는 자리로 스크롤한다. 연출을 끈 화면은 옆으로 넘기는 줄에서 그 장으로 간다.
+  const showLayer = (index) => {
+    const root = rootRef.current
+    const section = root.querySelector('#gis')
+    const smooth = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    if (!motion || compact) {
+      section.querySelectorAll('.layer')[index]?.scrollIntoView({ block: 'nearest', inline: 'start', behavior: smooth })
+      return
+    }
+    root.scrollTo({ top: section.offsetTop + (section.offsetHeight - root.clientHeight) * LAYER_DWELL[index], behavior: smooth })
   }
 
   const scrollToId = (event, id) => {
@@ -418,8 +478,11 @@ export default function IntroPage() {
             <div className="copy">
               <h2 id="gis-title">지난 관측부터 30시간 예보까지 한 지도에서</h2>
               <p>위성, 레이더, 낙뢰, KIM 수치예보의 강수와 구름·착빙, 난류, 권계면·제트, SIGWX까지 20여 종의 레이어를 필요한 만큼 겹쳐 보세요. 하단 타임라인으로 지난 관측과 앞으로의 예보를 이어서 넘겨볼 수 있어요.</p>
+              <p className="layer-step" aria-hidden="true" />
               <ul className="legend">
-                {LEGEND.map(([swatch, label]) => <li key={label}><i style={{ background: swatch }} />{label}</li>)}
+                {LEGEND.map(([swatch, label], index) => (
+                  <li key={label}><button type="button" onClick={() => showLayer(4 - index)}><i style={{ background: swatch }} />{label}</button></li>
+                ))}
               </ul>
             </div>
             <div className="stage">
@@ -432,8 +495,12 @@ export default function IntroPage() {
                         : layer.frames.length > 1 ? <Sequence frames={layer.frames} alt={layer.alt} />
                           : <img src={layer.frames[0][0]} alt="" />}
                       <span className="plane-label">{layer.label}</span>
+                      <div className="co layer-co" aria-hidden="true">
+                        {layer.callouts.map(([x, y, side, text, frame]) => <Callout key={`${text}-${frame}`} x={x} y={y} side={side ?? undefined} frame={frame}>{text}</Callout>)}
+                      </div>
                     </div>
                   ))}
+                  <div className="wipe" aria-hidden="true"><span className="wipe-next" /><span className="wipe-cur" /></div>
                 </div>
               </div>
             </div>

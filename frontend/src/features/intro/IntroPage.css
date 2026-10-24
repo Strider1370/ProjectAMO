@@ -117,11 +117,25 @@
 .intro .stack{position:relative; aspect-ratio:16/10; transform-style:preserve-3d}
 .intro .layer{position:absolute; inset:0; transform-style:preserve-3d}
 .intro .layer img, .intro .layer video{display:block; width:100%; height:100%; object-fit:cover; border-radius:var(--r-lg); outline:1px solid var(--line-2)}
-.intro .seq{position:absolute; inset:0}
+.intro .seq{position:absolute; inset:0; z-index:0} /* 사진 z-index(.on/.prev)가 말풍선·시각 위로 올라오지 않게 여기서 가둔다 */
 .intro .seq img{position:absolute; inset:0; opacity:0; transition:opacity 1.1s ease}
-.intro .seq img.on{opacity:1}
+.intro .seq img.on{opacity:1; z-index:2}
+.intro .seq img.prev{opacity:1; z-index:1; transition:none}
 .intro .seq img:first-child{position:relative}
 .intro .stamp{position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(15,23,42,.82); color:#fff; font-size:13px; font-weight:600; padding:3px 10px; border-radius:var(--r-sm); font-variant-numeric:tabular-nums; pointer-events:none}
+/* 레이어 장면: 말풍선은 사진 안(창 틀 없음), 닦아 내기 경계선, 단계 표시, 누를 수 있는 목록 */
+.intro .layer .co{top:0}
+.intro .layer-co{opacity:0; transition:opacity .35s var(--ease)}
+.intro .layer-co.on{opacity:1}
+.intro:not(.motion) .layer-co{display:none}
+.intro .wipe{position:absolute; top:0; bottom:0; width:0; opacity:0; pointer-events:none; transform:translateZ(2px); border-left:2px solid #fff; box-shadow:0 0 0 1px rgba(15,23,42,.25)}
+.intro .wipe span{position:absolute; top:12px; white-space:nowrap; font-size:13px; font-weight:700; padding:3px 9px; border-radius:var(--r-sm); background:rgba(15,23,42,.82); color:#fff}
+.intro .wipe-next{right:8px}
+.intro .wipe-cur{left:8px}
+.intro .layer-step{margin:0 0 10px; min-height:1.4em; font-size:14px; font-weight:700; color:var(--blue); font-variant-numeric:tabular-nums; white-space:pre}
+.intro:not(.motion) .layer-step{display:none}
+.intro .legend button{display:flex; align-items:center; gap:12px; width:100%; padding:2px 0; border:0; background:none; font:inherit; color:inherit; text-align:left; cursor:pointer}
+.intro .legend button:hover{color:var(--blue)}
 .intro .plane-label{position:absolute; left:calc(100% + 16px); top:44%; white-space:nowrap; font-size:14px; font-weight:600; display:none; align-items:center; gap:8px}
 .intro .plane-label::before{content:""; width:24px; height:1px; background:var(--line-2)}
 .intro.motion .plane-label{display:flex; opacity:0}
