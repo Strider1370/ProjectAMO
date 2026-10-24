@@ -5,17 +5,6 @@ import {
   exposureConfidence,
   hazardBandFt,
 } from './hazard-exposure.js'
-import { routeRunsInGeometry } from './geo-time-match.js'
-
-// 위험 막대 틀용: 실제 영역 안 구간들을 노출 구간(여유 폭·항로 범위 반영) 안으로 자른 것.
-// 여유 폭 안으로만 지나가 실제 영역에 안 들어가면 노출 구간 하나를 그대로 쓴다(숨기지 않는다).
-function routeRunsWithin(axis, geometry, interval) {
-  if (!interval) return []
-  const runs = routeRunsInGeometry(axis, geometry)
-    .map((run) => ({ startNm: Math.max(run.startNm, interval.startNm), endNm: Math.min(run.endNm, interval.endNm) }))
-    .filter((run) => run.endNm >= run.startNm)
-  return runs.length ? runs : [interval]
-}
 
 function matchItems(items, source, ctx) {
   const out = []
@@ -26,7 +15,9 @@ function matchItems(items, source, ctx) {
     if (timeStatus == null) continue
     const bandFt = hazardBandFt(it)
     const altitudeExposure = evaluateAltitudeExposure({ horizontalExposure, bandFt, plannedCruiseAltitudeFt: ctx.cruiseAltitudeFt })
-    const routeIntervalNm = horizontalExposure.intervals[0]
+    // 영역을 여러 번 지나면 첫 진입~마지막 이탈(전체 범위). 실제로 안에 있는 구간들은 routeRunsNm.
+    const runs = horizontalExposure.intervals
+    const routeIntervalNm = { startNm: runs[0].startNm, endNm: runs.at(-1).endNm }
     out.push({
       source,
       sourceId: it.id ?? null,
@@ -40,7 +31,7 @@ function matchItems(items, source, ctx) {
       verticalKnown: altitudeExposure.status !== 'unknown',
       bandFt,
       routeIntervalNm,
-      routeRunsNm: routeRunsWithin(ctx.axis, it.geometry, routeIntervalNm),
+      routeRunsNm: horizontalExposure.intervals,
       horizontalExposure,
       altitudeExposure,
       timeStatus,

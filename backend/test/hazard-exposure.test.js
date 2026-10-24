@@ -27,16 +27,19 @@ test('horizontal, altitude, and missing-time status remain separate', () => {
   assert.equal(timeStatus, 'not_provided')
 })
 
-test('terminal-only overlap is excluded from en-route exposure', () => {
+test('the departure and arrival procedure legs count like any other part of the line', () => {
+  // 2026-10-24부터 절차 구간도 잘라 내지 않는다 — 선이 영역을 지나면 해당한다.
   const exposure = evaluateHorizontalExposure({ axis, geometry, enRouteRange: { status: 'aligned', startNm: 70, endNm: 100 } })
-  assert.deepEqual(exposure, { status: 'clear', intervals: [] })
+  assert.equal(exposure.status, 'intersects')
 })
 
-test('a hazard within the 30NM route corridor counts as intersecting even if the route never crosses it', () => {
+test('only a line that passes through the area counts — passing close by does not', () => {
   const tiny = { type: 'Polygon', coordinates: [[[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1], [0, 0]]] }
   const nearAxis = { totalDistanceNm: 50, samples: [{ distanceNm: 10, lon: 0.2, lat: 0 }] } // ~6NM from the polygon
   const farAxis = { totalDistanceNm: 50, samples: [{ distanceNm: 10, lon: 0.7, lat: 0 }] } // ~36NM from the polygon
 
-  assert.equal(evaluateHorizontalExposure({ axis: nearAxis, geometry: tiny }).status, 'intersects')
+  const insideAxis = { totalDistanceNm: 50, samples: [{ distanceNm: 10, lon: 0.05, lat: 0.05 }] }
+  assert.equal(evaluateHorizontalExposure({ axis: insideAxis, geometry: tiny }).status, 'intersects')
+  assert.equal(evaluateHorizontalExposure({ axis: nearAxis, geometry: tiny }).status, 'clear')
   assert.equal(evaluateHorizontalExposure({ axis: farAxis, geometry: tiny }).status, 'clear')
 })

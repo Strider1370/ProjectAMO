@@ -4,7 +4,7 @@ import {
   HORIZONTAL_EXPOSURE,
   TIME_STATUS,
 } from '../../../shared/briefing-status.js'
-import { routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { routeRunsInGeometry, timeWindowsOverlap } from './geo-time-match.js'
 import { bandToFt } from './planned-altitude.js'
 
 // AIRMET Sierra 계열(지상 시정 저하·산악 흐림·IFR·저고도 윈드시어)은 정의상 지표 부근 현상이라
@@ -19,30 +19,18 @@ export function hazardBandFt(item) {
   return bandToFt(item?.altitude) ?? (SURFACE_PHENOMENON_CODES.has(item?.phenomenon_code) ? SURFACE_BAND_FT : null)
 }
 
-// 항로 브리핑에 포함되는 위험기상 범위 — 항로 양쪽 30NM. 실제 EFB(ForeFlight)가 항로
-// 브리핑 커버리지로 쓰는 값과 같다(FAA 표준 flight plan briefing corridor).
-const HAZARD_CORRIDOR_NM = 30
-
-function alignedRange(range, totalDistanceNm) {
-  if (range?.status !== 'aligned') return null
-  const startNm = Number(range.startNm)
-  const endNm = Number(range.endNm)
-  if (!Number.isFinite(startNm) || !Number.isFinite(endNm) || !(totalDistanceNm > 0)) return null
-  return { startNm: Math.max(0, startNm), endNm: Math.min(totalDistanceNm, endNm) }
-}
-
-export function evaluateHorizontalExposure({ axis, geometry, enRouteRange = null } = {}) {
+// 경로 선이 영역 안을 지나는 구간만 해당한다(여유 폭 없음, 출발·도착 절차 구간 포함).
+// 위험 막대 틀·연직단면도 상자·경로 비교가 모두 이 구간을 쓴다(2026-10-24 통일 — 전에는 비교가
+// 항로 양쪽 30NM, 막대가 영역 안을 써서 같은 SIGMET 길이가 화면마다 달랐다).
+// 들어갔다 나올 때마다 구간 하나씩. 중간에 빠져나간 거리는 세지 않는다.
+// enRouteRange는 예전 호출과의 호환을 위해 받기만 하고 쓰지 않는다.
+export function evaluateHorizontalExposure({ axis, geometry } = {}) {
   if (!geometry || !Array.isArray(axis?.samples) || axis.samples.length === 0) {
     return { status: HORIZONTAL_EXPOSURE.UNAVAILABLE, intervals: [] }
   }
-  const interval = routeCorridorInGeometry(axis, geometry, HAZARD_CORRIDOR_NM)
-  if (!interval.entered) return { status: HORIZONTAL_EXPOSURE.CLEAR, intervals: [] }
-
-  const range = alignedRange(enRouteRange, axis.totalDistanceNm)
-  const startNm = range ? Math.max(interval.startNm, range.startNm) : interval.startNm
-  const endNm = range ? Math.min(interval.endNm, range.endNm) : interval.endNm
-  if (endNm < startNm) return { status: HORIZONTAL_EXPOSURE.CLEAR, intervals: [] }
-  return { status: HORIZONTAL_EXPOSURE.INTERSECTS, intervals: [{ startNm, endNm }] }
+  const intervals = routeRunsInGeometry(axis, geometry)
+  if (!intervals.length) return { status: HORIZONTAL_EXPOSURE.CLEAR, intervals: [] }
+  return { status: HORIZONTAL_EXPOSURE.INTERSECTS, intervals }
 }
 
 export function evaluateAltitudeExposure({ horizontalExposure, bandFt, plannedCruiseAltitudeFt } = {}) {
