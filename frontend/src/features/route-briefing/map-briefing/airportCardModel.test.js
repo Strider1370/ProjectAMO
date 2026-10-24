@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { airportCards, changeLines, chipWidth, hasAlertFlag, metarText, readCollapsedRoles, tafTextAt, writeCollapsedRoles } from './airportCardModel.js'
+import { airportCards, cardLineSegments, changeLines, chipWidth, hasAlertFlag, metarText, readCollapsedRoles, tafTextAt, writeCollapsedRoles } from './airportCardModel.js'
 
 const metar = (display, visibility = { value: 9999 }) => ({ observation: { visibility, display } })
 const briefing = {
@@ -82,4 +82,19 @@ test('과거 TAF의 기준 시각 한 줄(display 없으면 원시 값), 유효�
   assert.equal(tafTextAt(report, '2026-10-20T11:20:00Z'), '31006KT CAVOK')
   assert.equal(tafTextAt(report, '2026-10-20T11:50:00Z'), '30010KT 6000 -RA BKN010')
   assert.equal(tafTextAt(report, '2026-10-22T00:00:00Z'), '그 발표의 유효기간 밖')
+})
+
+test('card lines are coloured by the airport panel rules', () => {
+  const classes = Object.fromEntries(cardLineSegments('11025G38KT 1200 +TSRA BR BKN004 OVC080 FEW030CB SCT050', 'RKPC')
+    .filter((segment) => segment.text.trim()).map((segment) => [segment.text, segment.className]))
+  assert.equal(classes['11025G38KT'], 'is-wind')
+  assert.ok(classes['1200'], '기준 미달 시정은 칠한다')
+  assert.equal(classes['+TSRA'], 'is-special')
+  assert.equal(classes.BR, null)
+  assert.ok(classes.BKN004, '기준 미달 운고는 칠한다')
+  assert.equal(classes.OVC080, null)
+  assert.equal(classes.FEW030CB, 'is-special')
+  assert.equal(classes.SCT050, null)
+  assert.equal(cardLineSegments('-RA', 'RKSI')[0].className, 'is-precip')
+  assert.equal(cardLineSegments('9999', 'RKSI')[0].className, null)
 })

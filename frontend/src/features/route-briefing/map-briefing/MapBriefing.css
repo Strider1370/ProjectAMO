@@ -296,6 +296,12 @@
 /* METAR·TAF는 자르지 않고 띄어쓰기 자리에서 줄을 바꾼다(카드가 아래로 늘어남). */
 .mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; line-height: 1.35; }
 .mb-ac-rows dd span { min-width: 0; overflow-wrap: anywhere; }
+/* 카드 METAR·TAF 색칠 — 공항 패널 원문(.ap-metar-tac-hl)과 같은 색 */
+.mb-ac-hl { padding: 0 2px; border-radius: 3px; background: none; color: inherit; font-weight: var(--fw-bold); }
+.mb-ac-hl.is-ifr, .mb-ac-hl.is-mvfr { background: var(--level-amber-bg); color: var(--level-amber); }
+.mb-ac-hl.is-lifr, .mb-ac-hl.is-wind { background: var(--level-red-bg); color: var(--level-red); }
+.mb-ac-hl.is-precip { background: rgba(186, 230, 253, 0.72); color: #0c4a6e; } /* color-lint-ignore: 공항 패널 강수 강조와 같은 값 */
+.mb-ac-hl.is-special { background: var(--level-red-bg); color: var(--level-red); outline: 1.5px dashed var(--level-red); outline-offset: -1px; }
 .mb-ac-rows dd em { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-style: normal; font-weight: var(--fw-bold); }
 /* 과거 보기(7단계): 이름 칸 아래 이력 점(왼쪽 과거 → 오른쪽 최신, METAR 점 색 = 비행등급). 과거를 보는 줄은 연한 주황. */
 .mb-ac-rows dt > span { white-space: nowrap; }

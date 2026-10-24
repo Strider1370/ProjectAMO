@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import { formatBriefingTime } from '../lib/briefingTime.js'
 import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
-import { airportCards, changeLines, chipWidth, hasAlertFlag, metarText, tafTextAt } from './airportCardModel.js'
+import { airportCards, cardLineSegments, changeLines, chipWidth, hasAlertFlag, metarText, tafTextAt } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
 const CARD_W = 360
@@ -159,13 +159,13 @@ function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollap
           <span>{metarKind} <small>{pastMetar ? hhmm(pastMetar.time) : (card.metar.time ? hhmm(card.metar.time) : '')}</small></span>
           <HistoryDots history={metarHistory} label="METAR" describe={(entry) => `${hhmm(entry.time)} ${entry.kind}${entry.category ? ` · ${entry.category}` : ''}${entry.latest ? ' · 최신' : ''}`} />
         </dt>
-        <dd className={pastMetar ? 'is-past' : undefined}><span title={metarShown}>{metarShown}</span></dd>
+        <dd className={pastMetar ? 'is-past' : undefined}><span title={metarShown}><TacLine text={metarShown} icao={card.icao} /></span></dd>
         <dt className={pastTaf ? 'is-past' : undefined} title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>
           <span>TAF <small>{pastTaf ? `${zHour(pastTaf.time)}${pastTaf.kind === 'AMD' ? ' AMD' : ''}` : `${card.taf.basis}±1h${card.taf.issued ? ` ${zHour(card.taf.issued)}` : ''}`}</small></span>
           <HistoryDots history={tafHistory} label="TAF" describe={(entry) => `${zHour(entry.time)} ${entry.latest ? '발표 · 지금 기준' : `${entry.kind === 'AMD' ? 'AMD' : 'TAF'} 발표`}`} />
         </dt>
         <dd className={pastTaf ? 'is-past' : undefined}>
-          <span title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}>{tafShown}</span>
+          <span title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></span>
           {!pastTaf && changes.length > 0 && <em>변화 {changes.length}</em>}
         </dd>
       </dl>
@@ -180,4 +180,11 @@ function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollap
       </footer>
     </article>
   )
+}
+
+// 공항 패널 원문과 같은 기준으로 기준 미달 시정·운고, 강풍, CB·뇌전·안개, 강수를 칠한다.
+function TacLine({ text, icao }) {
+  return cardLineSegments(text, icao).map((segment, index) => (segment.className
+    ? <mark key={index} className={`mb-ac-hl ${segment.className}`}>{segment.text}</mark>
+    : segment.text))
 }
