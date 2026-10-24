@@ -5,6 +5,11 @@
 import { classifyCeilingCategory, classifyVisibilityCategory, hasHighWindCondition } from '../../../shared/weather/helpers.js'
 
 const ROLE_KO = { departure: '출발', arrival: '도착', alternate: '교체' }
+// 공항경보 배지 이름. 경보마다 배지 하나(2026-10-24): '공항경보 n' 묶음 대신 무슨 경보인지 바로 보이게.
+const WARNING_KO = {
+  WIND_SHEAR: '윈드시어', LOW_VISIBILITY: '저시정', STRONG_WIND: '강풍', HEAVY_RAIN: '호우', LOW_CEILING: '저운고',
+  THUNDERSTORM: '뇌우', TYPHOON: '태풍', HEAVY_SNOW: '대설', YELLOW_DUST: '황사',
+}
 const CATEGORY_LEVEL = { VFR: 'vfr', MVFR: 'mvfr', IFR: 'ifr', LIFR: 'lifr' }
 
 export function metarText(metar) {
@@ -26,7 +31,6 @@ function roleLabel(airport) {
 export function airportCards(briefing, { airportList = [], nameFor = (icao) => icao } = {}) {
   const airports = briefing?.sections?.current?.airports ?? []
   const hazards = briefing?.sections?.adverse?.hazards ?? []
-  const notams = briefing?.routeNotams ?? []
   const known = new Map(airportList.map((airport) => [airport.icao, airport]))
   const seen = new Set()
   const cards = []
@@ -49,11 +53,8 @@ export function airportCards(briefing, { airportList = [], nameFor = (icao) => i
       taf: window
         ? { basis: window.basis, time: window.time ?? null, issued: window.issued ?? null, text: window.outOfRange ? 'TAF 유효기간 밖' : (window.at?.text ?? null), changes: window.changes ?? [], outOfRange: Boolean(window.outOfRange), previous: Boolean(window.previous) }
         : { basis: airport.role === 'departure' ? 'ETD' : 'ETA', time: null, issued: null, text: null, changes: [], outOfRange: false, previous: false },
-      flags: {
-        warnings: warnings.filter((hazard) => hazard.code !== 'WIND_SHEAR').map((hazard) => hazard.label),
-        windshear: warnings.some((hazard) => hazard.code === 'WIND_SHEAR'),
-        notams: notams.filter((notam) => notam.airportIcao === airport.icao).length,
-      },
+      // 같은 경보가 둘 이상 겹쳐 와도 배지는 하나. 윈드시어가 먼저, 나머지는 받은 순서.
+      warnings: warningBadges(warnings),
     })
   }
   return cards
@@ -85,7 +86,23 @@ export function chipWidth(card) {
   return 30 + card.icao.length * 10 + (card.category ? card.category.length * 8 + 14 : 0) + (hasAlertFlag(card) ? 12 : 0) + 18
 }
 export function hasAlertFlag(card) {
-  return Boolean(card.flags.windshear || card.flags.warnings.length)
+  return card.warnings.length > 0
+}
+
+export function warningBadges(hazards = []) {
+  const byCode = new Map()
+  for (const hazard of hazards) {
+    const code = hazard.code ?? hazard.label
+    if (!code || byCode.has(code)) continue
+    byCode.set(code, {
+      code,
+      label: `${WARNING_KO[code] ?? hazard.label ?? code} 경보`,
+      red: code === 'WIND_SHEAR' || hazard.level === 'red',
+      validFrom: hazard.validFrom ?? null,
+      validTo: hazard.validTo ?? null,
+    })
+  }
+  return [...byCode.values()].sort((a, b) => Number(b.code === 'WIND_SHEAR') - Number(a.code === 'WIND_SHEAR'))
 }
 
 // ── 과거 보기(7단계): 보관 보고를 카드 한 줄로 ──

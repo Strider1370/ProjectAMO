@@ -23,7 +23,7 @@ const briefing = {
 }
 const airportList = [{ icao: 'RKSI', lat: 37.46, lon: 126.44 }, { icao: 'RKPC', lat: 33.51, lon: 126.49 }]
 
-test('공항 카드 3줄: METAR·TAF ±1시간 글, 역할·비행등급, 깃발(공항경보·윈드시어·NOTAM 건수)', () => {
+test('공항 카드 3줄: METAR·TAF ±1시간 글, 역할·비행등급, 경보마다 배지 하나(NOTAM 배지 없음)', () => {
   const [dep, arr, alt] = airportCards(briefing, { airportList, nameFor: (icao) => ({ RKSI: '인천', RKPC: '제주' })[icao] ?? icao })
   assert.equal(dep.roleLabel, '출발')
   assert.equal(dep.name, '인천')
@@ -33,7 +33,8 @@ test('공항 카드 3줄: METAR·TAF ±1시간 글, 역할·비행등급, 깃발
   assert.equal(arr.metar.text, '27007KT 6000 -RA BKN006 18/16')
   assert.equal(arr.metar.speci, true)
   assert.equal(arr.categoryLevel, 'ifr')
-  assert.deepEqual(arr.flags, { warnings: ['강풍'], windshear: true, notams: 2 })
+  assert.deepEqual(arr.warnings.map((warning) => [warning.label, warning.red]), [['윈드시어 경보', true], ['강풍 경보', false]])
+  assert.equal('flags' in arr, false)
   assert.equal(arr.taf.changes.length, 1)
   // 앱 공항 목록에 없는 공항: 자리를 못 잡고 공항 패널도 못 연다.
   assert.equal(alt.canOpenPanel, false)
@@ -69,9 +70,9 @@ test('접은 카드는 역할로 기억하고, 처음이거나 저장소가 막�
   const broken = { getItem() { throw new Error('x') }, setItem() { throw new Error('x') } }
   assert.deepEqual(readCollapsedRoles(broken), ['departure', 'arrival', 'alternate'])
   writeCollapsedRoles(['arrival'], broken)
-  const card = { icao: 'RKPC', category: 'IFR', flags: { windshear: true, warnings: [], notams: 0 } }
+  const card = { icao: 'RKPC', category: 'IFR', warnings: [{ code: 'WIND_SHEAR', label: '윈드시어 경보', red: true }] }
   assert.equal(hasAlertFlag(card), true)
-  assert.ok(chipWidth(card) > chipWidth({ ...card, flags: { windshear: false, warnings: [], notams: 3 } }))
+  assert.ok(chipWidth(card) > chipWidth({ ...card, warnings: [] }))
 })
 
 test('과거 TAF의 기준 시각 한 줄(display 없으면 원시 값), 유효기간 밖', () => {

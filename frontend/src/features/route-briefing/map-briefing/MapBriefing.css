@@ -322,7 +322,6 @@
 .mb-ac-foot { display: flex; align-items: center; gap: var(--space-xs); margin-top: auto; }
 .mb-ac-flag { padding: 1px 6px; border: 1px solid var(--level-amber); border-radius: var(--radius-sm); color: var(--level-amber); font-size: var(--fs-200); font-weight: var(--fw-bold); }
 .mb-ac-flag.is-red { border-color: var(--level-red); background: var(--level-red-bg); color: var(--level-red); }
-.mb-ac-flag.is-notam { border-color: var(--stroke-2); color: var(--text-2); }
 .mb-ac-more { display: inline-flex; align-items: center; margin-left: auto; padding: 2px 4px 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--accent); font: inherit; font-size: var(--fs-300); font-weight: var(--fw-semibold); cursor: pointer; }
 .mb-ac-more:hover:not(:disabled) { background: var(--bg-3); }
 .mb-ac-more:disabled { color: var(--text-3); cursor: default; }
