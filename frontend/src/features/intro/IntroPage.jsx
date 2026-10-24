@@ -8,6 +8,7 @@ import { approach, clamp01, easeInOut, easeOut, lerp, pinnedProgress, segment, s
 import './IntroPage.css'
 
 import imgMain from './assets/main.webp'
+import imgSigwx from './assets/sigwx.webp'
 import imgHero from './assets/hero.webp'
 import imgCloud0 from './assets/cloud-0.webp'
 import imgCloud1 from './assets/cloud-1.webp'
@@ -39,8 +40,9 @@ const PIN_SCREENS = { gis: 6.4, brief: 4.8, custom: 3, alerts: 3.2 }
 
 // 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
-  { key: 'base', label: '기본 지도', frames: [[imgMain, null]],
-    callouts: [['45.7%', '37.8%', 'left', '마커 색으로 공항 비행 등급을'], ['83%', '37.6%', 'left', '인천 FIR 경계']] },
+  // 맨 아래 장은 빈 기본 지도 대신 SIGWX LOW(2026-10-24 08:00 발표)를 둔다 — 마지막에 남는 장면이라 항공기상 자료가 보이는 편이 낫다.
+  { key: 'sigwx', label: 'SIGWX LOW', frames: [[imgSigwx, null]],
+    callouts: [['68.5%', '55.2%', null, '시정 5,000m 구역'], ['48.8%', '70%', 'left', '난류 기호와 고도']] },
   // 시간이 넘어가는 레이어는 장면마다 위치가 달라 말풍선도 장면(다섯째 값)마다 따로 둔다.
   { key: 'cloud', label: '구름·착빙', frames: [[imgCloud0, '10/24 04:00 KST'], [imgCloud1, '10/24 10:00 KST'], [imgCloud2, '10/24 21:00 KST']], alt: 'KIM 구름·착빙 예보(FL140)',
     callouts: [['75%', '56%', 'left', '착빙 구역(점무늬)', 0], ['55%', '69.6%', null, '0°C 선', 0],
@@ -57,8 +59,8 @@ const LAYERS = [
 ]
 // 레이어 장면 시간표(기상정보 고정 구간 진행률). 비스듬히 쌓였다가(0~0.2) 하나로 합쳐진 뒤(0.26~0.42),
 // 위 레이어부터 한 장씩 닦아 낸다. 닦는 동안은 짧게, 그 사이는 길게 둬서 한 레이어를 읽을 시간을 준다.
-// 인덱스는 LAYERS 순서(0 기본 지도 … 4 위성).
-const LAYER_WIPE = [null, [0.89, 0.94], [0.76, 0.81], [0.63, 0.68], [0.5, 0.55]]
+// 인덱스는 LAYERS 순서(0 SIGWX LOW … 4 위성).
+const LAYER_WIPE = [null, [0.88, 0.95], [0.75, 0.82], [0.62, 0.69], [0.49, 0.56]]
 const LAYER_DWELL = [0.97, 0.85, 0.72, 0.59, 0.46]
 // 목록은 위에서부터(맨 위 레이어 먼저) 보여 준다.
 const LEGEND = [
@@ -66,7 +68,7 @@ const LEGEND = [
   ['linear-gradient(90deg,#3DB24B,#F2C230,#E07B22)', '난류, KIM GKTG'],
   ['linear-gradient(90deg,#A7D3F5,#3D8BD9,#1F4FA8)', '강수와 등압선, 바람, KIM 지상일기도'],
   ['linear-gradient(90deg,#C9CED6,#8EA2C8,#5B79C9)', '구름·착빙, KIM'],
-  ['#DCE6EE', '기본 지도와 공항, FIR'],
+  ['linear-gradient(90deg,#F2E14C,#2F5BD9)', 'SIGWX LOW, 항공기상청'],
 ]
 const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
 const BRIEF_STEPS = [0.22, 0.38, 0.56, 0.76]
@@ -223,9 +225,6 @@ export default function IntroPage() {
     const legend = $$('#gis .legend li')
     const layerCallouts = $$('#gis .layer-co')
     const layerStep = $('#gis .layer-step')
-    const wipeLine = $('#gis .wipe')
-    const wipeNext = $('#gis .wipe-next')
-    const wipeCur = $('#gis .wipe-cur')
     const pairSecond = $('.pair figure:last-child')
     const pairEl = $('.pair')
     const briefFrames = [1, 2, 3, 4, 5].map((n) => $(`#br-${n}`))
@@ -264,19 +263,21 @@ export default function IntroPage() {
         const collapse = easeInOut(segment(p, 0.26, 0.42))
         css(stack, { transform: `rotateX(${56 * (1 - collapse)}deg) rotateZ(${-34 * (1 - collapse)}deg) scale(${lerp(0.7, 1, collapse)})` })
         const zStep = compact ? stack.offsetWidth * 0.12 : 110
-        // 위 레이어를 왼쪽부터 잘라 내 아래 레이어가 드러나게 한다(닦아 내기). 흐리게 겹치지 않으므로
-        // 어느 순간에도 한 자리에는 한 레이어만 보인다. 경계선에 두 레이어 이름을 붙인다.
+        // 위 레이어를 왼쪽부터 걷어 내 아래 레이어가 드러나게 한다(닦아 내기). 화면 전체를 흐리게 겹치지 않는다.
         let top = 0
         let wiping = -1
-        let wipeAt = 0
         layers.forEach((layer, index) => {
           const shown = index === 0 ? 1 : segment(appear, (index - 1) / 4, index / 4)
           const wiped = LAYER_WIPE[index] ? easeInOut(segment(p, ...LAYER_WIPE[index])) : 0
           if (shown > 0.5 && wiped < 0.5) top = index
-          if (wiped > 0 && wiped < 1) { wiping = index; wipeAt = wiped }
+          if (wiped > 0 && wiped < 1) wiping = index
+          // 경계를 칼로 자르지 않고 폭 16% 띠로 부드럽게 넘긴다. 띠 밖은 한 레이어만 보인다.
+          const edge = lerp(-8, 108, wiped)
           css(layer, {
             opacity: shown,
-            clipPath: wiped > 0 ? `inset(0 0 0 ${(wiped * 100).toFixed(2)}%)` : '',
+            clipPath: wiped >= 1 ? 'inset(0 0 0 100%)' : '',
+            maskImage: wiped > 0 && wiped < 1 ? `linear-gradient(90deg, transparent ${(edge - 8).toFixed(2)}%, #000 ${(edge + 8).toFixed(2)}%)` : '',
+            webkitMaskImage: wiped > 0 && wiped < 1 ? `linear-gradient(90deg, transparent ${(edge - 8).toFixed(2)}%, #000 ${(edge + 8).toFixed(2)}%)` : '',
             transform: `translateZ(${(index - 2) * zStep * (1 - collapse)}px)`,
           })
           css(layerLabels[index], { opacity: shown * (1 - segment(collapse, 0, 0.3)) })
@@ -284,11 +285,6 @@ export default function IntroPage() {
         // 말풍선은 합쳐진 뒤, 닦아 내는 중이 아닐 때 맨 위 레이어 것만 보인다.
         const settled = collapse >= 1 && wiping < 0
         layerCallouts.forEach((co, index) => co.classList.toggle('on', settled && index === top))
-        css(wipeLine, { opacity: wiping >= 0 ? 1 : 0, left: `${(wipeAt * 100).toFixed(2)}%` })
-        if (wiping >= 0) {
-          if (wipeNext.textContent !== LAYERS[wiping - 1].label) wipeNext.textContent = LAYERS[wiping - 1].label
-          if (wipeCur.textContent !== LAYERS[wiping].label) wipeCur.textContent = LAYERS[wiping].label
-        }
         // 시간 장면은 닦아 내는 동안 멈춘다(바뀌는 중에 시각까지 바뀌면 무엇이 바뀌는지 읽을 수 없다).
         root.dataset.layerWipe = wiping >= 0 ? '1' : ''
         if (layerNow.textContent !== LAYERS[top].label) layerNow.textContent = LAYERS[top].label
@@ -376,7 +372,7 @@ export default function IntroPage() {
       window.removeEventListener('resize', request)
       cancelAnimationFrame(frame)
       // 연출을 끄면 바꾼 속성을 되돌려 일반 흐름(최종 상태)으로 보인다.
-      touched.forEach((element) => { element.style.opacity = ''; element.style.transform = ''; element.style.height = ''; element.style.clipPath = ''; element.style.left = '' })
+      touched.forEach((element) => { element.style.opacity = ''; element.style.transform = ''; element.style.height = ''; element.style.clipPath = ''; element.style.maskImage = ''; element.style.webkitMaskImage = '' })
     }
   }, [motion, compact])
 
@@ -500,7 +496,6 @@ export default function IntroPage() {
                       </div>
                     </div>
                   ))}
-                  <div className="wipe" aria-hidden="true"><span className="wipe-next" /><span className="wipe-cur" /></div>
                 </div>
               </div>
             </div>

@@ -123,15 +123,14 @@
 .intro .seq img.prev{opacity:1; z-index:1; transition:none}
 .intro .seq img:first-child{position:relative}
 .intro .stamp{position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(15,23,42,.82); color:#fff; font-size:13px; font-weight:600; padding:3px 10px; border-radius:var(--r-sm); font-variant-numeric:tabular-nums; pointer-events:none}
-/* 레이어 장면: 말풍선은 사진 안(창 틀 없음), 닦아 내기 경계선, 단계 표시, 누를 수 있는 목록 */
+/* 레이어 장면: 말풍선은 사진 안(창 틀 없음), 단계 표시, 누를 수 있는 목록 */
 .intro .layer .co{top:0}
 .intro .layer-co{opacity:0; transition:opacity .35s var(--ease)}
 .intro .layer-co.on{opacity:1}
+/* 닦아 내는 동안 두 레이어의 시각 표시가 겹쳐 보이지 않게 잠깐 숨긴다. */
+.intro .stamp{transition:opacity .2s}
+.intro[data-layer-wipe="1"] .stamp{opacity:0}
 .intro:not(.motion) .layer-co{display:none}
-.intro .wipe{position:absolute; top:0; bottom:0; width:0; opacity:0; pointer-events:none; transform:translateZ(2px); border-left:2px solid #fff; box-shadow:0 0 0 1px rgba(15,23,42,.25)}
-.intro .wipe span{position:absolute; top:12px; white-space:nowrap; font-size:13px; font-weight:700; padding:3px 9px; border-radius:var(--r-sm); background:rgba(15,23,42,.82); color:#fff}
-.intro .wipe-next{right:8px}
-.intro .wipe-cur{left:8px}
 .intro .layer-step{margin:0 0 10px; min-height:1.4em; font-size:14px; font-weight:700; color:var(--blue); font-variant-numeric:tabular-nums; white-space:pre}
 .intro:not(.motion) .layer-step{display:none}
 .intro .legend button{display:flex; align-items:center; gap:12px; width:100%; padding:2px 0; border:0; background:none; font:inherit; color:inherit; text-align:left; cursor:pointer}
