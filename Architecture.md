@@ -27,6 +27,7 @@ ProjectAMO/
         search/                -> 공항+기능 통합 검색 팔레트 + 공유 레이어 액션 레지스트리
         developer/             -> `/dev` 개발자 콘솔(조작+관찰), 테스트 인스턴스(dev:test) 전용 — EntryPoints §11
         onboarding/            -> 첫 사용자 코치마크 투어(스포트라이트+툴팁, 의존성 0). 데스크톱 자동 1회 + 도움말 재실행
+        feedback/              -> 의견 보내기 창(보내기·반영 내역 탭), 사진을 줄여 한 장씩 올림, 데스크톱 지도 오른쪽 위 입구
         intro/                 -> `/intro` 소개 페이지(주소로만 진입, 첫 화면 아님). 실제 화면 캡처·영상 자산, sticky 고정 구간 스크롤 연출(외부 라이브러리 없음), 최신 인천 METAR 한 줄
       shared/
         ui/                    -> frontend-only reusable UI
@@ -41,6 +42,7 @@ ProjectAMO/
       admin/                  -> administration routes and services
       alerts/                 -> independent system operations alerts; retired flight-alert code remains for historical tests
       airport-alerts/         -> airport METAR, TAF, warning, and lightning evaluators
+      feedback/               -> 의견 접수(로그인 불필요, IP 횟수 제한), 첨부 사진 WebP 재인코딩·공개 자료 폴더 밖 저장·90일 보존, 관리자 조회
       user-alerts/            -> unified user-alert scheduler, route SIGMET evaluator, push delivery queue, and test notifications
       me/                     -> personal settings, minima, and notification routes
       forecaster/             -> forecaster tools and routes

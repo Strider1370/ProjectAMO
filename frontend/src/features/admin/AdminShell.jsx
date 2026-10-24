@@ -11,6 +11,7 @@ import ApiUsageScreen from './screens/ApiUsageScreen.jsx'
 import UsersScreen from './screens/UsersScreen.jsx'
 import AccountsScreen from './screens/AccountsScreen.jsx'
 import AlertWatchScreen from './screens/AlertWatchScreen.jsx'
+import FeedbackScreen from './screens/FeedbackScreen.jsx'
 import DemoScreen from './screens/DemoScreen.jsx'
 import './AdminPage.css'
 
@@ -27,6 +28,7 @@ const SCREENS = {
   users: UsersScreen,
   accounts: AccountsScreen,
   alerts: AlertWatchScreen,
+  feedback: FeedbackScreen,
   demo: DemoScreen,
 }
 

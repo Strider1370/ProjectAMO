@@ -1,6 +1,6 @@
 import {
   FileText, Settings,
-  Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio, Map, Building2
+  Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio, Map, Building2, MessageSquare
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CURRENT_VERSION } from '../../features/about/changelog.js'
@@ -20,6 +20,7 @@ const topItems = [
 ]
 
 const bottomItems = [
+  { label: '의견 보내기', icon: MessageSquare },
   { label: '도움말', icon: HelpCircle }, // 클릭 시 온보딩 투어 재실행
   { label: '업데이트', icon: History },
   { label: '설정', icon: Settings },
@@ -56,7 +57,7 @@ const PANEL_MAP = {
   설정:            'settings',
 }
 
-function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp, onNavigate, onAlertsOpen }) {
+function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp, onNavigate, onAlertsOpen, onFeedback }) {
   const { user } = useAuth()
   const hasHover = useHasHover()
   const [isUtilityOpen, setIsUtilityOpen] = useState(false)
@@ -75,6 +76,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
     const handleClick = panelId ? () => onPanelToggle(panelId)
       // 도움말(사용 안내)을 톱니 메뉴에서 열면 메뉴를 닫는다 — 안 닫으면 안내 화면 위에 메뉴가 남는다.
       : item.label === '도움말' ? () => { setIsUtilityOpen(false); onHelp?.() }
+      : item.label === '의견 보내기' ? () => { setIsUtilityOpen(false); onFeedback?.() }
       : undefined
     return (
       <SidebarButton

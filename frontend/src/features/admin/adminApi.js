@@ -37,6 +37,10 @@ export const reject = (id) => fetch(`${base}/users/${id}/reject`, { method: 'POS
 export const createForecaster = (body) => fetch(`${base}/forecasters`, {
   method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 }).then(j)
+export const getFeedback = (status) => fetch(`${base}/feedback?status=${encodeURIComponent(status)}`, { credentials: 'include' }).then(j)
+export const setFeedbackStatus = (id, status) => fetch(`${base}/feedback/${id}`, {
+  method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+}).then(j)
 export const getDemoMode = () => fetch(`${base}/demo-mode`, { credentials: 'include' }).then(j)
 export const revertDemoMode = () => fetch(`${base}/demo-mode/revert`, { method: 'POST', credentials: 'include' }).then(j)
 export const getDemoModeLog = () => fetch(`${base}/demo-mode/log`, { credentials: 'include' }).then(j)

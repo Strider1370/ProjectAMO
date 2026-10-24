@@ -30,6 +30,8 @@ import { shouldShowIntro } from '../features/intro/introEntry.js'
 import { QPF_ENABLED } from '../features/weather-overlays/lib/qpfLayers.js'
 import AirportAlertPopup from '../features/notifications/AirportAlertPopup.jsx'
 import AlertTestDetail from '../features/airport-alerts/AlertTestDetail.jsx'
+import FeedbackLauncher from '../features/feedback/FeedbackLauncher.jsx'
+import { buildFeedbackContext } from '../features/feedback/feedbackContext.js'
 
 const OrganizationLoungePage = lazy(() => import('../features/organization-lounge/OrganizationLoungePage.jsx'))
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
@@ -43,6 +45,7 @@ const ModelComparisonPage = lazy(() => import('../features/airport-model-compari
 const IntroPage = lazy(() => import('../features/intro/IntroPage.jsx'))
 const VerticalProfileConcept = lazy(() => import('../features/vertical-profile-concept/PreviewEntry.jsx'))
 const AlertWorkspacePanel = lazy(() => import('../features/airport-alerts/AlertWorkspacePanel.jsx'))
+const FeedbackDialog = lazy(() => import('../features/feedback/FeedbackDialog.jsx'))
 
 function formatTimeByTz(ms, tz) {
   const d = tz === 'KST' ? new Date(ms + 9 * 3600 * 1000) : new Date(ms)
@@ -61,6 +64,7 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
   const [organizationEntryLoading, setOrganizationEntryLoading] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [activePanel, setActivePanelRaw] = useState(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [selectedAirport, setSelectedAirport] = useState(() => {
     // 딥링크: ?airport=RKSI 로 공항패널 바로 열기 (공유 링크 + Playwright 캡처용)
     const p = new URLSearchParams(window.location.search).get('airport')
@@ -295,6 +299,7 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
         onProfileClick={() => requestNavigation(() => previewMode ? window.location.assign('/') : (user ? setAccountOpen(true) : setAuthOpen(true)))}
         onHelp={() => requestNavigation(tour.restart)}
         onAlertsOpen={() => openAlertWorkspace()}
+        onFeedback={() => setFeedbackOpen(true)}
       />
       <main className="map-shell">
         <MapView
@@ -385,6 +390,7 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
           onSettings={() => togglePanel('settings')}
           onUpdates={() => togglePanel('updates')}
           onAlerts={() => openAlertWorkspace()}
+          onFeedback={() => setFeedbackOpen(true)}
           onAccount={() => previewMode ? window.location.assign('/') : setAuthOpen(true)}
           hasUpdate={hasUpdate}
         />
@@ -456,6 +462,11 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
       {activePanel === 'updates' && (
         <UpdatesModal onClose={() => togglePanel('updates')} />
       )}
+      {!isMobile && !previewMode && mobileTask === 'map' && !selectedAirport && !mapBriefingActive && (
+        <FeedbackLauncher onOpen={() => setFeedbackOpen(true)} />
+      )}
+      {feedbackOpen && <Suspense fallback={null}><FeedbackDialog onClose={() => setFeedbackOpen(false)}
+        getContext={() => buildFeedbackContext({ map: mapRef.current, airport: selectedAirport, panel: activePanel, briefing: mapBriefingActive })} /></Suspense>}
       <SearchPalette
         open={searchOpen}
         onClose={() => setSearchOpen(false)}

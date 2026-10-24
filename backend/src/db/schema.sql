@@ -587,3 +587,20 @@ CREATE TABLE IF NOT EXISTS ai_question_requests (
   started_at TEXT NOT NULL,
   PRIMARY KEY (user_id, request_id)
 );
+
+-- 사용자 의견. 운영자만 본다. 사진은 공개 자료 폴더 밖 파일로 두고 키만 적는다(feedback/storage.js).
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('error', 'inconvenience', 'suggestion')),
+  message TEXT NOT NULL,
+  context TEXT NOT NULL DEFAULT '{}',
+  images TEXT NOT NULL DEFAULT '[]',
+  image_bytes INTEGER NOT NULL DEFAULT 0,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  upload_token_hash TEXT,
+  upload_expected INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'read', 'done', 'hidden')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_status_created ON feedback(status, created_at);

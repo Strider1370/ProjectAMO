@@ -51,6 +51,7 @@ import { mountTestMutationApi } from './src/dev/test-mutation-gate.js'
 import { createHealthStatus } from './src/health.js'
 import { recordRequest, bumpCache } from './src/dev/instrument.js'
 import { createMeRequestsRouter } from './src/me/requests.js'
+import { createAdminFeedbackRouter, createFeedbackRouter } from './src/feedback/router.js'
 import { createForecasterRouter } from './src/forecaster/router.js'
 import adsbProcessor from './src/processors/adsb-processor.js'
 import { requestObservedApi } from './src/lib/request-observability.js'
@@ -130,7 +131,7 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false,
 const defaultJsonParser = express.json({ limit: '1mb' })
 // Maps parse after session/authentication setup with their own measured payload limit.
 // Keep the existing request limit for all other APIs.
-app.use((req, res, next) => /^\/api\/(?:ai|me\/maps|organizations\/[^/]+\/(?:maps|materials))(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
+app.use((req, res, next) => /^\/api\/(?:ai|feedback|me\/maps|organizations\/[^/]+\/(?:maps|materials))(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
 app.use(compression())
 
 // #7 인증: (개발) CORS credentials + 세션. 공개 API는 saveUninitialized:false라 세션쿠키 안 생김.
@@ -349,6 +350,8 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/me/maps', createMyMapsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/organizations', createOrganizationMapsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/admin/organizations', createAdminOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
+  app.use('/api/feedback', createFeedbackRouter({ trustedMutationOrigin: organizationMutationOrigin })) // 의견 보내기(로그인 불필요)
+  app.use('/api/admin/feedback', createAdminFeedbackRouter()) // 받은 의견(requireRole admin)
   app.use('/api/organizations', createOrganizationRouter({
     trustedMutationOrigin: organizationMutationOrigin,
     briefingDependencies: organizationWeatherDependencies,

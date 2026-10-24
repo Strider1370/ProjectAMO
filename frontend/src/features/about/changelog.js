@@ -1,5 +1,6 @@
 // User-facing release notes (newest first). Add a new entry on top each release
 // and bump frontend/package.json to match CURRENT_VERSION.
+// `feedback`(선택): 사용자 의견을 받아 바꾼 항목. 의견 창의 '반영 내역'에 이것만 모아 보여 준다.
 
 export const CHANGELOG = [
   {

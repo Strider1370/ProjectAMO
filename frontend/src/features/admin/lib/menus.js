@@ -1,4 +1,4 @@
-// 관리자 콘솔 메뉴. 1단계 여섯 개다.
+// 관리자 콘솔 메뉴.
 //
 // 로그 화면은 목업에 그려져 있지만 3단계라 여기 없다 — 목업은 최종 모습을 담은 문서이고,
 // 이 배열이 지금 실제로 만드는 것이다.
@@ -10,6 +10,7 @@ export const MENUS = [
   { id: 'users', label: '이용자', group: 'usage' },
   { id: 'accounts', label: '계정 관리', group: 'usage' },
   { id: 'alerts', label: '알림 감시', group: 'usage' },
+  { id: 'feedback', label: '받은 의견', group: 'usage' },
   { id: 'demo', label: '시연 모드', group: 'ops' },
 ]
 

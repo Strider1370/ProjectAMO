@@ -716,3 +716,26 @@
 .admin-page .ac-cb-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); border: 1px solid var(--ac-bd); border-radius: 12px; padding: 20px 22px; color: var(--ac-tx); background: var(--ac-sf); }
 .admin-page .ac-cb-dialog::backdrop { background: rgba(28,27,26,.28); }
 @media (max-width: 719px) { .admin-page .ac-cb-next, .admin-page .ac-cb-legend { margin-left: 0; } }
+
+/* 받은 의견 — 왼쪽 목록, 오른쪽 내용·사진·화면 정보 */
+.admin-page .ac-feedback-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 22px; }
+.admin-page .ac-feedback-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; border-top: 1px solid var(--ac-bd-2); }
+.admin-page .ac-feedback-list { min-width: 0; border-right: 1px solid var(--ac-bd-2); }
+.admin-page .ac-feedback-list tbody tr { cursor: pointer; }
+.admin-page .ac-feedback-list tbody tr:hover td, .admin-page .ac-feedback-list tbody tr.is-selected td { background: var(--ac-sf-2); }
+.admin-page .ac-feedback-list tbody tr.is-new td { font-weight: 600; }
+.admin-page .ac-feedback-list td { white-space: nowrap; }
+.admin-page .ac-feedback-list td.ac-feedback-msg { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.admin-page .ac-feedback-detail { display: flex; flex-direction: column; gap: 14px; padding: 16px 22px 22px; min-width: 0; }
+.admin-page .ac-feedback-body { margin: 0; font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.admin-page .ac-feedback-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.admin-page .ac-feedback-photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--ac-bd); border-radius: var(--ac-r-sm); background: var(--ac-sf-2); }
+.admin-page .ac-feedback-context { display: grid; grid-template-columns: 72px 1fr; gap: 6px 10px; margin: 0; padding: 12px 14px; border: 1px solid var(--ac-bd); border-radius: var(--ac-r-sm); background: var(--ac-sf); font-size: 13px; }
+.admin-page .ac-feedback-context dt { color: var(--ac-dim); }
+.admin-page .ac-feedback-context dd { margin: 0; overflow-wrap: anywhere; }
+.admin-page .ac-feedback-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-page .ac-btn.ac-btn-quiet { background: var(--ac-sf); color: var(--ac-tx); border: 1px solid var(--ac-bd); }
+@media (max-width: 900px) {
+  .admin-page .ac-feedback-grid { grid-template-columns: 1fr; }
+  .admin-page .ac-feedback-list { border-right: 0; border-bottom: 1px solid var(--ac-bd-2); }
+}
