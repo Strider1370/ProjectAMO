@@ -320,8 +320,10 @@
 
 /* 맨 아래: 깃발 + 상세 */
 .mb-ac-foot { display: flex; align-items: center; gap: var(--space-xs); margin-top: auto; }
-.mb-ac-flag { padding: 1px 6px; border: 1px solid var(--level-amber); border-radius: var(--radius-sm); color: var(--level-amber); font-size: var(--fs-200); font-weight: var(--fw-bold); }
-.mb-ac-flag.is-red { border-color: var(--level-red); background: var(--level-red-bg); color: var(--level-red); }
+.mb-ac-warn { min-width: 0; color: var(--level-amber); font-size: var(--fs-200); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
+.mb-ac-warn > b { margin-right: 4px; padding: 0 5px; border-radius: var(--radius-sm); background: var(--level-amber); color: #fff; }
+.mb-ac-warn.is-red > b { background: var(--level-red); }
+.mb-ac-warn .is-red { color: var(--level-red); }
 .mb-ac-more { display: inline-flex; align-items: center; margin-left: auto; padding: 2px 4px 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--accent); font: inherit; font-size: var(--fs-300); font-weight: var(--fw-semibold); cursor: pointer; }
 .mb-ac-more:hover:not(:disabled) { background: var(--bg-3); }
 .mb-ac-more:disabled { color: var(--text-3); cursor: default; }

@@ -5,7 +5,7 @@
 import { classifyCeilingCategory, classifyVisibilityCategory, hasHighWindCondition } from '../../../shared/weather/helpers.js'
 
 const ROLE_KO = { departure: '출발', arrival: '도착', alternate: '교체' }
-// 공항경보 배지 이름. 경보마다 배지 하나(2026-10-24): '공항경보 n' 묶음 대신 무슨 경보인지 바로 보이게.
+// 공항경보 이름. 카드 아래 한 줄 '경보: 윈드시어 · 강풍'(2026-10-24): 개수 대신 무슨 경보인지 보이게, 배지 여럿보다 좁게.
 const WARNING_KO = {
   WIND_SHEAR: '윈드시어', LOW_VISIBILITY: '저시정', STRONG_WIND: '강풍', HEAVY_RAIN: '호우', LOW_CEILING: '저운고',
   THUNDERSTORM: '뇌우', TYPHOON: '태풍', HEAVY_SNOW: '대설', YELLOW_DUST: '황사',
@@ -96,7 +96,7 @@ export function warningBadges(hazards = []) {
     if (!code || byCode.has(code)) continue
     byCode.set(code, {
       code,
-      label: `${WARNING_KO[code] ?? hazard.label ?? code} 경보`,
+      label: WARNING_KO[code] ?? hazard.label ?? code,
       red: code === 'WIND_SHEAR' || hazard.level === 'red',
       validFrom: hazard.validFrom ?? null,
       validTo: hazard.validTo ?? null,

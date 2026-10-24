@@ -33,7 +33,7 @@ test('공항 카드 3줄: METAR·TAF ±1시간 글, 역할·비행등급, 경보
   assert.equal(arr.metar.text, '27007KT 6000 -RA BKN006 18/16')
   assert.equal(arr.metar.speci, true)
   assert.equal(arr.categoryLevel, 'ifr')
-  assert.deepEqual(arr.warnings.map((warning) => [warning.label, warning.red]), [['윈드시어 경보', true], ['강풍 경보', false]])
+  assert.deepEqual(arr.warnings.map((warning) => [warning.label, warning.red]), [['윈드시어', true], ['강풍', false]])
   assert.equal('flags' in arr, false)
   assert.equal(arr.taf.changes.length, 1)
   // 앱 공항 목록에 없는 공항: 자리를 못 잡고 공항 패널도 못 연다.
@@ -70,7 +70,7 @@ test('접은 카드는 역할로 기억하고, 처음이거나 저장소가 막�
   const broken = { getItem() { throw new Error('x') }, setItem() { throw new Error('x') } }
   assert.deepEqual(readCollapsedRoles(broken), ['departure', 'arrival', 'alternate'])
   writeCollapsedRoles(['arrival'], broken)
-  const card = { icao: 'RKPC', category: 'IFR', warnings: [{ code: 'WIND_SHEAR', label: '윈드시어 경보', red: true }] }
+  const card = { icao: 'RKPC', category: 'IFR', warnings: [{ code: 'WIND_SHEAR', label: '윈드시어', red: true }] }
   assert.equal(hasAlertFlag(card), true)
   assert.ok(chipWidth(card) > chipWidth({ ...card, warnings: [] }))
 })

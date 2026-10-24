@@ -94,7 +94,7 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
               onClick={() => onToggleCollapse?.(card.role)} title={`${card.roleLabel} ${card.icao} 카드 펼치기`} aria-label={`${card.icao} 카드 펼치기`} aria-expanded="false">
               <strong>{card.icao}</strong>
               {card.category && <span className="mb-ac-cat">{card.category}</span>}
-              {hasAlertFlag(card) && <i className="mb-chip-alert" title={card.warnings.map((warning) => warning.label).join(' · ')} />}
+              {hasAlertFlag(card) && <i className="mb-chip-alert" title={`경보: ${card.warnings.map((warning) => warning.label).join(' · ')}`} />}
               <ChevronUp size={15} aria-hidden="true" />
             </button>
           )
@@ -170,10 +170,17 @@ function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollap
         </dd>
       </dl>
       <footer className="mb-ac-foot">
-        {card.warnings.map((warning) => (
-          <span key={warning.code} className={`mb-ac-flag${warning.red ? ' is-red' : ''}`}
-            title={warning.validFrom && warning.validTo ? `${warning.label} · ${hhmm(warning.validFrom)}–${hhmm(warning.validTo)}` : warning.label}>{warning.label}</span>
-        ))}
+        {card.warnings.length > 0 && (
+          <span className={`mb-ac-warn${card.warnings.some((warning) => warning.red) ? ' is-red' : ''}`}>
+            <b>경보</b>
+            {card.warnings.map((warning, index) => (
+              <span key={warning.code} className={warning.red ? 'is-red' : undefined}
+                title={warning.validFrom && warning.validTo ? `${warning.label} 경보 · ${hhmm(warning.validFrom)}–${hhmm(warning.validTo)}` : `${warning.label} 경보`}>
+                {index > 0 && ' · '}{warning.label}
+              </span>
+            ))}
+          </span>
+        )}
         <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)}
           title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>
           상세<ChevronRight size={15} aria-hidden="true" />
