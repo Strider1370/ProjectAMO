@@ -36,7 +36,10 @@ function altitudeAtProfileDistance(profile, distanceNm, fallbackAltitudeFt) {
 }
 
 // 각 거리 샘플에서 계획고도 alt(d)에 해당하는 값을 두 기압면 사이에서 구한다.
-// mode 'worst': 위험 등급(착빙/난류) → 두 레벨 중 큰 값. mode 'interp': 연속값(바람/기온) → 선형 보간.
+// mode 'worst': 두 레벨 중 큰 값(난류 — 연직단면도도 두 기압면 사이 칸을 둘 중 큰 값으로 칠한다).
+// mode 'lower': 아래 레벨 값(착빙 — 연직단면도가 기압면 값을 그 면부터 바로 위 면까지 칸에 칠하므로,
+//   계획 고도 선이 지나는 칸의 값이 곧 아래 레벨 값이다. 막대와 단면도가 같은 칸을 보게 한다).
+// mode 'interp': 연속값(바람/기온) → 선형 보간.
 // nullOutside: 계획고도가 레벨 커버리지 밖이면 null(저고도 한정 KTG용).
 function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { flightPlanProfile = null, mode = 'interp', nullOutside = false, strictMissing = false } = {}) {
   const sorted = sortedLevels(levels)
@@ -62,6 +65,10 @@ function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { fli
       val = null
     } else if (mode === 'worst') {
       val = Math.max(vLo ?? -Infinity, vHi ?? -Infinity)
+    } else if (mode === 'lower') {
+      // 맨 아래 기압면보다 낮거나 맨 위 기압면 이상이면 단면도에 칠한 칸이 없다 — 위험 없음(0)으로 본다.
+      // 위 기압면 높이와 딱 같으면 그 위 칸(위 레벨 값)이다.
+      val = alt < local[0].altFt || alt >= local.at(-1).altFt ? 0 : (alt >= hi.altFt ? vHi : vLo)
     } else if (vLo == null) {
       val = vHi
     } else if (vHi == null) {
@@ -138,7 +145,7 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
     const icingLevels = kim.map((level) => Number(level.pressure) < 300
       ? { ...level, values: level.values.map((value) => (value && value.icing == null ? { ...value, icing: 0 } : value)) }
       : level)
-    const series = seriesAtAltitude(icingLevels, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { flightPlanProfile, mode: 'worst' })
+    const series = seriesAtAltitude(icingLevels, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { flightPlanProfile, mode: 'lower' })
     const icing = thresholdIntervals(series, classifyIcing)
     status.icing = seriesStatus(series, icing)
     missing.icing = missingIntervals(series)

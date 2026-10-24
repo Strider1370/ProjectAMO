@@ -129,3 +129,15 @@ test('icing above 300hPa counts as none, not missing', () => {
   assert.equal(r.status.icing, 'none')
   assert.deepEqual(r.missing.icing, [])
 })
+
+// 연직단면도는 기압면 값을 그 면부터 바로 위 면까지 칸에 칠한다. 막대도 계획 고도 선이 지나는 그 칸을 본다.
+test('icing reads the profile cell the planned altitude passes through, not the worse of the two levels', () => {
+  const values = (icing) => [{ distanceNm: 0, icing }, { distanceNm: 50, icing }, { distanceNm: 100, icing }]
+  const iceAbove = { levels: [{ altFt: 8000, values: values(0) }, { altFt: 10000, values: values(2) }, { altFt: 12000, values: values(0) }] }
+  // 9,000ft는 8,000~10,000ft 칸(8,000ft 값 0). 위 칸(10,000ft 값 2)의 착빙은 선 위쪽이라 막대에 넣지 않는다.
+  const below = summarizeEnrouteModel({ crossSection: iceAbove, totalDistanceNm: 100, cruiseAltitudeFt: 9000 })
+  assert.equal(below.elements.find((e) => e.kind === 'icing'), undefined)
+  // 11,000ft는 10,000~12,000ft 칸 — 착빙 칸 안이다.
+  const inside = summarizeEnrouteModel({ crossSection: iceAbove, totalDistanceNm: 100, cruiseAltitudeFt: 11000, flightPlanProfile: { points: [{ distanceNm: 0, altitudeFt: 11000 }, { distanceNm: 100, altitudeFt: 11000 }] } })
+  assert.equal(inside.elements.find((e) => e.kind === 'icing')?.intervals.length, 1)
+})
