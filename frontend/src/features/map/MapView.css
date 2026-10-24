@@ -26,6 +26,19 @@
   line-height: 1.35;
 }
 
+.typhoon-map-status {
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--stroke-2);
+  border-radius: 8px;
+  background: var(--bg-1);
+  color: var(--text-2);
+  font-size: var(--fs-100);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
 .route-briefing-map-mode-toggle {
   display: none;
 }
@@ -98,14 +111,70 @@
 }
 
 .map-bottom-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  min-height: 36px;
+  max-width: 100%;
+  pointer-events: none;
+}
+
+.map-bottom-controls > * { pointer-events: auto; }
+
+.map-bottom-action-stack {
   position: absolute;
   left: 50%;
   bottom: 96px;
   z-index: 6;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
   transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+}
+
+.map-bottom-action-stack > .active-route-chip { pointer-events: auto; }
+.map-bottom-action-stack > .map-bottom-controls { pointer-events: none; }
+
+.typhoon-info-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--stroke-1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.14);
+  color: var(--accent);
+  font: 700 var(--fs-200) var(--app-font, system-ui, sans-serif);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.typhoon-info-button:hover { border-color: var(--accent); }
+.typhoon-info-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.typhoon-info-button__count {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg-1);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 고도 비교 단계에서 연직단면도 창을 닫은 뒤 다시 여는 지도 컨트롤. */
@@ -1187,15 +1256,8 @@
   pointer-events: none;
 }
 
-/* 브리핑 패널이 닫혀도 지도에 남는 경로를 알려주고 지울 수 있는 칩. bottom:140px는
-   타임라인 스크럽 스택(재생버튼 42px·읽기값 90px·NWP슬라이더 최대 104px)보다
-   위에서 항상 안 겹치도록 확인된 값이다(MapView.css .timeline-rail 계열 참고). */
+/* 접힌 경로 칩은 공통 하단 스택에서 지도 버튼들 위에 놓인다. */
 .active-route-chip {
-  position: absolute;
-  left: 50%;
-  bottom: 140px;
-  z-index: 6;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1209,15 +1271,11 @@
   font-family: var(--app-font, system-ui, sans-serif);
   font-size: 12px;
   color: var(--text-1);
+  max-width: 100%;
 }
 
 /* 지도 자동 포커스 뒤에도 기본 한국 뷰로 즉시 돌아가는 하단 중앙 홈 버튼. */
 .map-home-control {
-  position: absolute;
-  left: 50%;
-  bottom: 96px;
-  z-index: 6;
-  transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1232,11 +1290,6 @@
   color: var(--text-1);
   font: 700 12px/1 var(--app-font, system-ui, sans-serif);
   cursor: pointer;
-}
-
-.map-bottom-controls .map-home-control {
-  position: static;
-  transform: none;
 }
 
 .map-home-control:hover {

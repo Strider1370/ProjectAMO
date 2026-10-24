@@ -23,6 +23,13 @@ export const AIRPORT_INTERACTIVE_LAYERS = [
   AIRPORT_LABEL_LAYER,
 ]
 
+// A point marker represents an explicit click target. Broad weather/airspace areas
+// must not open a second popup when that same pixel contains an airport marker.
+export function hasAirportAtMapPoint(map, point) {
+  const layers = AIRPORT_INTERACTIVE_LAYERS.filter((id) => map.getLayer(id))
+  return layers.length > 0 && map.queryRenderedFeatures(point, { layers }).length > 0
+}
+
 export const GEO_BOUNDARY_COLOR = '#111827'
 export const GEO_BOUNDARY_WIDTH = 1
 export const GEO_SIGUNGU_MIN_ZOOM = 9

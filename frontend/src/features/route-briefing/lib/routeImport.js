@@ -11,8 +11,7 @@ import { readKmlFromBuffer } from '../../my-map/lib/kmzUnzip.js'
 // 두 구현 모두 표준 DOM Level 1 API(getElementsByTagName·getAttribute·textContent)를
 // 지원하므로 이후 코드는 어느 쪽이 만든 doc인지 신경 쓸 필요 없다.
 
-// 지도 maxBounds(frontend/src/features/map/mapConfig.js MAP_CONFIG.maxBounds)와 동일한
-// 한국 FIR 근사 경계. 숫자 4개뿐이라 별도 import로 feature 간 결합을 만들지 않고 값만 미러링.
+// 외부 경로 파일 검증에 쓰는 한국 FIR 근사 경계. 지도 화면의 이동 범위와는 별개다.
 const KOREA_FIR_BOUNDS = { minLon: 116, maxLon: 139, minLat: 26, maxLat: 44 }
 
 // 밖에서 온 파일은 내용을 신뢰할 수 없다. 범위를 벗어난 좌표는 지도를 깨뜨리거나

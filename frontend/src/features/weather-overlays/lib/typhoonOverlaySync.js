@@ -10,7 +10,7 @@ import { syncTyphoonLayers } from './typhoonLayers.js'
 
 // 강도 숫자 심볼이 원형 표식 위에 놓인다. 두 레이어 모두 화면에 보이고 포인터를 받을 수
 // 있으므로, 한쪽만 대상으로 삼으면 위쪽 심볼에서 hover가 끊긴다.
-const POINTS_LAYERS = ['typhoon-points-strength', 'typhoon-points-circle', 'typhoon-current-ring']
+export const TYPHOON_POINT_LAYERS = ['typhoon-points-strength', 'typhoon-points-circle', 'typhoon-current-ring']
 
 export function typhoonPopupHtml(row, number, name, timeZone = 'KST') {
   const text = (value) => value == null || value === '' ? '—' : escapeHtml(String(value))
@@ -23,7 +23,7 @@ export function typhoonPopupHtml(row, number, name, timeZone = 'KST') {
   return `<section class="typhoon-popup"><div class="typhoon-popup__head"><strong>${text(number)}호 태풍 ${text(name)}</strong><span>강도 ${text(intensity)}</span></div><div class="typhoon-popup__rows"><div><span>유효시각</span><span>${validAt}</span></div><div><span>최대풍속</span><span>${text(row?.maxWindMs)} m/s</span></div></div></section>`
 }
 
-export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible, timeZone = 'KST', enabled = true }) {
+export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible, timeZone = 'KST', enabled = true, onOpenDetails }) {
   const [snapshot, setSnapshot] = useState(null)
   // 패널의 시각 행과 지도 지점을 잇는 선택 상태. 어느 쪽에서 골라도 같은 값이 된다.
   // pinned = 클릭으로 고정한 것. 마우스가 떠나도 풀리지 않는다.
@@ -84,17 +84,38 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
       select({ number: props.number, validAt: props.validAt, row: rows.get(`${props.number}|${props.validAt}`) })
     }
     const onLeave = () => { map.getCanvas().style.cursor = ''; select(null) }
-    for (const layer of POINTS_LAYERS) {
+    for (const layer of TYPHOON_POINT_LAYERS) {
       map.on('mouseenter', layer, onEnter)
       map.on('mouseleave', layer, onLeave)
     }
     return () => {
-      for (const layer of POINTS_LAYERS) {
+      for (const layer of TYPHOON_POINT_LAYERS) {
         map.off('mouseenter', layer, onEnter)
         map.off('mouseleave', layer, onLeave)
       }
     }
   }, [mapRef, isStyleReady, styleRevision, visible, snapshot, select])
+
+  // The layer tile controls visibility; a map point opens the detail panel.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady || !visible) return undefined
+    const rows = new Map()
+    for (const typhoon of snapshot?.typhoons ?? []) {
+      for (const row of typhoon.rows ?? []) rows.set(`${typhoon.number}|${row.validAt}`, row)
+    }
+    const onClick = (event) => {
+      const props = event.features?.[0]?.properties
+      if (!props || !rows.has(`${props.number}|${props.validAt}`)) return
+      select({ number: props.number, validAt: props.validAt,
+        row: rows.get(`${props.number}|${props.validAt}`), pinned: true })
+      onOpenDetails?.(props.number)
+    }
+    for (const layer of TYPHOON_POINT_LAYERS) map.on('click', layer, onClick)
+    return () => {
+      for (const layer of TYPHOON_POINT_LAYERS) map.off('click', layer, onClick)
+    }
+  }, [mapRef, isStyleReady, styleRevision, visible, snapshot, select, onOpenDetails])
 
   // 지점은 모두 동일한 강도 숫자 심볼을 쓰므로, 상세 값은 hover 팝업에서 제공한다.
   useEffect(() => {
@@ -140,14 +161,14 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
       element?.addEventListener('pointerleave', scheduleClose)
     }
     const onLeave = scheduleClose
-    for (const layer of POINTS_LAYERS) {
+    for (const layer of TYPHOON_POINT_LAYERS) {
       map.on('mouseenter', layer, onEnter)
       map.on('mouseleave', layer, onLeave)
     }
     return () => {
       cancelClose()
       closePopup()
-      for (const layer of POINTS_LAYERS) {
+      for (const layer of TYPHOON_POINT_LAYERS) {
         map.off('mouseenter', layer, onEnter)
         map.off('mouseleave', layer, onLeave)
       }

@@ -13,9 +13,9 @@ test('타임라인은 forecast가 있으면 새 화면, 없으면 기존 화면'
   assert.match(tab, /view === 'timeline' && !forecastView &&/)
 })
 
-// 좁은 칸에서 숨겨진 값을 바로 아래에서 보도록, 타임라인일 때 원문을 펼쳐 둔다. 표(모바일·브리핑)는 접힌 채.
-test('원문은 타임라인에서만 펼쳐 둔다', () => {
-  assert.match(tab, /<details className="ap-raw-fold" open=\{view === 'timeline'\}>/)
+// 원문(TAC)은 타임라인·표 모두 기본 접힘. 좁은 칸에서 숨겨진 값은 원문을 펼치거나 칸 툴팁으로 본다.
+test('원문은 기본으로 접어 둔다', () => {
+  assert.match(tab, /<details className="ap-raw-fold">/)
 })
 
 // TEMPO라는 표시는 무채색이고, 색은 비행조건·기준 초과 값에만 쓴다.

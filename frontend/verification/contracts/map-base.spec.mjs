@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 import { RADAR_LAYER, RADAR_SOURCE, SATELLITE_LAYER, SATELLITE_SOURCE } from '../../src/features/weather-overlays/lib/weatherOverlayLayers.js'
 import { VISIBLE_LAYER, VISIBLE_SOURCE } from '../../src/features/weather-overlays/lib/kmaCompositeLayers.js'
+import { GRATICULE_SOURCE_ID, GRATICULE_LINE_LAYER_ID, GRATICULE_LABEL_LAYER_ID } from '../../src/features/map/lib/graticuleLayers.js'
 
 async function installRadarMotionFixture(page) {
   const observedAtMs = Date.UTC(2026, 4, 14, 3, 5)
@@ -54,6 +55,49 @@ async function installConvectiveFixture(page) {
 }
 
 test.describe('map-base', () => {
+  test('lets the main map zoom out beyond the previous regional limit', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop map zoom extent')
+    await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__map?.isStyleLoaded())
+    await page.evaluate(() => window.__map.jumpTo({ center: [127.5, 36.5], zoom: 1 }))
+    await expect.poll(() => page.evaluate(() => window.__map.getZoom())).toBeLessThan(1.01)
+    expect(await page.evaluate(() => window.__map.getMaxBounds())).toBeNull()
+    await page.screenshot({ path: testInfo.outputPath('wide-map-zoom.png') })
+  })
+
+  test('uses Mercator and keeps readable latitude and longitude lines through style changes', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop map projection and graticule')
+    await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    const state = () => page.evaluate(({ sourceId, lineId, labelId }) => {
+      const map = window.__map
+      const features = map?.getSource(sourceId)?._data?.features ?? []
+      return {
+        projection: map?.getProjection().name,
+        lines: features.filter((feature) => feature.properties.kind === 'line').length,
+        labels: features.filter((feature) => feature.properties.kind === 'label').length,
+        layersReady: Boolean(map?.getLayer(lineId) && map?.getLayer(labelId)),
+      }
+    }, { sourceId: GRATICULE_SOURCE_ID, lineId: GRATICULE_LINE_LAYER_ID, labelId: GRATICULE_LABEL_LAYER_ID })
+    await expect.poll(state).toMatchObject({ projection: 'mercator', layersReady: true })
+    expect((await state()).lines).toBeGreaterThan(0)
+    expect((await state()).labels).toBeGreaterThan(0)
+    await page.screenshot({ path: testInfo.outputPath('mercator-graticule.png') })
+
+    await page.evaluate(() => window.__map.jumpTo({ center: [127, 36], zoom: 10 }))
+    await expect.poll(async () => (await state()).lines).toBe(0)
+    await page.evaluate(() => window.__map.jumpTo({ center: [127, 36], zoom: 3 }))
+    await expect.poll(async () => (await state()).lines).toBeGreaterThan(0)
+
+    for (const name of [/^남색/, /^위성/]) {
+      await page.getByRole('button', { name: /지도 선택$/ }).click()
+      await page.getByRole('menuitemradio', { name }).click()
+      await expect.poll(state).toMatchObject({ projection: 'mercator', layersReady: true })
+      expect((await state()).lines).toBeGreaterThan(0)
+    }
+  })
+
   test('keeps radar above visible and infrared satellite after a style replacement', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'The deterministic Mapbox stack contract runs once on desktop.')
     await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)

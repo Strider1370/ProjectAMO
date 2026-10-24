@@ -5,7 +5,7 @@ import WeatherPointInfoControl from '../weather-overlays/WeatherPointInfoControl
 import { useWeatherPointInspection } from '../weather-overlays/lib/useWeatherPointInspection.js'
 import OrganizationBriefingStatus from '../route-briefing/OrganizationBriefingStatus.jsx'
 import { createSavedRouteHandoff } from '../copilot/savedRouteHandoff.js'
-import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { ChartSpline, House } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
@@ -16,6 +16,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import circle from '@turf/circle'
 import { point } from '@turf/helpers'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
+import { installGraticule } from './lib/graticuleLayers.js'
 import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js'
 import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS, applyFirColor, firColorForBasemap } from '../aviation-layers/aviationWfsLayers.js'
 import { useFirTickOverlay } from '../aviation-layers/useFirTickOverlay.js'
@@ -69,7 +70,7 @@ import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx
 import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
 import QpfStatusCard from '../weather-overlays/QpfStatusCard.jsx'
 import TyphoonPanel from '../weather-overlays/TyphoonPanel.jsx'
-import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
+import { TYPHOON_POINT_LAYERS, useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
 import { useKimSurfaceChart } from '../weather-overlays/lib/useKimSurfaceChart.js'
 import { firAfterSurfaceChartChange, firSuppressionAfterUserToggle } from '../weather-overlays/lib/surfaceChartFirPolicy.js'
 import { PRECIP_3H_LEGEND, SURFACE_CHART_LEGEND_NOTE } from '../weather-overlays/lib/surfaceChartLegend.js'
@@ -132,6 +133,7 @@ import {
   addAirportLayers,
   addGeoBoundaryLayers,
   createAirportGeoJSON,
+  hasAirportAtMapPoint,
   setGeoBoundaryVisibility,
   geoBoundaryPresentation,
   shouldShowGeoBoundaries,
@@ -586,6 +588,7 @@ const MapView = forwardRef(function MapView({
     const lineLayers = ['notam-marker', 'notam-obstacle', 'notam-line', 'notam-fir-line'].filter((id) => map.getLayer(id))
     function onNotamClick(e) {
       if (!metVisibility.notam) return
+      if (hasAirportAtMapPoint(map, e.point)) return
       const polyHits = notamsAtPoint(notamFc.features, e.lngLat.lng, e.lngLat.lat, notamCategoryFilter)
         .filter((f) => notamLocationFilter === 'all' || f.properties?.location === notamLocationFilter)
         .filter((f) => !notamIdFilter || notamIdFilter.includes(f.properties?.id))
@@ -1068,9 +1071,20 @@ const MapView = forwardRef(function MapView({
     frame: weatherOverlayModel.echoTopFrame,
     fetchPoint: fetchEchoTopPoint,
   })
+  const [typhoonDetailsOpen, setTyphoonDetailsOpen] = useState(false)
+  const [typhoonDetailNumber, setTyphoonDetailNumber] = useState(null)
+  const openTyphoonDetails = useCallback((number) => {
+    setTyphoonDetailNumber(number)
+    setTyphoonDetailsOpen(true)
+    onClosePanel?.()
+  }, [onClosePanel])
   const typhoonOverlay = useTyphoonOverlay({
     mapRef, isStyleReady, styleRevision, visible: enableTyphoonOverlay && metVisibility.typhoon, timeZone: tz, enabled: enableTyphoonOverlay,
+    onOpenDetails: openTyphoonDetails,
   })
+  useEffect(() => {
+    if (!metVisibility.typhoon) setTyphoonDetailsOpen(false)
+  }, [metVisibility.typhoon])
   // 등압선·기압중심과 강수는 항상 함께 보이고, 바람은 바람깃과 애니메이션 중 하나다.
   const surfaceChartShow = useMemo(() => ({
     isobars: true,
@@ -1374,8 +1388,7 @@ const MapView = forwardRef(function MapView({
   }
 
   function toggleMet(id) {
-    // 태풍을 켜면 목록 패널이 뜬다. 레이어 패널을 열어둔 채로 두면 모바일에서 두 시트가
-    // 완전히 겹쳐 목록에 손이 닿지 않는다 — 레이어 패널을 닫아 목록을 드러낸다.
+    // Close the layer drawer to reveal the map, especially on mobile.
     if (id === 'typhoon' && !metVisibility.typhoon) onClosePanel?.()
     if (id === 'surfaceChart') applySurfaceChartFir(!metVisibility.surfaceChart)
     setMetVisibility((prev) => {
@@ -1453,11 +1466,11 @@ const MapView = forwardRef(function MapView({
       container: mapContainerRef.current,
       style: initialBasemap.style,
       config: { basemap: initialBasemap.config },
+      projection: 'mercator',
       center: MAP_CONFIG.center,
       zoom: MAP_CONFIG.zoom,
       minZoom: MAP_CONFIG.minZoom,
       maxZoom: MAP_CONFIG.maxZoom,
-      maxBounds: MAP_CONFIG.maxBounds,
       logoPosition: 'bottom-right',
       language: 'ko',
       localIdeographFontFamily: '"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif',
@@ -1574,6 +1587,8 @@ const MapView = forwardRef(function MapView({
       ...AIRPORT_INTERACTIVE_LAYERS.flatMap((layerId) => [
         bindLayerEvent(map, 'click', layerId, (e) => {
           if (myMapControlRef.current?.mode === 'edit' || mapToolDrawingRef.current) return
+          const typhoonLayers = TYPHOON_POINT_LAYERS.filter((id) => map.getLayer(id))
+          if (typhoonLayers.length && map.queryRenderedFeatures(e.point, { layers: typhoonLayers }).length) return
           const icao = e.features?.[0]?.properties?.icao
           if (!icao) return
           // Touch fires no mouseleave, so clear the hover tooltip on selection.
@@ -1622,6 +1637,7 @@ const MapView = forwardRef(function MapView({
     // 처리하고, 그 지점의 모든 항목을 모아 겹친 것 전부를 한 팝업에 같이 보여준다.
     const handledAdvisoryClicks = new WeakSet()
     const showAdvisoryPopup = (e) => {
+      if (hasAirportAtMapPoint(map, e.point)) return
       const domEvent = e.originalEvent
       if (domEvent) {
         if (handledAdvisoryClicks.has(domEvent)) return
@@ -1941,7 +1957,7 @@ const MapView = forwardRef(function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
-    return bindFlightCategoryClick(map, fcPopupRef)
+    return bindFlightCategoryClick(map, fcPopupRef, (point) => hasAirportAtMapPoint(map, point))
   }, [isStyleReady, styleRevision]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ???? Sync airport data ??????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -1968,6 +1984,8 @@ const MapView = forwardRef(function MapView({
       cancelled = true
     }
   }, [airportGeoJSON, airportWeatherImageIds, isStyleReady, styleRevision])
+
+  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => installGraticule(map, basemapId), [basemapId])
 
   // ???? Layer panel helpers ??????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -2078,6 +2096,17 @@ const MapView = forwardRef(function MapView({
   }, [])
 
   // ???? Render ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+
+  const typhoonStatus = metVisibility.typhoon && typhoonOverlay.typhoons.length === 0
+    ? typhoonOverlay.status === 'unavailable' ? '태풍 자료를 불러오지 못했습니다.'
+      : typhoonOverlay.status === 'ok' ? '현재 활동 중인 태풍 없음' : null
+    : null
+  const showTyphoonInfoButton = enableTyphoonOverlay && metVisibility.typhoon
+    && typhoonOverlay.typhoons.length > 0 && !typhoonDetailsOpen
+  const showProfileReopen = !isMobile && routeBriefing.state.workflowStep === 'altitude'
+    && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen
+  const showRouteChip = routeBriefing.state.routeResult && activePanel !== 'route-check'
+  const showBottomControls = showTyphoonInfoButton || showKoreaHome || showProfileReopen
 
   return (
     <div
@@ -2229,28 +2258,52 @@ const MapView = forwardRef(function MapView({
       />}
       <QpfStatusCard status={weatherOverlayModel.qpfStatus} tz={tz} />
 
-      {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
-          있도록 하단 중앙(타임라인 스크럽 스택 위, 겹침 확인됨)에 요약+지우기 칩 표시. */}
-      {routeBriefing.state.routeResult && activePanel !== 'route-check' && (
-        <div
-          className="active-route-chip"
-        >
-          <button type="button" className="active-route-chip-open" onClick={onOpenRoutePanel} aria-label="경로 확인 패널 열기">
-            <span className="active-route-chip-route">
-              {routeBriefing.state.routeForm.departureAirport || '출발'}
-              <span aria-hidden="true">{' → '}</span>
-              {routeBriefing.state.routeForm.arrivalAirport || '도착'}
-            </span>
-            {routeBriefing.derived.plannedDistanceNm > 0 && (
-              <span className="active-route-chip-dist">{Math.round(routeBriefing.derived.plannedDistanceNm)} NM</span>
+      {(typhoonStatus || showRouteChip || showBottomControls) && (
+        <div className="map-bottom-action-stack">
+          {typhoonStatus && <div className="typhoon-map-status" role="status">{typhoonStatus}</div>}
+          {/* Keep the saved route above the utility buttons, even when more buttons wrap. */}
+          {showRouteChip && (
+            <div className="active-route-chip">
+              <button type="button" className="active-route-chip-open" onClick={onOpenRoutePanel} aria-label="경로 확인 패널 열기">
+                <span className="active-route-chip-route">
+                  {routeBriefing.state.routeForm.departureAirport || '출발'}
+                  <span aria-hidden="true">{' → '}</span>
+                  {routeBriefing.state.routeForm.arrivalAirport || '도착'}
+                </span>
+                {routeBriefing.derived.plannedDistanceNm > 0 && (
+                  <span className="active-route-chip-dist">{Math.round(routeBriefing.derived.plannedDistanceNm)} NM</span>
+                )}
+              </button>
+              <button type="button" className="active-route-chip-clear" aria-label="경로 지우기"
+                onClick={routeBriefing.actions.handleRouteReset}>×</button>
+            </div>
+          )}
+          <div className="map-bottom-controls">
+            {showTyphoonInfoButton && (
+              <button type="button" className="typhoon-info-button" aria-label="태풍 상세정보 열기"
+                onClick={() => {
+                  const number = typhoonOverlay.typhoons.some((item) => item.number === typhoonDetailNumber)
+                    ? typhoonDetailNumber : typhoonOverlay.typhoons[0].number
+                  openTyphoonDetails(number)
+                }}>
+                태풍 정보 <span className="typhoon-info-button__count">{typhoonOverlay.typhoons.length}</span>
+              </button>
             )}
-          </button>
-          <button
-            type="button"
-            className="active-route-chip-clear"
-            aria-label="경로 지우기"
-            onClick={routeBriefing.actions.handleRouteReset}
-          >×</button>
+            {showKoreaHome && (
+              <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
+                <House size={18} aria-hidden="true" />
+                <span>기본 지도</span>
+              </button>
+            )}
+            {showProfileReopen && (
+              <button type="button" className="vertical-profile-reopen-button"
+                onClick={() => routeBriefing.actions.setVerticalProfileWindowOpen(true)}
+                aria-label="연직단면도 다시 보기">
+                <ChartSpline size={18} strokeWidth={2} />
+                <span>연직단면도</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -2296,17 +2349,19 @@ const MapView = forwardRef(function MapView({
       </AltitudeMarksContext.Provider>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
       <EchoTopCard selection={echoTopOverlay.selection} tz={tz} />
-      {metVisibility.typhoon && (
+      {metVisibility.typhoon && typhoonDetailsOpen && (
         <TyphoonPanel
           typhoons={typhoonOverlay.typhoons}
           status={typhoonOverlay.status}
           selected={typhoonOverlay.selected}
           onSelect={typhoonOverlay.select}
+          selectedNumber={typhoonDetailNumber}
+          onSelectNumber={setTyphoonDetailNumber}
           hiddenKeys={typhoonOverlay.hiddenKeys}
           onToggleTyphoon={typhoonOverlay.toggleTyphoon}
           timeZone={tz}
           onFocus={(item) => mapRef.current?.flyTo({ center: [item.center.lon, item.center.lat], zoom: 5 })}
-          onClose={() => { toggleMet('typhoon'); onOpenMetPanel?.() }}
+          onClose={() => setTyphoonDetailsOpen(false)}
         />
       )}
       <WeatherPointInspector selection={weatherPointInspector.selection} onClose={weatherPointInspector.clearSelection} />
@@ -2408,6 +2463,8 @@ const MapView = forwardRef(function MapView({
                 organizationError={routeBriefing.state.briefingError}
                 onOrganizationReload={routeBriefing.actions.reloadOrganizationBriefing}
                 onSaveBriefing={routeBriefing.state.briefingContext?.kind === 'organization' ? null : handleSaveBriefing}
+                onOpenAirport={onAirportSelect}
+                onSetMapTime={setWeatherTimelineSelectedMs}
                 routeSnapshot={{
                   routeForm: routeBriefing.state.routeForm,
                   vfrWaypoints: routeBriefing.state.vfrWaypoints,
@@ -2419,35 +2476,6 @@ const MapView = forwardRef(function MapView({
             </Suspense>
           )}
         </>
-      )}
-
-      {!isMobile && (showKoreaHome || (routeBriefing.state.workflowStep === 'altitude' && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen)) && (
-        <div className="map-bottom-controls">
-          {showKoreaHome && (
-            <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
-              <House size={18} aria-hidden="true" />
-              <span>기본 지도</span>
-            </button>
-          )}
-          {routeBriefing.state.workflowStep === 'altitude' && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen && (
-            <button
-              type="button"
-              className="vertical-profile-reopen-button"
-              onClick={() => routeBriefing.actions.setVerticalProfileWindowOpen(true)}
-              aria-label="연직단면도 다시 보기"
-            >
-              <ChartSpline size={18} strokeWidth={2} />
-              <span>연직단면도</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {isMobile && showKoreaHome && (
-        <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
-          <House size={18} aria-hidden="true" />
-          <span>기본 지도</span>
-        </button>
       )}
 
       {mapBriefingActive && (

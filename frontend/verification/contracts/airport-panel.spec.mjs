@@ -118,3 +118,75 @@ test('airport-panel: warning and nearby lightning rotate, then lightning expires
   await expect(section.locator('.ap-observation-heading')).toHaveText('최근 15분 낙뢰 관측')
   await expect(section.locator('.ap-current-warning--ok')).toHaveCount(0)
 })
+
+test('airport-panel: airport marker wins over overlapping SIGMET and AIRMET areas', async ({ page }) => {
+  await page.addInitScript((version) => {
+    localStorage.setItem('amo.tour.v1.done', 'true')
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
+  await installMonitoringFixture(page)
+  const now = Date.now()
+  const geometry = { type: 'Polygon', coordinates: [[[125, 36], [129, 36], [129, 39], [125, 39], [125, 36]]] }
+  for (const kind of ['sigmet', 'airmet']) {
+    await page.route(`**/api/${kind}`, (route) => route.fulfill({ json: { items: [{
+      id: `over-airport-${kind}`,
+      phenomenon_code: kind === 'sigmet' ? 'OBSC_TS' : 'SFC_VIS',
+      geometry,
+      valid_from: new Date(now - 60_000).toISOString(),
+      valid_to: new Date(now + 60 * 60_000).toISOString(),
+    }] } }))
+  }
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(() => !!window.__map)
+  // The app's remote default style can be unavailable in CI; install a local
+  // style before checking rendered layers and real pointer clicks.
+  await page.evaluate(() => window.__map.setStyle({
+    version: 8, sources: {}, layers: [
+      { id: 'background', type: 'background', paint: { 'background-color': '#eef2f5' } },
+      { id: 'bottom', type: 'slot' }, { id: 'middle', type: 'slot' }, { id: 'top', type: 'slot' },
+    ],
+  }, { diff: false }))
+  await page.waitForFunction(() => {
+    const map = window.__map
+    return map?.getSource('kma-weather-airports')?.serialize?.()?.data?.features?.some((feature) => feature.properties?.icao === 'RKSI')
+      && map.getLayer('kma-sigmet-advisories-fill') && map.getLayer('kma-airmet-advisories-fill')
+  })
+  const position = async (coordinates) => page.evaluate((coords) => {
+    const map = window.__map
+    const point = map.project(coords)
+    const rect = map.getCanvas().getBoundingClientRect()
+    return { x: rect.left + point.x, y: rect.top + point.y,
+      airport: map.queryRenderedFeatures(point, { layers: ['kma-weather-airports-circle'] }).length,
+      advisories: map.queryRenderedFeatures(point, { layers: ['kma-sigmet-advisories-fill', 'kma-airmet-advisories-fill'] }).length }
+  }, coordinates)
+  await page.evaluate(() => window.__map.jumpTo({ center: [126.8, 37.5], zoom: 7 }))
+  await expect.poll(() => position([126.4407, 37.4602]), { timeout: 15_000 })
+    .toMatchObject({ airport: 1, advisories: 2 })
+
+  const airport = await position([126.4407, 37.4602])
+  await page.mouse.click(airport.x, airport.y)
+  await expect(page.getByText('인천국제공항 · RKSI', { exact: true })).toBeVisible()
+  await expect(page.locator('.mapbox-advisory-popup')).toHaveCount(0)
+
+  await page.getByRole('button', { name: '닫기' }).click()
+  const area = await position([126.8, 37.1])
+  expect(area.airport).toBe(0)
+  expect(area.advisories).toBe(2)
+  await page.mouse.click(area.x, area.y)
+  await expect(page.locator('.mapbox-advisory-popup')).toHaveCount(2)
+})
+
+test('airport-panel: TAF TAC starts folded and opens on demand', async ({ page }) => {
+  await page.addInitScript((version) => {
+    localStorage.setItem('amo.tour.v1.done', 'true')
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
+  await installMonitoringFixture(page, { now: new Date() })
+  await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
+
+  const tafTac = page.locator('.ap-taf .ap-raw-fold')
+  await expect(tafTac).toBeAttached()
+  await expect(tafTac).toHaveJSProperty('open', false)
+  await tafTac.locator('summary').click()
+  await expect(tafTac).toHaveJSProperty('open', true)
+})

@@ -68,7 +68,7 @@ export default function EnhancedTafTab({ taf: latestTaf, icao, eta = null, force
   // clamp(560px, 50vw, 960px)라 화면이 좁을수록 패널도 좁다 — 아이패드 11" 가로(1194px)에서
   // 패널 597px, 가장 좁은 칸 57px이라 바람(14006KT)이 잘렸다.
   // 데스크톱 타임라인은 TafForecastTimeline이 그린다: 주 예보와 TEMPO/PROB를 나누고, 좁은 칸은 실측해서
-  // 줄임 표기 → 두 줄 → 숨김 순으로 줄인다. 숨겨진 값은 아래 원문(타임라인일 때 펼침)과 칸 툴팁으로 본다.
+  // 줄임 표기 → 두 줄 → 숨김 순으로 줄인다. 숨겨진 값은 아래 원문(TAC)을 펼치거나 칸 툴팁으로 본다.
   const [{ view, compact }] = useState(() => {
     if (forceCompact) return { view: 'table', compact: true }
     if (typeof window === 'undefined') return { view: 'timeline', compact: false }
@@ -179,10 +179,10 @@ export default function EnhancedTafTab({ taf: latestTaf, icao, eta = null, force
         )
       })()}
 
-      {/* ── 원문(TAC) — 접이식(타임라인에선 펼침, 표에선 접힘). METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
+      {/* ── 원문(TAC) — 기본 접힘. METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
           줄(기본/TEMPO/BECMG/FM/PROB)마다 그 시점의 비행조건을 왼쪽 색 테두리로 표시한다. ── */}
       {tacLines.length > 0 && (
-        <details className="ap-raw-fold" open={view === 'timeline'}>
+        <details className="ap-raw-fold">
           <summary className="ap-raw-fold-summary">원문 (TAC)</summary>
           <div className="ap-taf-tac-block">
             {tacLines.map((line, i) => (

@@ -3,14 +3,8 @@ import { OUTLINE_BASEMAP_PALETTES, createOutlineBasemapStyle } from './lib/outli
 export const MAP_CONFIG = {
   center: [127.5, 36.5],
   zoom: 6,
-  minZoom: 2,
+  minZoom: 1,
   maxZoom: 16,
-  // Double the previous [90,-5]..[155,50] extent in Mercator space (one zoom
-  // step), keeping its center and a finite navigation limit across the date line.
-  maxBounds: [
-    [57.5, -34.225309],
-    [187.5, 66.2589],
-  ],
 }
 
 export const BASEMAP_OPTIONS = [

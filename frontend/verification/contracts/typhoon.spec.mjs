@@ -32,9 +32,8 @@ async function openWeatherPanel(page, testInfo) {
   return tile
 }
 
-// 태풍 타일을 켠다. 타일을 누르면 레이어 패널이 자동으로 닫히므로(모바일에서 두 시트가
-// 겹치는 것을 막기 위해) 타일 자체가 사라진다 — 타일 상태가 아니라 결과인 목록 패널로 단언한다.
-async function openTyphoon(page, testInfo, payload) {
+// 태풍 타일은 지도만 켠다. 상세정보는 지도 표식을 선택해야 열린다.
+async function openTyphoonLayer(page, testInfo, payload) {
   await page.route('**/api/typhoon', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify(payload),
   }))
@@ -46,8 +45,36 @@ async function openTyphoon(page, testInfo, payload) {
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   const tile = await openWeatherPanel(page, testInfo)
   await tile.click()
-  const panel = page.getByLabel('활성 태풍 목록')
-  await expect(panel).toBeVisible()
+  await expect(page.getByLabel('활성 태풍 목록')).toBeHidden()
+  await expect.poll(() => page.evaluate(() => Boolean(window.__map?.getLayer('typhoon-points-circle')))).toBe(true)
+  if (payload.typhoons.length) {
+    await expect.poll(() => page.evaluate(() => window.__map?.getSource('typhoon-points')?.serialize?.()?.data?.features?.length ?? 0)).toBeGreaterThan(0)
+  }
+}
+
+async function clickTyphoonPoint(page, number) {
+  const point = await page.evaluate((targetNumber) => {
+    const map = window.__map
+    const current = map.getSource('typhoon-points').serialize().data.features
+      .find((feature) => feature.properties.isCurrent && feature.properties.number === targetNumber)
+    map.jumpTo({ center: current.geometry.coordinates, zoom: 5 })
+    const projected = map.project(current.geometry.coordinates)
+    const canvas = map.getCanvas().getBoundingClientRect()
+    return { x: projected.x + canvas.left, y: projected.y + canvas.top }
+  }, number)
+  await expect.poll(() => page.evaluate(({ x, y, number }) => {
+    const map = window.__map
+    const canvas = map.getCanvas().getBoundingClientRect()
+    return map.queryRenderedFeatures([x - canvas.left, y - canvas.top], { layers: ['typhoon-points-circle'] })
+      .some((feature) => feature.properties.number === number)
+  }, { ...point, number })).toBe(true)
+  await page.mouse.click(point.x, point.y)
+  await expect(page.getByLabel('활성 태풍 목록')).toBeVisible()
+}
+
+async function openTyphoon(page, testInfo, payload) {
+  await openTyphoonLayer(page, testInfo, payload)
+  await clickTyphoonPoint(page, payload.typhoons[0].number)
 }
 
 const typhoonLayerIds = () => {
@@ -57,22 +84,24 @@ const typhoonLayerIds = () => {
   return map.getStyle().layers.filter((l) => l.id.startsWith('typhoon-')).map((l) => l.id)
 }
 
-test('태풍 타일이 지도 레이어와 목록 패널을 함께 켠다', async ({ page }, testInfo) => {
-  await openTyphoon(page, testInfo, snapshot)
-  const panel = page.getByLabel('활성 태풍 목록')
-  await expect(panel).toBeVisible()
-  await expect(panel.getByRole('button', { name: /19호 태풍 .* 상세정보/ })).toBeVisible()
-  await expect(panel.getByRole('button', { name: /20호 태풍 .* 상세정보/ })).toBeVisible()
-  await expect(panel.getByLabel(/19호 태풍 .* 현재 요약/)).toBeVisible()
-  await panel.getByRole('button', { name: /20호 태풍 .* 상세정보/ }).click()
-  await expect(panel.getByLabel(/20호 태풍 .* 현재 요약/)).toBeVisible()
-  await expect(panel.locator('.typhoon-track').first().locator('thead th')).toHaveCount(5)
-
+test('태풍 타일은 지도만 켜고 지도 표식을 누르면 상세정보가 열린다', async ({ page }, testInfo) => {
+  await openTyphoonLayer(page, testInfo, snapshot)
+  await expect.poll(() => page.evaluate(typhoonLayerIds)).toContain('typhoon-track-line')
   const layers = await page.evaluate(typhoonLayerIds)
   expect(layers).toContain('typhoon-track-line')
   expect(layers).toContain('typhoon-forecast-track-line')
   expect(layers).toContain('typhoon-cone-fill')
   expect(layers).toContain('typhoon-gale-fill')
+
+  await clickTyphoonPoint(page, snapshot.typhoons[1].number)
+  const panel = page.getByLabel('활성 태풍 목록')
+  await expect(panel).toBeVisible()
+  await expect(panel.getByRole('button', { name: /19호 태풍 .* 상세정보/ })).toBeVisible()
+  await expect(panel.getByRole('button', { name: /20호 태풍 .* 상세정보/ })).toBeVisible()
+  await expect(panel.getByLabel(/20호 태풍 .* 현재 요약/)).toBeVisible()
+  await panel.getByRole('button', { name: /19호 태풍 .* 상세정보/ }).click()
+  await expect(panel.getByLabel(/19호 태풍 .* 현재 요약/)).toBeVisible()
+  await expect(panel.locator('.typhoon-track').first().locator('thead th')).toHaveCount(5)
 
   // 끄려면 레이어 패널을 다시 열어 타일을 누른다(켤 때 자동으로 닫혔다).
   const tile = await openWeatherPanel(page, testInfo)
@@ -80,6 +109,51 @@ test('태풍 타일이 지도 레이어와 목록 패널을 함께 켠다', asyn
   await tile.click()
   await expect(tile).toHaveAttribute('aria-pressed', 'false')
   await expect(panel).toBeHidden()
+})
+
+test('태풍 정보 버튼은 재생 버튼 위에서 상세정보를 다시 연다', async ({ page }, testInfo) => {
+  await openTyphoonLayer(page, testInfo, snapshot)
+  const button = page.getByRole('button', { name: '태풍 상세정보 열기' })
+  await expect(button).toBeVisible()
+  await expect(button).toContainText('2')
+  const action = await button.boundingBox()
+  const play = await page.getByRole('button', { name: '재생', exact: true }).boundingBox()
+  expect(action.y + action.height).toBeLessThan(play.y)
+  // 접힌 경로 칩과 향후 버튼이 함께 있어도 줄바꿈해 재생 버튼을 가리지 않는다.
+  const layout = await page.evaluate(() => {
+    const stack = document.querySelector('.map-bottom-action-stack')
+    const row = stack.querySelector('.map-bottom-controls')
+    const route = document.createElement('div')
+    route.className = 'active-route-chip'
+    route.textContent = 'RKSI → RJAA · 680 NM'
+    stack.insertBefore(route, row)
+    const extras = Array.from({ length: 4 }, (_, index) => {
+      const extra = document.createElement('button')
+      extra.type = 'button'
+      extra.textContent = `추가 ${index + 1}`
+      extra.style.cssText = 'width:90px;height:36px;flex:none'
+      row.append(extra)
+      return extra
+    })
+    const rect = (node) => node.getBoundingClientRect()
+    const controls = [row.querySelector('.typhoon-info-button'), ...extras].map(rect)
+    const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+    const result = {
+      wrapped: new Set(controls.map(({ top }) => Math.round(top))).size > 1,
+      controlsOverlap: controls.some((a, i) => controls.slice(i + 1).some((b) => overlaps(a, b))),
+      routeAboveControls: rect(route).bottom <= rect(row).top,
+      abovePlay: rect(row).bottom < rect(document.querySelector('.timeline-rail__play')).top,
+    }
+    route.remove()
+    extras.forEach((extra) => extra.remove())
+    return result
+  })
+  expect(layout).toEqual({ wrapped: testInfo.project.name === 'mobile', controlsOverlap: false, routeAboveControls: true, abovePlay: true })
+  await button.click()
+  await expect(page.getByLabel('활성 태풍 목록')).toBeVisible()
+  await page.getByRole('button', { name: '태풍 목록 닫기' }).click()
+  await expect(button).toBeVisible()
+  await expect.poll(() => page.evaluate(() => window.__map?.getLayoutProperty('typhoon-points-circle', 'visibility'))).toBe('visible')
 })
 
 test('타일 배지가 활성 태풍 수를 보여준다', async ({ page }, testInfo) => {
@@ -130,18 +204,20 @@ test('바로가기 버튼이 지도를 해당 태풍으로 옮긴다', async ({ 
 })
 
 test('활성 태풍이 없으면 그렇게 표시한다', async ({ page }, testInfo) => {
-  await openTyphoon(page, testInfo, empty)
-  await expect(page.getByText('현재 활동 중인 태풍 없음')).toBeVisible()
+  await openTyphoonLayer(page, testInfo, empty)
+  await expect(page.getByLabel('활성 태풍 목록')).toBeHidden()
+  await expect(page.locator('.typhoon-map-status')).toHaveText('현재 활동 중인 태풍 없음')
 })
 
 test('수집 실패는 태풍 없음과 구분해 표시한다', async ({ page }, testInfo) => {
-  await openTyphoon(page, testInfo, { ...empty, status: 'unavailable' })
-  // 레이더 이동 레이어도 "이동 자료 없음"을 쓴다 — 태풍 패널 안으로 범위를 좁힌다.
-  await expect(page.getByLabel('활성 태풍 목록').getByText(/자료 없음/)).toBeVisible()
+  await openTyphoonLayer(page, testInfo, { ...empty, status: 'unavailable' })
+  await expect(page.getByLabel('활성 태풍 목록')).toBeHidden()
+  await expect(page.locator('.typhoon-map-status')).toHaveText('태풍 자료를 불러오지 못했습니다.')
 })
 
 test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }, testInfo) => {
   await openTyphoon(page, testInfo, snapshot)
+  await page.getByRole('button', { name: '태풍 목록 닫기' }).click()
   const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^남색/ }).click()
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
@@ -225,19 +301,20 @@ test('예보 시각을 고르면 강풍 영역이 그 시점 것으로 바뀐다
   await expect.poll(galeExtent, { timeout: 8000 }).not.toBe(before)
 })
 
-test('닫기 버튼이 목록만 접고 지도 레이어는 남긴다', async ({ page }, testInfo) => {
+test('닫기 버튼이 상세정보만 닫고 지도 레이어는 남긴다', async ({ page }, testInfo) => {
   await openTyphoon(page, testInfo, snapshot)
   const panel = page.getByLabel('활성 태풍 목록')
   await expect(panel).toBeVisible()
   // 모바일은 닫기 버튼이 시트 헤더에 있고 aria-label은 본문만 감싼다 — 페이지에서 찾는다.
   await page.getByRole('button', { name: '태풍 목록 닫기' }).click()
   await expect(panel).toBeHidden()
+  await expect.poll(() => page.evaluate(() => window.__map?.getLayoutProperty('typhoon-points-circle', 'visibility'))).toBe('visible')
+  await clickTyphoonPoint(page, snapshot.typhoons[0].number)
 })
 
-test('태풍을 켜면 기상 레이어 패널이 자동으로 닫힌다', async ({ page }, testInfo) => {
-  // 모바일에서 두 시트가 완전히 겹쳐 목록에 손이 닿지 않던 문제를 막는다.
-  await openTyphoon(page, testInfo, snapshot)
-  await expect(page.getByLabel('활성 태풍 목록')).toBeVisible()
+test('태풍을 켜면 지도만 보이고 기상 레이어 패널이 닫힌다', async ({ page }, testInfo) => {
+  await openTyphoonLayer(page, testInfo, snapshot)
+  await expect(page.getByLabel('활성 태풍 목록')).toBeHidden()
   await expect(page.getByRole('dialog', { name: '기상 레이어' })).toBeHidden()
 })
 
@@ -296,12 +373,17 @@ test('태풍별 표시 설정은 전체 토글과 베이스맵 전환 뒤에도 
   const tile = await openWeatherPanel(page, testInfo)
   await tile.click()
   await tile.click()
+  await expect(panel).toBeHidden()
+  await clickTyphoonPoint(page, 20)
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  await page.getByRole('button', { name: '태풍 목록 닫기' }).click()
   const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^남색/ }).click()
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
   await expect.poll(sourceNumbers).toContain(20)
   await expect.poll(sourceNumbers).not.toContain(19)
+  await clickTyphoonPoint(page, 20)
+  await panel.getByRole('button', { name: /19호 태풍 .* 상세정보/ }).click()
   await panel.getByRole('button', { name: '지도에서 보기', exact: true }).click()
   await expect(toggle).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(sourceNumbers).toContain(19)
@@ -312,9 +394,9 @@ test('태풍 두쥐안의 연속 확률 영역과 강풍 영역을 함께 표시
   test.setTimeout(60_000)
   await openTyphoon(page, testInfo, dujuan)
   const panel = page.getByLabel('활성 태풍 목록')
-  // 타일을 누른 자리에 표가 생기면 예보 행이 hover된다. 현재 반경 검증 전 해제한다.
+  // 지도 현재 표식을 클릭해 열었으므로 현재 시각이 선택된 상태다.
   await page.mouse.move(0, 0)
-  await expect(panel.getByLabel('태풍 지도 범례')).toContainText('현재 기준')
+  await expect(panel.getByLabel('태풍 지도 범례')).toContainText(/현재.*기준/)
   await expect(panel.getByLabel('태풍 지도 범례')).toContainText('위치 70%')
   await expect(panel.getByLabel('태풍 지도 범례')).toContainText('반경 단순 표시')
   await expect(panel.getByLabel('태풍 지도 범례')).not.toContainText('+24h 간격 예보 표시')
@@ -371,8 +453,9 @@ test('태풍 두쥐안의 연속 확률 영역과 강풍 영역을 함께 표시
   await page.screenshot({ path: path.join(output, `${testInfo.project.name}.png`) })
   if (testInfo.project.name !== 'mobile') {
     await page.getByRole('button', { name: '태풍 패널 접기' }).click()
-    await page.evaluate(() => window.__map.fitBounds([[132, 20], [164, 48]], { padding: 60, duration: 0 }))
-    await expect.poll(() => page.evaluate(() => window.__map?.areTilesLoaded()), { timeout: 20_000 }).toBe(true)
+    await page.evaluate(() => { window.__map.fitBounds([[132, 20], [164, 48]], { padding: 60, duration: 0 }) })
+    // 기본 지도 타일 다운로드와 무관하게 태풍 표식이 실제 렌더됐는지 확인한다.
+    await expect.poll(() => page.evaluate(() => window.__map?.queryRenderedFeatures({ layers: ['typhoon-points-circle'] }).length ?? 0), { timeout: 20_000 }).toBeGreaterThan(0)
     await page.screenshot({ path: path.join(output, `${testInfo.project.name}-map.png`) })
   }
 })

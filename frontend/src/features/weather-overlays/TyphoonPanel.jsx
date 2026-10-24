@@ -49,11 +49,10 @@ function TrackTable({ item, rows, selected, onSelect }) {
 
 export default function TyphoonPanel({
   typhoons = [], status = 'ok', onFocus, onClose, selected = null, onSelect,
-  hiddenKeys = [], onToggleTyphoon, timeZone = 'KST',
+  hiddenKeys = [], onToggleTyphoon, timeZone = 'KST', selectedNumber = null, onSelectNumber,
 }) {
   const isMobile = useIsMobile()
   const items = buildTyphoonListItems(typhoons, timeZone)
-  const [selectedNumber, setSelectedNumber] = useState(null)
   const [expanded, setExpanded] = useState(true)
   const item = items.find((entry) => entry.number === selectedNumber) ?? items[0]
   const hidden = item && hiddenKeys.includes(item.key)
@@ -79,7 +78,7 @@ export default function TyphoonPanel({
         <div className="typhoon-panel__tabs" aria-label="태풍 선택 및 지도 표시">
           {items.map((entry) => (
             <div key={entry.key} className={`typhoon-panel__tab${entry.number === item?.number ? ' is-active' : ''}${hiddenKeys.includes(entry.key) ? ' is-hidden' : ''}`}>
-              <button type="button" aria-pressed={entry.number === item?.number} aria-label={`${entry.title} 상세정보`} onClick={() => setSelectedNumber(entry.number)}>
+              <button type="button" aria-pressed={entry.number === item?.number} aria-label={`${entry.title} 상세정보`} onClick={() => onSelectNumber?.(entry.number)}>
                 <span className="typhoon-panel__tab-swatch" style={{ background: entry.color }} aria-hidden="true" />
                 {entry.number}호 {entry.name}
               </button>

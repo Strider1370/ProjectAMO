@@ -130,7 +130,7 @@ function stationPopupHtml(props) {
     </div>`
 }
 
-export function bindFlightCategoryClick(map, popupRef) {
+export function bindFlightCategoryClick(map, popupRef, hasPriorityPoint = () => false) {
   let cancelled = false
   let seq = 0 // 클릭마다 증가 — 늦게 도착한 응답이 최신 클릭의 팝업을 덮어쓰지 않게 한다.
 
@@ -144,6 +144,7 @@ export function bindFlightCategoryClick(map, popupRef) {
   const areaHtml = (rows) => `<div style="font-family:'Noto Sans KR',sans-serif;padding:2px 0">${rows}</div>`
 
   async function handleAreaClick(e) {
+    if (hasPriorityPoint(e.point)) { ++seq; return }
     // 점이 면 위에 얹혀 있어 점을 눌러도 면 click이 같이 잡힌다. 점 층에 실제로 뭐가
     // 있으면 여기서 넘기고 점 핸들러가 그리게 한다 — 등록 순서에 기대지 않고 매번 확인한다.
     if (map.queryRenderedFeatures(e.point, { layers: [FC_STATION_LAYER] }).length) return
@@ -162,6 +163,7 @@ export function bindFlightCategoryClick(map, popupRef) {
   }
 
   function handleStationClick(e) {
+    if (hasPriorityPoint(e.point)) { ++seq; return }
     const feature = e.features?.[0]
     if (!feature) return
     // 진행 중인 면 클릭의 fetch가 이 클릭보다 늦게 돌아와도 지금 그리는 점 팝업을
