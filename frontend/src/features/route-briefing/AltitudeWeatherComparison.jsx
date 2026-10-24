@@ -4,20 +4,6 @@ import { Snowflake, Waves, Wind, CloudLightning } from 'lucide-react'
 import { exposureNm, mergeExposureNm, windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
 import HazardIcon from './lib/HazardIcon.jsx'
 
-function constraintLabel(constraints) {
-  if (constraints?.status === 'matched') {
-    const floor = constraints.routeFloorFt == null ? Number.NaN : Number(constraints.routeFloorFt)
-    const ceiling = constraints.routeCeilingFt == null ? Number.NaN : Number(constraints.routeCeilingFt)
-    if (Number.isFinite(floor) && Number.isFinite(ceiling)) return `이 항로는 ${formatAltitude(floor)}~${formatAltitude(ceiling)} 사이 고도만 비교할 수 있습니다`
-    if (Number.isFinite(floor)) return `이 항로는 ${formatAltitude(floor)} 이상 고도만 비교할 수 있습니다`
-    if (Number.isFinite(ceiling)) return `이 항로는 ${formatAltitude(ceiling)} 이하 고도만 비교할 수 있습니다`
-    return '이 항로는 상·하한 고도 제한이 없습니다 (고도 방향 규칙은 적용)'
-  }
-  if (constraints?.status === 'partial') return 'AIP 고도 제약 데이터 일부 없음'
-  if (constraints?.status === 'conflicting') return '경로 구간별 고도 계열 확인 필요'
-  return '공표 항공로 고도 제약 데이터 없음'
-}
-
 function formatAltitude(altitudeFt) {
   return altitudeFt <= 14000 ? `${altitudeFt.toLocaleString()} ft` : `FL${Math.round(altitudeFt / 100)}`
 }
@@ -26,11 +12,7 @@ function warningMessages(row) {
   const items = []
   if (row.notams?.some((notam) => (notam.effect ?? notam.status) === 'undetermined')) items.push('NOTAM 판정 불가')
   if (row.timeStatus === 'not_provided') items.push('시간 판단 불가')
-  if (row.candidateStatus === 'input_only' || row.status === 'input_only') {
-    items.push('공표 고도 제약 미확인 · 입력 고도 기상만 표시')
-  } else if (row.candidateStatus === 'input_invalid' || row.status === 'input_invalid') {
-    items.push('이 항로의 공표 고도 방향 규칙상 비교 대상 아님')
-  } else if (row.weatherStatus === 'weather_unavailable') {
+  if (row.weatherStatus === 'weather_unavailable') {
     items.push('KIM 고도 기상 자료가 없어 비교할 수 없음')
   }
   return items
@@ -82,19 +64,9 @@ export default function AltitudeWeatherComparison({
 
   const rows = comparison.rows ?? []
   const selectedRow = rows.find((row) => (row.altFt ?? row.altitudeFt) === selectedAltitudeFt)
-  const validAltitudeLabels = rows
-    .filter((row) => (row.candidateStatus ?? row.status) === 'valid')
-    .map((row) => row.label ?? row.fl ?? `FL${Math.round((row.altFt ?? row.altitudeFt) / 100)}`)
-  const excludedInput = rows.find((row) => (row.candidateStatus ?? row.status) === 'input_invalid')
   return (
     <div className="rb-altitude-comparison">
-      <p className="rb-alternatives-status">{constraintLabel(comparison.constraints)}</p>
       {!selectedRow && Number.isFinite(selectedAltitudeFt) && <p className="rb-altitude-selection">선택 고도 {formatAltitude(selectedAltitudeFt)} · 비교 후보에 없음</p>}
-      {excludedInput && validAltitudeLabels.length > 0 && (
-        <p className="rb-alert-banner">
-          {`${excludedInput.label ?? `FL${Math.round((excludedInput.altFt ?? excludedInput.altitudeFt) / 100)}`}은 이 항로의 공표 고도 방향 규칙에 맞지 않습니다. 비교 가능한 고도: ${validAltitudeLabels.join(', ')}`}
-        </p>
-      )}
       {rows.map((row) => {
         const altitudeFt = row.altFt ?? row.altitudeFt
         const status = row.candidateStatus ?? row.status
@@ -161,7 +133,7 @@ export default function AltitudeWeatherComparison({
           </button>
         )
       })}
-      {!rows.length && <p className="rb-alternatives-status">{comparison.constraints?.reasons?.[0] ?? '비교 가능한 공표 고도 없음'}</p>}
+      {!rows.length && <p className="rb-alternatives-status">비교할 고도 자료 없음</p>}
       {profileLoading && (
         <p className="rb-alternatives-status rb-status-busy" role="status">
           <Spinner size="tiny" />
@@ -169,7 +141,6 @@ export default function AltitudeWeatherComparison({
         </p>
       )}
       {profileError && <p className="rb-alternatives-status rb-status-error" role="alert">연직단면도를 확인할 수 없습니다: {profileError}</p>}
-      <p className="rb-alternatives-note">공표 항공로 제약을 기준으로 한 기상 비교 정보이며, 관제 허가·항공기 성능·연료·운항 제한을 결정하지 않습니다.</p>
       {!hideStepActions && <div className="rb-step-actions">
         <Button appearance="secondary" type="button" onClick={onBack}>이전 단계</Button>
         <Button appearance="primary" type="button" onClick={onContinue}>브리핑 준비로</Button>

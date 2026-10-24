@@ -43,13 +43,13 @@ test('extracted REST service matches the original candidate/profile/weather calc
       timeRules: crossSectionResult.timeRules, nwpTimeAvailability: crossSectionResult.nwpTimeAvailability } })
 })
 
-test('requested altitudes retain valid/input_invalid and unavailable/conflicting input_only states', () => {
+test('requested altitudes retain valid and input-only weather comparisons', () => {
   const captured = captureAltitudeInputs(request, { enrouteCrossSection: model() }, { loadConstraints: () => matched(), terrainSampler })
   const result = executeAltitudeComparison(request, { captured, altitudesFt: [31000, 32000, 59000] })
-  assert.deepEqual(result.rows.map((row) => row.status), ['valid', 'input_invalid', 'input_invalid'])
+  assert.deepEqual(result.rows.map((row) => row.status), ['valid', 'input_only', 'input_only'])
   assert.equal(result.rows[0].wind.speedKt, 19)
   assert.equal(result.rows[0].profileStatus, 'applied')
-  assert.equal(result.rows[1].weatherStatus, 'unavailable')
+  assert.equal(result.rows[1].weatherStatus, 'available')
   for (const status of ['unavailable', 'partial', 'conflicting']) {
     const without = { ...captured, aip: { status, provenance: null,
       segments: [{ status, constraints: null }] }, model: { available: false }, terrain: null }

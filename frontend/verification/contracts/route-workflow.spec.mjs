@@ -135,7 +135,8 @@ test.describe('route-workflow', () => {
       },
     })
     await completeWorkflow(page, 'VFR', isMobile, { stopAtAltitude: true, expectedAltitude: /^9,000 ft/ })
-    await expect(page.getByText('공표 고도 제약 미확인 · 입력 고도 기상만 표시', { exact: true })).toBeVisible()
+    await expect(page.locator('.rb-alternative-card').first()).toContainText('바람')
+    await expect(page.getByText(/공표 고도|고도 방향 규칙/)).toHaveCount(0)
   })
 
   test('mobile opens the vertical profile as a full-screen sheet', async ({ page }, testInfo) => {

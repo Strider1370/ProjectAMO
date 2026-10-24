@@ -70,7 +70,7 @@ export function buildAltitudeCandidates({ routeSegments = [], plannedCruiseAltit
   const values = [...new Set([...lower, input, ...upper])]
   return {
     constraints: base,
-    candidates: values.map((altitudeFt) => altitudeCandidate(altitudeFt, altitudeFt === input && !inputValid ? 'input_invalid' : 'valid')),
+    candidates: values.map((altitudeFt) => altitudeCandidate(altitudeFt, altitudeFt === input && !inputValid ? 'input_only' : 'valid')),
   }
 }
 

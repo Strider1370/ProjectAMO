@@ -551,14 +551,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // 고도 비교 서버는 평균 바람 성분을 averageKt로 준다(AltitudeWeatherComparison과 같은 순서로 읽는다).
   // meanComponentKt만 보면 고도를 비교하고 골라도 늘 '바람 자료 없음'이었다.
   const cruiseWindKt = selectedAltitudeRow?.wind?.meanComponentKt ?? selectedAltitudeRow?.wind?.averageKt
-  // 방향 규칙 밖 고도는 브리핑 준비로 넘어가기 전에 한 번 더 확인받는다(경고 후 같은 버튼 다시 누름).
-  const offRuleAltitude = (selectedAltitudeRow?.candidateStatus ?? selectedAltitudeRow?.status) === 'input_invalid'
-  const [offRuleConfirmedFt, setOffRuleConfirmedFt] = useState(null)
-  const offRuleArmed = offRuleAltitude && offRuleConfirmedFt === Number(cruiseAltitudeFt)
-  const continueFromAltitude = () => {
-    if (offRuleAltitude && !offRuleArmed) { setOffRuleConfirmedFt(Number(cruiseAltitudeFt)); return }
-    continueToBriefing({ fitRoute: true })
-  }
   // 브리핑 준비는 고른 경로·조건을 확인하는 단계다. 위험기상은 여기서 알리지 않는다(브리핑 화면의 몫).
   const procedureSummary = [selectedSid?.label, selectedStar?.label, selectedIap?.label].filter(Boolean).join(' · ')
   // 세부경로: routeResult에 legs 키는 없다. 수동 편집 경로는 manualLegs(DCT 포함 전 구간),
@@ -1051,8 +1043,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   ) : workflowStep === 'altitude' ? (
     <div className="route-check-actions is-step">
       <button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button>
-      {offRuleArmed && <p className="rb-alert-banner" role="alert">{`${Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Number(cruiseAltitudeFt).toLocaleString()} ft`}은 이 항로의 고도 방향 규칙에 맞지 않습니다. 이 고도로 진행하려면 한 번 더 누르세요.`}</p>}
-      <button type="button" className="route-check-search-button" onClick={continueFromAltitude} disabled={!workflowAvailability.briefing}>{offRuleArmed ? '이 고도로 진행' : '브리핑 준비로'}</button>
+      <button type="button" className="route-check-search-button" onClick={() => continueToBriefing({ fitRoute: true })} disabled={!workflowAvailability.briefing}>브리핑 준비로</button>
     </div>
   ) : null
 

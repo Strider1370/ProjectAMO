@@ -13,7 +13,7 @@ test('buildAltitudeCandidates expands published Odd/Even series, applies FL boun
   const result = buildAltitudeCandidates({ routeSegments: [matched('A', 'Odd', { value: 290, unit: 'FL' })], plannedCruiseAltitudeFt: 22000 })
   assert.equal(result.constraints.status, 'matched')
   assert.deepEqual(result.candidates.map((row) => row.altitudeFt), [21000, 22000, 23000, 25000])
-  assert.equal(result.candidates.find((row) => row.altitudeFt === 22000).status, 'input_invalid')
+  assert.equal(result.candidates.find((row) => row.altitudeFt === 22000).status, 'input_only')
   assert.equal(result.candidates[0].label, 'FL210')
   const low = buildAltitudeCandidates({ routeSegments: [matched('B', 'Even')], plannedCruiseAltitudeFt: 12000 })
   assert.equal(low.candidates.find((row) => row.altitudeFt === 12000).displayMode, 'altitude')
@@ -22,7 +22,7 @@ test('buildAltitudeCandidates expands published Odd/Even series, applies FL boun
 
 test('buildAltitudeCandidates keeps the ENR 1.7 RVSM gap explicit', () => {
   const odd = buildAltitudeCandidates({ routeSegments: [matched('A', 'Odd', { value: null, unit: 'FT' })], plannedCruiseAltitudeFt: 30000 })
-  assert.equal(odd.candidates.find((row) => row.altitudeFt === 30000).status, 'input_invalid')
+  assert.equal(odd.candidates.find((row) => row.altitudeFt === 30000).status, 'input_only')
 })
 
 test('buildAltitudeCandidates retains ENR 1.7 non-RVSM levels above FL410 when route bounds allow them', () => {
