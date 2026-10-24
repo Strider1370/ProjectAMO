@@ -277,13 +277,18 @@ export function shouldShowGeoBoundaries({ basemapId, metVisibility = {}, enableW
 }
 
 export function geoBoundaryPresentation({ basemapId, metVisibility = {}, enableWindOverlay = true } = {}) {
-  const hasRasterWeather = !!(metVisibility.radar || metVisibility.radarHsr || metVisibility.radarHci || metVisibility.radarOverseas || metVisibility.satellite || metVisibility.satelliteVisible)
-  const hasNwpOverlay = !!(
-    enableWindOverlay
-    && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing || metVisibility.surfaceChart || metVisibility.turbulence)
-  )
+  // 넓은 면/래스터가 지형을 가릴 때만 지리 경계를 덧그린다. 기본으로 켜지는
+  // SIGMET·AIRMET나 점 기호만 있는 낙뢰는 포함하지 않아 초기 지도를 가리지 않는다.
+  const areaLayers = [
+    'radar', 'radarHsr', 'radarHci', 'radarOverseas', 'satellite', 'satelliteVisible',
+    'echoTop', 'ci', 'ctps', 'aciExperiment', 'visibility', 'ceiling',
+    'terrainHazard', 'sigwx', 'sigwxHigh', 'typhoon',
+  ]
+  const nwpLayers = ['wind', 'temp', 'cloudIcing', 'cloud', 'icing', 'surfaceChart', 'turbulence', 'tropopause']
+  const hasAreaOverlay = areaLayers.some((id) => metVisibility[id])
+  const hasNwpOverlay = enableWindOverlay && nwpLayers.some((id) => metVisibility[id])
   return {
-    visible: hasRasterWeather || hasNwpOverlay,
+    visible: hasAreaOverlay || hasNwpOverlay,
     color: metVisibility.satellite || metVisibility.satelliteVisible
       ? '#facc15'
       : OUTLINE_BASEMAP_PALETTES[basemapId]?.coast ?? GEO_BOUNDARY_COLOR,

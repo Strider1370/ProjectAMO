@@ -35,7 +35,7 @@ test('HSR or HCI shows common boundaries and satellite selects yellow', () => {
 })
 
 test('geo boundaries show on every basemap when NWP overlays are active', () => {
-  for (const layerId of ['wind', 'temp', 'cloud', 'icing', 'surfaceChart']) {
+  for (const layerId of ['wind', 'temp', 'cloudIcing', 'cloud', 'icing', 'surfaceChart', 'turbulence', 'tropopause']) {
     assert.equal(
       shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { [layerId]: true } }),
       true,
@@ -45,6 +45,13 @@ test('geo boundaries show on every basemap when NWP overlays are active', () => 
       true,
     )
   }
+})
+
+test('geo boundaries show for area weather overlays and stay off for point advisories', () => {
+  for (const layerId of ['echoTop', 'ci', 'ctps', 'aciExperiment', 'visibility', 'terrainHazard', 'sigwx', 'sigwxHigh', 'typhoon']) {
+    assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { [layerId]: true } }), true, layerId)
+  }
+  assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { sigmet: true, airmet: true, lightning: true } }), false)
 })
 
 test('geo boundaries ignore NWP toggles when NWP overlays are disabled', () => {

@@ -55,6 +55,32 @@ async function installConvectiveFixture(page) {
 }
 
 test.describe('map-base', () => {
+  test('shows coastlines when shaded weather layers replace radar', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop weather overlay boundary sync')
+    await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__map?.getLayer('geo-neighbors-line'))
+    const boundaryVisible = () => page.evaluate(() => window.__map.getLayoutProperty('geo-neighbors-line', 'visibility') === 'visible')
+    await page.getByRole('button', { name: '기상정보', exact: true }).click()
+    const radar = page.getByRole('button', { name: '레이더', exact: true })
+    await expect(radar).toHaveAttribute('aria-pressed', 'true')
+    await radar.click()
+    await expect.poll(boundaryVisible).toBe(false)
+
+    const cloudIcing = page.getByRole('button', { name: '구름·착빙', exact: true })
+    await cloudIcing.click()
+    await expect.poll(boundaryVisible).toBe(true)
+    await cloudIcing.click()
+    await expect.poll(boundaryVisible).toBe(false)
+
+    const rain = page.getByRole('button', { name: '강수', exact: true })
+    await rain.click()
+    await expect.poll(boundaryVisible).toBe(true)
+    await page.getByRole('button', { name: /지도 선택$/ }).click()
+    await page.getByRole('menuitemradio', { name: /^남색/ }).click()
+    await expect.poll(boundaryVisible).toBe(true)
+  })
+
   test('lets the main map zoom out beyond the previous regional limit', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Desktop map zoom extent')
     await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
