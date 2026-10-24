@@ -2,21 +2,7 @@ import { MoveUp } from 'lucide-react'
 import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
 import { buildMetarViewModel, buildMetarTacSegments } from '../lib/metarViewModel.js'
 import { formatRvr } from '../../../shared/weather/helpers.js'
-import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
-import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
-import ReportHistoryStrip from './ReportHistoryStrip.jsx'
-
-// 관측 이력 줄(ReportHistoryStrip): 최근 3시간 METAR·SPECI, 점 색 = 비행등급. 칸을 누르면 아래 원문·해독 카드가 그 관측으로.
-function hhmmIn(tz, iso) {
-  const t = new Date(iso)
-  if (!Number.isFinite(t.getTime())) return '—'
-  if (tz === 'KST') { const k = new Date(t.getTime() + 9 * 3600_000); return `${String(k.getUTCHours()).padStart(2, '0')}:${String(k.getUTCMinutes()).padStart(2, '0')}` }
-  return `${String(t.getUTCHours()).padStart(2, '0')}${String(t.getUTCMinutes()).padStart(2, '0')}Z`
-}
-
-export default function MetarTab({ metar: latestMetar, amosData, icao, airportMeta }) {
-  const { tz } = useTimeZone()
-  const history = useAirportHistory(icao, 'metar', { latest: latestMetar, latestTime: latestMetar?.header?.observation_time, latestKind: latestMetar?.header?.report_type })
+export default function MetarTab({ metar: latestMetar, history, amosData, icao, airportMeta }) {
   if (!latestMetar) return <div className="ap-empty">METAR 데이터 없음</div>
   const past = history.selected && !history.selected.latest ? history.selected : null
   const metar = past?.report ?? latestMetar
@@ -54,9 +40,6 @@ export default function MetarTab({ metar: latestMetar, amosData, icao, airportMe
 
   return (
     <div className="ap-metar-v2">
-      {icao && <ReportHistoryStrip history={history} label="최근 3시간 관측" cellText={(entry) => hhmmIn(tz, entry.time)}
-        cellTitle={(entry) => `${hhmmIn(tz, entry.time)} ${entry.kind}${entry.category ? ` · ${entry.category}` : ''}`}
-        note={past ? `${hhmmIn(tz, past.time)} ${past.kind === 'SPECI' ? 'SPECI' : '관측'} · 최신 아님` : null} />}
       {/* ── TAC 원문 — 임계값 색칠, 비행조건 배지는 섹션 헤더에 표시 ── */}
       {rawText && (
         <div className="ap-metar-tac-block">
