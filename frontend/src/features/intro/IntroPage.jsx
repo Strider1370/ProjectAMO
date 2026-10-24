@@ -233,6 +233,7 @@ export default function IntroPage() {
     const briefTabs = $$('#brief .tabs span')
     let briefTabShown = -1
     const routeZoom = $('#br-1 .zoom-in')
+    const routeCallouts = $$('#co-route .pt')
     const briefCallouts4 = $$('#br-4 .pt')
     const briefCallouts5 = $$('#br-5 .pt')
     const customFrames = [$('#cu-1'), $('#cu-2')]
@@ -302,6 +303,8 @@ export default function IntroPage() {
       brief(p) {
         // 경로가 찍힌 전체 화면 → 왼쪽 패널 쪽으로 확대 → 경로 비교
         css(routeZoom, { transform: `scale(${lerp(1, ROUTE_ZOOM, easeInOut(segment(p, 0.08, 0.2)))})` })
+        // 경로 생성 말풍선은 확대가 끝난 자리(잘라 쓴 화면) 기준이라 확대 뒤에 나타난다.
+        popIn(routeCallouts, segment(p, 0.19, 0.22))
         css(briefFrames[1], { opacity: segment(p, 0.22, 0.26) })
         css(briefFrames[2], { opacity: segment(p, 0.38, 0.44) })
         const result = easeOut(segment(p, 0.56, 0.64))
@@ -514,11 +517,21 @@ export default function IntroPage() {
             </div>
             <div className="pair">
               <figure>
-                <Frame title="공항 패널"><LoopVideo src={videoAirport} poster={imgAirport} label="인천국제공항 공항 패널에서 METAR, TAF, AMOS 탭을 넘기는 화면" /></Frame>
+                <Frame title="공항 패널"><LoopVideo src={videoAirport} poster={imgAirport} label="인천국제공항 공항 패널에서 METAR, TAF, AMOS 탭을 넘기는 화면" />
+                  <div className="co">
+                    <Callout x="52.5%" y="40%" side="left">METAR·TAF·AMOS·NOTAM 탭</Callout>
+                  </div>
+                </Frame>
                 <figcaption><b>공항 패널</b>METAR, TAF, AMOS, NOTAM을 탭으로 나눠 보여줘요.</figcaption>
               </figure>
               <figure>
-                <Frame title="상세 예보 분석"><img src={imgModels} alt="인천국제공항 상세 예보 분석: 모델별 지상 바람 비교" /></Frame>
+                <Frame title="상세 예보 분석"><img src={imgModels} alt="인천국제공항 상세 예보 분석: 모델별 지상 바람 비교" />
+                  <div className="co">
+                    <Callout x="47.9%" y="43.4%" side="up">모델 넷(KIM·ECMWF·GFS·ICON)을 같은 시각으로</Callout>
+                    <Callout x="35%" y="88%" side="up">시간대별 바람 그래프</Callout>
+                    <Callout x="85%" y="62%" side="left">KIM 연직 단면(Skew-T)</Callout>
+                  </div>
+                </Frame>
                 <figcaption><b>상세 예보 분석</b>모델마다 다른 예보를 표와 그래프로 나란히 비교해요.</figcaption>
               </figure>
             </div>
@@ -542,9 +555,24 @@ export default function IntroPage() {
                       <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 경로가 경로칸에 알약으로 들어가고 지도에 경로가 그려진 화면" />
                     </div>
                   </div>
+                  <div className="co" id="co-route">
+                    <Callout x="46.8%" y="46.4%">교체 공항</Callout>
+                    <Callout x="45.5%" y="76%">경로를 알약으로, 바로 고칠 수 있어요</Callout>
+                    <Callout x="91%" y="24%" side="left">지도에 그려진 경로</Callout>
+                  </div>
                 </Frame>
-                <Frame id="br-2" title={briefTitle(1)}><img src={imgCompare} alt="경로 비교: 총 거리 330NM, 소요시간 44분, 위험기상 2건" /></Frame>
-                <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도, 교체공항" /></Frame>
+                <Frame id="br-2" title={briefTitle(1)}><img src={imgCompare} alt="경로 비교: 총 거리 330NM, 소요시간 44분, 위험기상 2건" />
+                  <div className="co">
+                    <Callout x="45.6%" y="30.8%">거리·소요시간·위험기상</Callout>
+                    <Callout x="31%" y="61%">우회안 만들기</Callout>
+                  </div>
+                </Frame>
+                <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도, 교체공항" />
+                  <div className="co">
+                    <Callout x="46.5%" y="44.8%">출발·도착 시각과 순항고도</Callout>
+                    <Callout x="40%" y="73%" side="up">세부경로 지점</Callout>
+                  </div>
+                </Frame>
                 <Frame id="br-4" title="비행 전 브리핑">
                   <img src={imgResult} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 위험 요약 카드와 공항 카드, 경로상 위험 막대" />
                   <div className="co">
@@ -574,8 +602,19 @@ export default function IntroPage() {
             </div>
             <div className="stage">
               <div className="flow fit">
-                <Frame id="cu-1" title="내 지도"><img src={imgMyMap} alt="내 지도 패널: 새 지도 그리기, 파일 불러오기" /></Frame>
-                <Frame id="cu-2" title="기관 라운지"><img src={imgLounge} alt="기관 라운지 미리보기: 예정 비행, 공지, 라운지 지도" /></Frame>
+                <Frame id="cu-1" title="내 지도"><img src={imgMyMap} alt="내 지도 패널: 새 지도 그리기, 파일 불러오기" />
+                  <div className="co">
+                    <Callout x="27.7%" y="38.6%">지도에 직접 그리기</Callout>
+                    <Callout x="27.7%" y="58.6%">KML·KMZ 파일 불러오기</Callout>
+                  </div>
+                </Frame>
+                <Frame id="cu-2" title="기관 라운지"><img src={imgLounge} alt="기관 라운지 미리보기: 예정 비행, 공지, 라운지 지도" />
+                  <div className="co">
+                    <Callout x="66%" y="74.4%" side="left">예정 비행</Callout>
+                    <Callout x="66%" y="35.4%" side="left">기관 공지</Callout>
+                    <Callout x="34.5%" y="58%">라운지 지도</Callout>
+                  </div>
+                </Frame>
               </div>
             </div>
           </div>
@@ -590,7 +629,12 @@ export default function IntroPage() {
             </div>
             <div className="stage">
               <div className="alerts-vis">
-                <Frame title="상황판"><img src={imgMonitoring} alt="상황판: 인천국제공항 METAR와 TAF" /></Frame>
+                <Frame title="상황판"><img src={imgMonitoring} alt="상황판: 인천국제공항 METAR와 TAF" />
+                  <div className="co">
+                    <Callout x="14%" y="29.6%">비행 등급과 METAR를 큰 글씨로</Callout>
+                    <Callout x="30%" y="56.4%">TAF 타임라인</Callout>
+                  </div>
+                </Frame>
                 <div className="phone">
                   <div className="phone-screen">
                     <div className="lock"><div className="lock-date">9월 23일 수요일</div><div className="lock-time">14:20</div></div>
