@@ -78,8 +78,9 @@
 .bv-navwrap .fui-TabList { flex: 1 1 auto; min-width: 0; }
 .bv-nav-closebtn { flex: 0 0 auto; }
 .bv-board { display: flex; gap: var(--space-s); flex-wrap: wrap; margin-bottom: var(--space-l); }
-/* 관련 레이어 액션: 버튼 + (펼침 시) 토글칩을 우측으로 간격 벌려 한 줄에. */
-.bv-layer-action { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xl); margin-bottom: var(--space-l); }
+/* 관련 지도 레이어 칩: 처음부터 펼친 한 줄. */
+.bv-layer-action { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-s) var(--space-m); margin-bottom: var(--space-l); }
+.bv-layer-caption { color: var(--text-3); }
 
 /* ① 위험 다이제스트 — 2줄 위계 + 좌 severity 색바 */
 .bv-haz-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-s); }
@@ -111,14 +112,8 @@
 .notam-more-chev { transition: transform 0.15s; }
 .notam-more-chev.is-open { transform: rotate(180deg); }
 /* ⑥ 목적지 예보 표 — 범주 칸 좁게(빈칸 제거), 셀 상단 정렬 */
-.bv-dest-periods { table-layout: fixed; }
-.bv-dest-periods td, .bv-dest-periods th { vertical-align: top; word-break: keep-all; }
 /* 기간 변화군 타입 칩(base/BECMG/TEMPO/PROB) — 중립색(심각도 색과 구분) */
-.bv-dest-ptype { display: inline-block; font-size: var(--fs-100); font-weight: var(--fw-semibold); padding: 0 4px; border-radius: 3px; background: var(--bg-3); color: var(--text-2); white-space: nowrap; }
-.bv-dest-ptype[data-type="base"] { background: transparent; color: var(--text-3); padding: 0; }
-.bv-dest-eta-tag { display: inline-block; margin-left: 4px; font-size: var(--fs-100); font-weight: var(--fw-bold); padding: 0 5px; border-radius: 3px; background: var(--accent); color: #fff; }
 /* 원문 TAF에서 ETA 포함 라인 강조(경고색 아님 — "도착 시간대"라는 액센트 하이라이트) */
-.bv-dest-raw-eta { display: block; background: color-mix(in srgb, var(--accent) 14%, transparent); font-weight: var(--fw-semibold); border-radius: 3px; }
 /* 타임라인 바 시간축(6h 눈금) — 색만 있던 바에 시각 맥락 부여 */
 .bv-tafbar-axis { position: relative; height: 15px; margin-top: 4px; }
 .bv-tafbar-tick { position: absolute; top: 0; font-size: var(--fs-100); line-height: 1; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -164,8 +159,20 @@
 .bv-current-matrix .mut { color: var(--text-3); }
 .bv-current-matrix .red { color: var(--level-red); font-weight: var(--fw-semibold); }
 
-/* 공항 패널과 같은 TAC 우선 표시: 비교표는 좁은 패널에서 읽을 수 없어 대체하지 않는다. */
-.bv-current-matrix { display: none; }
+/* 데스크톱은 공항=행 비교표 하나(원문은 행을 펼쳐서), 폰은 공항별 원문 카드. */
+.bv-expand-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-s) var(--space-m); }
+.bv-link { align-self: flex-start; justify-self: start; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-300); font-weight: var(--fw-semibold); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.bv-cur-expand .bv-current-tac-raw { font-size: var(--fs-400); }
+
+/* 일기도 바로가기 칸 */
+.bv-chart-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-s); margin-top: var(--space-s); }
+.bv-chart-tile { display: grid; align-content: start; gap: var(--space-xs); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-2); }
+.bv-chart-text { color: var(--text-2); }
+.bv-chart-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-s); margin-top: var(--space-xs); }
+.bv-chart-seg { display: inline-flex; overflow: hidden; border: 1px solid var(--stroke-1); border-radius: var(--radius-md); }
+.bv-chart-seg button { padding: 2px var(--space-s); border: 0; background: var(--bg-1); color: var(--text-2); font: inherit; font-size: var(--fs-200); font-variant-numeric: tabular-nums; cursor: pointer; }
+.bv-chart-seg button + button { border-left: 1px solid var(--stroke-1); }
+.bv-chart-seg button[aria-pressed='true'] { background: var(--accent); color: var(--bg-1); }
 .bv-current-tac { display: grid; gap: var(--space-s); margin-top: var(--space-s); }
 .bv-current-tac-card { display: grid; gap: var(--space-xs); padding: var(--space-m); background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
 .bv-current-tac-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-s); }
@@ -185,18 +192,6 @@
 .bv-section:last-child { margin-bottom: 0; }
 
 /* hazard ribbon — 단면도 plot 영역(좌 6.04% / 우 2.71%)에 정렬. 좌표 건드리지 말 것. */
-.bv-ribbon-legend { display: flex; gap: var(--space-m); margin: var(--space-s) 0 0 6.04%; font-size: var(--fs-200); color: var(--text-3); }
-.bv-ribbon-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.bv-ribbon-legend i { width: 10px; height: 10px; border-radius: 2px; }
-.bv-ribbons { margin: var(--space-s) 0 2px; display: flex; flex-direction: column; gap: var(--space-xs); }
-.bv-ribbon-row { font-size: var(--fs-200); }
-.bv-ribbon-head { display: flex; justify-content: space-between; margin: 0 2.71% 2px 6.04%; }
-.bv-ribbon-label { color: var(--accent); font-weight: 700; }
-.bv-ribbon-cap { color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bv-ribbon { position: relative; height: 12px; margin-left: 6.04%; margin-right: 2.71%; background: var(--bg-4); border-radius: 6px; overflow: hidden; }
-.bv-seg { position: absolute; top: 0; height: 100%; }
-.bv-seg.mod { background: var(--turb-mod); }
-.bv-seg.sev { background: var(--level-red); }
 
 .bv-leg-briefing { margin-top: var(--space-m); border-top: 1px solid var(--stroke-2); padding-top: var(--space-m); }
 .bv-leg-head { display: flex; justify-content: space-between; gap: var(--space-m); align-items: start; }
@@ -204,49 +199,32 @@
 .bv-leg-sub, .bv-leg-disclaimer { display: block; color: var(--text-3); margin-top: var(--space-xxs); }
 .bv-leg-disclaimer { max-width: 280px; text-align: right; }
 .bv-leg-scroll { overflow-x: auto; margin-top: var(--space-s); }
-.bv-leg-table { min-width: 560px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+.bv-leg-table { min-width: 640px; font-variant-numeric: tabular-nums; table-layout: fixed; }
 .bv-leg-table th { color: var(--text-3); font-size: var(--fs-300); font-weight: var(--fw-regular); white-space: nowrap; }
 .bv-leg-table td { font-size: var(--fs-300); vertical-align: top; }
 .bv-main-navlog-table th { padding-top: var(--space-xs); padding-bottom: var(--space-xs); vertical-align: middle; }
 .bv-main-navlog-table td { padding-top: 2px; padding-bottom: 2px; line-height: 1.3; vertical-align: middle; }
-/* 위험기상이 화면을 지배하도록 — 짝지은 값은 한 칸에 두 줄로 쌓아 폭을 돌려준다. */
-.bv-leg-table th:nth-child(1) { width: 15%; }
-.bv-leg-table th:nth-child(2) { width: 14%; }
-.bv-leg-table th:nth-child(3) { width: 17%; }
+/* 구간 하나 = 한 줄. 숫자 칸은 오른쪽 맞춤, 덜 중요한 값(방위·풍향풍속·ISA)은 옅게. 남는 폭은 위험기상이 가져간다. */
+.bv-leg-table th:nth-child(1) { width: 22%; }
+.bv-leg-table th:nth-child(2) { width: 8%; }
+.bv-leg-table th:nth-child(3) { width: 7%; }
 .bv-leg-table th:nth-child(4) { width: 13%; }
-.bv-leg-table th:nth-child(5) { width: 41%; }
-/* 한 칸 두 줄. 구간 셀은 rowSpan=2라 두 줄이 들어가도 표가 길어지지 않는다.
-   각 줄은 한 덩어리로 읽혀야 한다 — '자료 없음'이 '자료 없/음'으로 잘리면 표가 아니라 죽이 된다. */
-.bv-leg-stack { display: grid; gap: 0; justify-items: center; line-height: 1.3; text-align: center; }
-.bv-leg-stack > * { padding: 1px 0; white-space: nowrap; }
-/* 두 값이 한 칸에 있으니 가로선으로 갈라 놓아야 위아래가 각각 무엇인지 헷갈리지 않는다. */
-.bv-leg-stack > * + * { border-top: 1px solid var(--stroke-2); }
+.bv-leg-table th:nth-child(5) { width: 11%; }
+.bv-leg-table th:nth-child(6) { width: 8%; }
+.bv-leg-table th:nth-child(7) { width: 6%; }
+.bv-leg-table th:nth-child(8) { width: 25%; }
+.bv-leg-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bv-leg-table td[data-label="위험기상"] { white-space: normal; overflow: visible; }
+.bv-leg-table .bv-leg-num { text-align: right; }
+.bv-leg-missing { color: var(--text-3); }
+.bv-leg-table .bv-leg-dim { color: var(--text-3); }
+.bv-leg-name { font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; }
+.bv-leg-summary { display: flex; flex-wrap: wrap; gap: 2px var(--space-l); margin: var(--space-s) 0 0; color: var(--text-3); font-size: var(--fs-300); font-variant-numeric: tabular-nums; }
+.bv-leg-summary b { color: var(--text-1); }
+.bv-leg-summary b.bv-leg-headwind { color: var(--level-amber); }
+.bv-leg-summary b.bv-leg-tailwind { color: var(--level-green); }
 .bv-leg-none { color: var(--text-3); }
-/* 웨이포인트는 경계, 바로 아래 행은 다음 웨이포인트까지의 구간이다. */
-.bv-main-navlog-table .bv-waypoint-row { height: 28px; }
-.bv-main-navlog-table .bv-leg-row { height: 28px; }
-.bv-main-navlog-table .bv-procedure-summary-row { height: 56px; }
-.bv-waypoint-row td {
-  padding-top: 2px;
-  padding-bottom: 2px;
-  border-top: 1px solid var(--stroke-2);
-  border-bottom: 0;
-  background: var(--bg-1);
-  vertical-align: middle;
-}
-.bv-waypoint-cell { position: relative; border-right: 1px solid var(--stroke-2); }
-.bv-waypoint-label { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--text-1); max-width: 100%; }
-/* 긴 웨이포인트 이름은 칸을 넘지 말고 접힌다. flex 자식은 min-width:0 이어야 줄어든다. */
-.bv-waypoint-label b { min-width: 0; overflow-wrap: anywhere; }
-.bv-waypoint-label i {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 auto;
-  border: 2px solid var(--accent);
-  border-radius: 50%;
-  background: var(--bg-1);
-}
-.bv-leg-distance { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.bv-main-navlog-table .bv-leg-row, .bv-main-navlog-table .bv-procedure-summary-row { height: 28px; }
 /* 구간 행을 가리키면 지도에 그 구간이 뜬다 — 누를 수 있다는 걸 커서와 배경으로 알린다. */
 .bv-leg-row { cursor: pointer; }
 .bv-leg-row:hover td { background: var(--bg-3); }
@@ -255,8 +233,8 @@
 .bv-leg-hazards { display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
 .bv-leg-chip {
   display: inline-flex; align-items: baseline; gap: var(--space-xxs);
-  padding: 2px var(--space-xs); border-radius: var(--radius-md);
-  font-size: var(--fs-300); line-height: 1.45; white-space: nowrap;
+  padding: 0 var(--space-xs); border-radius: var(--radius-md);
+  font-size: var(--fs-200); font-weight: var(--fw-semibold); line-height: 18px; white-space: nowrap;
 }
 .bv-leg-chip-note { font-size: var(--fs-200); opacity: 0.75; }
 .bv-leg-chip.is-red { background: var(--level-red-bg); color: var(--level-red); }
@@ -264,30 +242,22 @@
 .bv-leg-chip.is-gray { background: var(--level-gray-bg); color: var(--level-gray); }
 .bv-leg-tailwind { color: var(--level-green); }
 .bv-leg-headwind { color: var(--level-amber); }
-.bv-procedure-summary-row td { border-top: 1px solid var(--stroke-2); border-bottom: 1px solid var(--stroke-2); background: var(--bg-1); }
-.bv-procedure-summary-row .bv-leg-hazards {
-  max-width: 100%;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
+.bv-procedure-summary-row td { background: var(--bg-1); }
 
 @container briefing (max-width: 559px) {
   .bv-leg-scroll { overflow: visible; }
   .bv-leg-table { display: block; min-width: 0; }
   .bv-leg-table thead { display: none; }
   .bv-leg-table tbody { display: grid; gap: 0; }
-  .bv-main-navlog-table .bv-waypoint-row, .bv-main-navlog-table .bv-leg-row, .bv-main-navlog-table .bv-procedure-summary-row { height: auto; }
-  .bv-waypoint-row { display: grid; grid-template-columns: 1fr; }
-  .bv-waypoint-row td:first-child { display: block; width: auto; padding: var(--space-s) 0; border: 0; }
+  .bv-main-navlog-table .bv-leg-row, .bv-main-navlog-table .bv-procedure-summary-row { height: auto; }
   .bv-leg-row, .bv-procedure-summary-row { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
   .bv-leg-row td, .bv-procedure-summary-row td { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: var(--space-xs); padding: 0; overflow-wrap: anywhere; border: 0; }
   .bv-leg-row td::before, .bv-procedure-summary-row td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-300); }
   .bv-leg-table td:nth-child(n) { width: auto; }
-  .bv-leg-stack { justify-items: start; text-align: left; }
+  .bv-leg-table td { white-space: normal; }
+  .bv-leg-table .bv-leg-num { text-align: left; }
   .bv-leg-row td:first-child, .bv-leg-row td:last-child, .bv-procedure-summary-row td:first-child, .bv-procedure-summary-row td:last-child { grid-column: 1 / -1; }
   .bv-procedure-summary-row .bv-procedure-empty { display: none; }
-  .bv-procedure-summary-row .bv-leg-hazards { flex-wrap: wrap; overflow-x: visible; }
   .bv-leg-head { display: grid; }
   .bv-leg-disclaimer { max-width: none; text-align: left; }
 }
@@ -296,18 +266,15 @@
    표의 본질적인 가로 밀도는 축소하지 않고, 기존 데스크톱 폴백처럼 NAVLOG 안에서 스크롤한다. */
 @media (min-width: 720px) and (max-width: 1199px) and (orientation: landscape) {
   .bv-leg-scroll { overflow-x: auto; }
-  .bv-leg-table { display: table; min-width: 560px; }
+  .bv-leg-table { display: table; min-width: 640px; }
   .bv-leg-table thead { display: table-header-group; }
   .bv-leg-table tbody { display: table-row-group; }
-  .bv-main-navlog-table .bv-waypoint-row { height: 28px; }
-  .bv-main-navlog-table .bv-leg-row { height: 28px; }
-  .bv-main-navlog-table .bv-procedure-summary-row { height: 56px; }
-  .bv-waypoint-row { display: table-row; }
-  .bv-waypoint-row td:first-child { display: table-cell; }
+  .bv-main-navlog-table .bv-leg-row, .bv-main-navlog-table .bv-procedure-summary-row { height: 28px; }
+  .bv-leg-table td { white-space: nowrap; }
+  .bv-leg-table .bv-leg-num { text-align: right; }
   .bv-leg-row, .bv-procedure-summary-row { display: table-row; padding: 0; border: 0; border-radius: 0; }
   .bv-leg-row td, .bv-procedure-summary-row td { display: table-cell; padding: revert; overflow-wrap: normal; }
   .bv-procedure-summary-row .bv-procedure-empty { display: table-cell; }
-  .bv-procedure-summary-row .bv-leg-hazards { flex-wrap: nowrap; overflow-x: auto; }
   .bv-main-navlog-table .bv-leg-row td, .bv-main-navlog-table .bv-procedure-summary-row td { padding: 2px var(--space-s); vertical-align: middle; }
   .bv-leg-row td::before, .bv-procedure-summary-row td::before { content: none; }
   .bv-leg-head { display: flex; }
@@ -338,38 +305,8 @@
 .bv-tafbar-eta::after { content: ''; position: absolute; top: 16px; left: 0; width: 2px; height: 20px; background: var(--text-1); transform: translateX(-50%); }
 .bv-tafbar-tall .bv-tafbar-eta::after { height: 24px; }
 .bv-tafbar-eta-mark { position: absolute; top: 0; left: 0; transform: translateX(-50%); white-space: nowrap; font-size: var(--fs-100); font-weight: var(--fw-semibold); color: var(--accent); }
-.bv-tafbar-legend { display: flex; gap: var(--space-m); flex-wrap: wrap; font-size: var(--fs-200); color: var(--text-3); margin-bottom: var(--space-s); }
-.bv-tafbar-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.bv-tafbar-legend i { width: 9px; height: 9px; border-radius: 2px; }
-.bv-dest-periods th { font-size: var(--fs-200); color: var(--text-3); font-weight: var(--fw-regular); }
-.bv-dest-periods td { font-variant-numeric: tabular-nums; }
 .bv-dest-row-hl { background: var(--level-gray-bg); }
-.bv-dest-raw { border-top: none; }
-.bv-dest-raw-pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-200); line-height: 1.6; color: var(--text-2); background: var(--bg-3); padding: var(--space-s) var(--space-mnudge); border-radius: var(--radius-md); white-space: pre-wrap; margin: var(--space-s) 0 0; }
 .bv-dest-alt { border-top: 0.5px solid var(--stroke-2); margin-top: var(--space-m); padding-top: var(--space-s); }
-.bv-dest-legacy { display: none; }
-
-/* ETA 우선: 표가 패널보다 넓어지면 기간별 세로 카드로 바꾼다. */
-@container briefing (max-width: 719px) {
-  .bv-dest-periods { display: block; }
-  .bv-dest-periods thead { display: none; }
-  .bv-dest-periods tbody { display: grid; gap: var(--space-s); }
-  .bv-dest-periods tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
-  .bv-dest-periods tr.bv-dest-row-hl { order: -1; border-color: var(--accent); }
-  .bv-dest-periods td { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-xs); padding: 0; }
-  .bv-dest-periods td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-200); }
-  .bv-dest-periods td:first-child { grid-column: 1 / -1; }
-}
-@media (max-width: 719px) {
-  .bv-dest-periods { display: block; }
-  .bv-dest-periods thead { display: none; }
-  .bv-dest-periods tbody { display: grid; gap: var(--space-s); }
-  .bv-dest-periods tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
-  .bv-dest-periods tr.bv-dest-row-hl { order: -1; border-color: var(--accent); }
-  .bv-dest-periods td { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-xs); padding: 0; }
-  .bv-dest-periods td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-200); }
-  .bv-dest-periods td:first-child { grid-column: 1 / -1; }
-}
 
 .bv-xsection { margin: var(--space-s) 0 var(--space-xs); }
 .bv-xsection svg { width: 100%; height: auto; }

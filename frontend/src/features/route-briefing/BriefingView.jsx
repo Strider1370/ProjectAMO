@@ -7,6 +7,8 @@ import {
   Title3, Subtitle2, Body1, Caption1,
 } from '../../shared/ui/fluent.js'
 import VerticalProfileViewer from './VerticalProfileViewer.jsx'
+import BriefingDock from './map-briefing/BriefingDock.jsx'
+import './map-briefing/MapBriefing.css'
 import BriefingBanner from './BriefingBanner.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -24,16 +26,12 @@ import { buildMetarTacSegments, buildMetarViewModel } from '../airport-panel/lib
 import EnhancedTafTab from '../airport-panel/tabs/TafTab.jsx'
 import { useCrossSectionLayers } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
-import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
+import { catColorOf, catDisplay, worstAirport, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
 import { deriveNotamTime, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
 import NotamCell from '../notam/NotamCell.jsx'
 import RouteWeatherLegTable from './RouteWeatherLegTable.jsx'
 import './BriefingView.css'
 
-const LEVEL_BADGE = { green: 'success', amber: 'warning', red: 'danger', gray: 'subtle' }
-// The enroute model keeps its internal 약/중/심 levels; users see the standard severity words.
-const SEVERITY_DISPLAY = { '약': 'LIGHT', '중': 'MODERATE', '심': 'SEVERE' }
-const FIELDS = [['바람', 'wind'], ['시정', 'visibility'], ['RVR', 'rvr'], ['운고', 'ceiling'], ['기온/노점', 'temp'], ['현상', 'weather'], ['QNH', 'qnh']]
 const NOTAM_CAT_LABEL = Object.fromEntries(NOTAM_CATEGORIES.map((c) => [c.id, c.label]))
 
 // 위험현상 code → 아이콘 (substring 매칭, 코드 변종에 견고).
@@ -47,6 +45,18 @@ function hazardIcon(code) {
 }
 
 const ROLE_KO = { departure: '출발', arrival: '도착' }
+const SOURCE_KO = { TYPHOON: '태풍' }
+// 고도는 FL로(SIGMET·NAVLOG와 같은 표기). 내부 코드 SEV_TURB는 표준 약어 SEV TURB로 보인다.
+const flText = (ft) => `FL${String(Math.round(ft / 100)).padStart(3, '0')}`
+const codeText = (code) => String(code).replace(/_/g, ' ')
+// 일기도 바로가기: 지도에 실제 자료 레이어를 켠다. SIGWX HIGH는 발표 시각이 정해져 있어 시각을 고르지 않는다.
+const CHART_TILES = [
+  { layer: 'surfaceChart', title: '지상일기도', text: 'KIM 전구모델 · 등압선, 고·저기압, 강수, 지상풍', timed: true },
+  { layer: 'tropopause', title: '권계면·제트', text: 'KIM 전구모델 · 권계면 고도, 제트 축과 최대풍', timed: true },
+  { layer: 'sigwxHigh', title: 'SIGWX HIGH', text: 'WAFS 발표 · FL250–FL630 중요기상', timed: false },
+]
+// 지도에서 보기 칩: 위험에 걸린 레이어 + 늘 참고하는 권계면·제트, SIGWX HIGH.
+const REFERENCE_LAYERS = ['tropopause', 'sigwxHigh']
 // 출발·도착이 같은 공항이면 역할이 여럿이다 — '출발/도착' 한 배지로 낸다.
 const roleLabel = (r) => (Array.isArray(r) ? r : [r]).map((one) => ROLE_KO[one] ?? '교체').join('/')
 
@@ -56,18 +66,19 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ frozenNotice = null, organizationContext = null, organizationBundle = null, organizationError = null, onOrganizationReload = null, briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null, externalHighlight = null, onMapView = null }) {
+export default function BriefingView({ frozenNotice = null, organizationContext = null, organizationBundle = null, organizationError = null, onOrganizationReload = null, briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null, externalHighlight = null, onMapView = null, onOpenAirport = null, onSetMapTime = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
   const containerRef = useRef(null)
   const [activeId, setActiveId] = useState(null)
   const [detent, setDetent] = useState('half')
-  const [activeAirport, setActiveAirport] = useState(null)
   const [xsectionFull, setXsectionFull] = useState(false)
-  const [showLayerChips, setShowLayerChips] = useState(false)
+  const [chartTimes, setChartTimes] = useState({}) // 일기도 칸별 ETD/ETA 선택
+  const [ribbonHover, setRibbonHover] = useState(null) // 위험 막대에서 가리킨 칸 — 단면도 같은 구간 강조
+  const [hiddenRibbonRows, setHiddenRibbonRows] = useState([])
   const [expandedRoles, setExpandedRoles] = useState({})
-  const [notamGroupOpen, setNotamGroupOpen] = useState({}) // ④ 공항별 NOTAM "더 보기" 펼침(role별)
+  const [notamGroupOpen, setNotamGroupOpen] = useState({}) // 공항별 NOTAM "더 보기" 펼침(role별)
   const [collapsed, setCollapsed] = useState(false) // 패널 접기 — 지도를 보려고 오른쪽으로 슬라이드아웃(닫기와 달리 브리핑 유지)
   const [expanded, setExpanded] = useState(false)
   const [pinnedLeg, setPinnedLeg] = useState(null) // NAVLOG에서 클릭해 고정한 구간
@@ -104,14 +115,15 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
 
   const hasEnroute = Boolean(briefing?.sections?.enroute)
   const hasNotam = (briefing?.routeNotams ?? []).length > 0
-  const destNum = hasNotam ? '⑤' : '④' // NOTAM(④)이 노선과 목적지 사이에 들어오면 목적지는 ⑤
+  // 섹션 번호는 쓰지 않는다 — NOTAM 유무에 따라 목적지 번호가 바뀌던 문제가 없어진다.
   const steps = briefing
     ? [
-        { id: 'adverse', label: '① 위험' },
-        { id: 'current', label: '② 현재' },
-        ...(hasEnroute ? [{ id: 'enroute', label: '③ 노선' }] : []),
-        ...(hasNotam ? [{ id: 'notam', label: '④ NOTAM' }] : []),
-        { id: 'destination', label: `${destNum} 목적지` },
+        { id: 'adverse', label: '위험' },
+        { id: 'current', label: '현재 실황' },
+        ...(onToggleMetLayer ? [{ id: 'charts', label: '일기도' }] : []),
+        ...(hasEnroute ? [{ id: 'enroute', label: '노선' }] : []),
+        ...(hasNotam ? [{ id: 'notam', label: 'NOTAM' }] : []),
+        { id: 'destination', label: '목적지' },
       ]
     : []
 
@@ -151,10 +163,10 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     (sections.current?.airports ?? []).some((airport) => !airport.metar)
   ))
   const weatherIncomplete = organizationWeatherIncomplete || Boolean(frozenNotice)
-  const mapLayerIds = [...new Set(hazardMapLayers(briefing).map(id => ['temp', 'cloud', 'icing'].includes(id) ? 'cloudIcing' : id))]
-  const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // ③ 상층바람 원자료 표
+  const hasAirmet = (sections.adverse?.hazards ?? []).some((h) => h.source === 'AIRMET')
+  const mapLayerIds = [...new Set([...hazardMapLayers(briefing).map(id => ['temp', 'cloud', 'icing'].includes(id) ? 'cloudIcing' : id), ...(hasAirmet ? ['airmet'] : []), ...REFERENCE_LAYERS])]
+  const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // 상층바람 원자료 표
   const airports = sections.current.airports
-  const activeAirportObj = airports.find((a) => a.role === activeAirport) ?? airports[0]
   const metarTacSegments = (a) => {
     const raw = a.metar?.header?.raw_text ?? a.raw
     if (!raw || !a.metar) return [{ text: raw || 'METAR 원문 없음' }]
@@ -180,24 +192,18 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     </div>
   )
 
-  const board = (
-    <div className="bv-board">
-      {summary.map((s) => <Badge key={s.key} appearance="tint" color={s.key === 'hazard' && weatherIncomplete && s.level === 'green' ? 'warning' : LEVEL_BADGE[s.level] || 'subtle'}>{s.key === 'hazard' && weatherIncomplete ? '위험 판단 제한' : s.label}</Badge>)}
-    </div>
-  )
+  // 공항별 범주 칩 줄은 배너와 같은 내용이라 뺐다. 자료가 모자라 위험을 확정할 수 없다는 표시만 남긴다.
+  const board = weatherIncomplete ? <div className="bv-board"><Badge appearance="tint" color="warning">위험 판단 제한</Badge></div> : null
 
-  // 경로상 위험과 연관된 지도 레이어 토글칩(위험 있을 때만). 버튼 → 지도 모드 + 칩 펼침(우측 간격).
+  // 관련 지도 레이어 칩은 처음부터 펼쳐 둔다. 켜면 지도와 함께 보기로 바꿔 레이어가 보이게 한다.
   const layerChips = mapLayerIds.map((id) => ({
     key: id, label: metLabel(id),
-    on: !!metVisibility?.[id], onToggle: () => onToggleMetLayer?.(id),
+    on: !!metVisibility?.[id], onToggle: () => { if (!metVisibility?.[id]) onEnterMapMode?.(); onToggleMetLayer?.(id) },
   }))
-  const layerAction = mapLayerIds.length > 0 && onToggleMetLayer ? (
+  const layerAction = onToggleMetLayer ? (
     <div className="bv-layer-action">
-      <Button appearance="primary" size="small" icon={<Layers size={16} />}
-        onClick={() => { if (!showLayerChips) onEnterMapMode?.(); setShowLayerChips((v) => !v) }}>
-        지도에 관련 레이어 보기
-      </Button>
-      {showLayerChips && <LayerToggleChips items={layerChips} ariaLabel="관련 지도 레이어" />}
+      <Caption1 className="bv-layer-caption">지도에서 보기</Caption1>
+      <LayerToggleChips items={layerChips} ariaLabel="관련 지도 레이어" />
     </div>
   ) : null
 
@@ -223,18 +229,18 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             <Icon size={16} className="bv-haz-icon" aria-hidden />
             {/* 태풍은 코드(TC)가 아니라 번호·이름이 식별자다 — "태풍"만 띄우면 어느 태풍인지 알 수 없다 */}
             <span>{h.source === 'TYPHOON' ? (h.label || phenomenonKo(h.code)) : (phenomenonKo(h.code) || h.label)}</span>
-            {h.code ? <span className="bv-haz-code">{h.code}</span> : null}
+            {h.code ? <span className="bv-haz-code">{codeText(h.code)}</span> : null}
             {/* 밴드는 경로위험만 — 공항경보는 고도밴드 개념 없음 */}
             {!h.airportScope && (
               <>
                 {' · '}
-                {h.bandFt ? <span className="tnum">{h.bandFt.lowFt}–{h.bandFt.highFt}ft</span>
-                  : <Badge appearance="tint" color="warning" className="bv-haz-band-unk">밴드 미상</Badge>}
+                {h.bandFt ? <span className="tnum">{flText(h.bandFt.lowFt)}–{flText(h.bandFt.highFt)}</span>
+                  : <Badge appearance="tint" color="warning" className="bv-haz-band-unk">고도 미상</Badge>}
               </>
             )}
           </div>
           <Caption1 className="bv-haz-line2">
-            <b>{h.source}</b>{locText ? ` · ${locText}` : ''} · <span className="tnum">{timeText}</span>
+            <b>{SOURCE_KO[h.source] ?? h.source}</b>{locText ? ` · ${locText}` : ''} · <span className="tnum">{timeText}</span>
           </Caption1>
         </div>
       </div>
@@ -245,7 +251,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     <section data-bvid="adverse" className="bv-section">
       <Card>
         <div className="bv-haz-head">
-          <Subtitle2 as="h3">① 위험 요약</Subtitle2>
+          <Subtitle2 as="h3">위험 요약</Subtitle2>
           {hazards.length > 0 && <Caption1 style={{ color: 'var(--text-3)' }}>{hazards.length}건 · 심각도순</Caption1>}
         </div>
         {hazards.length === 0
@@ -259,7 +265,6 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const cellStyle = (f) => ({ fontVariantNumeric: 'tabular-nums', color: f?.flag ? 'var(--level-red)' : undefined, fontWeight: f?.flag ? 700 : undefined })
   const windCell = (f) => <span style={cellStyle(f)}>{f?.text ?? '-'}{f?.gust ? <span className="bv-gust"> G{f.gust}</span> : null}</span>
 
-  // ② 행 확장 = 이륙예보(출발) + AMOS 지상실황(있으면 전부) + 원문 METAR.
   const takeoffBlock = (a) => {
     const fc = a.takeoffFcst?.forecasts ?? []
     if (fc.length === 0) {
@@ -309,35 +314,30 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
       </div>
     )
   }
-  const amosExpansion = (a) => {
+  // 행 펼치기 = 원문 METAR(기준치를 넘는 값은 표와 같은 색) + 이륙예보(출발) + AMOS + 공항 패널 바로가기.
+  const amosExpansion = (a, { withRaw = true } = {}) => {
     const takeoff = a.role === 'departure' ? takeoffBlock(a) : null
     const amos = amosBlock(a)
     const prov = a.source ? <DataProvenance source={a.source} /> : null
-    if (!takeoff && !amos && !prov) return <Caption1 style={{ color: 'var(--text-3)' }}>추가 정보 없음</Caption1>
-    return <div className="bv-expand-stack">{takeoff}{amos}{prov}</div>
+    return (
+      <div className="bv-expand-stack">
+        {withRaw && <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>}
+        {(takeoff || amos) && <div className="bv-expand-grid">{takeoff}{amos}</div>}
+        {prov}
+        {onOpenAirport && a.icao && (
+          <button type="button" className="bv-link" onClick={(e) => { e.stopPropagation(); onOpenAirport(a.icao) }}>{a.icao} 공항 상세 열기</button>
+        )}
+      </div>
+    )
   }
 
-  // ② 현재 실황 — 공항=행 비교 매트릭스 (범주 리딩 열, 관측시각+SPECI, 행 펼치기).
+  // 현재 실황(데스크톱) — 공항=행 비교표 (범주 리딩 열, 관측시각+SPECI, 행 펼치기).
   const currentDesktop = (
     <section data-bvid="current" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">② 현재 실황</Subtitle2>
-        <div className="bv-current-tac">
-          {airports.map((a) => (
-            <article className="bv-current-tac-card" key={a.role}>
-              <div className="bv-current-tac-head">
-                <span><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao} {a.reportType === 'SPECI' ? 'SPECI' : 'METAR'}</b></span>
-                <span className="bv-current-tac-meta">{a.observationTime && <Caption1 style={{ color: 'var(--text-3)' }}>{formatBriefingTime(a.observationTime, tz)}</Caption1>}<CatBadge category={a.category} /></span>
-              </div>
-              <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>
-              {(a.role === 'departure' || a.amos || a.source) && (
-                <details className="bv-current-tac-detail">
-                  <summary>상세 관측·예보</summary>
-                  {amosExpansion(a)}
-                </details>
-              )}
-            </article>
-          ))}
+        <div className="bv-haz-head">
+          <Subtitle2 as="h3">현재 실황</Subtitle2>
+          <Caption1 style={{ color: 'var(--text-3)' }}>행을 누르면 원문과 상세가 펼쳐집니다</Caption1>
         </div>
         <table className="bv-current-matrix">
           <thead><tr>
@@ -350,7 +350,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
               const open = !!expandedRoles[a.role]
               return (
                 <Fragment key={a.role}>
-                  <tr className="bv-cur-row" onClick={() => toggleRole(a.role)}>
+                  <tr className="bv-cur-row" onClick={() => toggleRole(a.role)} aria-expanded={open}>
                     <td>
                       <div className="bv-cur-airport">
                         <span className="bv-cur-role"><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao}</b></span>
@@ -380,34 +380,71 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     </section>
   )
 
+  // 폰(시트 폭): 비교표는 읽히지 않아 공항마다 원문 카드로 둔다(2026-07 결정).
   const currentMobile = (
     <section data-bvid="current" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">② 현재 실황</Subtitle2>
-        <TabList selectedValue={activeAirportObj?.role} onTabSelect={(_, d) => setActiveAirport(d.value)} size="small">
-          {airports.map((a) => <Tab key={a.role} value={a.role}>{a.icao}</Tab>)}
-        </TabList>
-        {activeAirportObj && (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 4px' }}>
-              <Body1><b>{activeAirportObj.icao}</b> <Caption1 style={{ color: 'var(--text-3)' }}>{roleLabel(activeAirportObj.roles ?? activeAirportObj.role)}</Caption1></Body1>
-              <CatBadge category={activeAirportObj.category} />
-            </div>
-            <Table size="small" style={{ width: '100%' }}>
-              <TableBody>
-                {FIELDS.map(([label, key]) => {
-                  const f = activeAirportObj.fields[key]
-                  return (
-                    <TableRow key={key}>
-                      <TableCell><Caption1 style={{ color: 'var(--text-3)' }}>{label}</Caption1></TableCell>
-                      <TableCell style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: f?.flag ? 'var(--level-red)' : undefined, fontWeight: 700 }}>{f?.text ?? '-'}</TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </>
-        )}
+        <Subtitle2 as="h3">현재 실황</Subtitle2>
+        <div className="bv-current-tac">
+          {airports.map((a) => (
+            <article className="bv-current-tac-card" key={a.role}>
+              <div className="bv-current-tac-head">
+                <span><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao} {a.reportType === 'SPECI' ? 'SPECI' : 'METAR'}</b></span>
+                <span className="bv-current-tac-meta">{a.observationTime && <Caption1 style={{ color: 'var(--text-3)' }}>{formatBriefingTime(a.observationTime, tz)}</Caption1>}<CatBadge category={a.category} /></span>
+              </div>
+              <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>
+              <details className="bv-current-tac-detail">
+                <summary>상세 관측·예보</summary>
+                {amosExpansion(a, { withRaw: false })}
+              </details>
+            </article>
+          ))}
+        </div>
+      </Card>
+    </section>
+  )
+
+  // 일기도 바로가기: 지도에 실제 자료 레이어를 ETD 또는 ETA 시각으로 띄운다. 브리핑은 옆에 남는다(지도와 함께 보기).
+  const chartTimeMs = (key) => Date.parse(key === 'eta' ? meta.eta : meta.etd)
+  const openChart = (tile) => {
+    onEnterMapMode?.()
+    if (!metVisibility?.[tile.layer]) onToggleMetLayer?.(tile.layer)
+    const ms = tile.timed ? chartTimeMs(chartTimes[tile.layer] ?? 'etd') : NaN
+    if (Number.isFinite(ms)) onSetMapTime?.(ms)
+  }
+  const chartsSection = onToggleMetLayer && (
+    <section data-bvid="charts" className="bv-section">
+      <Card>
+        <div className="bv-haz-head">
+          <Subtitle2 as="h3">일기도</Subtitle2>
+          <Caption1 style={{ color: 'var(--text-3)' }}>지도에 실제 자료를 띄웁니다</Caption1>
+        </div>
+        <div className="bv-chart-tiles">
+          {CHART_TILES.map((tile) => {
+            const pick = chartTimes[tile.layer] ?? 'etd'
+            return (
+              <div key={tile.layer} className="bv-chart-tile">
+                <b>{tile.title}</b>
+                <Caption1 className="bv-chart-text">{tile.text}</Caption1>
+                <div className="bv-chart-foot">
+                  {tile.timed && onSetMapTime && (meta.etd || meta.eta) ? (
+                    <div className="bv-chart-seg" role="group" aria-label={`${tile.title} 시각`}>
+                      {[['etd', 'ETD', meta.etd], ['eta', 'ETA', meta.eta]].filter(([, , iso]) => iso).map(([key, label, iso]) => (
+                        <button key={key} type="button" aria-pressed={pick === key} onClick={() => setChartTimes((m) => ({ ...m, [tile.layer]: key }))}>
+                          {label} {formatBriefingTime(iso, tz).replace(` ${tz}`, '')}
+                        </button>
+                      ))}
+                    </div>
+                  ) : <Caption1 style={{ color: 'var(--text-3)' }}>{tile.timed ? '지도 시각 그대로' : '발표 시각 고정'}</Caption1>}
+                  {/* 켜져 있으면 같은 자리에서 끈다(시각은 그대로). */}
+                  {metVisibility?.[tile.layer]
+                    ? <Button appearance="primary" size="small" aria-pressed="true" onClick={() => onToggleMetLayer?.(tile.layer)}>지도에서 끄기</Button>
+                    : <Button appearance="secondary" size="small" onClick={() => openChart(tile)}>지도에서 보기</Button>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </Card>
     </section>
   )
@@ -424,10 +461,19 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
       : ribbonSummary?.status === 'unknown'
         ? 'SIGMET·AIRMET 해당 없음 · 수치모델 난류·착빙은 자료가 없어 확인 불가'
         : '계획고도에서 조우하는 위험 없음'
+  const ribbon = sections.enroute?.ribbon ?? null
+  // 위험 막대 칸을 누르면 NAVLOG 행처럼 그 구간을 고정한다(다시 누르면 해제).
+  const pinRange = (range) => {
+    const key = range ? `ribbon:${range.startNm}-${range.endNm}` : null
+    const next = range && pinnedLeg?.key !== key ? { ...range, key, pinned: true } : null
+    setPinnedLeg(next)
+    setActiveLeg(next)
+    onHighlightLeg?.(next)
+  }
   const enroute = sections.enroute && (
     <section data-bvid="enroute" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">③ 노선·공역</Subtitle2>
+        <Subtitle2 as="h3">노선·공역</Subtitle2>
         <Body1>계획고도 <b style={{ fontVariantNumeric: 'tabular-nums' }}>{sections.enroute.plannedCruiseAltitudeFt}ft</b></Body1>
         {sections.enroute.encounters.length === 0
           ? <Body1 style={{ color: modelTop ? (modelTop.level === 'SEV' ? 'var(--level-red)' : 'var(--level-amber)') : 'var(--text-3)' }}>{noEncounterText}</Body1>
@@ -438,39 +484,18 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
                 {h.bandFt ? ` ${h.bandFt.lowFt}–${h.bandFt.highFt}ft` : ''} · {h.routeIntervalNm.startNm}–{h.routeIntervalNm.endNm}NM
               </Body1>
             ))}
-        {sections.enroute.model?.elements?.length > 0 && (
-          <div className="bv-ribbon-legend" aria-label="난기류 강도 범례">
-            <span><i style={{ background: 'var(--turb-mod)' }} />MODERATE</span>
-            <span><i style={{ background: 'var(--level-red)' }} />SEVERE</span>
-          </div>
+        {/* 데스크톱: 지도형 브리핑 독과 같은 부품(위험 막대 + 압축 연직단면도, 가로축 맞춤).
+            모바일: 막대 없이 기존 단면도 + "단면도 크게 열기" — 시트 폭에서는 압축 단면도가 읽히지 않는다. */}
+        {!isMobile && (ribbon || verticalProfile) && (
+          <BriefingDock variant="document" ribbon={ribbon} verticalProfile={verticalProfile} crossSection={crossSection} advisories={advisories}
+            nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} onSelectForecastHour={onSelectForecastHour}
+            crossSectionHourLoading={crossSectionHourLoading} selectedId={null}
+            onHover={(target) => setRibbonHover(target?.item ? { startNm: target.item.startNm, endNm: target.item.endNm } : null)}
+            onSelect={(target) => pinRange(target?.item ? { startNm: target.item.startNm, endNm: target.item.endNm, from: target.item.from, to: target.item.to } : null)}
+            hiddenRows={hiddenRibbonRows} onToggleRow={(key) => setHiddenRibbonRows((rows) => rows.includes(key) ? rows.filter((r) => r !== key) : [...rows, key])}
+            highlightRangeNm={ribbonHover ?? activeLeg} />
         )}
-        {sections.enroute.model?.elements?.length > 0 && (
-          <div className="bv-ribbons">
-            {sections.enroute.model.elements.map((el, i) => {
-              const total = sections.enroute.model.totalDistanceNm || 1
-              const worst = worstInterval(el.intervals)
-              return (
-                <div key={i} className="bv-ribbon-row">
-                  <div className="bv-ribbon-head">
-                    <span className="bv-ribbon-label">{el.label}</span>
-                    {worst && <span className="bv-ribbon-cap">{SEVERITY_DISPLAY[worst.level] ?? worst.level} {worst.startNm}–{worst.endNm}NM</span>}
-                  </div>
-                  <div className="bv-ribbon">
-                    {el.intervals.map((iv, j) => (
-                      <span key={j} className={`bv-seg ${iv.level === '심' ? 'sev' : 'mod'}`}
-                        style={{ left: `${Math.max(0, (iv.startNm / total) * 100)}%`, width: `${Math.max(1.5, ((iv.endNm - iv.startNm) / total) * 100)}%` }}
-                        title={`${SEVERITY_DISPLAY[iv.level] ?? iv.level} ${iv.startNm}–${iv.endNm}NM`} />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-        {/* 연직단면도가 리본(착빙·난류 구간 막대) 바로 아래에 온다 — 둘 다 같은 경로 거리축을
-            쓰므로 세로로 붙여야 "이 막대 구간이 단면도의 어디"인지 눈으로 이어진다.
-            NAVLOG는 웨이포인트 단위라 축이 달라 그 아래로 내린다. */}
-        {(verticalProfile || sections.enroute.crossSectionAvailable) && (
+        {isMobile && (verticalProfile || sections.enroute.crossSectionAvailable) && (
           <section className="bv-leg-briefing" aria-label="연직단면도">
             <div className="bv-leg-head">
               <div>
@@ -479,19 +504,17 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
               </div>
             </div>
             {verticalProfile && (
-              <>
-                <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
-                  <VerticalProfileViewer embedded profile={verticalProfile} crossSection={crossSection} layers={xLayers} onToggleLayer={toggleXLayer} advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} />
-                </div>
-              </>
+              <div className="bv-xsection bv-xsection-scroll">
+                <VerticalProfileViewer embedded profile={verticalProfile} crossSection={crossSection} layers={xLayers} onToggleLayer={toggleXLayer} advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} />
+              </div>
             )}
-            {sections.enroute.crossSectionAvailable && (isMobile ? verticalProfile : onOpenProfile) && (
-              <Button appearance="secondary" size="small" onClick={isMobile ? () => setXsectionFull(true) : onOpenProfile}>단면도 크게 열기</Button>
+            {sections.enroute.crossSectionAvailable && verticalProfile && (
+              <Button appearance="secondary" size="small" onClick={() => setXsectionFull(true)}>단면도 크게 열기</Button>
             )}
           </section>
         )}
-        {crossSectionHourLoading && <p className="bv-leg-sub" role="status">NWP 시간 반영 중…</p>}
-        {nwpTimeRefreshError && <p className="bv-leg-sub" role="alert">NWP 시간 반영 실패 <button type="button" onClick={onRetryNwpTimeRefresh}>다시 시도</button></p>}
+        {crossSectionHourLoading && <p className="bv-leg-sub" role="status">예보 시각 반영 중…</p>}
+        {nwpTimeRefreshError && <p className="bv-leg-sub" role="alert">예보 시각 반영 실패 <button type="button" onClick={onRetryNwpTimeRefresh}>다시 시도</button></p>}
         {(legs.length > 0 || (sections.enroute.procedures ?? []).length > 0) && <RouteWeatherLegTable
           legs={legs}
           procedures={sections.enroute.procedures ?? []}
@@ -564,7 +587,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     <section data-bvid="notam" className="bv-section">
       <Card>
         <div className="bv-haz-head">
-          <Subtitle2 as="h3">④ 경로·공항 NOTAM</Subtitle2>
+          <Subtitle2 as="h3">경로·공항 NOTAM</Subtitle2>
           <Caption1 style={{ color: 'var(--text-3)' }}>
             {routeNotams.length}건{routeConflicts.length ? ` · 저촉 ${routeConflicts.length}` : ''}
           </Caption1>
@@ -607,7 +630,6 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   )
 
   const dest = sections.destination
-  const CAT3_LEGEND = [['VFR', 'green'], ['IFR', 'amber'], ['LIFR', 'red']]
   const catBar = (timeline, validity, eta, tall) => {
     const segs = tafBarSegments(timeline, validity)
     if (segs.length === 0) return null
@@ -643,86 +665,23 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
       </div>
     )
   }
-  const periodTypeLabel = (t) => (t === 'base' ? 'base' : t.replace('_', ' '))
   const tzSuffix = tz === 'KST' ? 'KST' : 'Z'
-  // 기간 표시(간결): 같은 날이면 "MM/DD HH:MM–HH:MM", 넘어가면 "MM/DD HH:MM → MM/DD HH:MM", 끝에 tz 표기.
   const kstParts = (iso) => {
     const ms = Date.parse(iso); if (!Number.isFinite(ms)) return null
     const d = new Date(ms + (tz === 'UTC' ? 0 : 9 * 3600000)); const q = (n) => String(n).padStart(2, '0')
     return { date: `${q(d.getUTCMonth() + 1)}/${q(d.getUTCDate())}`, time: `${q(d.getUTCHours())}:${q(d.getUTCMinutes())}` }
   }
-  const fmtPeriod = (start, end) => {
-    const a = kstParts(start); const b = kstParts(end); if (!a || !b) return ''
-    return (a.date === b.date ? `${a.date} ${a.time}–${b.time}` : `${a.date} ${a.time} → ${b.date} ${b.time}`) + ` ${tzSuffix}`
-  }
-  // 필드 위험 하이라이트 — ② 현재 실황과 동일(백엔드 levels 재사용)
-  const destCellStyle = (lvl) => ({ fontVariantNumeric: 'tabular-nums', color: lvl === 'red' ? 'var(--level-red)' : undefined, fontWeight: lvl === 'red' ? 700 : undefined })
 
   const destination = (
     <section data-bvid="destination" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">{destNum} 목적지 예보</Subtitle2>
+        <Subtitle2 as="h3">목적지 예보</Subtitle2>
         {!dest.sourceTaf ? <Body1 style={{ color: 'var(--text-3)' }}>TAF 없음</Body1> : (
           <>
             <EnhancedTafTab taf={dest.sourceTaf} icao={dest.icao} eta={meta.eta} forceCompact />
-            <div className="bv-dest-legacy">
-            <div className="bv-dest-head">
-              <CatBadge category={dest.category} />
-              <b style={{ fontSize: 'var(--fs-400)' }}>{dest.icao}</b>
-              <Caption1 style={{ color: 'var(--text-3)' }}>도착 · ETA {formatBriefingTime(meta.eta, tz)}</Caption1>
-            </div>
-            {catBar(dest.timeline, dest.validity, dest.eta, true)}
-            <div className="bv-tafbar-legend">
-              {CAT3_LEGEND.map(([label, k]) => <span key={k}><i style={{ background: LEVEL_COLOR[k] }} />{label}</span>)}
-              <span className="dim">시간대별 최악 범주 · {tzSuffix}</span>
-            </div>
             {dest.etaOutOfRange && (
               <MessageBar intent="warning"><MessageBarBody>도착(ETA)이 이 TAF 유효기간 밖입니다 — 표시된 TAF는 도착 시각을 포함하지 않습니다(최신 TAF 확인 필요).</MessageBarBody></MessageBar>
             )}
-            {dest.periods.length > 0 && (
-              <Table size="small" className="bv-dest-periods" style={{ width: '100%' }}>
-                <TableHeader><TableRow>
-                  <TableHeaderCell style={{ width: '30%' }}>기간</TableHeaderCell><TableHeaderCell style={{ width: 52 }}>범주</TableHeaderCell>
-                  <TableHeaderCell style={{ width: 52 }}>현상</TableHeaderCell><TableHeaderCell style={{ width: 92 }}>바람</TableHeaderCell>
-                  <TableHeaderCell style={{ width: 64 }}>시정</TableHeaderCell><TableHeaderCell>운고</TableHeaderCell>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {dest.periods.map((p, i) => {
-                    const hl = p.etaActive === true // ETA 시점의 지속조건/TEMPO (백엔드 계산)
-                    const L = p.levels || {}
-                    return (
-                      <TableRow key={i} className={hl ? 'bv-dest-row-hl' : undefined}>
-                        <TableCell data-label="기간" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                          <span style={{ color: 'var(--text-2)' }}>{fmtPeriod(p.start, p.end)}</span>{' '}
-                          <span className="bv-dest-ptype" data-type={p.type}>{p.type === 'base' ? 'base' : periodTypeLabel(p.type)}</span>
-                          {hl ? <span className="bv-dest-eta-tag">ETA</span> : null}
-                        </TableCell>
-                        <TableCell data-label="범주"><CatBadge category={p.category} /></TableCell>
-                        <TableCell data-label="현상" style={destCellStyle(L.wxLevel)}>{p.wx}</TableCell>
-                        <TableCell data-label="바람" className="tnum" style={destCellStyle(L.windLevel)}>{p.wind}</TableCell>
-                        <TableCell data-label="시정" className="tnum" style={destCellStyle(L.visLevel)}>{p.vis}</TableCell>
-                        <TableCell data-label="운고" className="tnum" style={destCellStyle(L.ceilLevel)}>{p.clouds}</TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
-            {(dest.rawLines?.length || dest.raw) && (
-              <details className="bv-rawwinds bv-dest-raw">
-                <summary>원문 TAF</summary>
-                <pre className="bv-dest-raw-pre">
-                  {dest.rawLines?.length
-                    ? dest.rawLines.map((ln, i) => (
-                      <div key={i} className={ln.etaActive ? 'bv-dest-raw-eta' : undefined}>
-                        {ln.text}{i === dest.rawLines.length - 1 ? '=' : ''}
-                      </div>
-                    ))
-                    : dest.raw}
-                </pre>
-              </details>
-            )}
-            </div>
           </>
         )}
         {dest.alternateRequired === true && (
@@ -772,7 +731,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
             {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
             <BriefingBanner banner={weatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
-            {nav}{board}{layerAction}{adverse}{currentDesktop}{enroute}{notamSection}{destination}
+            {nav}{board}{layerAction}{adverse}{currentMobile}{chartsSection}{enroute}{notamSection}{destination}
             {!organizationContext && !frozenNotice && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
           </div>
         </MobileSheet>
@@ -822,7 +781,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
         {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
         {frozenNotice}
         <BriefingBanner banner={weatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
-        {nav}{board}{layerAction}{adverse}{currentDesktop}{enroute}{notamSection}{destination}
+        {nav}{board}{layerAction}{adverse}{currentDesktop}{chartsSection}{enroute}{notamSection}{destination}
         {!organizationContext && !frozenNotice && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
       </div>
     </div>

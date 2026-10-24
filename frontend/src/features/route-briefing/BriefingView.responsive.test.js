@@ -8,7 +8,12 @@ const profileWindowJsx = readFileSync(new URL('./VerticalProfileWindow.jsx', imp
 const profileWindowCss = readFileSync(new URL('./RouteBriefing.css', import.meta.url), 'utf8')
 const profileChartJsx = readFileSync(new URL('./VerticalProfileChart.jsx', import.meta.url), 'utf8')
 
-test('renders current airport reports as TAC cards', () => {
+// 데스크톱은 공항=행 비교표 하나(원문은 행을 펼쳐서), 폰 시트는 공항별 원문 카드.
+test('renders current airport reports as one comparison table on desktop and TAC cards on phones', () => {
+  assert.match(jsx, /className="bv-current-matrix"/)
+  assert.doesNotMatch(css, /\.bv-current-matrix \{ display: none; \}/)
+  assert.match(jsx, /\{nav\}\{board\}\{layerAction\}\{adverse\}\{currentMobile\}/)
+  assert.match(jsx, /\{nav\}\{board\}\{layerAction\}\{adverse\}\{currentDesktop\}/)
   assert.match(jsx, /className="bv-current-tac"/)
   assert.match(jsx, /className="bv-current-tac-raw"/)
   assert.match(jsx, /buildMetarTacSegments\(raw, vm\)/)
@@ -16,14 +21,9 @@ test('renders current airport reports as TAC cards', () => {
   assert.match(jsx, /\{a\.icao\} \{a\.reportType === 'SPECI' \? 'SPECI' : 'METAR'\}/)
 })
 
-test('turns destination forecast rows into labelled cards in a narrow briefing panel', () => {
-  assert.match(jsx, /data-label="기간"/)
-  assert.match(css, /@container briefing \(max-width: 719px\)/)
-  assert.match(css, /\.bv-dest-periods tr/)
-})
-
-test('uses the airport panel compact TAF view and marks the ETA period', () => {
+test('uses the airport panel compact TAF view once, without the old period table', () => {
   assert.match(jsx, /<EnhancedTafTab taf=\{dest\.sourceTaf\} icao=\{dest\.icao\} eta=\{meta\.eta\} forceCompact \/>/)
+  assert.doesNotMatch(jsx, /bv-dest-legacy|bv-dest-periods/)
 })
 
 test('keeps the mobile go/no-go banner in two columns', () => {
@@ -31,23 +31,32 @@ test('keeps the mobile go/no-go banner in two columns', () => {
   assert.match(css, /\.bv-mobile \.bv-banner-body \{ min-width: 0;/)
 })
 
-// 리본(착빙·난류 구간 막대)과 연직단면도는 같은 경로 거리축을 쓰므로 붙어 있어야
-// 막대 구간이 단면도의 어디인지 눈으로 이어진다. NAVLOG는 웨이포인트 축이라 그 아래.
-test('places the vertical profile right after the ribbons, then legs, then raw winds', () => {
-  const ribbons = jsx.indexOf('className="bv-ribbons"')
-  const profile = jsx.indexOf('aria-label="연직단면도"')
+// 데스크톱 노선 섹션은 지도형 독과 같은 부품(위험 막대 + 압축 단면도)을 쓰고, NAVLOG·원자료가 그 아래.
+test('uses the map dock parts on desktop, then NAVLOG, then raw winds', () => {
+  const dock = jsx.indexOf('<BriefingDock variant="document"')
   const legs = jsx.indexOf('<RouteWeatherLegTable')
   const rawWinds = jsx.indexOf('className="bv-rawwinds"')
-  assert.ok(ribbons >= 0, 'ribbons present')
-  assert.ok(profile > ribbons, 'profile follows ribbons')
-  assert.ok(legs > profile, 'NAVLOG follows the profile')
+  assert.ok(dock >= 0, 'document dock present')
+  assert.ok(legs > dock, 'NAVLOG follows the dock')
   assert.ok(rawWinds > legs, 'raw winds last')
+  assert.doesNotMatch(jsx, /className="bv-ribbons"/)
+})
+
+// 섹션 번호(①~⑤)는 쓰지 않는다 — NOTAM 유무로 목적지 번호가 바뀌던 문제.
+test('labels sections without numbers', () => {
+  assert.doesNotMatch(jsx, /[①②③④⑤⑥]/)
+  assert.match(jsx, /label: '일기도'/)
+})
+
+// 일기도 칸: 켠 레이어는 같은 버튼 자리에서 끈다.
+test('lets a chart tile turn its map layer back off', () => {
+  assert.match(jsx, /metVisibility\?\.\[tile\.layer\]\s*\?\s*<Button[^>]*onClick=\{\(\) => onToggleMetLayer\?\.\(tile\.layer\)\}>지도에서 끄기<\/Button>/)
 })
 
 test('all briefing sizes use the shared viewer and keep linked state', () => {
   const viewer = readFileSync(new URL('./VerticalProfileViewer.jsx', import.meta.url), 'utf8')
   assert.match(profileWindowJsx, /VerticalProfileViewer/)
-  assert.equal((jsx.match(/<VerticalProfileViewer /g) ?? []).length, 2)
+  assert.equal((jsx.match(/<VerticalProfileViewer /g) ?? []).length, 2) // 모바일 인라인 + 전체화면
   assert.match(jsx, /onToggleLayer=\{toggleXLayer\}/)
   assert.match(jsx, /highlightRangeNm=\{pinnedLeg\}/)
   assert.match(jsx, /onSelectForecastHour=\{onSelectForecastHour\}/)
@@ -66,7 +75,7 @@ test('feeds the hovered/pinned NAVLOG leg into the vertical profile', () => {
   // 표가 거리 범위를 실어 보낸다(지도는 FIX 이름, 단면도는 거리축을 쓴다).
   assert.match(table, /startNm: leg\.startNm, endNm: leg\.endNm/)
   // 브리핑이 그 구간을 차트로 넘긴다.
-  assert.match(jsx, /highlightRangeNm=\{activeLeg\}/)
+  assert.match(jsx, /highlightRangeNm=\{ribbonHover \?\? activeLeg\}/)
   // 차트가 거리 → x좌표로 바꿔 밴드를 그린다.
   assert.match(chart, /highlightRangeNm/)
   assert.match(chart, /vertical-profile-leg-band/)

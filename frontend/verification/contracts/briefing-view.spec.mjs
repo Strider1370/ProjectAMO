@@ -1,6 +1,9 @@
 import { test, expect } from '../fixtures.mjs'
 import { createBriefing } from '../briefing-flow.mjs'
 
+// 데스크톱 노선 섹션의 단면도는 지도형 독과 같은 압축 단면도(위험 막대 아래)다. 모바일은 기존 인라인 단면도.
+const documentProfile = (page) => page.locator('.mb-dock.is-document').getByRole('group', { name: '연직단면도', exact: true })
+
 test.describe('briefing-view', () => {
   test('profile-advisory-symbols show wind values, missing-symbol labels and thicker boundaries', async ({ page }, testInfo) => {
     const now = Date.now()
@@ -18,7 +21,7 @@ test.describe('briefing-view', () => {
     // 이미지 로드에 실패해도 현상명으로 표시한다.
     await page.route('**/icon_AIRMET/MOD_ICE.png', route => route.abort())
     await createBriefing(page)
-    let profile = page.getByRole('region', { name: '연직단면도', exact: true })
+    let profile = testInfo.project.name === 'mobile' ? page.getByRole('region', { name: '연직단면도', exact: true }) : documentProfile(page)
     if (testInfo.project.name === 'mobile') {
       await profile.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
       profile = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
@@ -34,7 +37,8 @@ test.describe('briefing-view', () => {
     await expect(mountain.locator('image')).toHaveAttribute('href', /MTOBSC\.png$/)
     const icing = profile.locator('[data-phenomenon="MOD_ICE"]')
     await icing.scrollIntoViewIfNeeded()
-    await expect(icing.locator('text')).toHaveText('착빙')
+    // 아이콘 요청 실패(abort)가 늦게 돌아오면 글자 대체가 늦다 — 기다림을 넉넉히.
+    await expect(icing.locator('text')).toHaveText('착빙', { timeout: 15000 })
     await expect(icing.locator('image')).toHaveCount(0)
     const boundaries = profile.getByTestId('profile-advisory-boundary')
     await expect(boundaries).toHaveCount(4)
@@ -56,27 +60,19 @@ test.describe('briefing-view', () => {
     await expect(table).toHaveCSS('display', 'table')
     await expect(table.locator('thead')).toHaveCSS('display', 'table-header-group')
     await expect(table.locator('.bv-leg-row').first()).toHaveCSS('display', 'table-row')
-    const [fromCell, legCell, toCell, sidSummary, arrivalSummary] = await Promise.all([
-      page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).getByRole('cell').boundingBox(),
+    // 구간 하나 = 한 줄: 지점 경계 줄이 없고, 절차 요약 줄도 구간 줄과 같은 높이다.
+    await expect(navlog.getByRole('row', { name: /^웨이포인트 / })).toHaveCount(0)
+    const [legCell, sidSummary, arrivalSummary] = await Promise.all([
       page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true }).getByRole('cell').first().boundingBox(),
-      page.getByRole('row', { name: '웨이포인트 FIXB', exact: true }).getByRole('cell').boundingBox(),
       navlog.getByRole('row', { name: '절차 FIXTURE1A 요약', exact: true }).boundingBox(),
       navlog.getByRole('row', { name: '절차 FIXTURE2P · ILS18 요약', exact: true }).boundingBox(),
     ])
-    // 엇갈린 병합: 출발 웨이포인트 중간에서 구간 셀이 시작하고, 그 구간 셀 중간에서 다음 웨이포인트가 시작한다.
-    expect(fromCell.y).toBeLessThan(legCell.y)
-    expect(legCell.y).toBeLessThan(toCell.y)
-    expect(Math.abs((fromCell.y + fromCell.height) - toCell.y)).toBeLessThanOrEqual(1)
-    expect(legCell.y + legCell.height).toBeGreaterThan(toCell.y)
-    expect(fromCell.height).toBeGreaterThanOrEqual(44)
-    expect(fromCell.height).toBeLessThanOrEqual(56)
-    expect(Math.abs(sidSummary.height - legCell.height)).toBeLessThanOrEqual(1)
-    expect(Math.abs(arrivalSummary.height - legCell.height)).toBeLessThanOrEqual(1)
-    const fromCellLocator = page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).getByRole('cell')
+    expect(legCell.height).toBeLessThanOrEqual(40)
+    // 절차 줄은 위험기상 칩이 여럿이면 줄을 바꿔 높아질 수 있다 — 구간 줄보다 낮지만 않으면 된다.
+    expect(sidSummary.height).toBeGreaterThanOrEqual(legCell.height - 1)
+    expect(arrivalSummary.height).toBeGreaterThanOrEqual(legCell.height - 1)
     const legCellLocator = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true }).getByRole('cell').first()
     const procedureCellLocator = navlog.getByRole('row', { name: '절차 FIXTURE1A 요약', exact: true }).getByRole('cell').first()
-    await expect(fromCellLocator).toHaveCSS('font-size', '14px')
-    await expect(fromCellLocator).toHaveCSS('vertical-align', 'middle')
     await expect(legCellLocator).toHaveCSS('font-size', '14px')
     await expect(legCellLocator).toHaveCSS('vertical-align', 'middle')
     await expect(procedureCellLocator).toHaveCSS('font-size', '14px')
@@ -90,19 +86,15 @@ test.describe('briefing-view', () => {
 
     await expect(page.getByRole('heading', { name: 'NAVLOG', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: '연직단면도', exact: true })).toBeVisible()
-    await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true })).toBeVisible()
     await expect(page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })).toBeVisible()
-    await expect(page.getByRole('row', { name: '웨이포인트 FIXB', exact: true })).toBeVisible()
     await expect(page.getByRole('row', { name: 'FIXB에서 FIXC까지 구간', exact: true })).toBeVisible()
-    await expect(page.getByRole('row', { name: '웨이포인트 FIXC', exact: true })).toBeVisible()
-    await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).getByRole('cell')).toHaveAttribute('rowspan', '2')
+    // 구간 하나 = 한 줄 — 지점 경계 줄·병합 칸·위아래로 쌓은 값이 없다.
+    await expect(page.getByRole('row', { name: /^웨이포인트 / })).toHaveCount(0)
     const firstLegRow = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })
-    await expect(firstLegRow.getByRole('cell').first()).toHaveAttribute('rowspan', '2')
-    await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).locator('.bv-leg-connector')).toHaveCount(0)
-    await expect(firstLegRow.locator('.bv-leg-direction')).toHaveCount(0)
-    // 한 칸에 쌓인 두 값은 가로선으로 갈라 둔다.
-    await expect(firstLegRow.locator('.bv-leg-stack > * + *').first()).toHaveCSS('border-top-style', 'solid')
-    // 위험기상 칸은 기상만 싣는다 — NOTAM은 ④ 경로·공항 NOTAM 섹션 몫이다.
+    await expect(firstLegRow.locator('[rowspan]')).toHaveCount(0)
+    await expect(firstLegRow.locator('.bv-leg-stack')).toHaveCount(0)
+    await expect(firstLegRow.locator('[data-label="바람성분"]')).toBeVisible()
+    // 위험기상 칸은 기상만 싣는다 — NOTAM은 경로·공항 NOTAM 섹션 몫이다.
     await expect(page.locator('.bv-main-navlog-table [data-label="위험기상"]').filter({ hasText: /NOTAM/ })).toHaveCount(0)
     await expect(page.getByText('ETA 또는 연료 계산은 포함하지 않습니다.', { exact: true })).toBeVisible()
     // 표/카드 전환은 뷰포트가 아니라 패널 컨테이너 폭(@container briefing)이 정한다.
@@ -123,13 +115,30 @@ test.describe('briefing-view', () => {
     }
   })
 
+  // 데스크톱 노선 섹션: 위험 막대 가로축이 아래 압축 단면도 그림과 같은 세로선에 선다.
+  test('aligns the document hazard ribbon with the compact profile plot', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', '모바일은 기존 인라인 단면도')
+    await createBriefing(page)
+    const dock = page.locator('.mb-dock.is-document')
+    await expect(dock.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
+    await dock.scrollIntoViewIfNeeded()
+    await expect.poll(() => dock.evaluate((root) => {
+      const track = root.querySelector('.mb-track').getBoundingClientRect()
+      const svg = root.querySelector('.mb-profile-body .vertical-profile-plot-svg')
+      const rect = svg.getBoundingClientRect()
+      return [Math.round(track.left - (rect.left + Number(svg.dataset.plotLeft))), Math.round(track.right - (rect.left + Number(svg.dataset.plotRight)))]
+    })).toEqual([0, 0])
+    // 그림이 납작해지지 않는다(범례가 머리 줄에서 세로로 접히던 문제).
+    expect((await dock.locator('.vertical-profile-plot-svg').boundingBox()).height).toBeGreaterThanOrEqual(180)
+  })
+
   test('refreshes the chart and NAVLOG together when the forecast hour changes', async ({ page }) => {
     const requests = await createBriefing(page)
-    const profile = page.getByRole('region', { name: '연직단면도', exact: true })
+    const profile = documentProfile(page).or(page.getByRole('region', { name: '연직단면도', exact: true }))
     const firstLeg = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })
 
-    // 바람 칸은 성분과 실제 풍향·풍속을 두 줄로 함께 싣는다 — 예보시간 전에는 벡터가 비어 있다.
-    await expect(firstLeg.locator('[data-label="바람성분 · 풍향/풍속"]')).toContainText('자료 없음')
+    // 풍향/풍속 칸 — 예보시간 전에는 벡터가 비어 있다.
+    await expect(firstLeg.locator('[data-label="풍향/풍속"] [aria-label="자료 없음"]')).toBeVisible()
     await profile.getByRole('button', { name: '다음 예보시간', exact: true }).click()
 
     await expect(profile.getByRole('button', { name: '다음 예보시간', exact: true })).toBeDisabled()
@@ -154,27 +163,22 @@ test.describe('briefing-view', () => {
     await expect(summaries.nth(0)).not.toContainText('SID')
     await expect(summaries.nth(1)).not.toContainText('STAR')
     await expect(summaries.nth(1)).not.toContainText('IAP')
-    await expect(summaries.nth(0)).toContainText('24 NM')
-    await expect(summaries.nth(0).getByText('착빙 MODERATE')).toHaveCount(1)
-    await expect(summaries.nth(0).getByText('12NM')).toHaveCount(1)
-    await expect(summaries.nth(0).getByText('난류 MODERATE')).toHaveCount(1)
-    await expect(summaries.nth(0).getByText('7NM')).toHaveCount(1)
+    await expect(summaries.nth(0).locator('[data-label="거리"]')).toHaveText('24')
+    // 위험기상 칩은 위험 막대와 같은 MOD 이상 짧은 표기(착빙 MOD · 난류 MOD) + 걸린 발표.
+    await expect(summaries.nth(0).getByText('착빙 MOD', { exact: true })).toHaveCount(1)
+    await expect(summaries.nth(0).getByText('난류 MOD', { exact: true })).toHaveCount(1)
     await expect(summaries.nth(0).getByText('SIGMET_TS_ALPHA')).toHaveCount(1)
     await expect(summaries.nth(0).getByText('SIGMET_ICE_BRAVO')).toHaveCount(1)
-    await expect(summaries.nth(1)).toContainText('22 NM')
-    await expect(summaries.nth(1).getByText('착빙 MODERATE')).toHaveCount(1)
-    await expect(summaries.nth(1).getByText('7NM')).toHaveCount(1)
-    await expect(summaries.nth(1).getByText('난류 MODERATE')).toHaveCount(1)
-    await expect(summaries.nth(1).getByText('3NM')).toHaveCount(1)
+    await expect(summaries.nth(1).locator('[data-label="거리"]')).toHaveText('22')
+    await expect(summaries.nth(1).getByText('착빙 MOD', { exact: true })).toHaveCount(1)
+    await expect(summaries.nth(1).getByText('난류 MOD', { exact: true })).toHaveCount(1)
     expect(duplicateKeyWarnings).toEqual([])
     await expect(navlog.locator('.procedure-navlog-groups')).toHaveCount(0)
 
     await expect(summaries.getByRole('button')).toHaveCount(0)
     await expect(navlog.locator('.bv-procedure-direction')).toHaveCount(0)
     await expect(navlog.getByTestId('procedure-navlog-detail-leg')).toHaveCount(0)
-    await expect(navlog.getByRole('row', { name: '웨이포인트 IAF18', exact: true })).toHaveCount(0)
-    await expect(navlog.getByRole('row', { name: '웨이포인트 RKSS', exact: true })).toHaveCount(1)
-    await expect(navlog.getByRole('row', { name: '웨이포인트 FIXA', exact: true })).toHaveCount(1)
+    await expect(navlog.getByRole('row', { name: /^웨이포인트 / })).toHaveCount(0)
   })
 
   // 모바일 시트에는 헤더 닫기 버튼이 없고(그래버 스와이프가 그 역할을 겸함) 브리핑은
@@ -219,9 +223,10 @@ test.describe('briefing-view', () => {
 
   test('shows two outline-only KIM CLD cloud regions and toggles them', async ({ page }, testInfo) => {
     await createBriefing(page)
-    const profile = page.getByRole('region', { name: '연직단면도', exact: true })
-    // 모델 구름량 윤곽은 '구름·착빙 ▾' 메뉴의 하위 항목이다(기본 꺼짐).
-    await profile.locator('.vpc-operational-controls').evaluate(el => { el.open = true })
+    const mobile = testInfo.project.name === 'mobile'
+    const profile = mobile ? page.getByRole('region', { name: '연직단면도', exact: true }) : documentProfile(page)
+    // 모델 구름량 윤곽은 '구름·착빙 ▾' 메뉴의 하위 항목이다(기본 꺼짐). 압축 단면도는 레이어 줄에 바로 있다.
+    if (mobile) await profile.locator('.vpc-operational-controls').evaluate(el => { el.open = true })
     await profile.locator('.vpc-operational-options > summary').click()
     const cloudToggle = profile.getByRole('checkbox', { name: '모델 구름량 윤곽', exact: true })
     await expect(cloudToggle).not.toBeChecked()
@@ -229,12 +234,15 @@ test.describe('briefing-view', () => {
     const contours = profile.getByTestId('kim-cloud-contours')
     await expect(contours).toBeVisible()
     await expect(contours.locator('path.cs-cloud-contour')).toHaveCount(2)
-    await expect(profile.getByText('KIM CLD ≥ 0.6 윤곽 · 일부 결측', { exact: true })).toBeVisible()
+    // 그림 아래 설명 줄은 기존(모바일) 단면도에만 있다 — 압축 단면도는 메타 줄을 숨긴다.
+    if (mobile) await expect(profile.getByText('KIM CLD ≥ 0.6 윤곽 · 일부 결측', { exact: true })).toBeVisible()
     expect(await contours.locator('path.cs-cloud-contour').evaluateAll((paths) => paths.every((path) => path.getAttribute('fill') === 'none' && getComputedStyle(path).fill === 'none'))).toBe(true)
     await cloudToggle.uncheck(); await expect(profile.getByTestId('kim-cloud-contours')).toHaveCount(0)
     await cloudToggle.check(); await expect(profile.getByTestId('kim-cloud-contours')).toBeVisible()
     await page.keyboard.press('Escape')
-    const screenshotTarget = testInfo.project.name === 'mobile'
+    // 압축 단면도의 옵션 창은 그림 위로 펼쳐진다 — 찍기 전에 닫는다.
+    if (!mobile) await profile.locator('.vpc-operational-options > summary').click()
+    const screenshotTarget = mobile
       ? await (async () => {
           await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
           const fullscreen = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
@@ -267,7 +275,7 @@ test.describe('briefing-view', () => {
 
     // 누르면 ⑤ 섹션으로 이동한다
     await page.getByRole('button', { name: /불꽃놀이 실시/ }).click()
-    await expect(page.getByRole('heading', { name: '④ 경로·공항 NOTAM', exact: true })).toBeInViewport()
+    await expect(page.getByRole('heading', { name: '경로·공항 NOTAM', exact: true })).toBeInViewport()
   })
 
   test('switches between full briefing and map-together views for a local navdata route', async ({ page }, testInfo) => {

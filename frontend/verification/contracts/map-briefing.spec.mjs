@@ -73,7 +73,9 @@ test.describe('map-briefing', () => {
     // 문서형 ↔ 지도형
     await panel.getByRole('button', { name: '문서형 보기' }).click()
     await expect(page.locator('.briefing-view')).toBeVisible()
-    await expect(ribbon).toHaveCount(0)
+    // 문서형 노선 섹션에도 같은 위험 막대가 있다 — 지도 위 독만 사라진다.
+    await expect(page.locator('.mb-dock:not(.is-document)')).toHaveCount(0)
+    await expect(page.locator('.briefing-view').getByRole('group', { name: '경로상 위험 막대' })).toHaveCount(1)
     await page.getByRole('button', { name: '지도형 보기' }).click()
     await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
   })

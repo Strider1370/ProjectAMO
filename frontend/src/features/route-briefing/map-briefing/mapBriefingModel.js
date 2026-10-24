@@ -52,6 +52,9 @@ export function profileHeightPx(viewportHeight) {
 
 // 위험 막대 이름 칸 폭 = 단면도 왼쪽 칸(범례 약 160 + 고도 눈금 약 80). 같은 폭이라 두 가로축이 정렬된다.
 export const RIBBON_LABEL_WIDTH_PX = 240
+// 문서형 브리핑(패널 폭): 이름 칸 = 단면도 고도 눈금 폭. 눈 아이콘·현상 이름만 들어가고 단면도 그림이 폭을 다 쓴다.
+export const DOCUMENT_LABEL_WIDTH_PX = 64
+export const DOCUMENT_PROFILE_HEIGHT_PX = 400
 
 export const LEVEL_KO = { SEV: '심한', MOD: '보통' }
 const PHASE_KO = { climb: '상승', cruise: '순항', descent: '강하' }

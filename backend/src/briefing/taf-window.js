@@ -264,10 +264,10 @@ export function alternateRequired(taf, etaIso) {
     const lowCeiling = Number.isFinite(ceilingFt) && ceilingFt < 2000
     const lowVis = Number.isFinite(visibilityM) && visibilityM < 5000
     if (lowCeiling || lowVis) {
-      return { required: true, reason: 'ETA±1h 운고<2000ft 또는 시정<5000m' }
+      return { required: true, reason: 'ETA 앞뒤 1시간 안에 운고 2000ft 미만 또는 시정 5000m 미만이 예보되어 있습니다.' }
     }
   }
-  return { required: false, reason: 'ETA±1h 최저치 충족' }
+  return { required: false, reason: 'ETA 앞뒤 1시간 동안 교체공항 기준(운고 2000ft·시정 5000m)을 충족합니다.' }
 }
 
 export default { selectTafAtEta, alternateRequired, metricsAt, weatherAt }
