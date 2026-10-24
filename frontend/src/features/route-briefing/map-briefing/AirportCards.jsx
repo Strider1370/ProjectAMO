@@ -171,10 +171,10 @@ function AirportCard({ card, place, changes, hhmm, onOpenAirport, onToggleCollap
       </dl>
       <footer className="mb-ac-foot">
         {card.warnings.length > 0 && (
-          <span className={`mb-ac-warn${card.warnings.some((warning) => warning.red) ? ' is-red' : ''}`}>
+          <span className="mb-ac-warn">
             <b>경보</b>
             {card.warnings.map((warning, index) => (
-              <span key={warning.code} className={warning.red ? 'is-red' : undefined}
+              <span key={warning.code}
                 title={warning.validFrom && warning.validTo ? `${warning.label} 경보 · ${hhmm(warning.validFrom)}–${hhmm(warning.validTo)}` : `${warning.label} 경보`}>
                 {index > 0 && ' · '}{warning.label}
               </span>

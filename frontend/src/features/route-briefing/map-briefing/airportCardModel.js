@@ -97,7 +97,6 @@ export function warningBadges(hazards = []) {
     byCode.set(code, {
       code,
       label: WARNING_KO[code] ?? hazard.label ?? code,
-      red: code === 'WIND_SHEAR' || hazard.level === 'red',
       validFrom: hazard.validFrom ?? null,
       validTo: hazard.validTo ?? null,
     })
