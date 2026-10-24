@@ -5,7 +5,7 @@ import CreateForecasterDialog from '../CreateForecasterDialog.jsx'
 
 // 계정 관리 — 승인 대기와 전체 사용자. 내용은 기존 화면 그대로이고 자리만 옮겼다.
 // 승인 대기는 시간에 민감해서 메뉴 배지로도 항상 보인다(AdminShell).
-const ROLE_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
+const ROLE_KO = { pilot: '일반', forecaster: '예보관', admin: '관리자' }
 const STATUS_KO = { pending: '대기', active: '활성', rejected: '거절' }
 const STATUS_TONE = { pending: 'warn', active: 'ok', rejected: 'bad' }
 

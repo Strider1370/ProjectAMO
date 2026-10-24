@@ -96,6 +96,7 @@
   line-height: 1.5;
   margin: 2px 0 0;
   text-align: center;
+  word-break: keep-all;
 }
 
 .auth-account {

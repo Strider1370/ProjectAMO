@@ -56,4 +56,5 @@ export function useAuth() {
   return ctx
 }
 
-export const ROLE_LABEL_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
+// 일반 계정(내부 역할 pilot)은 따로 표시하지 않는다. 예보관·관리자만 이름 옆에 붙인다.
+export const ROLE_LABEL_KO = { forecaster: '예보관', admin: '관리자' }

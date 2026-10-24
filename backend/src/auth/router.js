@@ -23,7 +23,7 @@ export function createAuthRouter({ db = null } = {}) {
   const loginLimiter = makeLimiter(15 * 60 * 1000, 10) // 로그인 15분에 10회
   const registerLimiter = makeLimiter(60 * 60 * 1000, 5) // 가입 1시간에 5회
 
-  // 회원가입: 조종사만 공개 등록. 예보관은 관리자가 create-user CLI로만 생성.
+  // 회원가입: 승인 없이 바로 쓸 수 있는 일반 계정(내부 역할 pilot). 예보관은 관리자가 create-user CLI로만 생성.
   router.post('/register', registerLimiter, (req, res) => {
     const parsed = registerSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: 'invalid_input' })
@@ -31,10 +31,11 @@ export function createAuthRouter({ db = null } = {}) {
       return res.status(400).json({ error: 'forecaster_approval_required' })
     }
     try {
-      createUser(database(), { username: parsed.data.username, password: parsed.data.password, role: 'pilot', status: 'pending' })
+      createUser(database(), { username: parsed.data.username, password: parsed.data.password, role: 'pilot', status: 'active' })
     } catch (err) {
-      // 계정 열거 방지: 중복 아이디도 동일 성공응답(내부만 무시). 그 외 검증오류는 400.
-      if (err.message !== 'username_taken') return res.status(400).json({ error: 'invalid_input' })
+      // 가입 즉시 로그인하므로 중복 아이디는 알려야 한다. 그 외 검증오류는 400.
+      if (err.message === 'username_taken') return res.status(409).json({ error: 'username_taken' })
+      return res.status(400).json({ error: 'invalid_input' })
     }
     return res.status(201).json({ ok: true })
   })
@@ -45,9 +46,9 @@ export function createAuthRouter({ db = null } = {}) {
     if (!parsed.success) return res.status(401).json({ error: 'invalid_credentials' })
     const user = verifyLogin(database(), parsed.data.username, parsed.data.password)
     if (!user) return res.status(401).json({ error: 'invalid_credentials' })
-    if (user.status !== 'active') {
-      return res.status(403).json({ error: user.status === 'rejected' ? 'account_rejected' : 'pending_approval' })
-    }
+    // 승인 절차를 없애기 전에 가입해 대기 중이던 계정은 첫 로그인에서 활성화한다.
+    if (user.status === 'pending') database().prepare("UPDATE users SET status='active' WHERE id=?").run(user.id)
+    else if (user.status !== 'active') return res.status(403).json({ error: 'account_rejected' })
     req.session.userId = user.id
     req.session.role = user.role
     req.session.absoluteExpiry = Date.now() + ABSOLUTE_TTL_MS

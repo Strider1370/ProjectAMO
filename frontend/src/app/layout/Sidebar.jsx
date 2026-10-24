@@ -186,7 +186,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
           {isExpanded && (
             <div className="profile-info">
               <span className="profile-name">{user ? (user.display_name || user.username) : '로그인'}</span>
-              <span className="profile-email">{user ? (ROLE_LABEL_KO[user.role] || user.role) : '게스트'}</span>
+              {(!user || ROLE_LABEL_KO[user.role]) && <span className="profile-email">{user ? ROLE_LABEL_KO[user.role] : '게스트'}</span>}
             </div>
           )}
         </button>

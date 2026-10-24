@@ -15,7 +15,7 @@ import { listOrganizations } from '../organization-lounge/api.js'
 import ShareFlightDialog from '../organization-lounge/ShareFlightDialog.jsx'
 import '../settings/SettingsModal.css'
 
-const ROLE_LABEL_KO = { admin: '관리자', pilot: '조종사', forecaster: '예보관' }
+const ROLE_LABEL_KO = { admin: '관리자', forecaster: '예보관' }
 
 const useStyles = makeStyles({
   list: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
@@ -182,7 +182,7 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
               <div>
                 <div className={s.head}>
                   <strong>{user?.display_name || user?.username}</strong>
-                  <span className={s.meta}>{ROLE_LABEL_KO[user?.role] || user?.role}</span>
+                  {ROLE_LABEL_KO[user?.role] && <span className={s.meta}>{ROLE_LABEL_KO[user.role]}</span>}
                 </div>
 
                 {briefings.length >= MAX_SAVED_BRIEFINGS && (

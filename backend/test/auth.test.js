@@ -34,9 +34,7 @@ test('auth flow: register → login → me(cookie) → logout', async () => {
     let r = await fetch(at(server, '/api/auth/register'), jsonPost({ username: 'pilotx', password: 'password1' }))
     assert.equal(r.status, 201, 'register pilot 201')
 
-    // 가입=승인대기 → 로그인 전 관리자 승인 필요.
-    setUserStatus(db, listPending(db)[0].id, 'active')
-
+    // 가입하면 승인 없이 바로 로그인된다.
     r = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'pilotx', password: 'password1' }))
     assert.equal(r.status, 200, 'login 200')
     assert.equal((await r.json()).role, 'pilot')
@@ -63,18 +61,26 @@ test('auth flow: register → login → me(cookie) → logout', async () => {
   }
 })
 
-test('register creates pending user and login is blocked until approved', async () => {
+test('register is active at once; duplicate names are refused; old pending accounts can log in', async () => {
   const { db, app } = makeServer()
   const server = await listen(app)
   try {
     await fetch(at(server, '/api/auth/register'), jsonPost({ username: 'newpilot', password: 'password1' }))
-    let r = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'newpilot', password: 'password1' }))
-    assert.equal(r.status, 403, 'login blocked while pending')
-    assert.equal((await r.json()).error, 'pending_approval')
+    assert.equal(listPending(db).length, 0)
+    let r = await fetch(at(server, '/api/auth/register'), jsonPost({ username: 'newpilot', password: 'password2' }))
+    assert.equal(r.status, 409)
+    assert.equal((await r.json()).error, 'username_taken')
 
-    setUserStatus(db, listPending(db)[0].id, 'active')
-    r = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'newpilot', password: 'password1' }))
-    assert.equal(r.status, 200, 'login after approval')
+    createUser(db, { username: 'waiting', password: 'password1', role: 'pilot', status: 'pending' })
+    r = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'waiting', password: 'password1' }))
+    assert.equal(r.status, 200, 'pending account is activated on login')
+    assert.equal(listPending(db).length, 0)
+
+    const rejected = createUser(db, { username: 'blocked', password: 'password1', role: 'pilot', status: 'pending' })
+    setUserStatus(db, rejected.id, 'rejected')
+    r = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'blocked', password: 'password1' }))
+    assert.equal(r.status, 403)
+    assert.equal((await r.json()).error, 'account_rejected')
   } finally {
     server.close(); db.close()
   }

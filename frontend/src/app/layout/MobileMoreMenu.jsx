@@ -11,7 +11,7 @@ export default function MobileMoreMenu({ onSearch, onMyMap, onTraffic, onSetting
   const { user } = useAuth()
   const [devConsoleOpen, setDevConsoleOpen] = useState(false)
   const items = [
-    { id: 'account', label: user ? `${user.display_name || user.username} · ${ROLE_LABEL_KO[user.role] || user.role}` : '로그인', icon: User, onClick: onAccount },
+    { id: 'account', label: user ? [user.display_name || user.username, ROLE_LABEL_KO[user.role]].filter(Boolean).join(' · ') : '로그인', icon: User, onClick: onAccount },
     { id: 'search', label: '검색', icon: Search, onClick: onSearch },
     { id: 'alerts', label: '알림', icon: Bell, onClick: onAlerts ?? (() => window.location.assign('/alerts')) },
     { id: 'my-map', label: '내 지도', icon: MapPinned, onClick: onMyMap },
