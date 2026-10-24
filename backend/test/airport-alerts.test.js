@@ -102,7 +102,7 @@ test('동시 발생한 사건도 각 이벤트 ID로 푸시해 해당 상세로 
   assert.equal(payloads.length, 3)
   assert.ok(payloads.some((item) => /시정 1200m/.test(item.body)))
   assert.ok(payloads.some((item) => /강풍경보/.test(item.body)))
-  assert.ok(payloads.some((item) => /10km 이내 1건/.test(item.body)))
+  assert.ok(payloads.some((item) => /반경 10km · 최근 \d+분 · 1건/.test(item.body)))
   assert.ok(payloads.every((item) => /^\/\?alert=airport:\d+$/.test(item.url)))
   assert.equal(new Set(payloads.map((item) => item.url)).size, 3)
   assert.equal(db.prepare('SELECT COUNT(*) n FROM airport_alert_events WHERE user_id=1 AND pushed_at IS NOT NULL').get().n, 3)

@@ -1,5 +1,5 @@
 import { sendPush } from '../push/send.js'
-import { airportAlertBody, pushBodyWithinLimit } from './content.js'
+import { airportAlertBody, airportAlertTitle, pushBodyWithinLimit, routeSigmetBody, routeSigmetTitle } from './content.js'
 
 const MAX_ATTEMPTS = 5
 
@@ -16,17 +16,16 @@ export function queueUserAlertDeliveries(db, { source, eventId, userId, pushEnab
 
 function eventForDelivery(db, source, eventId, userId) {
   if (source === 'airport') {
-    const row = db.prepare('SELECT id,kind,payload FROM airport_alert_events WHERE id=? AND user_id=?').get(eventId, userId)
+    const row = db.prepare('SELECT id,icao,kind,payload FROM airport_alert_events WHERE id=? AND user_id=?').get(eventId, userId)
     if (!row) return null
     const payload = JSON.parse(row.payload)
-    return { title: payload.title, body: pushBodyWithinLimit(airportAlertBody({ kind: row.kind, payload })),
+    return { title: airportAlertTitle({ kind: row.kind, payload }, row.icao), body: pushBodyWithinLimit(airportAlertBody({ kind: row.kind, payload })),
       url: `/?alert=airport:${row.id}` }
   }
   const row = db.prepare('SELECT id,payload FROM route_sigmet_events WHERE id=? AND user_id=?').get(eventId, userId)
   if (!row) return null
   const payload = JSON.parse(row.payload)
-  return { title: payload.title,
-    body: `${payload.phenomenon} · 유효 ${payload.validFrom} – ${payload.validTo}`,
+  return { title: routeSigmetTitle(payload), body: routeSigmetBody(payload),
     url: `/?alert=route:${row.id}` }
 }
 

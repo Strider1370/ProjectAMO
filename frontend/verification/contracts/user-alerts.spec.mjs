@@ -31,17 +31,20 @@ async function installApi(page) {
 }
 
 test('user-alerts: 공항 종에서 설정 패널을 열고 시험 알림 상세로 이동한다', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'PC 팝업은 데스크톱 전용(휴대폰은 푸시로 받는다)')
   await installApi(page)
   await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '인천국제공항 알림 설정' }).click()
   const panel = page.getByRole('dialog', { name: '알림 관리' })
   await expect(panel).toBeVisible()
-  await expect(panel.getByRole('heading', { name: '감시할 공항과 조건' })).toBeVisible()
+  // 공항 종은 그 공항의 편집 화면을 바로 연다.
+  await expect(panel.getByRole('heading', { name: '인천국제공항' })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('alert-settings-desktop.png') })
-  await panel.getByRole('button', { name: '테스트 알림 보내기' }).click()
+  await panel.getByRole('button', { name: '내 기기로 시험 받기' }).click()
   const toast = page.getByRole('alert', { name: '새 공항 알림' })
   await expect(toast).toContainText('테스트 · 모의 자료')
-  await toast.getByRole('button', { name: /인천국제공항/ }).click()
+  await expect(toast).toContainText('시정 기준 미달')
+  await toast.getByRole('button', { name: '시험 내용 보기' }).click()
   const detail = page.getByRole('dialog', { name: '시험 알림 상세' })
   await expect(detail).toContainText('시정')
   await expect(detail).toContainText('1499m')
@@ -73,9 +76,11 @@ test('user-alerts: 경로 종에서 해당 경로 SIGMET 설정을 바로 연다
     detail: { view: 'settings', routeId: 73 },
   })))
   const panel = page.getByRole('dialog', { name: '알림 관리' })
-  await expect(panel.getByRole('heading', { name: '감시할 경로' })).toBeVisible()
-  await expect(panel.getByRole('combobox', { name: 'SIGMET 감시 경로' })).toHaveValue('73')
-  await expect(panel.getByRole('heading', { name: '감시할 공항과 조건' })).toHaveCount(0)
+  // 경로 종은 그 경로의 감시 편집을 바로 연다(공항 편집은 열리지 않는다).
+  await expect(panel.getByRole('heading', { name: '김포 → 제주' })).toBeVisible()
+  await expect(panel.getByText('미설정', { exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: '이 경로 감시 시작' })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: '인천국제공항' })).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('route-alert-settings.png') })
 })
 
@@ -100,7 +105,7 @@ test('user-alerts: 경로 감시를 삭제하면 설정 목록에서 빠지고 �
     detail: { view: 'settings', routeId: 73 },
   })))
   const panel = page.getByRole('dialog', { name: '알림 관리' })
-  await panel.getByRole('button', { name: '삭제' }).click()
+  await panel.getByRole('button', { name: '감시 삭제' }).click()
   await expect(panel.getByRole('status')).toContainText('발생 이력은 유지됩니다')
   await expect(panel.getByText('미설정', { exact: true })).toBeVisible()
 })
@@ -147,6 +152,14 @@ test('user-alerts: 비로그인 상태에서 공항 설정의 로그인 창이 �
   await expect(auth).toBeVisible()
   await page.keyboard.press('Tab')
   expect(await auth.evaluate((node) => node.contains(document.activeElement))).toBe(true)
+})
+
+test('user-alerts: 공항 패널 종 버튼이 감시 여부를 글자로 보인다', async ({ page }) => {
+  await installApi(page)
+  await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('button', { name: '인천국제공항 알림 설정 · 감시 중' })).toContainText('알림 감시 중')
+  await page.goto('/?airport=RKSS', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('button', { name: '김포국제공항 알림 설정', exact: true })).toContainText('알림 설정')
 })
 
 test('user-alerts: 다른 공항을 이미 감시해도 누른 공항의 설정이 먼저 열린다', async ({ page }) => {

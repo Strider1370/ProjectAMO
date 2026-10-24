@@ -78,8 +78,12 @@
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
 }
-.airport-panel-alerts { position: relative; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; flex: none; border: 0; border-radius: 8px; background: var(--bg-3); color: var(--text-2); cursor: pointer; }
-.airport-panel-alerts:hover { color: var(--accent); }
+.airport-panel-alerts { position: absolute; top: 20px; right: 64px; z-index: 1; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 18px; background: rgba(15, 23, 42, 0.55); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.airport-panel-alerts:hover { background: rgba(15, 23, 42, 0.72); }
+.airport-panel-alerts:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.airport-panel-alerts-text.is-short { display: none; }
+.airport-panel-alerts.is-watching { border-color: rgba(134, 239, 172, 0.7); }
+.airport-panel-alerts-dot { width: 8px; height: 8px; margin-left: -10px; margin-top: -10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.55); }
 
 .airport-panel-head {
   position: relative;
@@ -317,6 +321,11 @@
   font-weight: 800;
   color: var(--text-1);
 }
+.ap-sec-head.has-history .ap-sec-meta {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.ap-sec-head.has-history .ap-sec-fold { margin-left: auto; }
 .ap-sec-badge { margin-left: 4px; }
 .ap-sec-fold {
   margin-left: auto;
@@ -2598,6 +2607,10 @@
     z-index: 120;
     width: 100vw;
   }
+
+  .airport-panel-alerts { top: 16px; right: 60px; height: 34px; padding: 0 10px; }
+  .airport-panel-alerts-text.is-full { display: none; }
+  .airport-panel-alerts-text.is-short { display: inline; }
 
   .airport-panel-head {
     max-height: 112px;

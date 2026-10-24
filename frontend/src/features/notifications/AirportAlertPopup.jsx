@@ -3,6 +3,8 @@ import { X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import useNotifications from './useNotifications.js'
 import { formatNotification } from './notificationFormat.js'
+import AlertCard from '../airport-alerts/AlertCard.jsx'
+import '../airport-alerts/airportAlerts.css'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import './NotificationCenter.css'
@@ -36,23 +38,28 @@ export default function AirportAlertPopup() {
   }, [])
 
   if (isMobile || !events?.length) return null
-  const single = events.length === 1 ? events[0] : null
-  const targetCount = new Set(events.map((event) => event.airportIcao ?? `route:${event.routeId ?? event.id}`)).size
-  async function open() {
-    if (single?.test) { window.location.assign(`/?alertTest=${encodeURIComponent(single.testId)}`); return }
-    if (single?.source === 'organization') { await markRead(single.id); window.location.assign(`/lounge/${encodeURIComponent(single.organizationId)}/alerts/${encodeURIComponent(single.id.slice(13))}`); return }
-    if (single && !single.preview) { await markRead(single.id); window.location.assign(`/?alert=${encodeURIComponent(single.id)}`); return }
+  // 가장 최근 1건을 카드로 펼치고 나머지는 "외 N건" 한 줄로 접는다.
+  const [first, ...rest] = events
+  async function open(event) {
+    if (event.test) { window.location.assign(`/?alertTest=${encodeURIComponent(event.testId)}`); return }
+    if (event.source === 'organization') { await markRead(event.id); window.location.assign(`/lounge/${encodeURIComponent(event.organizationId)}/alerts/${encodeURIComponent(event.id.slice(13))}`); return }
+    if (!event.preview) { await markRead(event.id); window.location.assign(`/?alert=${encodeURIComponent(event.id)}`); return }
     window.location.assign('/alerts')
   }
-  return <aside className="airport-alert-toast" role="alert" aria-label={single?.source === 'route' ? '새 경로 알림' : single?.source === 'organization' ? '새 기관 알림' : '새 공항 알림'}>
-    <div className="airport-alert-toast-head"><span>{single?.test ? '테스트 · 모의 자료' : single?.source === 'route' ? '경로 알림' : single?.source === 'organization' ? '기관 알림' : `공항 알림${single?.preview ? ' · 미리보기' : ''}`}</span><time dateTime={events[0].detectedAt}>{clock(events[0].detectedAt, tz)} {tz}</time><button type="button" aria-label="알림 닫기" onClick={() => setEvents(null)}><X size={17} /></button></div>
-    <button type="button" className="airport-alert-toast-body" onClick={open}>
-      <strong>{single ? single.routeName : targetCount === 1 ? `${events[0].routeName} · 새 알림 ${events.length}건` : `${targetCount}개 대상에 새 알림`}</strong>
-      {single?.type === 'metar' ? <span className="airport-alert-toast-metrics">{single.payload.metrics.map((metric) => <span key={metric.key}><span>{metric.label}</span><b>{metric.direction === 'event' ? '관측' : `${metric.value}${metric.unit}`}</b><small>{metric.direction === 'event' ? '' : `기준 ${metric.threshold}${metric.unit} ${metric.direction === 'below' ? '미만' : '이상'}`}</small></span>)}</span>
-        : single?.type === 'taf' ? <span className="airport-alert-toast-summary"><strong>{single.payload.reportType === 'AMD' ? 'TAF AMD' : '새 TAF'} · 유효 {single.payload.validFrom} – {single.payload.validTo}</strong><pre className="airport-alert-toast-report">{single.payload.text}</pre></span>
-          : single ? <span className="airport-alert-toast-summary">{formatNotification(single)}</span>
-          : <span className="airport-alert-toast-summary">{events.slice(0, 3).map((event) => `${targetCount === 1 ? '' : `${event.routeName} `}${formatNotification(event)}`).join(' · ')}{events.length > 3 ? ` 외 ${events.length - 3}건` : ''}</span>}
-      <small className="airport-alert-toast-link">{single?.test ? '시험 내용 보기 ↗' : single ? '알림 상세 보기 ↗' : '알림 목록 보기 ↗'}</small>
-    </button>
+  async function read() {
+    if (!first.test && !first.preview) await markRead(first.id)
+    if (rest.length) setEvents(rest); else setEvents(null)
+  }
+  return <aside className="airport-alert-toast" role="alert" aria-label={first.source === 'route' ? '새 경로 알림' : first.source === 'organization' ? '새 기관 알림' : '새 공항 알림'}>
+    <button type="button" className="airport-alert-toast-close" aria-label="알림 닫기" onClick={() => setEvents(null)}><X size={17} /></button>
+    {first.source === 'organization'
+      ? <div className="aa-card is-compact"><div className="aa-card-top"><span className="aa-kind">기관 알림</span><span className="aa-when">{clock(first.detectedAt, tz)} {tz}</span></div>
+        <div className="aa-card-head"><div className="aa-card-title"><strong>{first.routeName}</strong><span>{formatNotification(first)}</span></div></div></div>
+      : <AlertCard item={first} tz={tz} compact />}
+    <div className="airport-alert-toast-actions">
+      <button type="button" className="aa-open" onClick={() => open(first)}>{first.test ? '시험 내용 보기' : '보기'}</button>
+      {!first.test && <button type="button" onClick={read}>읽음</button>}
+    </div>
+    {rest.length > 0 && <button type="button" className="airport-alert-toast-more" onClick={() => window.dispatchEvent(new CustomEvent('open-alert-panel', { detail: { view: 'list' } }))}>외 {rest.length}건 · 알림 목록에서 보기</button>}
   </aside>
 }

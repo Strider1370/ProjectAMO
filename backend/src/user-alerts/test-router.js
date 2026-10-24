@@ -6,15 +6,13 @@ import { getDb } from '../db/index.js'
 import { requireAuth } from '../auth/middleware.js'
 import { sendPush } from '../push/send.js'
 import { airportAlertBody, pushBodyWithinLimit } from '../airport-alerts/service.js'
+import { airportAlertTitle, routeSigmetBody, routeSigmetTitle } from './content.js'
 import { airportTestScenarios, evaluateAirportTest } from './airport-test.js'
 import { evaluateRouteTest } from './route-sigmet.js'
 
 const TEST_LIFETIME_MS = 24 * 60 * 60_000
 const TEST_RATE_WINDOW_MS = 10 * 60_000
 const TEST_RATE_LIMIT = 30
-const SCENARIO_LABELS = {
-  metar: 'METAR 임계값', windshear: '급변풍', fzra: '어는 비', taf_new: '새 TAF', taf_amd: 'TAF AMD', airport_warning: '공항경보', lightning: '낙뢰', sigmet: '경로 SIGMET',
-}
 
 function publicRun(row) {
   return row ? {
@@ -99,8 +97,8 @@ export function createAlertTestRouter({ db = null, sendPushImpl = sendPush, now 
       try {
         await sendPushImpl({ endpoint: subscription.endpoint,
           keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, {
-          title: `테스트 · ${routeTest ? watch.route_name : airports.find((airport) => airport.icao === icao)?.nameKo ?? icao} ${SCENARIO_LABELS[scenario]}`,
-          body: routeTest ? `모의 자료 · ${result.payload.phenomenon} · ${result.payload.validFrom} – ${result.payload.validTo}`
+          title: `테스트 · ${routeTest ? routeSigmetTitle({ ...result.payload, routeName: watch.route_name }) : airportAlertTitle(result, icao)}`,
+          body: routeTest ? `모의 자료 · ${routeSigmetBody(result.payload)}`
             : pushBodyWithinLimit(`모의 자료 · ${airportAlertBody({ kind: result.kind, payload: result.payload })}`),
           url: `/?alertTest=${id}`,
         })

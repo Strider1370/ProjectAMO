@@ -21,6 +21,9 @@ import { buildAirportLightningModel } from './lib/airportLightningModel.js'
 import { resolveAirportBanner } from './lib/airportBanner.js'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import { AirportModelComparisonSection } from '../airport-model-comparison/ModelComparisonSummary.jsx'
+import useAirportWatchStatus from '../airport-alerts/useAirportWatchStatus.js'
+import { useAirportHistory } from '../../shared/weather/useAirportHistory.js'
+import ReportHistoryBadges from './tabs/ReportHistoryBadges.jsx'
 import './AirportPanel.css'
 
 const AIRPORT_HEADER_NAME_KO = {
@@ -60,6 +63,7 @@ function AirportOperationsStrip({ airport, tz, now = new Date() }) {
 function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredWeatherData, onAlertsOpen }) {
   const { tz } = useTimeZone()
   const icao = airport?.icao
+  const watching = useAirportWatchStatus(icao)
   const isFullFeature = FULL_FEATURE_AIRPORTS.has(icao)
   const airportInfo = weatherData?.airportInfo?.airports?.[icao] || null
   const bodyRef = useRef(null)
@@ -140,16 +144,21 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
   // 시연 중이면 TAF 배지·NOTAM 유효 판단을 시연 기준시각으로 한다(TAF 탭 자체는 TafTab이 따로 맞춘다).
   const demoNowMs = useDemoNowMs()
 
-  if (!airport) return null
-
-  const headerNameKo = AIRPORT_HEADER_NAME_KO[icao] || airport.nameKo || airport.name || icao
-  const headerNameEn = airport.name || AIRPORT_NAME_KO[icao] || icao
-
   const airportWeatherSource = airport?.overseas ? 'overseas' : 'domestic'
   const metarPayload = airportWeatherSource === 'overseas' ? weatherData?.metarOverseas : weatherData?.metar
   const tafPayload = airportWeatherSource === 'overseas' ? weatherData?.tafOverseas : weatherData?.taf
   const metar = metarPayload?.airports?.[icao] || null
   const taf = tafPayload?.airports?.[icao] || null
+  const metarHistory = useAirportHistory(icao, 'metar', { latest: metar, latestTime: metar?.header?.observation_time, latestKind: metar?.header?.report_type })
+  const tafHistory = useAirportHistory(icao, 'taf', { latest: taf, latestTime: taf?.header?.issued, latestKind: taf?.header?.report_status === 'AMENDMENT' ? 'AMD' : 'TAF' })
+
+  if (!airport) return null
+
+  const headerNameKo = AIRPORT_HEADER_NAME_KO[icao] || airport.nameKo || airport.name || icao
+  const headerNameEn = airport.name || AIRPORT_NAME_KO[icao] || icao
+
+  const displayedMetar = metarHistory.selected?.report ?? metar
+  const displayedTaf = tafHistory.selected?.report ?? taf
   const weatherBanner = resolveAirportBanner(metar, airport)
   const headerImageSrc = headerUsesWeather
     ? `/images/weather-${weatherBanner}.png`
@@ -159,21 +168,21 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
   const warnCount = warning?.warnings?.length || 0
   const lightning = buildAirportLightningModel(weatherData?.lightning, airport, demoNowMs ?? nowMs ?? Date.now())
 
-  const metarTime = metar?.header?.observation_time || metar?.header?.issue_time
-  const tafValid = taf?.header?.valid_start
+  const metarTime = displayedMetar?.header?.observation_time || displayedMetar?.header?.issue_time
+  const tafValid = displayedTaf?.header?.valid_start
     // 한 줄에 들어가도록 연도를 떼고 시간대 표기는 끝에 한 번만 (07-30 17:00 – 07-31 23:00 KST)
-    ? `${fmtKstShort(taf.header.valid_start, tz).slice(5, 16)} – ${fmtKstShort(taf.header.valid_end, tz).slice(5)}`
+    ? `${fmtKstShort(displayedTaf.header.valid_start, tz).slice(5, 16)} – ${fmtKstShort(displayedTaf.header.valid_end, tz).slice(5)}`
     : ''
-  const metarSpeci = metar?.header?.report_type === 'SPECI' // 특별관측 → 제목을 SPECI로
-  const tafAmd = taf?.header?.report_status === 'AMENDMENT' // 정정 → 제목을 TAF AMD로
+  const metarSpeci = displayedMetar?.header?.report_type === 'SPECI' // 특별관측 → 제목을 SPECI로
+  const tafAmd = displayedTaf?.header?.report_status === 'AMENDMENT' // 정정 → 제목을 TAF AMD로
 
   // 탭 배지(스펙 §10 / 프로토타입 badges() 이식): 숫자 = 주의 필요 항목 수, 색 = 최악 심각도. 0/null이면 배지 없음.
   const warnBadge = warnCount
     ? { count: warnCount + (lightning.active ? 1 : 0), severity: 'red' }
     : lightning.active ? { count: 1, severity: 'amber' } : null
-  const metarViewModel = metar ? buildMetarViewModel({ metar, amosData: amos, icao, airportMeta: airport }) : null
+  const metarViewModel = displayedMetar ? buildMetarViewModel({ metar: displayedMetar, amosData: amos, icao, airportMeta: airport }) : null
   const metarBadge = metarViewModel ? countMetarHazards(metarViewModel) : null
-  const tafBadge = taf ? countTafHazardPeriods(buildTafViewModel(taf, icao, demoNowMs).slots) : null
+  const tafBadge = displayedTaf ? countTafHazardPeriods(buildTafViewModel(displayedTaf, icao, demoNowMs).slots) : null
 
   // 기상정보 지연 로딩 상태: 요청은 했으나 airportInfo 페이로드가 아직 안 온 상태
   const infoLoading = infoRequested && !weatherData?.airportInfo
@@ -182,8 +191,8 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
     { id: 'warn', label: lightning.active ? '경보·낙뢰' : '공항경보', titleText: lightning.active ? '공항경보 / 낙뢰관측' : '공항경보', badge: warnBadge, node: lightning.active
       ? <WarningLightningCarousel warning={warning} lightning={lightning} airportKey={icao} />
       : <WarningCarousel warning={warning} /> },
-    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', flightCategory: metarViewModel?.flightCat?.category, badge: metarBadge, node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
-    { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, node: <EnhancedTafTab taf={taf} icao={icao} /> },
+    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', flightCategory: metarViewModel?.flightCat?.category, badge: metarBadge, history: metarHistory, node: <MetarTab metar={metar} history={metarHistory} amosData={amos} icao={icao} airportMeta={airport} /> },
+    { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, history: tafHistory, node: <EnhancedTafTab taf={taf} history={tafHistory} icao={icao} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     isFullFeature && { id: 'model-analysis', label: '상세 예보 분석', node: <AirportModelComparisonSection icao={icao} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} nowMs={demoNowMs} /> },
@@ -216,7 +225,13 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
           <span className="airport-panel-name">{headerNameEn}</span>
         </div>
         <AirportOperationsStrip airport={airport} tz={tz} />
-        <button type="button" className="airport-panel-alerts" onClick={onAlertsOpen} aria-label={`${headerNameKo} 알림 설정`} title="이 공항 알림 설정"><BellRing size={19} /></button>
+        {/* 사진 위 오른쪽 위, 닫기 옆: 무엇을 하는 버튼인지 글자로, 이 공항을 감시 중인지 함께 보인다. */}
+        <button type="button" className={`airport-panel-alerts${watching ? ' is-watching' : ''}`} onClick={onAlertsOpen}
+          aria-label={`${headerNameKo} 알림 설정${watching ? ' · 감시 중' : ''}`} title={watching ? '이 공항 알림 감시 중 · 설정 열기' : '이 공항 알림 설정'}>
+          <BellRing size={16} aria-hidden="true" />{watching && <i className="airport-panel-alerts-dot" aria-hidden="true" />}
+          <span className="airport-panel-alerts-text is-full">{watching ? '알림 감시 중' : '알림 설정'}</span>
+          <span className="airport-panel-alerts-text is-short">{watching ? '감시 중' : '알림'}</span>
+        </button>
         <button className="airport-panel-close" onClick={onClose} aria-label="닫기">×</button>
       </header>
 
@@ -246,7 +261,7 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
             const Icon = SECTION_ICON[s.id]
             return (
               <details key={s.id} id={`sec-${s.id}`} className="ap-sec" open>
-                <summary className="ap-sec-head">
+                <summary className={`ap-sec-head${s.history?.entries.length ? ' has-history' : ''}`}>
                   {Icon && <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />}
                   <span role="heading" aria-level="2" className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
                   {s.meta && <span className="ap-sec-meta">{s.meta}</span>}
@@ -254,6 +269,7 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
                   {s.badge && (
                     <span className={`ap-tab-badge ap-sec-badge ap-tab-badge--${s.badge.severity}`} aria-label={`${s.label} ${s.badge.count}건`}>{s.badge.count}</span>
                   )}
+                  {!!s.history?.entries.length && <ReportHistoryBadges history={s.history} type={s.id} tz={tz} />}
                   <ChevronDown className="ap-sec-fold" size={18} aria-hidden="true" />
                 </summary>
                 <div className="ap-sec-body">{s.node}</div>
