@@ -25,7 +25,6 @@ import imgAirport from './assets/airport.webp'
 import imgModels from './assets/models.webp'
 import imgRouteAfter from './assets/route-after.webp'
 import imgCompare from './assets/compare.webp'
-import imgPrep from './assets/prep.webp'
 import imgResult from './assets/result.webp'
 import imgProfile from './assets/profile.webp'
 import imgMyMap from './assets/mymap.webp'
@@ -36,7 +35,7 @@ import videoAirport from './assets/airport.webm'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
-const PIN_SCREENS = { gis: 6.4, brief: 4.8, custom: 3, alerts: 3.2 }
+const PIN_SCREENS = { gis: 6.4, brief: 4.2, custom: 3, alerts: 3.2 }
 
 // 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
@@ -70,8 +69,8 @@ const LEGEND = [
   ['linear-gradient(90deg,#C9CED6,#8EA2C8,#5B79C9)', '구름·착빙, KIM'],
   ['linear-gradient(90deg,#F4C98A,#E58F80,#9DB8F2)', 'SIGWX HIGH, WAFC(WIFS)'],
 ]
-const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
-const BRIEF_STEPS = [0.22, 0.38, 0.56, 0.76]
+const BRIEF_TABS = ['경로 생성', '경로 비교', '비행 전 브리핑', '연직단면도']
+const BRIEF_STEPS = [0.24, 0.5, 0.74]
 // 경로 생성 장면: 경로가 찍힌 전체 화면에서 왼쪽 패널 자리로 확대된다. 확대가 끝나는 자리는
 // 경로 비교 이후 캡처와 같은 영역(화면 x 56~1112, y 0~660 / 1600×1000)이라 이음새 없이 넘어간다.
 const ROUTE_ZOOM = 1600 / 1056
@@ -228,14 +227,14 @@ export default function IntroPage() {
     const layerStep = $('#gis .layer-step')
     const pairSecond = $('.pair figure:last-child')
     const pairEl = $('.pair')
-    const briefFrames = [1, 2, 3, 4, 5].map((n) => $(`#br-${n}`))
+    const briefFrames = [1, 2, 3, 4].map((n) => $(`#br-${n}`))
     const briefTabStrip = $('#brief .tabs')
     const briefTabs = $$('#brief .tabs span')
     let briefTabShown = -1
     const routeZoom = $('#br-1 .zoom-in')
     const routeCallouts = $$('#co-route .pt')
+    const briefCallouts3 = $$('#br-3 .pt')
     const briefCallouts4 = $$('#br-4 .pt')
-    const briefCallouts5 = $$('#br-5 .pt')
     const customFrames = [$('#cu-1'), $('#cu-2')]
     const notis = $$('.noti').reverse() // 오래된 알림부터 도착해 위에 쌓인다
     const notiHeights = notis.map((noti) => noti.scrollHeight)
@@ -305,14 +304,13 @@ export default function IntroPage() {
         css(routeZoom, { transform: `scale(${lerp(1, ROUTE_ZOOM, easeInOut(segment(p, 0.08, 0.2)))})` })
         // 경로 생성 말풍선은 확대가 끝난 자리(잘라 쓴 화면) 기준이라 확대 뒤에 나타난다.
         popIn(routeCallouts, segment(p, 0.19, 0.22))
-        css(briefFrames[1], { opacity: segment(p, 0.22, 0.26) })
-        css(briefFrames[2], { opacity: segment(p, 0.38, 0.44) })
-        const result = easeOut(segment(p, 0.56, 0.64))
-        css(briefFrames[3], { opacity: result, transform: `translateX(${6 * (1 - result)}%)` })
-        popIn(briefCallouts4, segment(p, 0.64, 0.72))
-        const profile = easeOut(segment(p, 0.76, 0.84))
-        css(briefFrames[4], { opacity: profile, transform: `translateY(${12 * (1 - profile)}%)` })
-        popIn(briefCallouts5, segment(p, 0.84, 0.94))
+        css(briefFrames[1], { opacity: segment(p, 0.24, 0.28) })
+        const result = easeOut(segment(p, 0.5, 0.58))
+        css(briefFrames[2], { opacity: result, transform: `translateX(${6 * (1 - result)}%)` })
+        popIn(briefCallouts3, segment(p, 0.58, 0.66))
+        const profile = easeOut(segment(p, 0.74, 0.82))
+        css(briefFrames[3], { opacity: profile, transform: `translateY(${12 * (1 - profile)}%)` })
+        popIn(briefCallouts4, segment(p, 0.82, 0.92))
         const tab = stepIndex(p, BRIEF_STEPS)
         setOn(briefTabs, (index) => index === tab)
         // 좁은 화면에서는 탭 줄이 잘리므로 지금 단계 탭이 보이게 옆으로 민다.
@@ -464,7 +462,7 @@ export default function IntroPage() {
                   <img src={imgHero} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 레이더 위 경로, 위험기상 요약, 경로상 위험 막대와 연직단면도" />
                   <div className="co" id="co-hero">
                     <Callout x="20.2%" y="30%">내 고도의 위험을 차례로 요약해요</Callout>
-                    <Callout x="61.8%" y="45%" side="left">공항 카드에 METAR·TAF</Callout>
+                    <Callout x="61.8%" y="45%" side="left">출발·도착 공항 기상을 카드로</Callout>
                     <Callout x="32%" y="58.4%" side="up">경로를 따라 위험 구간을 막대로</Callout>
                     <Callout x="40%" y="79%">연직단면도에 난류·착빙·SIGMET을 고도별로</Callout>
                   </div>
@@ -552,12 +550,12 @@ export default function IntroPage() {
                 <Frame id="br-1" title={briefTitle(0)}>
                   <div className="zoom">
                     <div className="zoom-in" style={{ transformOrigin: ROUTE_ZOOM_ORIGIN }}>
-                      <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 경로가 경로칸에 알약으로 들어가고 지도에 경로가 그려진 화면" />
+                      <img className="route-after" src={imgRouteAfter} alt="경로 생성: 인천에서 제주, 교체 김해. 자동 생성한 경로가 경로 입력칸에 채워지고 지도에 경로가 그려진 화면" />
                     </div>
                   </div>
                   <div className="co" id="co-route">
-                    <Callout x="46.8%" y="46.4%">교체 공항</Callout>
-                    <Callout x="45.5%" y="76%">경로를 알약으로, 바로 고칠 수 있어요</Callout>
+                    <Callout x="47.2%" y="6.5%">경로를 저장해 두고 다시 불러와요</Callout>
+                    <Callout x="45.5%" y="76%">비행경로를 직접 적는 칸</Callout>
                     <Callout x="91%" y="24%" side="left">지도에 그려진 경로</Callout>
                   </div>
                 </Frame>
@@ -567,13 +565,7 @@ export default function IntroPage() {
                     <Callout x="31%" y="61%">우회안 만들기</Callout>
                   </div>
                 </Frame>
-                <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도, 교체공항" />
-                  <div className="co">
-                    <Callout x="46.5%" y="44.8%">출발·도착 시각과 순항고도</Callout>
-                    <Callout x="40%" y="73%" side="up">세부경로 지점</Callout>
-                  </div>
-                </Frame>
-                <Frame id="br-4" title="비행 전 브리핑">
+                <Frame id="br-3" title="비행 전 브리핑">
                   <img src={imgResult} alt="인천에서 제주로 가는 지도형 비행 전 브리핑: 위험 요약 카드와 공항 카드, 경로상 위험 막대" />
                   <div className="co">
                     <Callout x="25.8%" y="46%">내 고도의 위험을 차례로</Callout>
@@ -581,7 +573,7 @@ export default function IntroPage() {
                     <Callout x="53%" y="86%" side="up">경로상 위험 구간과 SIGMET</Callout>
                   </div>
                 </Frame>
-                <Frame id="br-5" title="연직단면도">
+                <Frame id="br-4" title="연직단면도">
                   <img src={imgProfile} alt="경로 연직단면도: 순항고도의 SIGMET 심한 난류 구간, 착빙 구역, 난류 강도" />
                   <div className="co">
                     <Callout x="50.7%" y="36.4%" side="up">내 고도의 SIGMET 심한 난류</Callout>
@@ -657,9 +649,8 @@ export default function IntroPage() {
             <p>기상청 관측과 수치예보, 해외 모델 자료를 사용하고, 화면의 모든 자료에 발표 시각과 유효 시각을 함께 보여드려요.</p>
             <table className="src-table">
               <tbody>
-                <tr><th>레이더, 낙뢰, 지상 관측</th><td>기상청</td></tr>
+                <tr><th>레이더, 낙뢰, 지상 관측, KIM 수치예보</th><td>기상청</td></tr>
                 <tr><th>위성 영상, 대류 가능성, 운정고도</th><td>천리안위성 2A호 (국가기상위성센터)</td></tr>
-                <tr><th>KIM 수치예보</th><td>기상청 (난류 GKTG는 KIM 자료로 계산)</td></tr>
                 <tr><th>METAR, TAF, SIGMET, AIRMET, SIGWX, AMOS</th><td>항공기상청</td></tr>
                 <tr><th>해외 모델 비교</th><td>ECMWF, NOAA GFS, DWD ICON</td></tr>
                 <tr><th>해외 레이더</th><td>RainViewer</td></tr>
