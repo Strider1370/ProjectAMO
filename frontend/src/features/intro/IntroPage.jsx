@@ -9,9 +9,9 @@ import './IntroPage.css'
 
 import imgMain from './assets/main.webp'
 import imgHero from './assets/hero.webp'
-import imgHumid0 from './assets/humid-0.webp'
-import imgHumid1 from './assets/humid-1.webp'
-import imgHumid2 from './assets/humid-2.webp'
+import imgCloud0 from './assets/cloud-0.webp'
+import imgCloud1 from './assets/cloud-1.webp'
+import imgCloud2 from './assets/cloud-2.webp'
 import imgPrecip from './assets/precip.webp'
 import imgTurb0 from './assets/turb-0.webp'
 import imgTurb1 from './assets/turb-1.webp'
@@ -37,20 +37,20 @@ const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리�
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
 const PIN_SCREENS = { gis: 4.8, brief: 4.8, custom: 3, alerts: 3.2 }
 
-// 캡처 시각(2026-09-28 운영 서버 화면) 기준 레이어 시퀀스
+// 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
   { key: 'base', label: '기본 지도', frames: [[imgMain, null]] },
-  { key: 'humid', label: '습도', frames: [[imgHumid0, '01:00 KST'], [imgHumid1, '02:00 KST'], [imgHumid2, '03:00 KST']], alt: 'KIM 습도 예보' },
+  { key: 'cloud', label: '구름·착빙', frames: [[imgCloud0, '04:00 KST'], [imgCloud1, '10:00 KST'], [imgCloud2, '21:00 KST']], alt: 'KIM 구름·착빙 예보(FL140)' },
   { key: 'precip', label: '강수와 등압선', video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자' },
-  { key: 'turb', label: '난류', frames: [[imgTurb0, '03:00 KST'], [imgTurb1, '06:00 KST'], [imgTurb2, '09:00 KST']], alt: 'KIM 난류(GKTG) 예보' },
-  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '21:30 KST'], [imgSat1, '22:30 KST'], [imgSat2, '23:30 KST'], [imgSat3, '00:30 KST']], alt: '적외 위성 영상' },
+  { key: 'turb', label: '난류', frames: [[imgTurb0, '04:00 KST'], [imgTurb1, '10:00 KST'], [imgTurb2, '21:00 KST']], alt: 'KIM 난류(GKTG) 예보' },
+  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '00:40 KST'], [imgSat1, '01:40 KST'], [imgSat2, '02:40 KST'], [imgSat3, '03:40 KST']], alt: '적외 위성 영상' },
 ]
 // 목록은 위에서부터(맨 위 레이어 먼저) 보여 준다.
 const LEGEND = [
   ['linear-gradient(90deg,#222,#EEE)', '적외 위성, 천리안위성 2A호'],
   ['linear-gradient(90deg,#3DB24B,#F2C230,#E07B22)', '난류, KIM GKTG'],
   ['linear-gradient(90deg,#A7D3F5,#3D8BD9,#1F4FA8)', '강수와 등압선, 바람, KIM 지상일기도'],
-  ['linear-gradient(90deg,#DDEBD8,#7FB78C,#2F7D5B)', '습도, KIM'],
+  ['linear-gradient(90deg,#C9CED6,#8EA2C8,#5B79C9)', '구름·착빙, KIM'],
   ['#DCE6EE', '기본 지도와 공항, FIR'],
 ]
 const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
@@ -234,7 +234,7 @@ export default function IntroPage() {
         css(stack, { transform: `rotateX(${56 * (1 - collapse)}deg) rotateZ(${-34 * (1 - collapse)}deg) scale(${lerp(0.7, 1, collapse)})` })
         const zStep = compact ? stack.offsetWidth * 0.12 : 110
         let top = 0
-        // 레이어는 기본 지도(0) 위로 습도, 강수, 난류, 위성(4) 순서다. 합친 뒤 위성부터 한 장씩 걷어 낸다.
+        // 레이어는 기본 지도(0) 위로 구름·착빙, 강수, 난류, 위성(4) 순서다. 합친 뒤 위성부터 한 장씩 걷어 낸다.
         const peelRanges = [null, null, [0.84, 0.92], [0.7, 0.78], [0.56, 0.64]]
         layers.forEach((layer, index) => {
           const shown = index === 0 ? 1 : segment(appear, (index - 1) / 4, index / 4)
