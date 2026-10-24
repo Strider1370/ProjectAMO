@@ -125,6 +125,10 @@
 .intro .stamp{position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(15,23,42,.82); color:#fff; font-size:13px; font-weight:600; padding:3px 10px; border-radius:var(--r-sm); font-variant-numeric:tabular-nums; pointer-events:none}
 /* 레이어 장면: 말풍선은 사진 안(창 틀 없음), 단계 표시, 누를 수 있는 목록 */
 .intro .layer .co{top:0}
+.intro .layer-tag{position:absolute; left:5.5%; top:15%; display:grid; gap:1px; padding:8px 14px; border-radius:var(--r); background:rgba(15,23,42,.86); color:#fff; pointer-events:none; box-shadow:0 6px 18px -8px rgba(15,23,42,.5)}
+.intro .layer-tag b{font-size:17px; font-weight:700; letter-spacing:-.01em}
+.intro .layer-tag small{font-size:12.5px; color:#C6D0DC}
+.intro:not(.motion) .layer-tag{display:none}
 .intro .layer-co{opacity:0; transition:opacity .35s var(--ease)}
 .intro .layer-co.on{opacity:1}
 /* 닦아 내는 동안 두 레이어의 시각 표시가 겹쳐 보이지 않게 잠깐 숨긴다. */

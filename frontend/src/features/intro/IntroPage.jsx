@@ -41,21 +41,21 @@ const PIN_SCREENS = { gis: 6.4, brief: 4.8, custom: 3, alerts: 3.2 }
 // 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
   // 맨 아래 장은 빈 기본 지도 대신 SIGWX LOW(2026-10-24 08:00 발표)를 둔다 — 마지막에 남는 장면이라 항공기상 자료가 보이는 편이 낫다.
-  { key: 'sigwx', label: 'SIGWX LOW', frames: [[imgSigwx, null]],
+  { key: 'sigwx', label: 'SIGWX LOW', tag: ['SIGWX LOW', '항공기상청 저고도 중요기상'], frames: [[imgSigwx, null]],
     callouts: [['68.5%', '55.2%', null, '시정 5,000m 구역'], ['48.8%', '70%', 'left', '난류 기호와 고도']] },
   // 시간이 넘어가는 레이어는 장면마다 위치가 달라 말풍선도 장면(다섯째 값)마다 따로 둔다.
-  { key: 'cloud', label: '구름·착빙', frames: [[imgCloud0, '10/24 04:00 KST'], [imgCloud1, '10/24 10:00 KST'], [imgCloud2, '10/24 21:00 KST']], alt: 'KIM 구름·착빙 예보(FL140)',
+  { key: 'cloud', label: '구름·착빙', tag: ['구름·착빙', 'KIM 예보 · FL140'], frames: [[imgCloud0, '10/24 04:00 KST'], [imgCloud1, '10/24 10:00 KST'], [imgCloud2, '10/24 21:00 KST']], alt: 'KIM 구름·착빙 예보(FL140)',
     callouts: [['75%', '56%', 'left', '착빙 구역(점무늬)', 0], ['55%', '69.6%', null, '0°C 선', 0],
       ['72.5%', '48%', 'left', '착빙 구역(점무늬)', 1], ['19.8%', '70.4%', null, '0°C 선', 1],
       ['86%', '22%', 'left', '착빙 구역(점무늬)', 2], ['23.5%', '64%', null, '0°C 선', 2]] },
-  { key: 'precip', label: '강수와 등압선', video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자',
+  { key: 'precip', label: '강수와 등압선', tag: ['강수와 등압선', 'KIM 지상일기도'], video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자',
     callouts: [['66%', '22%', 'left', '저기압 중심과 등압선'], ['85%', '73%', 'left', '강수대']] },
-  { key: 'turb', label: '난류', frames: [[imgTurb0, '10/23 15:00 KST'], [imgTurb1, '10/24 10:00 KST'], [imgTurb2, '10/24 21:00 KST']], alt: 'KIM 난류(GKTG) 예보',
+  { key: 'turb', label: '난류', tag: ['난류', 'KIM GKTG · FL100'], frames: [[imgTurb0, '10/23 15:00 KST'], [imgTurb1, '10/24 10:00 KST'], [imgTurb2, '10/24 21:00 KST']], alt: 'KIM 난류(GKTG) 예보',
     callouts: [['59%', '86.8%', 'left', '심한 난류(빨강)', 0], ['28%', '80%', null, '보통 난류(노랑)', 0],
       ['47.5%', '56%', 'left', '심한 난류(빨강)', 1], ['57.5%', '36%', null, '보통 난류(노랑)', 1],
       ['77.5%', '36%', 'left', '심한 난류(빨강)', 2], ['40%', '76%', null, '보통 난류(노랑)', 2]] },
-  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '00:40 KST'], [imgSat1, '01:40 KST'], [imgSat2, '02:40 KST'], [imgSat3, '03:40 KST']], alt: '적외 위성 영상',
-    callouts: [['72%', '22%', 'left', '밝을수록 높고 차가운 구름'], ['22%', '22%', null, '구름 없는 맑은 지역']] },
+  { key: 'sat', label: '적외 위성', tag: ['적외 위성', '천리안위성 2A호'], frames: [[imgSat0, '00:40 KST'], [imgSat1, '01:40 KST'], [imgSat2, '02:40 KST'], [imgSat3, '03:40 KST']], alt: '적외 위성 영상',
+    callouts: [['72%', '22%', 'left', '밝을수록 높고 차가운 구름'], ['25%', '40%', null, '구름 없는 맑은 지역']] },
 ]
 // 레이어 장면 시간표(기상정보 고정 구간 진행률). 비스듬히 쌓였다가(0~0.2) 하나로 합쳐진 뒤(0.26~0.42),
 // 위 레이어부터 한 장씩 닦아 낸다. 닦는 동안은 짧게, 그 사이는 길게 둬서 한 레이어를 읽을 시간을 준다.
@@ -224,6 +224,7 @@ export default function IntroPage() {
     const layerNow = $('#gis .now')
     const legend = $$('#gis .legend li')
     const layerCallouts = $$('#gis .layer-co')
+    const layerTags = $$('#gis .layer-tag')
     const layerStep = $('#gis .layer-step')
     const pairSecond = $('.pair figure:last-child')
     const pairEl = $('.pair')
@@ -281,6 +282,7 @@ export default function IntroPage() {
             transform: `translateZ(${(index - 2) * zStep * (1 - collapse)}px)`,
           })
           css(layerLabels[index], { opacity: shown * (1 - segment(collapse, 0, 0.3)) })
+          css(layerTags[index], { opacity: segment(collapse, 0.7, 1) })
         })
         // 말풍선은 합쳐진 뒤, 닦아 내는 중이 아닐 때 맨 위 레이어 것만 보인다.
         const settled = collapse >= 1 && wiping < 0
@@ -491,6 +493,8 @@ export default function IntroPage() {
                         : layer.frames.length > 1 ? <Sequence frames={layer.frames} alt={layer.alt} />
                           : <img src={layer.frames[0][0]} alt="" />}
                       <span className="plane-label">{layer.label}</span>
+                      {/* 합쳐진 뒤 사진 왼쪽 위에 무슨 자료인지 붙인다(사진과 함께 닦여 나간다). */}
+                      <span className="layer-tag" aria-hidden="true"><b>{layer.tag[0]}</b><small>{layer.tag[1]}</small></span>
                       <div className="co layer-co" aria-hidden="true">
                         {layer.callouts.map(([x, y, side, text, frame]) => <Callout key={`${text}-${frame}`} x={x} y={y} side={side ?? undefined} frame={frame}>{text}</Callout>)}
                       </div>
