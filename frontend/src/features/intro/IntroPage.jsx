@@ -8,7 +8,7 @@ import { approach, clamp01, easeInOut, easeOut, lerp, pinnedProgress, segment, s
 import './IntroPage.css'
 
 import imgMain from './assets/main.webp'
-import imgSigwx from './assets/sigwx.webp'
+import imgSigwx from './assets/sigwx-high.webp'
 import imgHero from './assets/hero.webp'
 import imgCloud0 from './assets/cloud-0.webp'
 import imgCloud1 from './assets/cloud-1.webp'
@@ -40,9 +40,9 @@ const PIN_SCREENS = { gis: 6.4, brief: 4.8, custom: 3, alerts: 3.2 }
 
 // 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
-  // 맨 아래 장은 빈 기본 지도 대신 SIGWX LOW(2026-10-24 08:00 발표)를 둔다 — 마지막에 남는 장면이라 항공기상 자료가 보이는 편이 낫다.
-  { key: 'sigwx', label: 'SIGWX LOW', tag: ['SIGWX LOW', '항공기상청 저고도 중요기상'], frames: [[imgSigwx, null]],
-    callouts: [['68.5%', '55.2%', null, '시정 5,000m 구역'], ['48.8%', '70%', 'left', '난류 기호와 고도']] },
+  // 맨 아래 장은 SIGWX HIGH(운영 실시간 WIFS, 2026-10-24 08:00 발표 · 15:00 유효). 고고도 자료라 동아시아까지 넓게 찍었다.
+  { key: 'sigwx', label: 'SIGWX HIGH', tag: ['SIGWX HIGH', 'WAFC 고고도 중요기상(WIFS)'], frames: [[imgSigwx, null]],
+    callouts: [['72%', '16.4%', 'left', '제트기류와 고도'], ['42.3%', '31.6%', null, '권계면 고도'], ['39.5%', '60.8%', 'left', '적란운(CB) 구역'], ['39%', '70%', 'left', '태풍']] },
   // 시간이 넘어가는 레이어는 장면마다 위치가 달라 말풍선도 장면(다섯째 값)마다 따로 둔다.
   { key: 'cloud', label: '구름·착빙', tag: ['구름·착빙', 'KIM 예보 · 600 hPa(약 14,000 ft)'], frames: [[imgCloud0, '10/24 04:00 KST'], [imgCloud1, '10/24 10:00 KST'], [imgCloud2, '10/24 21:00 KST']], alt: 'KIM 구름·착빙 예보(600 hPa)',
     callouts: [['75%', '56%', 'left', '착빙 구역(점무늬)', 0], ['55%', '69.6%', null, '0°C 선', 0],
@@ -59,7 +59,7 @@ const LAYERS = [
 ]
 // 레이어 장면 시간표(기상정보 고정 구간 진행률). 비스듬히 쌓였다가(0~0.2) 하나로 합쳐진 뒤(0.26~0.42),
 // 위 레이어부터 한 장씩 닦아 낸다. 닦는 동안은 짧게, 그 사이는 길게 둬서 한 레이어를 읽을 시간을 준다.
-// 인덱스는 LAYERS 순서(0 SIGWX LOW … 4 위성).
+// 인덱스는 LAYERS 순서(0 SIGWX HIGH … 4 위성).
 const LAYER_WIPE = [null, [0.88, 0.95], [0.75, 0.82], [0.62, 0.69], [0.49, 0.56]]
 const LAYER_DWELL = [0.97, 0.85, 0.72, 0.59, 0.46]
 // 목록은 위에서부터(맨 위 레이어 먼저) 보여 준다.
@@ -68,7 +68,7 @@ const LEGEND = [
   ['linear-gradient(90deg,#3DB24B,#F2C230,#E07B22)', '난류, KIM GKTG'],
   ['linear-gradient(90deg,#A7D3F5,#3D8BD9,#1F4FA8)', '강수와 등압선, 바람, KIM 지상일기도'],
   ['linear-gradient(90deg,#C9CED6,#8EA2C8,#5B79C9)', '구름·착빙, KIM'],
-  ['linear-gradient(90deg,#F2E14C,#2F5BD9)', 'SIGWX LOW, 항공기상청'],
+  ['linear-gradient(90deg,#F4C98A,#E58F80,#9DB8F2)', 'SIGWX HIGH, WAFC(WIFS)'],
 ]
 const BRIEF_TABS = ['경로 생성', '경로 비교', '브리핑 준비', '비행 전 브리핑', '연직단면도']
 const BRIEF_STEPS = [0.22, 0.38, 0.56, 0.76]
