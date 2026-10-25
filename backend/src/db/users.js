@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto'
+
 import bcrypt from 'bcrypt'
 
 import { normalizeForecasterAirports } from '../auth/forecaster-airports.js'
@@ -57,7 +59,7 @@ export function getUserById(db, id) {
 
 // 관리자 콘솔: 전체 사용자·승인 대기·상태 변경.
 export function listUsers(db) {
-  return db.prepare('SELECT id, username, role, status, created_at FROM users ORDER BY created_at DESC').all()
+  return db.prepare('SELECT id, username, role, status, created_at FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC').all()
 }
 export function listPending(db) {
   return db.prepare("SELECT id, username, role, created_at FROM users WHERE status='pending' ORDER BY created_at").all()
@@ -67,4 +69,42 @@ export function setUserStatus(db, id, status) {
   return db.prepare('UPDATE users SET status=? WHERE id=?').run(status, id).changes
 }
 
-export default { createUser, verifyLogin, getUserById, listUsers, listPending, setUserStatus, ROLES }
+// 회원 탈퇴(관리자). 개인 자료와 로그인 세션을 지우고 계정을 삭제한다.
+// 기관에 남긴 기록(작성한 공지·비행 등)은 지울 수 없어서, 그런 계정은 행만 남기고
+// 아이디·이름·비밀번호를 지워 다시 로그인하거나 알아볼 수 없게 한다.
+export function withdrawUser(db, id) {
+  const user = db.prepare('SELECT id, role FROM users WHERE id=? AND deleted_at IS NULL').get(id)
+  if (!user) return { ok: false, error: 'user_not_found' }
+  if (user.role === 'admin') return { ok: false, error: 'cannot_withdraw_admin' }
+  const tableExists = (name) => db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name)
+  const scrambled = bcrypt.hashSync(randomBytes(32).toString('hex'), 4)
+  let mode = 'deleted'
+  db.transaction(() => {
+    const routeIds = 'SELECT id FROM routes WHERE user_id=?'
+    db.prepare(`DELETE FROM triggered_alerts WHERE user_id=? OR route_id IN (${routeIds})`).run(id, id)
+    db.prepare(`DELETE FROM requests WHERE pilot_id=? OR route_id IN (${routeIds})`).run(id, id)
+    db.prepare('UPDATE requests SET assigned_forecaster=NULL WHERE assigned_forecaster=?').run(id)
+    for (const table of ['routes', 'presets', 'push_subscriptions', 'organization_alert_user_states', 'organization_members']) {
+      db.prepare(`DELETE FROM ${table} WHERE user_id=?`).run(id)
+    }
+    if (tableExists('sessions')) db.prepare("DELETE FROM sessions WHERE json_extract(sess, '$.userId')=?").run(id)
+    try {
+      db.transaction(() => db.prepare('DELETE FROM users WHERE id=?').run(id))()
+    } catch (err) {
+      if (!String(err?.message || '').includes('FOREIGN KEY')) throw err
+      mode = 'anonymized'
+      // 계정 삭제였다면 연쇄로 지워졌을 개인 자료(알림 감시·내 지도·기상이 설정 등)를 직접 지운다.
+      for (const [table, column] of [['route_sigmet_events', 'user_id'], ['route_sigmet_watches', 'user_id'], ['user_alert_deliveries', 'user_id'],
+        ['airport_alert_events', 'user_id'], ['airport_alert_watches', 'user_id'], ['user_alert_test_runs', 'user_id'], ['personal_maps', 'owner_id'],
+        ['ai_confirmations', 'user_id'], ['ai_credentials', 'user_id'], ['ai_settings', 'user_id'], ['ai_daily_usage', 'user_id'], ['ai_question_requests', 'user_id']]) {
+        if (tableExists(table)) db.prepare(`DELETE FROM ${table} WHERE ${column}=?`).run(id)
+      }
+      db.prepare(`UPDATE users SET username=?, display_name='탈퇴한 사용자', password_hash=?, status='rejected',
+        min_ceiling_ft=NULL, min_visibility_m=NULL, deleted_at=? WHERE id=?`)
+        .run(`deleted_${id}`, scrambled, new Date().toISOString(), id)
+    }
+  })()
+  return { ok: true, mode }
+}
+
+export default { createUser, withdrawUser, verifyLogin, getUserById, listUsers, listPending, setUserStatus, ROLES }

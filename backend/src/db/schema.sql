@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   min_ceiling_ft   INTEGER CHECK (min_ceiling_ft BETWEEN 0 AND 60000),   -- #13 개인 미니마(사용자당 단일값)
   min_visibility_m INTEGER CHECK (min_visibility_m BETWEEN 0 AND 10000),
   last_active_at TEXT,                        -- 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
+  deleted_at    TEXT,                         -- 회원 탈퇴했지만 기관 기록 때문에 행만 남긴 계정(users.js withdrawUser)
   created_at    TEXT NOT NULL
 );
 

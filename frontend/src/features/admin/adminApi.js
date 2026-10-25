@@ -33,6 +33,7 @@ export const getRuntimeCapabilities = () => fetch('/api/health', { credentials: 
   testMutations: health?.capabilities?.testMutations === true,
 }))
 export const approve = (id) => fetch(`${base}/users/${id}/approve`, { method: 'POST', credentials: 'include' }).then(j)
+export const withdrawUser = (id) => fetch(`${base}/users/${id}`, { method: 'DELETE', credentials: 'include' }).then(j)
 export const reject = (id) => fetch(`${base}/users/${id}/reject`, { method: 'POST', credentials: 'include' }).then(j)
 export const createForecaster = (body) => fetch(`${base}/forecasters`, {
   method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),

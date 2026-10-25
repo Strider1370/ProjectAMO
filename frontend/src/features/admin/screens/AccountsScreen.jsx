@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { approve, getUsers, reject } from '../adminApi.js'
+import { approve, getUsers, reject, withdrawUser } from '../adminApi.js'
 import CreateForecasterDialog from '../CreateForecasterDialog.jsx'
 
 // 계정 관리 — 승인 대기와 전체 사용자. 내용은 기존 화면 그대로이고 자리만 옮겼다.
@@ -14,12 +14,26 @@ const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('ko-KR') : '—
 export default function AccountsScreen({ pending = [], onChanged, adminQuery }) {
   const [users, setUsers] = useState([])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [withdrawError, setWithdrawError] = useState('')
 
   const load = useCallback(() => { getUsers(adminQuery).then((result) => { if (result.query.current) setUsers(result.data) }).catch(() => {}) }, [adminQuery])
   useEffect(() => { load() }, [load])
 
   const act = async (fn, id) => {
     await fn(id)
+    load()
+    onChanged?.()
+  }
+
+  // 탈퇴는 되돌릴 수 없다 — 저장 경로·알림 감시·내 지도가 함께 지워지고 로그인도 끊긴다.
+  const withdraw = async (user) => {
+    if (!window.confirm(`${user.username} 회원을 탈퇴시킵니다.\n저장 경로·알림 감시·내 지도가 함께 지워지고 되돌릴 수 없습니다.`)) return
+    setWithdrawError('')
+    try {
+      await withdrawUser(user.id)
+    } catch (error) {
+      setWithdrawError(error.body?.error === 'cannot_withdraw_self' ? '내 계정은 탈퇴시킬 수 없습니다.' : '탈퇴 처리에 실패했습니다.')
+    }
     load()
     onChanged?.()
   }
@@ -53,6 +67,7 @@ export default function AccountsScreen({ pending = [], onChanged, adminQuery }) 
           전체 사용자<em>{users.length}명</em>
           <button type="button" className="ac-btn" style={{ marginLeft: 12 }} onClick={() => setDialogOpen(true)}>예보관 추가</button>
         </h2>
+        {withdrawError && <p className="ac-sub" role="alert" style={{ padding: '12px 22px 0' }}>{withdrawError}</p>}
         <table className="ac-t">
           <thead>
             <tr>
@@ -60,6 +75,7 @@ export default function AccountsScreen({ pending = [], onChanged, adminQuery }) 
               <th>역할</th>
               <th>상태</th>
               <th className="ac-r">가입일</th>
+              <th className="ac-r" aria-label="관리" />
             </tr>
           </thead>
           <tbody>
@@ -69,6 +85,9 @@ export default function AccountsScreen({ pending = [], onChanged, adminQuery }) 
                 <td><span className="ac-chip ac-quiet">{ROLE_KO[user.role] || user.role}</span></td>
                 <td><span className={`ac-chip ac-${STATUS_TONE[user.status] || 'quiet'}`}>{STATUS_KO[user.status] || user.status}</span></td>
                 <td className="ac-r ac-muted n">{fmtDate(user.created_at)}</td>
+                <td className="ac-r">
+                  {user.role !== 'admin' && <button type="button" className="ac-btn ac-btn-quiet" onClick={() => withdraw(user)}>탈퇴</button>}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 
 import { getDb } from '../db/index.js'
 import { requireRole } from '../auth/middleware.js'
-import { createUser, listUsers, listPending, setUserStatus } from '../db/users.js'
+import { createUser, listUsers, listPending, setUserStatus, withdrawUser } from '../db/users.js'
 import { readMetrics } from './metrics.js'
 import { forecastDiskFull } from './disk-forecast.js'
 import { trafficStats, hourlyPattern } from './visits.js'
@@ -132,6 +132,14 @@ export function createAdminRouter({ db = null, demoInstance = defaultDemoInstanc
   }
   router.post('/users/:id/approve', setStatus('active'))
   router.post('/users/:id/reject', setStatus('rejected'))
+  router.delete('/users/:id', (req, res) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'invalid_id' })
+    if (id === req.session.userId) return res.status(400).json({ error: 'cannot_withdraw_self' })
+    const result = withdrawUser(database(), id)
+    if (!result.ok) return res.status(result.error === 'user_not_found' ? 404 : 400).json({ error: result.error })
+    res.json(result)
+  })
 
   // 직접 ON/OFF는 실황 백업을 건너뛸 수 있으므로 제공하지 않는다.
   // 시작은 snapshot/load, 종료는 demo-mode/revert 두 원자적 동작으로만 수행한다.

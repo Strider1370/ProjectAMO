@@ -339,6 +339,13 @@
   overflow: hidden;
 }
 
+.profile-info {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
 .profile-name {
   font-size: 16px;
   font-weight: 500;

@@ -35,6 +35,7 @@ function ensureColumns(database) {
     if (!userCols.includes('min_ceiling_ft')) database.exec('ALTER TABLE users ADD COLUMN min_ceiling_ft INTEGER') // #13 개인 미니마(단일값)
     if (!userCols.includes('min_visibility_m')) database.exec('ALTER TABLE users ADD COLUMN min_visibility_m INTEGER')
     if (!userCols.includes('last_active_at')) database.exec('ALTER TABLE users ADD COLUMN last_active_at TEXT') // 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
+    if (!userCols.includes('deleted_at')) database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT') // 회원 탈퇴 후 행만 남긴 계정
   }
 
   if (tableExists('organization_briefing_runs')) {

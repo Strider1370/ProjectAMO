@@ -17,7 +17,7 @@ const useStyles = makeStyles({
   link: { flex: 1, minWidth: '200px' },
 })
 
-const ROLE_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
+const ROLE_KO = { pilot: '일반', forecaster: '예보관', admin: '관리자' }
 
 // ① 조작 탭 — 서버 capability가 명시적으로 허용한 테스트 인스턴스에서만 mount된다.
 export default function TriggerTab() {
