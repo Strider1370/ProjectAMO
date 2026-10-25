@@ -29,13 +29,14 @@ import imgResult from './assets/result.webp'
 import imgProfile from './assets/profile.webp'
 import imgMyMap from './assets/mymap.webp'
 import imgLounge from './assets/lounge.webp'
-import imgMonitoring from './assets/monitoring.webp'
+import imgAlertSettings from './assets/alerts-settings.webp'
+import imgAlertInbox from './assets/alerts-inbox.webp'
 import videoPrecip from './assets/precip.webm'
 import videoAirport from './assets/airport.webm'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
-const PIN_SCREENS = { gis: 6.4, brief: 4.2, custom: 3, alerts: 3.2 }
+const PIN_SCREENS = { gis: 6.4, brief: 4.2, custom: 3, alerts: 3.6 }
 
 // 캡처 시각(운영 서버 화면) 기준 레이어 시퀀스. 강수 영상만 2026-09-28, 나머지는 2026-10-24.
 const LAYERS = [
@@ -236,6 +237,8 @@ export default function IntroPage() {
     const briefCallouts3 = $$('#br-3 .pt')
     const briefCallouts4 = $$('#br-4 .pt')
     const customFrames = [$('#cu-1'), $('#cu-2')]
+    const alertFrames = [$('#al-1'), $('#al-2')]
+    const alertPhone = $('#alerts .phone')
     const notis = $$('.noti').reverse() // 오래된 알림부터 도착해 위에 쌓인다
     const notiHeights = notis.map((noti) => noti.scrollHeight)
 
@@ -326,8 +329,14 @@ export default function IntroPage() {
         css(customFrames[1], { opacity: lounge, transform: `scale(${1.06 - 0.06 * lounge})` })
       },
       alerts(p) {
+        // 감시 조건을 정하는 화면 → 기준을 벗어나 지금 걸려 있는 알림 목록. 그사이 휴대폰에 푸시가 하나씩 도착한다.
+        const inbox = easeInOut(segment(p, 0.3, 0.55))
+        css(alertFrames[0], { opacity: 1 - inbox, transform: `scale(${1 - 0.08 * inbox})` })
+        css(alertFrames[1], { opacity: inbox, transform: `scale(${1.05 - 0.05 * inbox})` })
+        // 휴대폰은 알림이 생길 때 함께 나타난다(좁은 화면에서는 설정 화면 위에 겹쳐 있으므로).
+        css(alertPhone, { opacity: inbox, transform: `translateY(${24 * (1 - inbox)}px)` })
         notis.forEach((noti, index) => {
-          const e = easeOut(segment(p, 0.15 + index * 0.25, 0.27 + index * 0.25))
+          const e = easeOut(segment(p, 0.45 + index * 0.14, 0.57 + index * 0.14))
           css(noti, { height: `${notiHeights[index] * e}px`, opacity: e })
           css(noti.firstElementChild, { transform: `translateY(${-18 * (1 - e)}px) scale(${lerp(0.96, 1, e)})` })
         })
@@ -437,7 +446,7 @@ export default function IntroPage() {
         <section className="band hero" id="top" aria-labelledby="intro-title">
           <div className="wrap hero-grid">
             <div className="hero-copy">
-            <h1 id="intro-title" className="hero-anim">비행에 필요한 기상을 한&nbsp;화면에</h1>
+            <h1 id="intro-title" className="hero-anim">비행에 필요한 기상정보를 한&nbsp;화면에</h1>
             <p className="lede hero-anim" style={{ animationDelay: '.09s' }}>경로를 고르면 레이더와 위성 위에 경로가 그려지고, 그 경로 위의 난류·착빙·대류와 SIGMET, 출발·도착·교체 공항의 METAR·TAF, 고도별 연직단면도가 한 화면에 함께 나와요. 여러 사이트와 화면을 오가며 맞춰 볼 필요가 없어요.</p>
             <div className="actions hero-anim" style={{ animationDelay: '.18s' }}>
               <button className="btn btn-primary" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
@@ -617,24 +626,24 @@ export default function IntroPage() {
             <div className="copy">
               <h2 id="alerts-title">지정한 공항과 경로에 변화가 생기면 알려드려요</h2>
               <p>공항 패널이나 경로 생성 화면의 종 버튼으로 감시 조건을 정해 두면, METAR 기준 도달, 새 TAF·AMD 발표, 공항경보와 주변 낙뢰, 경로와 겹치는 SIGMET을 웹 팝업과 휴대폰 푸시로 알려드려요. 알림을 누르면 해당 공항이나 경로의 그 자료로 바로 이동해요.</p>
-              <p>벽면 모니터용 상황판에서는 공항 상태를 한눈에 볼 수 있어요.</p>
             </div>
             <div className="stage">
-              <div className="alerts-vis">
-                <Frame title="상황판"><img src={imgMonitoring} alt="상황판: 인천국제공항 METAR와 TAF" />
-                  <div className="co">
-                    <Callout x="14%" y="29.6%">비행 등급과 METAR를 큰 글씨로</Callout>
-                    <Callout x="30%" y="56.4%">TAF 타임라인</Callout>
-                  </div>
+              <div className="alerts-stage">
+                <div className="flow alerts-flow">
+                <Frame id="al-1" title="알림 설정"><img src={imgAlertSettings} alt="포항경주공항 알림 설정: VFR 기준 시정 5000m·운고 1500ft, 지금 시정 4000m·운고 600ft, 공항경보·주변 낙뢰 알림" />
                 </Frame>
+                <Frame id="al-2" title="알림"><img src={imgAlertInbox} alt="진행 중인 알림: 대구 시정 기준 미달, 포항 시정·운고 기준 미달" />
+                </Frame>
+                </div>
+                {/* 같은 알림이 휴대폰 푸시로 온 모습. 제목·본문은 backend/src/user-alerts/content.js의 실제 푸시 문구 형식이다. */}
                 <div className="phone">
                   <div className="phone-screen">
-                    <div className="lock"><div className="lock-date">9월 23일 수요일</div><div className="lock-time">14:20</div></div>
-                    <div className="phone-tag">알림 예시</div>
+                    <div className="lock"><div className="lock-date">10월 25일 일요일</div><div className="lock-time">00:59</div></div>
+                    <div className="phone-tag">휴대폰 푸시</div>
                     <div className="notis">
-                      <Notification when="지금" title="SIGMET · RKSI → RKPC" body="심한 착빙 FL150–230이 경로 2구간과 겹쳐요. 13:00–17:00 KST" />
-                      <Notification when="6분 전" title="RKSI TAF AMD 발표" body="230520Z · TEMPO 2306/2309 27018G28KT 2000 +TSRA BKN008" />
-                      <Notification when="8분 전" title="RKPC METAR 기준 도달" body="시정 1200m(기준 1600m) · 운고 400ft(기준 500ft) · 14:00 KST 관측" />
+                      <Notification when="지금" title="RKTH 시정·운고 기준 미달" body="시정 4000m (기준 5000m 미만) · 운고 600ft (기준 1500ft 미만) · 00:00 KST 관측" />
+                      <Notification when="지금" title="RKTN 시정 기준 미달" body="시정 4800m (기준 5000m 미만) · 00:00 KST 관측" />
+                      <Notification when="지금" title="RKPS 운고 기준 미달" body="운고 600ft (기준 1500ft 미만) · 00:00 KST 관측" />
                     </div>
                   </div>
                 </div>

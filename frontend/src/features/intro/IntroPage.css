@@ -163,22 +163,25 @@
 .intro .flow > .frame:first-child{position:relative}
 /* AI */
 /* alerts */
-.intro .alerts-vis{position:relative; padding-bottom:30px}
-.intro .alerts-vis > .frame{width:82%}
-.intro .phone{position:absolute; right:0; top:48px; width:min(290px, 40%); background:#111827; border-radius:28px; padding:11px} /* color-lint-ignore: 휴대폰 기기 테두리 그림 */
-.intro .phone-screen{background:linear-gradient(180deg,#3B5573,#1C2B3F); border-radius:19px; padding:26px 10px 14px; display:grid; gap:8px; align-content:start; min-height:420px}
-.intro .lock{text-align:center; color:#fff; margin-bottom:6px}
+/* 실제 화면의 알림 패널만 잘라 쓴다. 스크롤하면 알림 설정 → 진행 중인 알림으로 바뀌고, 옆 휴대폰에 푸시가 도착한다. */
+.intro .alerts-stage{display:grid; grid-template-columns:minmax(0, 1fr) 250px; gap:clamp(20px, 2.5vw, 40px); align-items:center}
+/* 세로로 긴 알림 패널 캡처(1280×1800). 고정 구간에서는 화면 높이에 맞춰 폭을 정한다. */
+.intro .alerts-flow{justify-self:end; width:min(100%, 560px)}
+.intro.motion .alerts-flow{width:min(100%, calc((100vh - var(--head) - 100px) * 0.711))}
+.intro .alerts-flow .frame img{aspect-ratio:1280 / 1800; object-fit:cover}
+.intro .phone{align-self:center; background:#111827; border-radius:28px; padding:10px} /* color-lint-ignore: 휴대폰 기기 테두리 그림 */
+.intro .phone-screen{background:linear-gradient(180deg,#3B5573,#1C2B3F); border-radius:19px; padding:22px 9px 10px; display:grid; gap:6px; align-content:start; min-height:440px}
+.intro .lock{text-align:center; color:#fff; margin-bottom:4px}
 .intro .lock-date{font-size:13px; opacity:.85}
-.intro .lock-time{font-size:52px; font-weight:700; letter-spacing:-.03em; line-height:1.1; font-variant-numeric:tabular-nums}
+.intro .lock-time{font-size:44px; font-weight:700; letter-spacing:-.03em; line-height:1.1; font-variant-numeric:tabular-nums}
+.intro .phone-tag{font-size:11.5px; color:rgba(255,255,255,.6); text-align:center; margin-bottom:2px}
 .intro .notis{display:grid}
-.intro .noti{overflow:hidden}
-.intro .noti-in{margin-bottom:8px; background:rgba(255,255,255,.94); border-radius:14px; padding:10px 12px; font-size:14px; line-height:1.55; box-shadow:0 4px 14px -6px rgba(0,0,0,.35)}
+.intro .noti-in{margin-bottom:7px; background:rgba(255,255,255,.94); border-radius:14px; padding:9px 11px; font-size:13px; line-height:1.5; word-break:keep-all; box-shadow:0 4px 14px -6px rgba(0,0,0,.35)}
+.intro .noti small{display:flex; align-items:center; gap:6px; color:var(--dim); font-size:11px; margin-bottom:3px}
+.intro .noti b{font-weight:600}
 .intro .app-icon{width:16px; height:16px; border-radius:4px; background:var(--slate); flex:none; position:relative}
 .intro .app-icon::after{content:""; position:absolute; inset:4px; border-radius:50%; border:1.6px solid #8CCBEA}
 .intro .when{margin-left:auto}
-.intro .phone-tag{font-size:11.5px; color:rgba(255,255,255,.6); text-align:center; margin-bottom:2px}
-.intro .noti small{display:flex; align-items:center; gap:6px; color:var(--dim); font-size:11.5px; margin-bottom:3px}
-.intro .noti b{font-weight:600}
 /* sources */
 .intro .sources{padding-block:120px}
 .intro .sources > p{color:var(--muted); margin:0 0 36px; max-width:36em; font-size:clamp(17px, 1.3vw, 19px)}
@@ -209,8 +212,6 @@
 .intro .lockup span{display:none}
 .intro .feature{grid-template-columns:1fr; padding-block:72px}
 .intro .pair{grid-template-columns:1fr}
-.intro .alerts-vis > .frame{width:100%}
-.intro .phone{position:relative; top:0; width:250px; margin:-50px 0 0 auto}
 .intro .hero-shot{width:100%; margin-bottom:0}
 }
 /* 연출을 끈 환경(좁은 화면, 움직임 줄이기): 겹쳐 두던 레이어와 단계 화면을 옆으로 넘기는 줄로 펼친다. */
@@ -225,11 +226,19 @@
 @media (max-width: 899px){
 /* 옆으로 넘기는 줄은 화면 끝까지 닿게 해 다음 화면이 이어진다는 걸 보여 준다. */
 .intro:not(.motion) .stack, .intro:not(.motion) .flow{width:calc(100% + var(--gutter) * 2); box-sizing:border-box; margin-inline:calc(var(--gutter) * -1); padding-inline:var(--gutter); scroll-padding-inline:var(--gutter)}
+.intro .alerts-stage{grid-template-columns:1fr; position:relative}
+.intro .alerts-flow{width:100%; justify-self:start}
+/* 좁은 화면에서는 휴대폰을 캡처 오른쪽 아래에 작게 겹친다. */
+.intro .alerts-stage .phone{position:absolute; right:-6px; bottom:-10px; width:178px; padding:7px; border-radius:22px}
+.intro .alerts-stage .phone-screen{min-height:250px; padding:12px 6px 6px; gap:3px; border-radius:16px}
+.intro .alerts-stage .lock-date{font-size:11px}
+.intro .alerts-stage .lock-time{font-size:28px}
+.intro .alerts-stage .noti-in{font-size:10.5px; line-height:1.4; padding:6px 8px; margin-bottom:5px; border-radius:11px}
+.intro .alerts-stage .noti small{font-size:9.5px}
 }
 @media (max-width: 599px){
 /* 휴대폰 폭에서는 캡처가 작아 설명 말풍선이 화면을 가린다. */
 .intro .co{display:none}
-.intro .phone{width:220px; margin-top:-32px}
 }
 @media (prefers-reduced-motion: reduce){
 .intro .btn, .intro .legend li, .intro .tabs span{transition:none}
@@ -258,12 +267,5 @@
 .intro.motion .plane-label::before{content:none}
 .intro.motion .tabs{scrollbar-width:none}
 .intro.motion .tabs span{font-size:14px; padding:8px 10px}
-.intro.motion .alerts-vis{padding-bottom:0}
-.intro.motion .phone{width:250px; margin-top:-140px; padding:8px; border-radius:24px}
-.intro.motion .phone-screen{min-height:300px; padding:14px 8px 8px; gap:4px; border-radius:17px}
-.intro.motion .lock{margin-bottom:0}
-.intro.motion .lock-time{font-size:34px}
-.intro.motion .noti-in{font-size:12.5px; line-height:1.45; padding:7px 10px; margin-bottom:6px}
-.intro.motion .noti small{white-space:nowrap; font-size:11px}
 }
 @media (prefers-reduced-motion: reduce){ .intro .hero-anim{animation:none} .intro .enter{transition:none} }
