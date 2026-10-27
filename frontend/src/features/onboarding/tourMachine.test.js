@@ -38,7 +38,7 @@ test('TOUR_STEPS: 첫 화면은 소개·주의 카드, 진행은 전부 수동, 
   for (const s of TOUR_STEPS) assert.equal('advance' in s, false, `${s.id} should have no advance`)
   const [welcome] = TOUR_STEPS
   assert.equal(welcome.center, true)
-  assert.match(welcome.cautionEmphasis, /실제 운항 판단에는 항공기상청 공식 자료/)
+  assert.match(welcome.cautionEmphasis, /운항 판단에는 반드시 항공기상청 공식 자료/)
   assert.equal(TOUR_STEPS.find((s) => s.id === 'airport').mapAirport, 'RKSI')
   const advisory = TOUR_STEPS.find((s) => s.id === 'advisory')
   assert.equal(advisory.demo, 'advisory')

@@ -8,6 +8,8 @@ const SqliteStore = SqliteStoreFactory(session)
 
 export const ABSOLUTE_TTL_MS = 24 * 60 * 60 * 1000 // 절대 만료 24h (로그인 시각 기준)
 export const IDLE_TTL_MS = 60 * 60 * 1000 // 유휴 만료 1h (rolling으로 활동마다 리셋)
+// 휴대폰(홈 화면 앱·모바일 브라우저) 로그인: 마지막 사용 후 30일 유지. 푸시 알림을 눌러 들어올 때마다 다시 로그인하지 않게 한다.
+export const PERSISTENT_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 function resolveSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET

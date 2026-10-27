@@ -2,6 +2,8 @@
 // 백엔드 sender.formatAlert 미러. 문구를 고칠 때 두 곳을 함께 고친다 —
 // 다르면 같은 알림이 폰과 앱에서 다르게 읽힌다.
 
+import { warningNameKo } from '../../../../shared/warning-types.js'
+
 const ROLE_KO = { dep: '출발', dest: '도착', altn: '교체' }
 const at = (n) => (n.role && ROLE_KO[n.role] ? `${ROLE_KO[n.role]} ${n.target}` : (n.target ?? ''))
 
@@ -25,7 +27,7 @@ export function formatNotification(n) {
     const p = n.payload ?? {}
     if (n.type === 'metar') return (p.metrics ?? []).map((m) => m.direction === 'event'
       ? `${m.label} 관측` : `${m.label} ${m.value}${m.unit} · 기준 ${m.threshold}${m.unit} ${m.direction === 'below' ? '미만' : '이상'}`).join(' / ')
-    if (n.type === 'airport_warning') return p.warning?.wrng_type_name ?? p.title ?? '공항경보'
+    if (n.type === 'airport_warning') return warningNameKo(p.warning) ?? p.title ?? '공항경보'
     if (n.type === 'taf') return `${p.reportType === 'AMD' ? 'TAF AMD' : '새 TAF'} · 발표 ${p.issuedAt ?? '시각 미상'}`
     if (n.type === 'lightning') return `${p.radiusKm}km 이내 낙뢰 ${p.count}건 · 최근 ${p.windowMinutes}분`
   }

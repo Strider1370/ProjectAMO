@@ -60,7 +60,7 @@ function AirportOperationsStrip({ airport, tz, now = new Date() }) {
 
 // Phase 1: 탭 → 단일 스크롤 + 스크롤스파이 레일. 섹션 순서 = 위험도/시급성(스펙 §4).
 // 각 섹션은 기존 탭 컴포넌트를 그대로 감쌈(§12 세부 표시는 Phase 2~4에서). 현재날씨는 해체(렌더 제외).
-function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredWeatherData, onAlertsOpen }) {
+function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredWeatherData, onAlertsOpen, focusSection }) {
   const { tz } = useTimeZone()
   const icao = airport?.icao
   const watching = useAirportWatchStatus(icao)
@@ -79,6 +79,13 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
     setInfoRequested(false)
     setHeaderUsesWeather(false)
   }, [icao])
+
+  // 알림 상세에서 연 경우 그 알림과 같은 섹션(METAR·TAF·경보)으로 바로 내려간다.
+  useEffect(() => {
+    if (!icao || !focusSection?.section) return undefined
+    const frame = requestAnimationFrame(() => bodyRef.current?.querySelector(`#sec-${focusSection.section}`)?.scrollIntoView({ block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [icao, focusSection])
 
   // Escape → 드로어 닫기 (외장 키보드 iPad·데스크톱)
   useEffect(() => {

@@ -1,5 +1,6 @@
 import * as turf from '@turf/turf'
 
+import { warningNameKo } from '../../../shared/warning-types.js'
 import config from '../config.js'
 import { organizationMapWeather } from './map-weather.js'
 import { canonicalJson, json, nowIso, sha256 } from './common.js'
@@ -153,7 +154,7 @@ export function evaluateOrganizationSituation({ interests = [], weather = {}, no
       for (const warning of warnings) {
         const sourceId = sha256(JSON.stringify([interest.icao, warning.wrng_type_key, warning.issued, warning.valid_start])).slice(0, 24)
         events.push(event('airport_warning', interest, sourceId, {
-          warning, title: warning.wrng_type_name ?? warning.wrng_type_key ?? '공항경보',
+          warning, title: warningNameKo(warning) ?? warning.wrng_type_key ?? '공항경보',
           description: warning.raw_message ?? '', targetName: interest.name, issuedAt: warning.issued,
           validFrom: warning.valid_start, validTo: warning.valid_end, severity: 'amber',
         }, sourceStatus.warning.status === 'available'))

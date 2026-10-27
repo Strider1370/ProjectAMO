@@ -234,6 +234,9 @@ function ProfileChartContent({
   showWaypointRail = true,
   // 지도형 독: 시간선을 그림 바로 아래에 붙이고 지점 이름을 그 밑으로 당겨, 시간선을 끈 것과 같은 높이로.
   compactRail = false,
+  separateTimeRail = false,
+  minimumWidth = 0,
+  plotPaddingRight = 58,
   // SIGMET·AIRMET 상자 강조: 밖(위험 막대 틀)에서 가리킨 발표 id, 상자를 가리키면 onHoverAdvisory(id|null).
   highlightAdvisoryId = null,
   onHoverAdvisory = null,
@@ -291,12 +294,12 @@ function ProfileChartContent({
     .filter((point) => Number.isFinite(point.elevationFt))
 
   const height = fitHeight ? Math.max(160, Math.round(containerHeight) || 380) : 380
-  const basePadding = { top: interactive ? 18 : 26, right: 58, left: Number.isFinite(plotPaddingLeft) ? plotPaddingLeft : 80 }
+  const basePadding = { top: interactive ? 18 : 26, right: plotPaddingRight, left: Number.isFinite(plotPaddingLeft) ? plotPaddingLeft : 80 }
   const maxDistance = Math.max(profile.axis.totalDistanceNm || 0, samples[samples.length - 1].distanceNm || 0.1)
   // 컨테이너 폭을 채우되 항로가 길면 전체 거리를 유지한다. 장거리 항로는 차트 안에서 가로 이동한다.
   const availWidth = Math.max(320, Math.round(containerWidth) || 960)
   const PX_PER_NM = 1.2
-  const width = interactive ? basePadding.left + basePadding.right + (availWidth - basePadding.left - basePadding.right) * zoom : Math.max(availWidth, Math.round(basePadding.left + basePadding.right + maxDistance * PX_PER_NM))
+  const width = interactive ? basePadding.left + basePadding.right + (Math.max(availWidth, minimumWidth) - basePadding.left - basePadding.right) * zoom : Math.max(availWidth, Math.round(basePadding.left + basePadding.right + maxDistance * PX_PER_NM))
   const scrollable = width > availWidth + 1
   const provisionalPlotWidth = width - basePadding.left - basePadding.right
   const provisionalX = (distanceNm) => basePadding.left + (distanceNm / maxDistance) * provisionalPlotWidth
@@ -309,9 +312,9 @@ function ProfileChartContent({
   const railEnabled = Boolean(showWaypointRail && (onSetWaypointNwpOffset || nwpTimeSelection) && visibleMarkers.length > 1)
   // 시간선의 44px 클릭 영역과 기존 웨이포인트 이름 블록은 겹치면 안 된다.
   // 이름표는 클릭 영역이 끝나는 바로 다음 행에서 시작한다.
-  const waypointLabelBandOffset = railEnabled ? (compactRail ? 12 : 36) : 0
-  const padding = { ...basePadding, bottom: (interactive ? 22 : 36) + markerLaneCount * 16 + (railEnabled && !compactRail ? 28 : 0) }
-  const railOffsetY = compactRail ? 9 : 13
+  const waypointLabelBandOffset = railEnabled ? (separateTimeRail ? 52 : compactRail ? 12 : 36) : 0
+  const padding = { ...basePadding, bottom: (interactive ? 22 : 36) + markerLaneCount * 16 + (railEnabled && !compactRail ? (separateTimeRail ? 44 : 28) : 0) }
+  const railOffsetY = separateTimeRail ? 29 : compactRail ? 9 : 13
   const railHitHalf = compactRail ? 9 : 22
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
@@ -615,7 +618,7 @@ function ProfileChartContent({
         {metaTrailing}
       </div>}
       <div className="vertical-profile-chart-body" ref={containerRef}>
-      <div className="vertical-profile-plot-scroll" ref={scrollElementRef} onLostPointerCapture={() => { dragRef.current = null }} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div className="vertical-profile-plot-scroll" ref={scrollElementRef} tabIndex={minimumWidth ? 0 : undefined} role={minimumWidth ? 'region' : undefined} aria-label={minimumWidth ? '연직단면도 가로 탐색' : undefined} onLostPointerCapture={() => { dragRef.current = null }} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <svg
         className="vertical-profile-plot-svg"
         data-plot-left={padding.left}

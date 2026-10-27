@@ -70,6 +70,11 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
     const p = new URLSearchParams(window.location.search).get('airport')
     return p ? p.toUpperCase() : null
   })
+  const [airportFocus, setAirportFocus] = useState(null) // 알림에서 공항 패널을 열 때 내려갈 섹션
+  const openAlertAirport = useCallback((icao, section) => {
+    setAirportFocus(section ? { icao, section } : null)
+    setSelectedAirport(icao)
+  }, [])
   const [alertTestId, setAlertTestId] = useState(() => new URLSearchParams(window.location.search).get('alertTest'))
   const [alertEventId, setAlertEventId] = useState(() => {
     const value = new URLSearchParams(window.location.search).get('alert')
@@ -85,6 +90,19 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
     window.addEventListener('open-alert-panel', open)
     return () => window.removeEventListener('open-alert-panel', open)
   }, [openAlertWorkspace])
+  // 웹 팝업의 "보기": 새로고침 없이 알림 상세만 띄운다. 주소에도 남겨 뒤로가기·공유가 같은 화면을 연다.
+  useEffect(() => {
+    const open = (event) => {
+      const { eventId, testId } = event.detail ?? {}
+      const url = new URL(window.location.href)
+      if (eventId) { setAlertEventId(eventId); url.searchParams.set('alert', eventId) }
+      else if (testId) { setAlertTestId(testId); url.searchParams.set('alertTest', testId) }
+      else return
+      window.history.replaceState(window.history.state, '', url)
+    }
+    window.addEventListener('open-alert-detail', open)
+    return () => window.removeEventListener('open-alert-detail', open)
+  }, [])
   // 딥링크: ?flight=<routeId> 로 비행 알림 에스컬레이션 화면 바로 열기 (Task 10)
   // 번호는 deeplinkFlight.js가 페이지 열릴 때 한 번 집어 둔다 — 변경점 띠도 같은 값을 읽는다.
   const [deeplinkFlightId, setDeeplinkFlightId] = useState(deeplinkFlightIdFromUrl)
@@ -118,6 +136,19 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
       if (route) mapRef.current?.loadRouteBriefing?.(route)
     } catch { /* 경로 원본을 삭제해도 알림 당시 상세는 표시한다. */ }
   }, [isMobile])
+  // 알림 목록 카드의 "METAR 보기"·"TAF 보기"·"브리핑에서 보기": 알림 패널을 닫고 그 자료를 연다.
+  useEffect(() => {
+    const SECTION = { metar: 'metar', taf: 'taf', airport_warning: 'warn', lightning: 'warn' }
+    const open = (event) => {
+      const { airportIcao, kind, routeId } = event.detail ?? {}
+      setAlertWorkspace(null)
+      if (/^\/alerts(?:\/settings)?\/?$/.test(window.location.pathname)) window.history.replaceState(window.history.state, '', '/')
+      if (routeId) openAlertRoute(routeId)
+      else if (airportIcao) openAlertAirport(airportIcao, SECTION[kind])
+    }
+    window.addEventListener('open-alert-target', open)
+    return () => window.removeEventListener('open-alert-target', open)
+  }, [openAlertAirport, openAlertRoute])
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
   const copilotUiState = useRef(null)
   copilotUiState.current = { ownerId: user?.id, airport: selectedAirport, panel: activePanel, airports: weatherData?.airports }
@@ -347,6 +378,7 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
         onClose={() => setSelectedAirport(null)}
         onRequestDeferredWeatherData={requestDeferredWeatherData}
         onAlertsOpen={() => openAlertWorkspace({ view: 'settings', airportIcao: selectedAirport })}
+        focusSection={airportFocus?.icao === selectedAirport ? airportFocus : null}
       />
       {alertWorkspace && <Suspense fallback={null}><AlertWorkspacePanel key={`${alertWorkspace.view}:${alertWorkspace.airportIcao}:${alertWorkspace.routeId}`}
         initialView={alertWorkspace.view} airportIcao={alertWorkspace.airportIcao} routeId={alertWorkspace.routeId}
@@ -355,14 +387,14 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
           setAlertWorkspace(null)
           if (/^\/alerts(?:\/settings)?\/?$/.test(window.location.pathname)) window.history.replaceState(window.history.state, '', '/')
         }} /></Suspense>}
-      {alertTestId && <AlertTestDetail id={alertTestId} onAirport={setSelectedAirport} onRoute={openAlertRoute} onLogin={() => setAuthOpen(true)}
+      {alertTestId && <AlertTestDetail id={alertTestId} onAirport={openAlertAirport} onRoute={openAlertRoute} onLogin={() => setAuthOpen(true)}
         onClose={() => {
           setAlertTestId(null)
           const url = new URL(window.location.href)
           url.searchParams.delete('alertTest')
           window.history.replaceState(window.history.state, '', url)
         }} />}
-      {alertEventId && <AlertTestDetail eventId={alertEventId} onAirport={setSelectedAirport} onRoute={openAlertRoute} onLogin={() => setAuthOpen(true)}
+      {alertEventId && <AlertTestDetail eventId={alertEventId} onAirport={openAlertAirport} onRoute={openAlertRoute} onLogin={() => setAuthOpen(true)}
         onClose={() => {
           setAlertEventId(null)
           const url = new URL(window.location.href)

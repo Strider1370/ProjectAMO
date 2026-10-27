@@ -5,7 +5,7 @@ import { ICING_PRESENTATION, icingPatternStyle } from '../../../shared/weather/c
 import { GKTG_BANDS } from '../../../../../shared/gktg.js'
 import { ACI_BANDS } from '../../../../../shared/aci.js'
 
-export const MAP_BRIEFING_MIN_WIDTH = 1280
+export const MAP_BRIEFING_MIN_WIDTH = 1024
 const VIEW_KEY = 'projectamo.briefingView'
 
 // 고른 보기(map | document)를 브라우저에 기억한다. 저장소가 막혀 있어도 기본값으로 동작.
@@ -54,7 +54,6 @@ export function profileHeightPx(viewportHeight) {
 export const RIBBON_LABEL_WIDTH_PX = 240
 // 문서형 브리핑(패널 폭): 이름 칸 = 단면도 고도 눈금 폭. 눈 아이콘·현상 이름만 들어가고 단면도 그림이 폭을 다 쓴다.
 export const DOCUMENT_LABEL_WIDTH_PX = 64
-export const DOCUMENT_PROFILE_HEIGHT_PX = 400
 
 export const LEVEL_KO = { SEV: '심한', MOD: '보통' }
 const PHASE_KO = { climb: '상승', cruise: '순항', descent: '강하' }

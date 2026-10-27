@@ -1,0 +1,28 @@
+{
+  "tmfc": "2026100900",
+  "hf": 12,
+  "validAt": "2026-10-09T12:00:00Z",
+  "grid": {
+    "nx": 841,
+    "ny": 529,
+    "lonMin": 90,
+    "latMin": 6,
+    "lonMax": 160,
+    "latMax": 50,
+    "dx": 0.083333,
+    "dy": 0.083333
+  },
+  "format": "aci-f32-v1",
+  "fields": [
+    "cape",
+    "rainRate",
+    "olr"
+  ],
+  "binaryUrl": "/data/aci-experiment/2026100900-hf012-expanded.f32",
+  "validCount": 443071,
+  "maxStepHpa": 20,
+  "seconds": 13.636907586995221,
+  "fallbacks": 1348,
+  "inputRequests": 47,
+  "inputBytes": 274230077
+}

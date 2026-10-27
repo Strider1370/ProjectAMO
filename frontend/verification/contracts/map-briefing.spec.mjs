@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures.mjs'
 import { createBriefing } from '../briefing-flow.mjs'
 
-// 지도형 브리핑(폭 1280 이상 기본): 패널·위험 막대·연직단면도 독, 문서형 전환, 따로 접기.
+// 지도형 브리핑(폭 1024 이상 기본): 패널·위험 막대·연직단면도 독, 문서형 전환, 따로 접기.
 // 위험 막대·SIGMET이 걸린 브리핑: 픽스처 브리핑(모델 단면 없음)에 정해진 ribbon을 넣고, 같은 id의 SIGMET 둘을 지도·단면에 띄운다.
 // 난류: 모델 SEV 막대(순항) + SIGMET 틀(내 고도), 착빙: SIGMET 틀(다른 고도). 착빙 영역이 난류보다 작아 겹친 곳에서 착빙이 골라진다.
 const HOUR = 3600_000
@@ -39,7 +39,7 @@ function hazardScenario(page) {
 
 test.describe('map-briefing', () => {
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', '지도형은 폭 1280 이상 데스크톱만')
+    test.skip(testInfo.project.name !== 'desktop', '지도형은 폭 1024 이상 데스크톱 전용')
   })
 
   test('opens the map briefing with panel, hazard ribbon and profile dock, and switches to the document view', async ({ page }) => {
@@ -73,6 +73,8 @@ test.describe('map-briefing', () => {
     // 문서형 ↔ 지도형
     await panel.getByRole('button', { name: '문서형 보기' }).click()
     await expect(page.locator('.briefing-view')).toBeVisible()
+    await expect(page.locator('.feedback-launcher')).toBeHidden()
+    await expect(page.getByRole('button', { name: '기본 지도 보기', exact: true })).toHaveCount(0)
     // 문서형 노선 섹션에도 같은 위험 막대가 있다 — 지도 위 독만 사라진다.
     await expect(page.locator('.mb-dock:not(.is-document)')).toHaveCount(0)
     await expect(page.locator('.briefing-view').getByRole('group', { name: '경로상 위험 막대' })).toHaveCount(1)
@@ -180,4 +182,30 @@ test.describe('map-briefing', () => {
     await expect(page.locator('.mb-airport-card')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '브리핑 패널' })).toBeVisible()
   })
+})
+
+
+test('map-briefing uses the map on iPad landscape and adapts when rotated', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'ipad-landscape', '아이패드 가로·세로 전환')
+  await createBriefing(page, { view: 'map' })
+  const panel = page.getByRole('complementary', { name: '비행 전 브리핑' })
+  await expect(panel).toBeVisible()
+  await expect(page.locator('.mb-dock:not(.is-document)')).toBeVisible()
+  await expect(page.locator('.briefing-view')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '기본 지도 보기', exact: true })).toHaveCount(0)
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await expect(panel).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('ipad-landscape-map-briefing.png') })
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await expect(panel).toHaveCount(0)
+  await expect(page.locator('.briefing-view')).toBeVisible()
+  await expect(page.locator('.feedback-launcher')).toBeHidden()
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await expect(panel).toBeVisible()
+  await panel.getByRole('button', { name: '문서형 보기' }).click()
+  await expect(page.locator('.briefing-view')).toBeVisible()
+  await expect(page.locator('.feedback-launcher')).toBeHidden()
+  await page.getByRole('button', { name: '지도형 보기' }).click()
+  await expect(panel).toBeVisible()
 })

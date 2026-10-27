@@ -1,3 +1,4 @@
+import { warningNameKo } from '../../../shared/warning-types.js'
 import { phenomenonTitle } from './phenomenon.js'
 
 // 휴대폰 푸시 문구. 잠금화면에는 제목과 본문 앞부분만 보이므로 제목 첫머리에 공항(경로)과 "무엇이 일어났나"를,
@@ -25,7 +26,7 @@ export function airportAlertBody(event) {
   const p = event.payload
   if (event.kind === 'metar') return [...p.metrics.map(metricText), p.observedAt ? `${kst(p.observedAt)} KST 관측` : null].filter(Boolean).join(' · ')
   if (event.kind === 'taf') return p.text ?? ''
-  if (event.kind === 'airport_warning') return `${p.warning?.wrng_type_name ?? '공항경보'}${p.validTo ? ` · ~${kst(p.validTo)} KST` : ''}`
+  if (event.kind === 'airport_warning') return `${warningNameKo(p.warning) ?? '공항경보'}${p.validTo ? ` · ~${kst(p.validTo)} KST` : ''}`
   return `반경 ${p.radiusKm}km · 최근 ${p.windowMinutes}분 · ${p.count}건`
 }
 

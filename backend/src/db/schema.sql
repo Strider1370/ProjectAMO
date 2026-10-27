@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
   min_visibility_m INTEGER CHECK (min_visibility_m BETWEEN 0 AND 10000),
   last_active_at TEXT,                        -- 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
   deleted_at    TEXT,                         -- 회원 탈퇴했지만 기관 기록 때문에 행만 남긴 계정(users.js withdrawUser)
+  quiet_push_enabled INTEGER NOT NULL DEFAULT 0, -- 밤 시간 푸시 끄기(user-alerts/quiet-hours.js)
+  quiet_push_start   INTEGER,                    -- KST 분(0–1439)
+  quiet_push_end     INTEGER,
   created_at    TEXT NOT NULL
 );
 

@@ -23,10 +23,13 @@ export default function AirportAlertInboxPage({ embedded = false, watchCount = n
   const read = shown.filter((item) => item.readAt)
   const userUnread = userAlerts.filter((item) => !item.readAt).length
   if (!loading && !user) return <main className="aa-page"><div className="aa-shell"><button type="button" onClick={onClose}>← 지도</button><h1>알림</h1><p>알림을 보려면 로그인하세요.</p><button type="button" onClick={onLogin}>로그인</button></div></main>
+  // 카드 버튼("METAR 보기"·"TAF 보기"·"브리핑에서 보기")은 이름대로 그 자료를 바로 연다(App의 open-alert-target).
   async function open(item) {
     await markRead(item.id)
     if (item.source === 'organization') window.location.assign(`/lounge/${encodeURIComponent(item.organizationId)}/alerts/${encodeURIComponent(item.id.slice(13))}`)
-    else window.location.assign(`/?alert=${encodeURIComponent(item.id)}`)
+    else if (item.source === 'route' && item.routeId) window.dispatchEvent(new CustomEvent('open-alert-target', { detail: { routeId: item.routeId } }))
+    else if (item.airportIcao) window.dispatchEvent(new CustomEvent('open-alert-target', { detail: { airportIcao: item.airportIcao, kind: item.type } }))
+    else window.dispatchEvent(new CustomEvent('open-alert-detail', { detail: { eventId: item.id } }))
   }
   const card = (item) => item.source === 'organization'
     ? <article key={item.id} className="aa-card"><div className="aa-card-top"><span className="aa-kind">기관 알림</span></div>

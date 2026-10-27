@@ -36,6 +36,10 @@ function ensureColumns(database) {
     if (!userCols.includes('min_visibility_m')) database.exec('ALTER TABLE users ADD COLUMN min_visibility_m INTEGER')
     if (!userCols.includes('last_active_at')) database.exec('ALTER TABLE users ADD COLUMN last_active_at TEXT') // 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
     if (!userCols.includes('deleted_at')) database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT') // 회원 탈퇴 후 행만 남긴 계정
+    // 밤 시간 푸시 끄기(user-alerts/quiet-hours.js)
+    if (!userCols.includes('quiet_push_enabled')) database.exec('ALTER TABLE users ADD COLUMN quiet_push_enabled INTEGER NOT NULL DEFAULT 0')
+    if (!userCols.includes('quiet_push_start')) database.exec('ALTER TABLE users ADD COLUMN quiet_push_start INTEGER')
+    if (!userCols.includes('quiet_push_end')) database.exec('ALTER TABLE users ADD COLUMN quiet_push_end INTEGER')
   }
 
   if (tableExists('organization_briefing_runs')) {

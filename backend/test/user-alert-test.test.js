@@ -115,3 +115,11 @@ test('긴 TAF 전문은 푸시 크기 안에서 자르고 전체 전문은 저�
   assert.match(body, /전문 전체는 알림을 눌러 확인하세요/)
   assert.equal(pushBodyWithinLimit('짧은 TAF'), '짧은 TAF')
 })
+
+test('TAF test alerts carry a realistic TAF with max/min temperature groups', async () => {
+  const { sampleTafText } = await import('../src/user-alerts/airport-test.js')
+  const text = sampleTafText('RKSI', Date.parse('2026-10-27T11:05:00Z'), true)
+  assert.match(text, /^TAF AMD RKSI 271105Z 2712\/2818 /)
+  assert.match(text, /TN06\/2721Z TX15\/2805Z/)
+  assert.match(text, /\nTEMPO /)
+})

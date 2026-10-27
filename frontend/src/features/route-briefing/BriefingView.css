@@ -384,3 +384,9 @@
   font-size: var(--fs-200);
   overflow-wrap: anywhere;
 }
+
+/* 태블릿 가로: 문서 바깥과 노선 카드의 중첩 여백을 줄인다. */
+@media (min-width: 720px) and (max-width: 1199px) and (orientation: landscape) {
+  .briefing-view .bv-scroll { padding-inline: var(--space-s); }
+  .briefing-view .bv-section[data-bvid="enroute"] > .fui-Card { padding-inline: var(--space-s); }
+}

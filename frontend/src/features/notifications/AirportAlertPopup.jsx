@@ -41,9 +41,10 @@ export default function AirportAlertPopup() {
   // 가장 최근 1건을 카드로 펼치고 나머지는 "외 N건" 한 줄로 접는다.
   const [first, ...rest] = events
   async function open(event) {
-    if (event.test) { window.location.assign(`/?alertTest=${encodeURIComponent(event.testId)}`); return }
+    // 상세는 같은 화면 위에 띄운다(App의 open-alert-detail). 페이지를 다시 불러오면 지도에서 보던 상태가 사라진다.
+    if (event.test) { setEvents(null); window.dispatchEvent(new CustomEvent('open-alert-detail', { detail: { testId: String(event.testId) } })); return }
     if (event.source === 'organization') { await markRead(event.id); window.location.assign(`/lounge/${encodeURIComponent(event.organizationId)}/alerts/${encodeURIComponent(event.id.slice(13))}`); return }
-    if (!event.preview) { await markRead(event.id); window.location.assign(`/?alert=${encodeURIComponent(event.id)}`); return }
+    if (!event.preview) { await markRead(event.id); setEvents(null); window.dispatchEvent(new CustomEvent('open-alert-detail', { detail: { eventId: event.id } })); return }
     window.location.assign('/alerts')
   }
   async function read() {

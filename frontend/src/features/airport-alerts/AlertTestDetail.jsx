@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { warningNameKo } from '../../../../shared/warning-types.js'
 import './alertTestDetail.css'
 
 const formatTime = (value, tz) => {
@@ -12,10 +13,13 @@ const formatTime = (value, tz) => {
   }).format(date) : ''
 }
 
-function TestContent({ test, tz }) {
+// 공항 패널을 열 때 내려갈 섹션(AirportPanel의 sec-…). 낙뢰는 경보 섹션에 함께 나온다.
+const PANEL_SECTION = { metar: 'metar', taf: 'taf', airport_warning: 'warn', lightning: 'warn' }
+
+function TestContent({ test, tz, isTest }) {
   const payload = test.payload ?? {}
   if (test.kind === 'metar') return <>
-    <p className="alert-test-observed">모의 관측 {formatTime(payload.observedAt, tz)} {tz}</p>
+    <p className="alert-test-observed">{isTest ? '모의 관측' : '관측'} {formatTime(payload.observedAt, tz)} {tz}</p>
     <div className="alert-test-metrics">{(payload.metrics ?? []).map((metric) => <div key={metric.key}>
       <span>{metric.label}</span>
       <strong>{metric.direction === 'event' ? '보고' : `${metric.value}${metric.unit}`}</strong>
@@ -23,11 +27,11 @@ function TestContent({ test, tz }) {
     </div>)}</div>
   </>
   if (test.kind === 'airport_warning') return <div className="alert-test-summary">
-    <strong>{payload.warning?.wrng_type_name ?? '공항경보'}</strong>
+    <strong>{warningNameKo(payload.warning) ?? '공항경보'}</strong>
     <span>발효 {formatTime(payload.validFrom, tz)} {tz}</span><span>종료 {formatTime(payload.validTo, tz)} {tz}</span>
   </div>
   if (test.kind === 'taf') return <div className="alert-test-summary">
-    <strong>{payload.reportType === 'AMD' ? 'TAF AMD' : '새 TAF'} · {payload.textSource === 'raw' ? '원문' : '재구성 전문'}</strong>
+    <strong>{payload.reportType === 'AMD' ? 'TAF AMD 발표' : '새 TAF 발표'}</strong>
     <span>발표 {formatTime(payload.issuedAt, tz)} · 유효 {formatTime(payload.validFrom, tz)} – {formatTime(payload.validTo, tz)} {tz}</span>
     <pre className="alert-test-report">{payload.text}</pre>
   </div>
@@ -42,7 +46,7 @@ function TestContent({ test, tz }) {
     <strong>{payload.radiusKm}km 이내 {payload.count}건</strong>
     <span>최근 {payload.windowMinutes}분 · 관측 {formatTime(payload.observedAt, tz)} {tz}</span>
   </div>
-  return <p>시험 결과를 표시할 수 없습니다.</p>
+  return <p>알림 내용을 표시할 수 없습니다.</p>
 }
 
 export default function AlertTestDetail({ id, eventId, onClose, onAirport, onRoute, onLogin }) {
@@ -59,28 +63,35 @@ export default function AlertTestDetail({ id, eventId, onClose, onAirport, onRou
       : `/api/me/alert-tests/${encodeURIComponent(id)}`
     fetch(path, { credentials: 'include' })
       .then(async (response) => {
-        if (!response.ok) throw new Error(response.status === 404 ? '시험 알림이 만료됐거나 볼 권한이 없습니다.' : '시험 알림을 불러오지 못했습니다.')
+        if (!response.ok) throw new Error(response.status === 404
+          ? (eventId ? '알림을 찾을 수 없습니다. 알림을 받은 계정으로 로그인했는지 확인해 주세요.' : '시험 알림이 만료됐거나 볼 권한이 없습니다.')
+          : (eventId ? '알림을 불러오지 못했습니다.' : '시험 알림을 불러오지 못했습니다.'))
         return response.json()
       })
-      .then((data) => { if (!cancelled) { const next = data.test ?? data.event; setTest(next); setError('');
-        if (next?.targetType === 'airport' || next?.airportIcao) onAirport?.(next.targetId ?? next.airportIcao)
-        const linkedRouteId = next.routeId ?? Number(next.targetId)
-        if ((next?.targetType === 'route' || next?.routeId) && linkedRouteId > 0) onRoute?.(linkedRouteId) } })
+      // 상세 창만 연다. 공항 패널·경로 브리핑은 아래 버튼을 눌렀을 때 연다(같이 열면 두 화면이 겹친다).
+      .then((data) => {
+        if (cancelled) return
+        setTest(data.test ?? data.event); setError('')
+        // 푸시·팝업으로 열어 본 알림은 읽은 것으로 표시한다(종 배지 숫자가 남지 않게).
+        if (eventId) fetch(`/api/me/notifications/${encodeURIComponent(eventId)}/read`, { method: 'PATCH', credentials: 'include' }).catch(() => {})
+      })
       .catch((reason) => { if (!cancelled) setError(reason.message) })
     return () => { cancelled = true }
-  }, [id, eventId, user, onAirport, onRoute])
+  }, [id, eventId, user])
 
-  return <div className="alert-test-shade"><section className="alert-test-detail" role="dialog" aria-modal="true" aria-label={eventId ? '공항 알림 상세' : '시험 알림 상세'}>
+  return <div className="alert-test-shade"><section className="alert-test-detail" role="dialog" aria-modal="true" aria-label={eventId ? eventId.startsWith('route:') ? '경로 알림 상세' : '공항 알림 상세' : '시험 알림 상세'}>
     <header><div><span className="alert-test-tag">{eventId ? eventId.startsWith('route:') ? '경로 알림' : '공항 알림' : '테스트 · 모의 자료'}</span><h2>{test?.airportName ?? test?.payload?.routeName ?? '알림'}</h2></div><button type="button" aria-label="알림 닫기" onClick={onClose}><X size={20} /></button></header>
-    {!loading && !user ? <div className="alert-test-copy"><p>알림을 받은 계정으로 로그인하면 시험 내용을 확인할 수 있습니다.</p><button type="button" onClick={onLogin}>로그인</button></div>
+    {!loading && !user ? <div className="alert-test-copy"><p>알림을 받은 계정으로 로그인하면 {eventId ? '알림' : '시험'} 내용을 확인할 수 있습니다.</p><button type="button" onClick={onLogin}>로그인</button></div>
       : error ? <p className="alert-test-copy" role="alert">{error}</p>
-        : !test ? <p className="alert-test-copy" role="status">시험 알림을 불러오는 중…</p>
+        : !test ? <p className="alert-test-copy" role="status">{eventId ? '알림' : '시험 알림'}을 불러오는 중…</p>
           : <div className="alert-test-copy">{!eventId && <p className="alert-test-notice">아래 값은 수신·판정 시험용입니다. 현재 공항 실황과 다릅니다.</p>}
-            <TestContent test={test} tz={tz} />
+            <TestContent test={test} tz={tz} isTest={!eventId} />
             <p className="alert-test-foot">{eventId ? '발생' : '시험 발송'} {formatTime(test.createdAt, tz)} {tz}{!eventId && ' · 이 알림은 실제 감시 이력에 포함되지 않습니다.'}</p>
-            {(test.targetType === 'airport' || test.airportIcao) && <button type="button" className="alert-test-open" onClick={onClose}>현재 실황 공항 패널 보기</button>}
+            {(test.targetType === 'airport' || test.airportIcao) && <button type="button" className="alert-test-open"
+              onClick={() => { onAirport?.(test.targetId ?? test.airportIcao, PANEL_SECTION[test.kind]); onClose() }}>현재 실황 공항 패널 보기</button>}
             {(test.targetType === 'route' || test.routeId) && (test.routeId ?? Number(test.targetId)) > 0
-              ? <button type="button" className="alert-test-open" onClick={onClose}>경로 브리핑 보기</button>
+              ? <button type="button" className="alert-test-open"
+                onClick={() => { onRoute?.(test.routeId ?? Number(test.targetId)); onClose() }}>경로 브리핑 보기</button>
               : eventId?.startsWith('route:') && <p>저장 경로는 삭제됐습니다. 발생 당시 SIGMET 정보는 위에 남아 있습니다.</p>}
           </div>}
   </section></div>

@@ -1,4 +1,5 @@
 import { sendPush } from '../push/send.js'
+import { inQuietHours, readQuietHours } from './quiet-hours.js'
 import { airportAlertBody, airportAlertTitle, pushBodyWithinLimit, routeSigmetBody, routeSigmetTitle } from './content.js'
 
 const MAX_ATTEMPTS = 5
@@ -7,6 +8,8 @@ const MAX_ATTEMPTS = 5
 // 대기 중인 기기별 발송은 다음 공통 tick에서 복구된다.
 export function queueUserAlertDeliveries(db, { source, eventId, userId, pushEnabled = true, nowIso }) {
   if (!pushEnabled) return 0
+  // 밤 시간 푸시 끄기: 알림은 목록에 남고 휴대폰 푸시만 보내지 않는다.
+  if (inQuietHours(readQuietHours(db, userId), Date.parse(nowIso))) return 0
   const result = db.prepare(`INSERT OR IGNORE INTO user_alert_deliveries
     (source,event_id,subscription_id,endpoint,user_id,next_attempt_at)
     SELECT ?,?,id,endpoint,?,? FROM push_subscriptions WHERE user_id=?`)

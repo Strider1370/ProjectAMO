@@ -5,7 +5,7 @@ import { getDb } from '../db/index.js'
 import { createUser, verifyLogin, getUserById } from '../db/users.js'
 import { registerSchema, loginSchema } from './validation.js'
 import { requireAuth } from './middleware.js'
-import { ABSOLUTE_TTL_MS } from './session.js'
+import { ABSOLUTE_TTL_MS, PERSISTENT_TTL_MS } from './session.js'
 
 // 무차별 대입·계정 남발 방지. IP당 제한(nginx trust proxy). 라우터 인스턴스별 인메모리 스토어.
 function makeLimiter(windowMs, limit) {
@@ -51,7 +51,13 @@ export function createAuthRouter({ db = null } = {}) {
     else if (user.status !== 'active') return res.status(403).json({ error: 'account_rejected' })
     req.session.userId = user.id
     req.session.role = user.role
-    req.session.absoluteExpiry = Date.now() + ABSOLUTE_TTL_MS
+    // 휴대폰은 쿠키 수명을 30일로 늘리고(활동마다 다시 30일) 24시간 절대 만료를 두지 않는다. PC는 1시간·24시간 그대로.
+    if (req.body?.persistent === true) {
+      req.session.cookie.maxAge = PERSISTENT_TTL_MS
+      req.session.absoluteExpiry = null
+    } else {
+      req.session.absoluteExpiry = Date.now() + ABSOLUTE_TTL_MS
+    }
     database().prepare('UPDATE users SET last_active_at=? WHERE id=?').run(new Date().toISOString(), user.id)
     return res.json({ id: user.id, username: user.username, role: user.role, display_name: user.display_name })
   })

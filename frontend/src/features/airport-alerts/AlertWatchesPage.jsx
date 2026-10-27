@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ChevronRight, Plus, X } from 'lucide-react'
 import airports from '../../../../shared/airports.js'
-import usePersonalSettings from '../personal/usePersonalSettings.js'
+import usePersonalSettings, { PUSH_FAILURE_TEXT } from '../personal/usePersonalSettings.js'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import AlertIcon from './AlertIcon.jsx'
 import LegacyAlertArchive from './LegacyAlertArchive.jsx'
+import QuietHoursRow from './QuietHoursRow.jsx'
+import IosPushGuide from './IosPushGuide.jsx'
+import { needsIosHomeScreen } from '../notifications/pushDevice.js'
 import { clock } from './AlertCard.jsx'
 import { activeByTarget, alertView, ceilingText, metarNow, ruleChips, visibilityText } from './alertModel.js'
 import './airportAlerts.css'
@@ -57,8 +60,11 @@ export default function AlertWatchesPage({ watches, notifications, onBack, onClo
     } catch { setMessage('웹 팝업 설정을 바꾸지 못했습니다.') } finally { setBusy(false) }
   }
   async function setPush(next) {
-    const result = await togglePush(next)
-    if (next && !result?.ok) setMessage(result?.reason === 'denied' ? '브라우저 알림 권한이 차단됐습니다. 브라우저 설정에서 허용해 주세요.' : '푸시 알림을 켜지 못했습니다.')
+    setBusy(true); setMessage('')
+    try {
+      const result = await togglePush(next)
+      if (next && !result.ok) setMessage(PUSH_FAILURE_TEXT[result.reason] ?? '푸시 알림을 켜지 못했습니다.')
+    } finally { setBusy(false) }
   }
 
   return <main className="aa-page"><div className="aa-shell">
@@ -76,12 +82,13 @@ export default function AlertWatchesPage({ watches, notifications, onBack, onClo
         <Switch checked={popupOn} label="웹 팝업" disabled={busy || !airportWatches.length} onChange={setPopup} />
       </div>
       {/* 휴대폰 푸시는 휴대폰에서 켠다(기기마다 따로). PC에서는 켜는 방법만 안내한다. */}
-      {isMobile ? <div className="aa-setting-row">
-        <span>이 휴대폰 푸시<small className={pushEnabled ? 'is-ok' : undefined}>{pushEnabled ? '켜짐 · 잠금화면과 알림센터로 받습니다' : pushSupported ? '꺼짐 · 켜면 사이트를 닫아도 받습니다' : '이 브라우저는 푸시를 지원하지 않습니다 · 홈 화면에 추가한 뒤 다시 시도하세요'}</small></span>
-        <Switch checked={pushEnabled} label="이 휴대폰 푸시" disabled={!pushSupported} onChange={setPush} />
+      {isMobile && needsIosHomeScreen() ? <IosPushGuide /> : isMobile ? <div className="aa-setting-row">
+        <span>이 휴대폰 푸시<small className={pushEnabled ? 'is-ok' : undefined}>{pushEnabled ? '켜짐 · 잠금화면과 알림센터로 받습니다' : pushSupported ? '꺼짐 · 켜면 사이트를 닫아도 받습니다' : '이 브라우저는 푸시를 지원하지 않습니다'}</small></span>
+        <Switch checked={pushEnabled} label="이 휴대폰 푸시" disabled={!pushSupported || busy} onChange={setPush} />
       </div> : <div className="aa-setting-row">
         <span>휴대폰 푸시<small>휴대폰에서 이 사이트를 열고 알림 → 감시 대상 → 받는 방법에서 켜세요. 휴대폰마다 따로 켭니다.</small></span>
       </div>}
+      <QuietHoursRow Switch={Switch} />
     </section>
 
     <div className="aa-group-head">

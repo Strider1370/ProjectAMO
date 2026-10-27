@@ -346,8 +346,8 @@
   cursor: pointer;
 }
 
-/* 수치예보 레이어의 발표·유효시각 카드와 고도 막대가 같은 오른쪽 위를 쓴다. 그것들이 뜨면 입구를 숨긴다(사이드바에서 열 수 있다). */
-.app:has(.weather-time-card, .vertical-level-rail-stack > *) > .feedback-launcher { display: none; }
+/* 문서형 브리핑과 수치예보 카드·고도 막대를 가리지 않도록 입구를 숨긴다(사이드바에서 열 수 있다). */
+.app:has(.briefing-view, .weather-time-card, .vertical-level-rail-stack > *) > .feedback-launcher { display: none; }
 
 .feedback-launcher:focus-visible,
 .feedback-tabs button:focus-visible,

@@ -1,3 +1,4 @@
+import { warningNameKo } from '../../../shared/warning-types.js'
 import { summarizeAirport } from './airport-summary.js'
 import { levelForCategory, to3Level } from './flight-category.js'
 import { buildDestination, tafWindow } from './taf-window.js'
@@ -54,7 +55,7 @@ function buildAirportWarningHazards(warningData, roles, etd, eta) {
       out.push({
         source: '공항경보',
         code: w.wrng_type_key,
-        label: w.wrng_type_name || w.wrng_type_key,
+        label: warningNameKo(w) || w.wrng_type_key,
         validFrom: w.valid_start,
         validTo: w.valid_end,
         encounter: 'on',

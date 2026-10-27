@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, BellRing, X } from 'lucide-react'
-import usePersonalSettings from '../personal/usePersonalSettings.js'
+import usePersonalSettings, { PUSH_FAILURE_TEXT } from '../personal/usePersonalSettings.js'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import AlertIcon from './AlertIcon.jsx'
@@ -148,7 +148,7 @@ export default function RouteAlertSettings({ routeId, watches, notifications = [
       <button type="button" className="aa-primary" disabled={busy} onClick={start}>{watch ? '감시 경로 업데이트' : '이 경로 감시 시작'}</button>
       {isMobile && watch?.enabled && !pushEnabled && <button type="button" disabled={busy} onClick={async () => {
         const result = await togglePush(true)
-        setMessage(result.ok ? '이 기기의 푸시를 켰습니다.' : '푸시를 켜지 못했습니다. 브라우저 권한을 확인하세요.')
+        setMessage(result.ok ? '이 기기의 푸시를 켰습니다.' : PUSH_FAILURE_TEXT[result.reason] ?? '푸시를 켜지 못했습니다.')
       }}>이 휴대폰 푸시 켜기</button>}
       {watch?.enabled && <button type="button" disabled={busy} onClick={runTest}><BellRing size={16} aria-hidden="true" />내 기기로 시험 받기</button>}
       {lastTest && <a className="aa-link" href={`/?alertTest=${encodeURIComponent(lastTest.id)}`}>마지막 시험 보기</a>}

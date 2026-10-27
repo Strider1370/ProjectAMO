@@ -1,5 +1,6 @@
 import { getFlightCategory } from '../../shared/weather/helpers.js'
 import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
+import { warningNameKo } from '../../../../shared/warning-types.js'
 
 // 알림 패널·팝업·감시 대상 카드가 같이 쓰는 표시 규칙. 한눈에 읽히도록 "무엇이 일어났나"를 제목으로,
 // 경로·시각·설명은 둘째 줄로 내린다. 빨간색은 기준을 넘은 값에만 쓴다(화면 쪽).
@@ -58,7 +59,7 @@ export function alertView(n) {
   if (n?.type === 'metar') return { kind: 'metar', badge: 'METAR 기준 초과', title: metarHeadline(p.metrics), target: n.routeName ?? n.airportIcao, metrics: p.metrics ?? [], observedAt: p.observedAt ?? null }
   if (n?.type === 'taf') return { kind: 'taf', badge: p.reportType === 'AMD' ? 'TAF AMD' : 'TAF', title: p.reportType === 'AMD' ? 'TAF AMD 발표' : 'TAF 발표', target: n.routeName ?? n.airportIcao,
     text: p.text ?? '', issuedAt: p.issuedAt ?? null, validFrom: p.validFrom ?? null, validTo: p.validTo ?? null }
-  if (n?.type === 'airport_warning') return { kind: 'warning', badge: '공항경보', title: p.warning?.wrng_type_name ?? p.title ?? '공항경보', target: n.routeName ?? n.airportIcao, validTo: p.validTo ?? null }
+  if (n?.type === 'airport_warning') return { kind: 'warning', badge: '공항경보', title: warningNameKo(p.warning) ?? p.title ?? '공항경보', target: n.routeName ?? n.airportIcao, validTo: p.validTo ?? null }
   if (n?.type === 'lightning') return { kind: 'lightning', badge: '낙뢰', title: `반경 ${p.radiusKm}km 낙뢰 ${p.count}건`, target: n.routeName ?? n.airportIcao, windowMinutes: p.windowMinutes }
   return { kind: 'other', badge: '알림', title: p.title ?? p.description ?? '알림', target: n?.routeName ?? '' }
 }

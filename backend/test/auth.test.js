@@ -140,3 +140,32 @@ test('forecaster created via CLI can login and gets forecaster role', async () =
     server.close(); db.close()
   }
 })
+
+test('phone logins stay for 30 days of inactivity; PC logins keep the 1h idle limit', async () => {
+  const { db, app } = makeServer()
+  const server = await listen(app)
+  try {
+    createUser(db, { username: 'phoneuser', password: 'password1' })
+    const expiresInDays = (response) => {
+      const expires = response.headers.get('set-cookie').match(/Expires=([^;]+)/i)?.[1]
+      return (Date.parse(expires) - Date.now()) / 86_400_000
+    }
+    const phone = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'phoneuser', password: 'password1', persistent: true }))
+    assert.equal(phone.status, 200)
+    assert.ok(expiresInDays(phone) > 29.9, 'phone cookie lasts 30 days')
+    const pc = await fetch(at(server, '/api/auth/login'), jsonPost({ username: 'phoneuser', password: 'password1' }))
+    assert.ok(expiresInDays(pc) < 0.05, 'PC cookie keeps the 1h idle limit')
+
+    // 휴대폰 세션은 24시간 절대 만료가 없다.
+    const cookie = phone.headers.get('set-cookie').split(';')[0]
+    const realNow = Date.now
+    Date.now = () => realNow() + 2 * 86_400_000
+    try {
+      assert.equal((await fetch(at(server, '/api/auth/me'), getWith(cookie))).status, 200)
+    } finally {
+      Date.now = realNow
+    }
+  } finally {
+    server.close(); db.close()
+  }
+})

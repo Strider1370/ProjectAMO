@@ -2,6 +2,8 @@ import webpush from 'web-push'
 
 import config from '../config.js'
 
+const PUSH_TTL_SECONDS = 6 * 60 * 60
+
 let configured = false
 function ensureConfigured() {
   if (configured) return
@@ -19,7 +21,9 @@ export function vapidPublicKey() {
 export async function sendPush(subscription, payload) {
   ensureConfigured()
   if (!configured) throw Object.assign(new Error('vapid_not_configured'), { statusCode: 503 })
-  await webpush.sendNotification(subscription, JSON.stringify(payload))
+  // 기본 긴급도(normal)는 안드로이드가 화면이 꺼진 절전 상태에서 수십 분~수 시간 미룬다. 기상 알림은 바로 깨워 전달한다.
+  // 기기가 꺼져 있으면 푸시 서비스가 6시간까지 보관했다가 전달하고, 그보다 오래된 알림은 버린다(4주 기본값은 너무 길다).
+  await webpush.sendNotification(subscription, JSON.stringify(payload), { urgency: 'high', TTL: PUSH_TTL_SECONDS })
 }
 
 export default { vapidPublicKey, sendPush }

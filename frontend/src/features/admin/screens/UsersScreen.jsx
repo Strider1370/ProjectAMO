@@ -43,6 +43,7 @@ export default function UsersScreen({ adminQuery }) {
         <div>
           <div className="ac-big n">{traffic?.total ?? '—'}</div>
           <div className="ac-cap">저장된 브라우저 방문자 · 최근 5분 내 방문 {traffic?.online ?? '—'}</div>
+          <div className="ac-cap">봇·자동화 제외 이전 기록 포함 · 이번 서버 가동 중 제외 {traffic?.excludedRequests ? Object.values(traffic.excludedRequests.counts).reduce((sum, n) => sum + n, 0) : '—'}건</div>
         </div>
         <div className="ac-side">
           <div>

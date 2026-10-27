@@ -6,7 +6,7 @@ import { useWeatherPointInspection } from '../weather-overlays/lib/useWeatherPoi
 import OrganizationBriefingStatus from '../route-briefing/OrganizationBriefingStatus.jsx'
 import { createSavedRouteHandoff } from '../copilot/savedRouteHandoff.js'
 import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ChartSpline, House } from 'lucide-react'
+import { ChartSpline } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import useHasHover from '../../shared/ui/useHasHover.js'
@@ -428,8 +428,6 @@ const MapView = forwardRef(function MapView({
   const hasHover = useHasHover()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
-  const initialHomeRef = useRef(null)
-  const [showKoreaHome, setShowKoreaHome] = useState(false)
   const tourHomeRef = useRef(null) // 온보딩: 공항 확대 전 홈 뷰 저장(resetView 복귀용)
   const onSelectRef = useRef(onAirportSelect)
   const mapToolDrawingRef = useRef(false)
@@ -515,7 +513,7 @@ const MapView = forwardRef(function MapView({
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
-  // 지도형 브리핑: 폭 1280 이상에서 기본. "문서형 보기"를 고르면 기억해 두고 기존 BriefingView를 연다.
+  // 지도형 브리핑: 폭 1024 이상(아이패드 가로 포함)에서 기본. "문서형 보기"를 고르면 기억해 두고 기존 BriefingView를 연다.
   const wideForMapBriefing = useMinWidth(MAP_BRIEFING_MIN_WIDTH)
   const [briefingView, setBriefingViewState] = useState(readBriefingView)
   const setBriefingView = (view) => { writeBriefingView(view); setBriefingViewState(view) }
@@ -717,12 +715,6 @@ const MapView = forwardRef(function MapView({
   const routeResult = copilotResult.bundle?.routeResult ?? routeBriefing.state.routeResult
   const { fitBoundsRequest } = routeBriefing.state
   const [highlightedLeg, setHighlightedLeg] = useState(null) // NAVLOG 표에서 가리킨 구간
-  const flyToKorea = () => {
-    const map = mapRef.current
-    const home = initialHomeRef.current
-    if (map) map.flyTo(home ? { ...home, duration: 600 } : { center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, bearing: 0, pitch: 0, duration: 600 })
-    setShowKoreaHome(false)
-  }
   const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs
   const { setHoveredWpInfo } = routeBriefing.actions
   const routePreviewModel = copilotResult.bundle?.routePreviewModel ?? routeBriefing.routePreviewModel
@@ -832,7 +824,6 @@ const MapView = forwardRef(function MapView({
     const { fitCoordinates } = syncRoutePreviewLayers(map, routePreviewModel)
     if (fitCoordinates.length > 0 && !routeResult && !routeBeingGenerated) {
       const bounds = boundsFromCoords(fitCoordinates)
-      setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
     }
   }, [routePreviewModel, routeResult, isStyleReady, styleRevision])
@@ -844,7 +835,6 @@ const MapView = forwardRef(function MapView({
     const { fitCoordinates } = syncBoundaryFixPreview(map, routePreviewModel)
     if (fitCoordinates.length > 0 && !routeResult && !routeBeingGenerated) {
       const bounds = boundsFromCoords(fitCoordinates)
-      setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
     }
   }, [routePreviewModel, isStyleReady, routeResult, styleRevision])
@@ -863,7 +853,6 @@ const MapView = forwardRef(function MapView({
     const coords = fitBoundsRequest?.coordinates ?? []
     if (!map || !isStyleReady || coords.length === 0) return
     const bounds = boundsFromCoords(coords)
-    setShowKoreaHome(true)
     map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: fitBoundsRequest.maxZoom ?? 8, duration: 500 })
   }, [fitBoundsRequest, isStyleReady, styleRevision])
 
@@ -890,13 +879,11 @@ const MapView = forwardRef(function MapView({
     const fitPts = (pts) => {
       if (pts.length < 1) return
       const bounds = boundsFromCoords(pts)
-      setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: pad, maxZoom: 8, duration: 600 })
     }
     if (id === 'destination') {
       const ap = byIcao(meta?.arrivalAirport)
       if (ap) {
-        setShowKoreaHome(true)
         map.flyTo({ center: [ap.lon, ap.lat], zoom: 8.5, padding: pad, duration: 600 })
       }
     } else if (id === 'current') {
@@ -933,7 +920,6 @@ const MapView = forwardRef(function MapView({
     // 재면 다 펼친 시트 높이로 비켜 맞춰져 경로가 시트 밑에 숨으므로, 시트가 멈춘 뒤에 맞춘다.
     let settleTimer = null
     const fit = () => {
-      setShowKoreaHome(true)
       map.fitBounds(boundsFromCoords(coords), { padding: fitPaddingFor(60), maxZoom: 8, duration: 600 })
     }
     const fitForView = () => {
@@ -2092,7 +2078,7 @@ const MapView = forwardRef(function MapView({
   const showProfileReopen = !isMobile && routeBriefing.state.workflowStep === 'altitude'
     && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen
   const showRouteChip = routeBriefing.state.routeResult && activePanel !== 'route-check'
-  const showBottomControls = showTyphoonInfoButton || showKoreaHome || showProfileReopen
+  const showBottomControls = showTyphoonInfoButton || showProfileReopen
 
   return (
     <div
@@ -2273,12 +2259,6 @@ const MapView = forwardRef(function MapView({
                   openTyphoonDetails(number)
                 }}>
                 태풍 정보 <span className="typhoon-info-button__count">{typhoonOverlay.typhoons.length}</span>
-              </button>
-            )}
-            {showKoreaHome && (
-              <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
-                <House size={18} aria-hidden="true" />
-                <span>기본 지도</span>
               </button>
             )}
             {showProfileReopen && (

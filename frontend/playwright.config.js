@@ -31,6 +31,7 @@ export default defineConfig({
   reporter: [['html', { outputFolder: path.join(artifactDir, 'html-report'), open: 'never' }], ['list']],
   use: {
     baseURL: 'http://127.0.0.1:5173',
+    extraHTTPHeaders: { 'X-ProjectAMO-Analytics': 'ignore' },
     // route fixture는 browser 요청을 소유한다. public/sw.js가 먼저 제어하면 WebKit에서
     // fixture POST가 backend로 새어 격리 DEM의 503을 받으므로 계약 실행에서는 막는다.
     serviceWorkers: 'block',

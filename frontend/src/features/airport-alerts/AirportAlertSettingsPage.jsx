@@ -9,6 +9,8 @@ import { clock } from './AlertCard.jsx'
 import { useCurrentMetars, Switch } from './AlertWatchesPage.jsx'
 import { METAR_PRESETS, ceilingText, metarNow, presetMatches, ruleState, visibilityText } from './alertModel.js'
 import './airportAlerts.css'
+import IosPushGuide from './IosPushGuide.jsx'
+import { needsIosHomeScreen } from '../notifications/pushDevice.js'
 
 const API = '/api/me/airport-watches'
 const METRICS = [
@@ -47,6 +49,7 @@ export default function AirportAlertSettingsPage({ initialIcao, watches, onBack,
   const [rules, setRules] = useState(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [showIosGuide, setShowIosGuide] = useState(false)
   const [testScenario, setTestScenario] = useState('')
   const [lastTest, setLastTest] = useState(null)
   const airport = airports.find((item) => item.icao === icao)
@@ -89,6 +92,7 @@ export default function AirportAlertSettingsPage({ initialIcao, watches, onBack,
       await watches.changed()
       setRules(clone(nextRules))
       setMessage(!current ? '감시를 시작했습니다. 서버의 다음 확인에서 지금 관측을 봅니다.' : nextEnabled ? '저장했습니다.' : '감시를 일시정지했습니다.')
+      if (!current) setShowIosGuide(needsIosHomeScreen())
     } catch (error) { setMessage(error.message) } finally { setBusy(false) }
   }
   async function remove() {
@@ -138,6 +142,8 @@ export default function AirportAlertSettingsPage({ initialIcao, watches, onBack,
       <code>{metars[icao]?.header?.raw_text ?? 'METAR 없음'}</code>
     </div>
     {message && <p className="aa-message" role="status">{message}</p>}
+    {/* 아이폰 사파리에서 처음 감시를 시작하면 푸시를 받으려면 홈 화면에 추가해야 한다는 것을 바로 알린다. */}
+    {showIosGuide && <IosPushGuide />}
 
     <section className="aa-box" aria-labelledby="aa-metar-title">
       <div className="aa-box-head"><h2 id="aa-metar-title" className="aa-box-title">관측 기준 (METAR)</h2><small>기준에 들면 한 번, 벗어났다 다시 들면 또 알림</small></div>

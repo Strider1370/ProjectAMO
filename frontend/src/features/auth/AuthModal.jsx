@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { X, LogOut } from 'lucide-react'
 import { useAuth, ROLE_LABEL_KO } from './AuthContext.jsx'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
+import { DISCLAIMER, DISCLAIMER_ACTION, DISCLAIMER_LIABILITY } from '../about/disclaimer.js'
 import './AuthModal.css'
 
 // 회원가입 전에 보여 주는 안내와 개인정보 처리방침. 받는 항목이 바뀌면(예: 이메일 추가) 처리방침도 함께 고친다.
-const SIGNUP_NOTICE = 'ProjectAMO는 시범 운영 중인 테스트용 사이트입니다. 화면의 기상정보는 최신이 아니거나 정확하지 않을 수 있으며, 기상청의 공식 서비스가 아닙니다. 비행 계획과 운항 판단에는 반드시 공식 기상자료를 확인하시기 바랍니다. 본 서비스의 정보를 이용하여 발생한 결과에 대하여 운영자는 책임을 지지 않습니다.'
 
 function PrivacyPolicy() {
   return (
@@ -156,7 +156,11 @@ export default function AuthModal({ onClose }) {
         <div className="auth-subdialog" role="alertdialog" aria-modal="true" aria-labelledby="auth-notice-title">
           <div className="auth-subdialog__box">
             <div className="auth-subdialog__title" id="auth-notice-title">회원가입 안내</div>
-            <p className="auth-subdialog__text">{SIGNUP_NOTICE}</p>
+            <div className="auth-subdialog__text">
+              <p>{DISCLAIMER}</p>
+              <p><strong>{DISCLAIMER_ACTION}</strong></p>
+              <p>{DISCLAIMER_LIABILITY}</p>
+            </div>
             <PrivacyPolicy />
             <div className="auth-subdialog__actions">
               <button type="button" className="auth-secondary" onClick={() => setDialog(null)}>취소</button>

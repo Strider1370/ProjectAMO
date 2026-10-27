@@ -33,6 +33,7 @@ import imgAlertSettings from './assets/alerts-settings.webp'
 import imgAlertInbox from './assets/alerts-inbox.webp'
 import videoPrecip from './assets/precip.webm'
 import videoAirport from './assets/airport.webm'
+import { DISCLAIMER, DISCLAIMER_ACTION } from '../about/disclaimer.js'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
@@ -672,7 +673,7 @@ export default function IntroPage() {
         <section className="cta" aria-labelledby="cta-title">
           <div className="wrap">
             <div><h2 id="cta-title">지금 바로 확인해 보세요</h2><p>로그인 없이 대시보드를 볼 수 있어요.</p></div>
-            <p className="cta-note" role="note">ProjectAMO는 시험 운영 중인 프로토타입이며 기상청 공식 서비스가 아니에요. 자료가 늦거나 빠지거나 틀릴 수 있으니, <b>실제 운항 판단에는 항공기상청 공식 자료와 정식 브리핑을 기준으로 하세요.</b></p>
+            <p className="cta-note" role="note">{DISCLAIMER} <b>{DISCLAIMER_ACTION}</b></p>
             <button className="btn btn-white" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
           </div>
         </section>

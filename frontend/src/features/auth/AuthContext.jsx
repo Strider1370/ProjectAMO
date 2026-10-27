@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 
+import { forgetThisDevicePush } from '../notifications/pushDevice.js'
+
 // #7-③ 인증 상태 컨텍스트. 백엔드 /api/auth/*(세션쿠키). Vite 프록시로 같은 origin.
 const AuthContext = createContext(null)
 const JSON_HEADERS = { 'content-type': 'application/json' }
@@ -23,9 +25,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refresh() }, [refresh])
 
+  // 휴대폰(홈 화면 앱이거나 손가락으로 쓰는 화면)이면 서버가 로그인을 30일 유지한다.
   const login = useCallback(async (username, password) => {
+    const persistent = window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(pointer: coarse)').matches || false
     const { ok, data } = await authApi('/login', {
-      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ username, password }),
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ username, password, persistent }),
     })
     if (ok) { setUser(data); return { ok: true } }
     return { ok: false, error: data?.error || 'login_failed' }
@@ -39,6 +43,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // 로그아웃 요청보다 먼저 — 서버의 등록 해제는 로그인된 상태에서만 된다.
+    await forgetThisDevicePush()
     await authApi('/logout', { method: 'POST' })
     setUser(null)
   }, [])

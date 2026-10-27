@@ -18,6 +18,10 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+        // 푸시 알림을 눌렀는데 서비스 워커가 이 창을 직접 옮길 수 없을 때(sw.js) 주소를 넘겨받아 연다.
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data?.type === 'open-url' && new URL(event.data.url).origin === window.location.origin) window.location.assign(event.data.url);
+        });
       }
     </script>
   </body>

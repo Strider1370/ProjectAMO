@@ -1,4 +1,4 @@
-/* 지도형 브리핑. 기준 1920×1080(패널 288 · 라벨 열 176), 1280~1919는 264 · 144.
+/* 지도형 브리핑. 기준 1920×1080(패널 288 · 라벨 열 176), 1024~1919는 264 · 144.
    위치는 .map-view-wrapper 기준. 독은 시간 막대(높이 88) 바로 위에 붙는다. */
 .mb-panel {
   --mb-typhoon: #6d28d9;
@@ -196,7 +196,7 @@
 }
 
 /* 지도형 브리핑 중에는 범례·지점 정보 버튼을 독 위 지도 왼쪽 아래로 올린다(독과 시간 막대 사이에 떠 있던 것).
-   확대·현재 위치·방위·기본지도 버튼은 원래 자리(오른쪽 아래)에 둔다 — 독이 펼쳐져 있으면 독에 가리고, 독을 접으면 보인다.
+   확대·현재 위치·방위 버튼은 원래 자리(오른쪽 아래)에 둔다 — 독이 펼쳐져 있으면 독에 가리고, 독을 접으면 보인다.
    자주 누르지 않는 데다(휠로 확대), 독을 따라 올리면 고도 슬라이더와 겹쳤다(사용자 결정, 2026-10-22).
    재생 버튼은 숨긴다 — 화면이 스스로 움직이지 않는다(설계 원칙). */
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
@@ -356,23 +356,8 @@
   border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
 }
 
-/* 문서형 브리핑 노선 섹션에 끼운 같은 독(BriefingDock variant="document"). 지도 위에 뜨지 않고 본문 흐름에 놓인다.
-   패널 폭이 좁아 단면도 그림이 가로를 다 쓰도록: 이름 칸은 고도 눈금 폭(64px)으로 줄여 눈 아이콘·이름만, 레이어 목록은 그림 위 한 줄. */
+/* 문서형은 내용에 따라 늘어나고, 조작부와 별도로 그림 높이를 확보한다. */
 .mb-dock.is-document { position: relative; left: auto; right: auto; bottom: auto; z-index: auto; margin-top: var(--space-m); box-shadow: none; border-radius: var(--radius-md); }
 .mb-dock.is-document .mb-row-label { padding-left: var(--space-xs); gap: 2px; }
 .mb-dock.is-document .mb-row-dot, .mb-dock.is-document .mb-row-chips { display: none; }
-.mb-dock.is-document .mb-profile-body .vpc-operational-body { display: flex; flex-direction: column; }
-.mb-dock.is-document .mb-profile-body .vpc-operational-body > :not(.vpc-compact-legend) { flex: 1; min-height: 0; }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px var(--space-m); width: auto; max-height: none; overflow: visible; padding: 0 var(--space-l) var(--space-xs); }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend .vpc-layer-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px var(--space-m); }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend .vpc-layer-group { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px var(--space-s); width: auto; }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend .vpc-layer-group + .vpc-layer-group { padding: 0 0 0 var(--space-m); border-top: 0; border-left: 1px solid var(--stroke-2); }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend .vpc-layer-controls button { width: auto; }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend .vpc-operational-options > div,
-.mb-dock.is-document .mb-profile-body .vpc-compact-info > div { top: 100%; bottom: auto; }
-/* 패널 폭에서는 머리 줄 가운데 범례가 세로로 접혀 그림을 누른다 — 범례를 머리 아래 한 줄(줄바꿈 허용)로 내린다. */
-.mb-dock.is-document .mb-profile-body .vpc-compact-header { padding-top: var(--space-xxs); }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend-row { order: 10; flex: 1 0 100%; justify-content: flex-start; padding-bottom: var(--space-xxs); }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend-row .profile-legend { display: flex; flex-wrap: wrap; }
-.mb-dock.is-document .mb-profile-body .vpc-compact-legend-row .profile-legend > span { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 4px; white-space: nowrap; }
-.mb-dock.is-document .mb-profile-body .vpc-compact-header .vpc-chart-controls { margin-left: auto; }
+.mb-dock.is-document .mb-profile-body { display: block; overflow: visible; }

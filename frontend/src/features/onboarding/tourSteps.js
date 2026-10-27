@@ -4,6 +4,9 @@
 // title·text: 설명, action: 대상을 열기 전 할 일, revealedText: 대상(패널)이 열린 뒤 안내.
 // 진행은 전부 수동([다음]) — 사용자가 열린 패널/상세를 볼 시간을 갖도록. 클릭은 하되 자동진행 없음.
 // 스펙: docs/superpowers/specs/2026-07-14-first-run-onboarding-tour.md
+
+import { DISCLAIMER, DISCLAIMER_ACTION } from '../about/disclaimer.js'
+
 export const TOUR_STEPS = [
   {
     // 첫 화면: 대상 없이 가운데 카드. 시험용 프로토타입 소개 + 실제 운항에 쓰지 말라는 주의(사용자 결정, 2026-10-22).
@@ -17,8 +20,8 @@ export const TOUR_STEPS = [
       { icon: 'map', title: '통합 표출', text: '관측·예보·SIGMET 등 항공기상정보를 지도 기반 단일 화면에 통합 표출합니다.' },
       { icon: 'route', title: '비행 전 기상브리핑', text: '비행경로(출발지-항로-목적지)를 입력하면 해당 경로를 기준으로 기상브리핑을 생성합니다.' },
     ],
-    caution: '본 웹페이지는 기상청 공식 서비스가 아닙니다. 공개 API(기상청 API허브 등) 자료를 수집·가공하여 표출하므로 자료가 지연·누락되거나 오류가 있을 수 있습니다.',
-    cautionEmphasis: '실제 운항 판단에는 항공기상청 공식 자료와 정식 브리핑을 기준으로 하시기 바랍니다.',
+    caution: DISCLAIMER,
+    cautionEmphasis: DISCLAIMER_ACTION,
     note: '‘안내 시작’을 누르면 주요 기능을 단계별로 소개합니다.',
     nextLabel: '안내 시작',
   },

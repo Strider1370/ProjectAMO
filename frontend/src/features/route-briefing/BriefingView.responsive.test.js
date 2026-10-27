@@ -61,7 +61,7 @@ test('all briefing sizes use the shared viewer and keep linked state', () => {
   assert.match(jsx, /highlightRangeNm=\{pinnedLeg\}/)
   assert.match(jsx, /onSelectForecastHour=\{onSelectForecastHour\}/)
   // 문서형에 끼운 단면은 휠이 문서 스크롤 — 지도형 독(compact)만 휠로 확대한다.
-  assert.match(viewer, /if \(\(embedded && !compact\) \|\| e.ctrlKey/)
+  assert.match(viewer, /if \(\(embedded && \(!compact \|\| documentMode\)\) \|\| e.ctrlKey/)
   assert.match(viewer, /statusMessage && <div/)
   assert.match(viewer, /onSelectLinkedItem=\{onSelectLinkedItem\}/)
   assert.match(css, /\.bv-xfull-rotate \{[^}]*transform: none;/)

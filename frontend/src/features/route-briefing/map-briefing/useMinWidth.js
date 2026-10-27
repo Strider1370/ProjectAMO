@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-// 화면 폭이 minWidth 이상인지. 지도형 브리핑은 1280 이상에서만 쓴다.
+// 화면 폭이 minWidth 이상인지. 지도형 브리핑은 1024 이상에서만 쓴다.
 export default function useMinWidth(minWidth) {
   const query = `(min-width: ${minWidth}px)`
   const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches)

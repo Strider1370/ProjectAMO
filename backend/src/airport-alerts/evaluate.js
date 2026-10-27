@@ -38,6 +38,9 @@ export function metarMetricStates(metar, rules, nowMs) {
   return { observedAt, states, metrics }
 }
 
+// 기준을 벗어났다가 이 시간 안에 다시 들어오면 같은 상황으로 본다(정시 METAR 두 번).
+export const METAR_REENTRY_QUIET_MS = 60 * 60_000
+
 function insertedEvent(db, watch, kind, sourceKey, payload, nowIso) {
   const id = db.prepare(`INSERT INTO airport_alert_events (user_id,icao,kind,source_key,payload,detected_at)
     VALUES (?,?,?,?,?,?)`).run(watch.user_id, watch.icao, kind, sourceKey, JSON.stringify(payload), nowIso).lastInsertRowid
@@ -70,10 +73,28 @@ export function evaluateAirportWatch(db, watch, weather, nowMs = Date.now()) {
   const observation = metarMetricStates(weather.metar?.airports?.[watch.icao], rules, nowMs)
   if (observation) {
     const entered = observation.metrics.filter((metric) => previous.metar?.[metric.key] !== 'active')
-    for (const [key, state] of Object.entries(observation.states)) if (state !== 'unknown') next.metar[key] = state
+    next.metarClearedAt = { ...(previous.metarClearedAt ?? {}) }
+    for (const [key, state] of Object.entries(observation.states)) if (state !== 'unknown') {
+      if (state === 'clear' && previous.metar?.[key] === 'active') next.metarClearedAt[key] = nowIso
+      next.metar[key] = state
+    }
     resolveEvents(db, watch, 'metar', (row) => parse(row.payload, {}).metrics?.some((metric) => next.metar[metric.key] !== 'clear' && next.metar[metric.key] !== 'off'), nowIso)
-    if (entered.length) events.push(insertedEvent(db, watch, 'metar', observation.observedAt, {
-      title: `${airport.nameKo} 관측 임계값`, metrics: entered, observedAt: observation.observedAt,
+    // 기준 근처를 오가는 값(예: 시정 4900m↔5100m)이 관측마다 알림을 다시 울리지 않게 한다. 벗어난 지
+    // METAR_REENTRY_QUIET_MS 안에 다시 들어오면 새 알림 대신 방금 끝난 알림을 다시 진행 중으로 돌린다.
+    const resumedIds = new Set()
+    const fresh = entered.filter((metric) => {
+      const clearedMs = Date.parse(previous.metarClearedAt?.[metric.key])
+      if (!Number.isFinite(clearedMs) || nowMs - clearedMs >= METAR_REENTRY_QUIET_MS) return true
+      const recent = db.prepare(`SELECT id,payload FROM airport_alert_events WHERE user_id=? AND icao=? AND kind='metar'
+        ORDER BY id DESC LIMIT 5`).all(watch.user_id, watch.icao)
+        .find((row) => parse(row.payload, {}).metrics?.some((item) => item.key === metric.key))
+      if (!recent) return true
+      resumedIds.add(recent.id)
+      return false
+    })
+    for (const id of resumedIds) db.prepare('UPDATE airport_alert_events SET active=1,resolved_at=NULL WHERE id=?').run(id)
+    if (fresh.length) events.push(insertedEvent(db, watch, 'metar', observation.observedAt, {
+      title: `${airport.nameKo} 관측 임계값`, metrics: fresh, observedAt: observation.observedAt,
       popupEnabled: rules.channels?.popup !== false, pushEnabled: rules.channels?.push !== false,
     }, nowIso))
   }

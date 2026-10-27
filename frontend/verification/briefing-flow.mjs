@@ -2,7 +2,7 @@ import { enterRouteTokens } from './route-token-input.mjs'
 import { installRouteBriefingFixtures } from './route-fixture.mjs'
 import { CURRENT_VERSION } from '../src/features/about/changelog.js'
 
-// RKSS→RKPK(SEL) 경로로 브리핑을 만든다. view: 'document'(기존 BriefingView) | 'map'(지도형, 폭 1280 이상 기본).
+// RKSS→RKPK(SEL) 경로로 브리핑을 만든다. view: 'document'(기존 BriefingView) | 'map'(지도형, 폭 1024 이상 기본).
 export async function createBriefing(page, { view = 'document', patchBriefing = null } = {}) {
   const requests = await installRouteBriefingFixtures(page, { patchBriefing })
   // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).

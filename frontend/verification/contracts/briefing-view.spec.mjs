@@ -46,6 +46,7 @@ test.describe('briefing-view', () => {
       getComputedStyle(node).strokeWidth === '2.5px' && getComputedStyle(node).opacity === '1',
     ))).toBe(true)
     await profile.locator('.vertical-profile-chart').screenshot({ path: testInfo.outputPath('profile-advisory-symbols.png') })
+    if (testInfo.project.name !== 'mobile') await profile.locator('.vpc-document-settings > summary').click()
     await profile.getByRole('button', { name: 'SIGMET/AIRMET', exact: true }).click()
     await expect(profile.getByTestId('profile-advisory-symbol')).toHaveCount(0)
     await expect(profile.getByTestId('profile-advisory-boundary')).toHaveCount(0)
@@ -104,6 +105,7 @@ test.describe('briefing-view', () => {
 
     // 연직단면도는 착빙·등온선·바람·권계면·제트·SIGMET/AIRMET이 켜진 채로 열린다(구름은 꺼진 채 — BriefingView 기본값).
     // 10-16 단면도 통합 이후 레이어 버튼은 `.vpc-layer-controls`의 aria-pressed 버튼이다(예전 `.cs-toggle`).
+    if (await page.locator('.vpc-document-settings').count()) await page.locator('.vpc-document-settings > summary').click()
     const layerButtons = page.getByRole('group', { name: '기상 레이어' }).first().getByRole('button')
     await expect(layerButtons.first()).toBeVisible()
     for (const label of ['착빙', '등온선', '바람깃', '등풍속선', '권계면·제트', 'SIGMET/AIRMET']) {
@@ -120,13 +122,14 @@ test.describe('briefing-view', () => {
     test.skip(testInfo.project.name === 'mobile', '모바일은 기존 인라인 단면도')
     await createBriefing(page)
     const dock = page.locator('.mb-dock.is-document')
+    await dock.getByRole('button', { name: '전체', exact: true }).click()
     await expect(dock.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
     await dock.scrollIntoViewIfNeeded()
     await expect.poll(() => dock.evaluate((root) => {
       const track = root.querySelector('.mb-track').getBoundingClientRect()
       const svg = root.querySelector('.mb-profile-body .vertical-profile-plot-svg')
       const rect = svg.getBoundingClientRect()
-      return [Math.round(track.left - (rect.left + Number(svg.dataset.plotLeft))), Math.round(track.right - (rect.left + Number(svg.dataset.plotRight)))]
+      return [Math.abs(Math.round(track.left - (rect.left + Number(svg.dataset.plotLeft)))), Math.abs(Math.round(track.right - (rect.left + Number(svg.dataset.plotRight))))]
     })).toEqual([0, 0])
     // 그림이 납작해지지 않는다(범례가 머리 줄에서 세로로 접히던 문제).
     expect((await dock.locator('.vertical-profile-plot-svg').boundingBox()).height).toBeGreaterThanOrEqual(180)
@@ -227,6 +230,7 @@ test.describe('briefing-view', () => {
     const profile = mobile ? page.getByRole('region', { name: '연직단면도', exact: true }) : documentProfile(page)
     // 모델 구름량 윤곽은 '구름·착빙 ▾' 메뉴의 하위 항목이다(기본 꺼짐). 압축 단면도는 레이어 줄에 바로 있다.
     if (mobile) await profile.locator('.vpc-operational-controls').evaluate(el => { el.open = true })
+    else await profile.locator('.vpc-document-settings > summary').click()
     await profile.locator('.vpc-operational-options > summary').click()
     const cloudToggle = profile.getByRole('checkbox', { name: '모델 구름량 윤곽', exact: true })
     await expect(cloudToggle).not.toBeChecked()
@@ -242,6 +246,7 @@ test.describe('briefing-view', () => {
     await page.keyboard.press('Escape')
     // 압축 단면도의 옵션 창은 그림 위로 펼쳐진다 — 찍기 전에 닫는다.
     if (!mobile) await profile.locator('.vpc-operational-options > summary').click()
+    if (!mobile) await profile.getByRole('button', { name: '전체', exact: true }).click()
     const screenshotTarget = mobile
       ? await (async () => {
           await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
@@ -289,4 +294,76 @@ test.describe('briefing-view', () => {
     await page.getByRole('button', { name: '지도와 함께 보기', exact: true }).click()
     await expect(fullView).toBeVisible()
   })
+})
+
+
+test('briefing-view document profile stays readable on iPad and preserves fullscreen settings', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'ipad-landscape', '아이패드 가로 문서형 단면도')
+  await createBriefing(page)
+  const profile = documentProfile(page)
+  for (const [width, height] of [[1194, 834], [1024, 768]]) {
+    await page.setViewportSize({ width, height })
+    await profile.scrollIntoViewIfNeeded()
+    const plot = profile.locator('.vertical-profile-plot-svg')
+    await expect.poll(async () => (await plot.boundingBox()).height).toBeGreaterThanOrEqual(280)
+    await expect(profile.getByRole('button', { name: '등온선', exact: true })).toBeHidden()
+    await profile.screenshot({ path: testInfo.outputPath(`profile-${width}.png`), style: '.bv-navwrap { visibility: hidden !important; }' })
+    await profile.evaluate(el => {
+      const scroller = el.closest('.bv-scroll')
+      const nav = scroller.querySelector('.bv-navwrap')
+      scroller.scrollTop += el.getBoundingClientRect().top - nav.getBoundingClientRect().bottom - 12
+    })
+    const scroller = profile.locator('.vertical-profile-plot-scroll')
+    expect(await scroller.evaluate(el => el.scrollWidth - el.clientWidth)).toBeGreaterThan(100)
+    const headerBefore = await profile.locator('.vpc-document-header').boundingBox()
+    await scroller.evaluate(el => { el.scrollLeft = el.scrollWidth - el.clientWidth })
+    await expect.poll(() => scroller.evaluate(el => el.scrollLeft)).toBeGreaterThan(100)
+    const axis = profile.locator('.vertical-profile-axis-overlay')
+    await expect(axis).toBeVisible()
+    const axisBefore = await axis.boundingBox()
+    expect(axisBefore.x).toBe((await scroller.boundingBox()).x)
+    await axis.screenshot({ path: testInfo.outputPath(`axis-${width}.png`) })
+    const headerAfter = await profile.locator('.vpc-document-header').boundingBox()
+    expect(headerAfter.x).toBe(headerBefore.x)
+    await page.screenshot({ path: testInfo.outputPath(`scrolled-${width}.png`) })
+    await scroller.evaluate(el => { el.scrollLeft = 0 })
+    await page.screenshot({ path: testInfo.outputPath(`document-${width}.png`) })
+    expect((await profile.locator('.vertical-profile-plot').boundingBox()).height).toBeGreaterThanOrEqual(280)
+    const before = (await plot.boundingBox()).height
+    await profile.locator('.vpc-document-settings > summary').click()
+    await profile.locator('.vpc-document-key > summary').click()
+    await expect(profile.getByRole('button', { name: '등온선', exact: true })).toBeVisible()
+    expect((await plot.boundingBox()).height).toBe(before)
+    await profile.locator('.vpc-document-settings').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath(`settings-${width}.png`) })
+    await profile.locator('.vpc-document-settings > summary').click()
+    await profile.locator('.vpc-document-key > summary').click()
+  }
+  await profile.getByRole('button', { name: '전체', exact: true }).click()
+  await expect.poll(() => profile.locator('.vertical-profile-plot-scroll').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
+  await profile.locator('.vpc-document-settings > summary').click()
+  await profile.getByRole('button', { name: '등온선', exact: true }).click()
+  const previousTime = await profile.locator('.vpc-time-control strong').innerText()
+  await profile.getByRole('button', { name: '다음 예보시간', exact: true }).click()
+  await expect(profile.locator('.vpc-time-control strong')).not.toHaveText(previousTime)
+  const time = await profile.locator('.vpc-time-control strong').innerText()
+  await profile.getByRole('button', { name: '단면도 크게 보기', exact: true }).click()
+  const fullscreen = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+  await expect(fullscreen).toBeVisible()
+  await expect(fullscreen.locator('.vpc-time-control strong')).toHaveText(time)
+  await fullscreen.locator('.vpc-document-settings > summary').click()
+  await expect(fullscreen.getByRole('button', { name: '등온선', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await fullscreen.locator('.vpc-document-settings > summary').click()
+  await page.screenshot({ path: testInfo.outputPath('fullscreen-1024.png') })
+  await fullscreen.getByRole('button', { name: '단면도 전체화면 닫기' }).click()
+  await expect(fullscreen).toHaveCount(0)
+  await expect(profile.getByRole('button', { name: '단면도 크게 보기' })).toBeFocused()
+  await profile.locator('.vpc-document-settings > summary').click()
+  await expect(profile.getByRole('button', { name: '등온선', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await expect(profile.locator('.vpc-time-control strong')).toHaveText(time)
+  await profile.getByRole('button', { name: '단면도 크게 보기', exact: true }).click()
+  await expect(fullscreen).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(fullscreen).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })

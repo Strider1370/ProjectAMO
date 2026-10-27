@@ -6,6 +6,21 @@ const ONLINE_MS = 5 * 60 * 1000
 const RETAIN_MS = 90 * 24 * 60 * 60 * 1000 // 90일 후 오래된 방문자 정리(무한 증가 방지)
 const VISIT_DAYS_RETAIN_MS = 400 * 24 * 60 * 60 * 1000 // 월별 추이가 몇 달치는 보이게 넉넉히
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+const BOT_UA = /googlebot|bingbot|claudebot|oai-searchbot|gptbot|perplexitybot|applebot|duckduckbot|baiduspider|yandexbot|bytespider|amazonbot|adsbot-google|facebookexternalhit|genomecrawlerd/i
+const HTTP_TOOL_UA = /(?:^|\s)(?:curl|wget|python-requests|python-urllib3|python-httpx|aiohttp|go-http-client|censysinspect|zgrab)(?:\/|\b)/i
+const visitExclusions = {
+  since: new Date().toISOString(),
+  counts: { internal_test: 0, headless: 0, known_bot: 0, http_tool: 0 },
+}
+
+export function visitExclusionReason(req) {
+  if (req.get?.('X-ProjectAMO-Analytics') === 'ignore') return 'internal_test'
+  const ua = req.get?.('User-Agent') || ''
+  if (/headlesschrome/i.test(ua)) return 'headless'
+  if (BOT_UA.test(ua)) return 'known_bot'
+  if (HTTP_TOOL_UA.test(ua)) return 'http_tool'
+  return null
+}
 
 function kstDayStartIso(now) {
   const kstDate = new Date(now + KST_OFFSET_MS).toISOString().slice(0, 10)
@@ -43,8 +58,10 @@ export function trafficStats(db, { now = Date.now() } = {}) {
   const byHour = db.prepare("SELECT strftime('%H', datetime(last_seen, '+9 hours')) hh, COUNT(*) n FROM visits WHERE last_seen >= ? GROUP BY hh").all(kstDayStartIso(now))
   return {
     online, total, byHour, activeUsers: activeUserCounts(db),
+    excludedRequests: { since: visitExclusions.since, counts: { ...visitExclusions.counts } },
     measurement: {
       generatedAt: new Date().toISOString(),
+      visitorFilter: { version: 1, historicalRecordsMayIncludeAutomatedVisits: true },
       visitors: {
         // total/online은 요청 횟수가 아니라 cookie visitor_id의 distinct count다.
         unit: 'unique_browser_cookie_visitor_ids',
@@ -82,6 +99,11 @@ export function visitTracker(getDb) {
     const isPageLoad = req.path === '/api/auth/me'
       || (!req.path.startsWith('/api/') && !req.path.startsWith('/data/'))
     if (req.method !== 'GET' || !isPageLoad) return next()
+    const excluded = visitExclusionReason(req)
+    if (excluded) {
+      visitExclusions.counts[excluded] += 1
+      return next()
+    }
     let vid = req.cookies?.[COOKIE]
     if (!vid) { vid = randomUUID(); res.cookie(COOKIE, vid, { httpOnly: true, sameSite: 'lax', maxAge: 31536000000 }) }
     try { recordVisit(getDb(), vid) } catch { /* noop */ }
@@ -118,4 +140,4 @@ export function hourlyPattern(db, { weeks = 4, now = Date.now() } = {}) {
   }
 }
 
-export default { recordVisit, trafficStats, hourlyPattern, visitTracker }
+export default { recordVisit, trafficStats, hourlyPattern, visitTracker, visitExclusionReason }

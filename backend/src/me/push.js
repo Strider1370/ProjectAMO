@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { getDb } from '../db/index.js'
 import { requireAuth, requireRole } from '../auth/middleware.js'
 import { vapidPublicKey, sendPush } from '../push/send.js'
+import { readQuietHours, writeQuietHours } from '../user-alerts/quiet-hours.js'
 
 const subscribeSchema = z.object({
   endpoint: z.string().min(1),
@@ -45,6 +46,21 @@ export function createPushRouter({ db = null } = {}) {
       `).run(req.session.userId, endpoint, keys.p256dh, keys.auth, new Date().toISOString())
     })()
     res.status(201).json({ ok: true })
+  })
+
+  // 밤 시간 푸시 끄기 — 시각은 "HH:MM"(KST)로 주고받는다.
+  const toMinutes = (text) => { const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(text ?? ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null }
+  const toText = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  router.get('/push/quiet-hours', (req, res) => {
+    const quiet = readQuietHours(database(), req.session.userId)
+    res.json({ enabled: quiet.enabled, start: toText(quiet.start), end: toText(quiet.end) })
+  })
+  router.put('/push/quiet-hours', (req, res) => {
+    const start = toMinutes(req.body?.start)
+    const end = toMinutes(req.body?.end)
+    if (typeof req.body?.enabled !== 'boolean' || start == null || end == null) return res.status(400).json({ error: 'invalid_input' })
+    writeQuietHours(database(), req.session.userId, { enabled: req.body.enabled, start, end })
+    res.json({ enabled: req.body.enabled, start: toText(start), end: toText(end) })
   })
 
   router.delete('/push/subscribe', (req, res) => {

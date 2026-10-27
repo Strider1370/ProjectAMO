@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronLeft, ChevronRight, Grip, Maximize2, X } from 'lucide-react'
 import VerticalProfileChart from './VerticalProfileChart.jsx'
 import { useCrossSectionLayers } from './crossSectionLayers.jsx'
@@ -22,7 +23,33 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null, highlightAdvisoryId = null, onHoverAdvisory = null }) {
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, documentMode = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null, highlightAdvisoryId = null, onHoverAdvisory = null }) {
+  const [fullscreen, setFullscreen] = useState(false)
+  const [fitDocumentWidth, setFitDocumentWidth] = useState(false)
+  const viewerRef = useRef(null)
+  const fullscreenButtonRef = useRef(null)
+  useEffect(() => {
+    if (!fullscreen) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const dialog = viewerRef.current
+    dialog?.focus()
+    const onKey = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); setFullscreen(false) }
+      if (event.key === 'Tab') {
+        const controls = [...dialog.querySelectorAll('button:not(:disabled), summary, input, select, [tabindex="0"]')].filter(el => el.getClientRects().length)
+        const first = controls[0], last = controls[controls.length - 1]
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { event.preventDefault(); last?.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+      }
+    }
+    dialog?.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      dialog?.removeEventListener('keydown', onKey)
+      requestAnimationFrame(() => fullscreenButtonRef.current?.focus({ preventScroll: true }))
+    }
+  }, [fullscreen])
   const floating = useFloatingWindow(placement)
   const { tz, setTz } = useTimeZone()
   const [localLayers, localToggle] = useCrossSectionLayers(INITIAL_LAYERS)
@@ -62,7 +89,8 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
   const normalizedProfile = useMemo(() => ({ ...profile, markers }), [profile, markers])
   // 그림 좌우 여백(VerticalProfileChart basePadding: 왼쪽 80 또는 plotPaddingLeft, 오른쪽 58). 확대·스크롤 위치 계산에 쓴다.
   const padLeft = Number.isFinite(plotPaddingLeft) ? plotPaddingLeft : 80
-  const padX = padLeft + 58
+  const padRight = documentMode ? 24 : 58
+  const padX = padLeft + padRight
   const updateRange = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
@@ -80,7 +108,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
       anchor.current = null
     }
     updateRange()
-  }, [zoom, updateRange, floating.rect.width, floating.rect.height, profile])
+  }, [zoom, updateRange, floating.rect.width, floating.rect.height, profile, fullscreen, fitDocumentWidth])
   const changeZoom = useCallback((factor, pixel) => {
     const el = scrollRef.current
     if (!el) return
@@ -94,7 +122,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     let wheelFrame = null, wheelFactor = 1, wheelPixel = 0
     const wheel = e => {
       // 문서형 안에 끼운 단면은 휠이 문서 스크롤이라 확대하지 않는다. 지도형 독(compact)은 문서 스크롤이 없어 확대한다.
-      if ((embedded && !compact) || e.ctrlKey || e.metaKey || !e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      if ((embedded && (!compact || documentMode)) || e.ctrlKey || e.metaKey || !e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
       const pixel = e.clientX - el.getBoundingClientRect().left - padLeft
       if (pixel < 0) return
       e.preventDefault(); e.stopPropagation()
@@ -110,7 +138,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     const resize = new ResizeObserver(scroll); resize.observe(el)
     el.addEventListener('wheel', wheel, { passive:false }); el.addEventListener('scroll', scroll)
     return () => { cancelAnimationFrame(wheelFrame); resize.disconnect(); el.removeEventListener('wheel',wheel); el.removeEventListener('scroll',scroll); cancelAnimationFrame(frame.current); frame.current = null }
-  }, [profile, changeZoom, updateRange, embedded, compact, padLeft])
+  }, [profile, changeZoom, updateRange, embedded, compact, documentMode, padLeft, fullscreen])
   const selectMarker = useCallback(marker => {
     focusSelected.current = !!document.activeElement?.closest('.vertical-profile-plot-svg')
     setSelected(marker)
@@ -161,7 +189,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         </div></details>
       </>
   const zoomControls = <div className="vpc-chart-controls">
-          <button className="vpc-button" aria-label="차트 축소" disabled={zoom<=1} onClick={()=>changeZoom(1/1.6)}>−</button><button className="vpc-button" aria-label="차트 확대" disabled={zoom>=total/45} onClick={()=>changeZoom(1.6)}>+</button><button className="vpc-button vpc-fit" onClick={()=>{anchor.current={fraction:0,pixel:0};setZoom(1);if(scrollRef.current)scrollRef.current.scrollLeft=0}}>전체</button>
+          <button className="vpc-button" aria-label="차트 축소" disabled={zoom<=1} onClick={()=>changeZoom(1/1.6)}>−</button><button className="vpc-button" aria-label="차트 확대" disabled={zoom>=total/45} onClick={()=>changeZoom(1.6)}>+</button><button className="vpc-button vpc-fit" onClick={()=>{setFitDocumentWidth(true);anchor.current={fraction:0,pixel:0};setZoom(1);if(scrollRef.current)scrollRef.current.scrollLeft=0}}>전체</button>
         </div>
   const sourceInfo = <>
         <p>{crossSection?.run?.validTime ? `자료 기준 ${formatBriefingTime(crossSection.run.validTime,tz,{withDate:true})}` : '기상자료 없음'}</p>
@@ -170,19 +198,36 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
       </>
   // 지도형 브리핑 독: 범례는 위험 막대와 단면 사이 머리 줄 가운데(위험 막대도 같은 색을 쓰므로 한 범례로 함께 읽는다),
   // 레이어 켜고 끄기는 그림 왼쪽 칸(고도 눈금 왼쪽)에 세로로. 미니맵(위험 막대가 대신)·범례 줄·비교 고도 줄은 뺀다.
-  const compactHeader = compact && <header className="vpc-compact-header">
+  const documentHeader = documentMode && <>
+    <header className="vpc-document-header">
+      {compactTitle}
+      <button ref={fullscreenButtonRef} type="button" className="vpc-document-expand" onClick={() => setFullscreen(!fullscreen)} aria-label={fullscreen ? '단면도 전체화면 닫기' : '단면도 크게 보기'}>
+        {fullscreen ? <X size={16} /> : <Maximize2 size={16} />}{fullscreen ? '닫기' : '크게 보기'}
+      </button>
+      {!fullscreen && compactActions}
+    </header>
+    <div className="vpc-document-time">{timeControl}</div>
+    <div className="vpc-document-tools">
+      <details className="vpc-document-settings"><summary>레이어 설정</summary><div>{layerControls}</div></details>
+      <details className="vpc-document-key"><summary>범례</summary><div><ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>{compactLegendExtra}</div></details>
+      <details className="vpc-document-source"><summary>자료 정보</summary><div>{sourceInfo}</div></details>
+      {zoomControls}
+    </div>
+  </>
+  const compactHeader = compact && !documentMode && <header className="vpc-compact-header">
       {compactTitle}
       {timeControl}
       <div className="vpc-compact-legend-row"><ProfileLegend layers={chartLayers.current.value} turbulenceOpacity={0.3}/>{compactLegendExtra}</div>
       {zoomControls}
       {compactActions}
     </header>
-  const compactLegend = compact && <div className="vpc-compact-legend">
+  const compactLegend = compact && !documentMode && <div className="vpc-compact-legend">
       {layerControls}
       <details className="vpc-compact-info"><summary>자료 정보</summary><div>{sourceInfo}</div></details>
     </div>
-  return <div className={embedded ? `profile-embedded${fillContainer ? ' is-fill' : ''}` : 'vpc-overlay'}><section className={`vpc-window vpc-operational${embedded ? ' is-embedded' : ''}`} role={embedded ? 'group' : 'dialog'} aria-label="연직단면도"
+  const view = <div className={embedded ? `profile-embedded${fillContainer ? ' is-fill' : ''}${documentMode ? ' is-document-profile' : ''}${fullscreen ? ' is-document-fullscreen' : ''}` : 'vpc-overlay'}><section ref={viewerRef} tabIndex={fullscreen ? -1 : undefined} className={`vpc-window vpc-operational${embedded ? ' is-embedded' : ''}`} role={fullscreen || !embedded ? 'dialog' : 'group'} aria-modal={fullscreen ? true : undefined} aria-label={fullscreen ? '단면도 전체화면' : '연직단면도'}
     style={embedded ? undefined : {left:floating.rect.x, top:floating.rect.y, width:floating.rect.width, height:floating.rect.height}}>
+    {documentHeader}
     {compactHeader}
     {!compact && <header className="vpc-window-header" {...(embedded ? {} : floating.handlers('move'))}>
       {!embedded && <div className="vpc-window-title" tabIndex={0} aria-label="창 이동" onKeyDown={e=>floating.key(e,'move')}><Grip size={15}/><h1>연직단면도</h1>{previewLabel && <span className="vpc-demo" title={previewLabel}>시안 · 저장 자료</span>}</div>}
@@ -205,13 +250,14 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     </div>}
     {statusMessage && <div className="vpc-operational-status" role="status">{statusMessage}{retry && <button onClick={retry}>다시 시도</button>}</div>}
     {missingLayers.length > 0 && <div className="vpc-operational-status" role="status">자료 없음: {missingLayers.join(', ')}</div>}
+    {documentMode && !fitDocumentWidth && !fullscreen && range[1] - range[0] < total - 0.5 && <p className="vpc-document-scroll-hint">그래프를 좌우로 밀어 탐색 · 전체를 누르면 한눈에 보기</p>}
     <div className="vpc-operational-body">
       {compactLegend}
       <VerticalProfileChart profile={normalizedProfile} crossSection={crossSection} referenceAltitudeFt={effectiveAltitude} advisories={advisories}
         layers={chartLayers.current.value} legendInToolbar selectedCandidateAltitudeFt={selectedCandidateAltitudeFt} candidateAltitudes={candidateAltitudes}
         nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={crossSectionHourLoading ? undefined : onSetWaypointNwpOffset} allowMissingTerrain={allowMissingTerrain} fitHeight
         highlightRangeNm={highlightRangeNm} linkedItems={linkedItems} activeLinkedItemId={activeLinkedItemId} onSelectLinkedItem={onSelectLinkedItem}
-        hideMeta={compact} plotPaddingLeft={plotPaddingLeft} compactRail={compact} highlightAdvisoryId={highlightAdvisoryId} onHoverAdvisory={onHoverAdvisory}
+        hideMeta={compact} minimumWidth={documentMode && !fitDocumentWidth ? 720 : 0} plotPaddingRight={padRight} plotPaddingLeft={plotPaddingLeft} compactRail={compact && !documentMode} separateTimeRail={documentMode} highlightAdvisoryId={highlightAdvisoryId} onHoverAdvisory={onHoverAdvisory}
         showComparisonProfiles interactive zoom={zoom} scrollElementRef={scrollRef} selectedMarkerId={selected?.id} onSelectMarker={selectMarker} enableDragScroll />
     </div>
     {!compact && <RouteOverview total={total} range={range} onRange={setRangeFromOverview} waypointCount={markers.length}/>}
@@ -223,4 +269,5 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
     </footer>}
     {!embedded && !floating.maximized && <>{['n','s','e','w','ne','nw','sw'].map(edge=><div key={edge} className={`vpc-resize is-${edge}`} {...floating.handlers(edge)}/>)}<div className="vpc-resize is-se" tabIndex={0} role="group" aria-label="창 크기 조절" {...floating.handlers('se')} onKeyDown={e=>floating.key(e,'resize')}>◢</div></>}
   </section></div>
+  return fullscreen ? createPortal(view, document.body) : view
 }

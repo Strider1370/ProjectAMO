@@ -58,16 +58,60 @@ test('공항별 여러 임계값·공항경보·낙뢰를 사용자마다 한 �
 
   await runAirportAlertTick(db, { weather: weather(start + 180_000, { adverse: false, warning: false, strike: false }), nowMs: start + 180_000 })
   assert.equal(db.prepare('SELECT COUNT(*) n FROM airport_alert_events WHERE user_id=1 AND active=1').get().n, 0)
+  // 공항경보·낙뢰는 새로 생기고, METAR는 해소 1시간 안에 다시 들어와 방금 끝난 알림이 다시 진행 중이 된다.
   const again = await runAirportAlertTick(db, { weather: weather(start + 240_000), nowMs: start + 240_000 })
-  assert.equal(again.created, 6)
-  assert.equal(listNotifications(db, 1).notifications.length, 6)
+  assert.equal(again.created, 4)
+  assert.equal(listNotifications(db, 1).notifications.length, 5)
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM airport_alert_events WHERE user_id=1 AND kind='metar' AND active=1").get().n, 1)
 
   const airportId = listNotifications(db, 1).notifications[0].id
   assert.equal(markNotificationRead(db, 2, airportId, iso(start)), false)
   assert.equal(markNotificationRead(db, 1, airportId, iso(start)), true)
-  assert.equal(markAllNotificationsRead(db, 1, iso(start)), 5)
+  assert.equal(markAllNotificationsRead(db, 1, iso(start)), 4)
   assert.equal(listNotifications(db, 1).unreadCount, 0)
-  assert.equal(listNotifications(db, 2).unreadCount, 6)
+  assert.equal(listNotifications(db, 2).unreadCount, 5)
+})
+
+test('METAR 기준을 오가도 1시간 안에는 다시 울리지 않고, 1시간이 지나면 새 알림을 보낸다', async (t) => {
+  const db = dbWithWatches()
+  t.after(() => db.close())
+  const quiet = { warning: false, strike: false }
+  const sent = []
+  const tick = (ms, adverse) => runAirportAlertTick(db, { weather: weather(ms, { ...quiet, adverse }), nowMs: ms,
+    sendPushImpl: async (_sub, payload) => { sent.push(payload.title) } })
+  db.prepare("INSERT INTO push_subscriptions (user_id,endpoint,p256dh,auth,created_at) VALUES (1,'https://push.example/a','k','a',?)").run(iso(start))
+  const metarCount = () => db.prepare("SELECT COUNT(*) n FROM airport_alert_events WHERE user_id=1 AND kind='metar'").get().n
+
+  await tick(start, true)
+  await tick(start + 30 * 60_000, false)
+  await tick(start + 60 * 60_000, true) // 해소 30분 뒤 다시 기준 안 → 같은 알림을 이어 간다
+  assert.equal(metarCount(), 1)
+  assert.equal(sent.length, 1)
+
+  await tick(start + 90 * 60_000, false)
+  await tick(start + 160 * 60_000, true) // 해소 70분 뒤 → 새 알림
+  assert.equal(metarCount(), 2)
+  assert.equal(sent.length, 2)
+})
+
+test('밤 시간 푸시 끄기: 그 시간에는 알림만 기록하고 푸시는 보내지 않는다', async (t) => {
+  const db = dbWithWatches()
+  t.after(() => db.close())
+  const { writeQuietHours } = await import('../src/user-alerts/quiet-hours.js')
+  db.prepare("INSERT INTO push_subscriptions (user_id,endpoint,p256dh,auth,created_at) VALUES (1,'https://push.example/a','k','a',?)").run(iso(start))
+  // start = 03:00Z = 12:00 KST. 11:00–13:00 KST를 밤 시간으로 둔다.
+  writeQuietHours(db, 1, { enabled: true, start: 11 * 60, end: 13 * 60 })
+  const sent = []
+  await runAirportAlertTick(db, { weather: weather(start, { warning: false, strike: false }), nowMs: start,
+    sendPushImpl: async (_sub, payload) => { sent.push(payload.title) } })
+  assert.equal(listNotifications(db, 1).notifications.length, 1)
+  assert.equal(sent.length, 0)
+
+  // 끄면 다시 보낸다.
+  writeQuietHours(db, 1, { enabled: false, start: 11 * 60, end: 13 * 60 })
+  await runAirportAlertTick(db, { weather: weather(start + 60_000, { warning: true, strike: false }), nowMs: start + 60_000,
+    sendPushImpl: async (_sub, payload) => { sent.push(payload.title) } })
+  assert.equal(sent.length, 1)
 })
 
 test('오래된 METAR와 누락된 관측은 새 임계값 알림을 만들지 않는다', () => {

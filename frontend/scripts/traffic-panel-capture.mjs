@@ -8,7 +8,10 @@ const outDir = process.env.PROJECTAMO_CAPTURE_DIR || 'artifacts/traffic-panel'
 await fs.mkdir(outDir, { recursive: true })
 
 const browser = await chromium.launch({ headless: true })
-const page = await browser.newContext({ viewport: { width: 1440, height: 900 } }).then((c) => c.newPage())
+const page = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
+  extraHTTPHeaders: { 'X-ProjectAMO-Analytics': 'ignore' },
+}).then((c) => c.newPage())
 
 function countAircraftOnMap() {
   // 지도에 실제로 그려진 기체 수. MapView가 개발 모드에서 window.__map으로 지도를 노출한다.
