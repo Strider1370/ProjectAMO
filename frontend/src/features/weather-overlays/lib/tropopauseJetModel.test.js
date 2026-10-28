@@ -39,7 +39,7 @@ test('display tropopause is capped at FL450, above-top counts as the cap and gap
 })
 
 test('band colours follow the five FL steps and leave FL450 and above unfilled', () => {
-  assert.equal(tropBandColor(290), TROP_BANDS[0].color)
+  assert.equal(tropBandColor(240), TROP_BANDS[0].color)
   assert.equal(tropBandColor(345), TROP_BANDS[2].color)
   assert.equal(tropBandColor(449), TROP_BANDS[4].color)
   assert.equal(tropBandColor(450), null)
@@ -53,7 +53,7 @@ test('all horizontal band boundaries align with Mapbox-projected contours, inclu
   const wideGrid = { nx: 205, ny: 169, lonMin: 119, lonMax: 136, latMin: 30, latMax: 44 }
   const display = Float32Array.from({ length: wideGrid.nx * wideGrid.ny }, (_, k) => {
     const lat = wideGrid.latMin + Math.floor(k / wideGrid.nx) / (wideGrid.ny - 1) * (wideGrid.latMax - wideGrid.latMin)
-    return Math.min(TROP_CAP_FL, 260 + (lat - wideGrid.latMin) * 20)
+    return Math.min(TROP_CAP_FL, 200 + (lat - wideGrid.latMin) * 25)
   })
   const edges = buildTropEdges({ grid: wideGrid }, display)
   const top = mapboxgl.MercatorCoordinate.fromLngLat([wideGrid.lonMin, wideGrid.latMax])
@@ -79,7 +79,7 @@ test('all horizontal band boundaries align with Mapbox-projected contours, inclu
 })
 
 test('longitude band boundaries align across the full image extent without stretching the last grid cell', () => {
-  const display = Float32Array.from({ length: size }, (_, k) => Math.min(TROP_CAP_FL, 270 + k % grid.nx / (grid.nx - 1) * 200))
+  const display = Float32Array.from({ length: size }, (_, k) => Math.min(TROP_CAP_FL, 200 + k % grid.nx / (grid.nx - 1) * 300))
   const raster = buildTropJetRaster({ grid }, display)
   const edges = buildTropEdges({ grid }, display)
   const transitions = []
@@ -110,7 +110,7 @@ test('barbs follow the SIGWX rule: core, then ±20 kt or ±3,000 ft changes at l
 })
 
 test('the model draws only checked axes and the point report keeps raw values', () => {
-  const jets = [{ coordinates: [[121, 32], [128, 33]], axisShown: true, minor: false, core: { lon: 124, lat: 32.5, speedKt: 120, pressureHpa: 250, layer80KtHpa: null } },
+  const jets = [{ coordinates: Array.from({ length: 15 }, (_, i) => [121 + i * 0.5, 32 + i / 14]), axisShown: true, p95OffsetKm: 10, minor: false, core: { lon: 124, lat: 32.5, speedKt: 120, pressureHpa: 250, layer80KtHpa: null } },
     { coordinates: [[121, 34], [128, 34]], axisShown: false, minor: false, core: { lon: 124, lat: 34, speedKt: 110, pressureHpa: 250, layer80KtHpa: null } }]
   const model = buildTropopauseJetModel(field({ jets }))
   assert.equal(model.jets.length, 1)

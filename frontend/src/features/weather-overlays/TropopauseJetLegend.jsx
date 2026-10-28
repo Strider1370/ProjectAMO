@@ -10,7 +10,7 @@ export default function TropopauseJetLegend({ enabled, cases = [], caseKey = nul
   if (!enabled) return null
   return <section className="tropopause-jet-legend" aria-label="권계면·제트 범례">
     <strong className="tropopause-jet-legend__title">권계면·제트 · FL <span className="tropopause-jet-legend__trop"
-      style={{ '--trop-fill': TROP_LABEL.fill, '--trop-stroke': TROP_LABEL.stroke, '--trop-text': TROP_LABEL.text }}>TROP 380</span></strong>
+      style={{ '--trop-fill': TROP_LABEL.fill, '--trop-stroke': TROP_LABEL.stroke, '--trop-text': TROP_LABEL.text }}>TROP 350</span></strong>
     <div className="tropopause-jet-legend__bands" role="list" aria-label="권계면 높이(FL)">
       {TROP_BANDS.map(band => <span role="listitem" key={band.label}><i aria-hidden="true" style={{ backgroundColor: band.color }} />{band.label}</span>)}
       <span role="listitem"><i aria-hidden="true" className="is-empty" />≥450</span>
@@ -18,6 +18,7 @@ export default function TropopauseJetLegend({ enabled, cases = [], caseKey = nul
     <div className="tropopause-jet-legend__jet">
       <span><i aria-hidden="true" className="is-axis" />제트 축(최대풍 80 kt 이상)</span>
       <span>깃·FL = 가장 센 지점의 풍속과 고도</span>
+      <span><i aria-hidden="true" className="is-core" />점 = 짧은 강풍 중심(120kt 이상, 확대 시)</span>
     </div>
     {cases.length > 1 && onSelectCase && <div className="tropopause-jet-legend__cases" role="group" aria-label="저장된 사례 선택(개발용)">
       <button type="button" aria-pressed={!caseKey} onClick={() => onSelectCase(null)}>최신</button>

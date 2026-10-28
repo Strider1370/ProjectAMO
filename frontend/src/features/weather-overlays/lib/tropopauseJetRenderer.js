@@ -56,7 +56,8 @@ export function createTropopauseJetRenderer(map) {
     ctx.lineJoin = 'round'; ctx.lineCap = 'round'
     const project = ([lon, lat]) => map.project([lon, lat])
     const reserved = []
-    const stats = { edges: 0, tropLabels: 0, jets: 0, barbs: 0 }
+    const stats = { edges: 0, tropLabels: 0, jets: 0, barbs: 0, cores: 0 }
+    for (const jet of model.hiddenJets ?? []) strokePath(jet.coordinates.map(project), 'rgba(71,85,105,0.55)', 1, [3, 6])
     // 권계면 단계 경계: 얇은 흰 선
     for (const edge of model.edges) for (const line of edge.lines) {
       strokePath(line.map(project), 'rgba(255,255,255,0.9)', 1.2); stats.edges++
@@ -80,15 +81,30 @@ export function createTropopauseJetRenderer(map) {
       const p = project(jet.coordinates[k])
       const a = project(jet.coordinates[Math.max(0, k - 2)]), b = project(jet.coordinates[Math.min(jet.coordinates.length - 1, k + 2)])
       const angle = Math.atan2(b.y - a.y, b.x - a.x)
-      jetBarb(ctx, p, angle, speedKt, jet.coordinates[k][1], PALETTE)
-      jetLevelLabel(ctx, p, angle, [`FL${flightLevel}`, extra].filter(Boolean), { reserved, width, height, palette: PALETTE, font: FONT, accept: uncovered })
+      const footprint = { x: p.x - 40, y: p.y - 35, w: 80, h: 70 }
+      if (model.declutter && (reserved.some(box => footprint.x < box.x + box.w && footprint.x + footprint.w > box.x
+        && footprint.y < box.y + box.h && footprint.y + footprint.h > box.y) || !uncovered(footprint))) return false
+      const label = () => jetLevelLabel(ctx, p, angle, [`FL${flightLevel}`, extra].filter(Boolean), { reserved, width, height, palette: PALETTE, font: FONT, accept: uncovered })
+      if (model.declutter) {
+        if (!label()) return false
+        jetBarb(ctx, p, angle, speedKt, jet.coordinates[k][1], PALETTE)
+        reserved.push(footprint)
+      } else {
+        jetBarb(ctx, p, angle, speedKt, jet.coordinates[k][1], PALETTE)
+        label()
+      }
       stats.barbs++
+      return true
     }
-    for (const jet of model.jets) {
+    for (const jet of model.declutter ? [...model.jets].sort((a, b) => b.core.speedKt - a.core.speedKt) : model.jets) {
+      if (model.declutter) {
+        const pts = jet.coordinates.map(project)
+        if (pts.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0) < 80) continue
+      }
       let shown = 0
       for (const barb of [...jet.barbs].sort((a, b) => Number(b.core) - Number(a.core))) {
         if (!inView(project(barb.coordinates))) continue
-        drawBarb(jet, barb.k, barb.speedKt, barb.flightLevel, null); shown++
+        if (drawBarb(jet, barb.k, barb.speedKt, barb.flightLevel, null)) shown++
       }
       if (shown) continue
       let best = -1
@@ -97,6 +113,14 @@ export function createTropopauseJetRenderer(map) {
         if (inView(project(c)) && k > 1 && k < jet.coordinates.length - 3 && Number.isFinite(s?.kt) && Number.isFinite(s?.fl) && (best < 0 || s.kt > jet.samples[best].kt)) best = k
       })
       if (best >= 0) drawBarb(jet, best, Math.round(jet.samples[best].kt / 5) * 5, Math.round(jet.samples[best].fl / 10) * 10, null)
+    }
+    // 비교안의 짧은 강풍 중심: 확대했을 때만 작은 점과 값을 함께 표시한다.
+    if (map.getZoom() >= 4.5) for (const core of model.cores ?? []) {
+      const p = project(core.coordinates), box = { x: p.x - 45, y: p.y - 30, w: 90, h: 60 }
+      if (!inView(p) || reserved.some(b => box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y) || !uncovered(box)) continue
+      if (!jetLevelLabel(ctx, p, 0, [`${Math.round(core.speedKt / 5) * 5}kt · FL${Math.round(core.flightLevel / 10) * 10}`], { reserved, width, height, palette: PALETTE, font: FONT, accept: uncovered })) continue
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.strokeStyle = PALETTE.halo; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.fill()
+      reserved.push(box); stats.cores++
     }
     // TROP 라벨: 경계선 하나에 최대 2개, 같은 높이 라벨끼리 화면 350 px 이상 떨어뜨린다.
     for (const edge of model.edges) {

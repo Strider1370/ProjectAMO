@@ -518,9 +518,13 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
 }
 
 const AlertLabPage = lazy(() => import('../features/alert-lab/AlertLabPage.jsx'))
+const TropopauseJetComparison = lazy(() => import('../features/weather-overlays/comparison/TropopauseJetComparison.jsx'))
 
 const SIDEBAR_INTRO_KEY = 'projectamo.sidebarIntroShown'
 function App() {
+  if (import.meta.env.DEV && /^\/concepts\/tropopause-jet-comparison\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={<p role="status">운영 자료 비교 화면을 불러오는 중…</p>}><TropopauseJetComparison /></Suspense>
+  }
   if (/^\/alerts\/settings\/?$/.test(window.location.pathname)) {
     return <TimeZoneProvider><AuthProvider><MainAppShell initialAlertView="settings" /></AuthProvider></TimeZoneProvider>
   }

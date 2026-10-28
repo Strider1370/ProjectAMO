@@ -1,11 +1,12 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { localTropopauseSnapshots } from './dev/localTropopauseSnapshots.js'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '..', '')
   const backendTarget = env.PROJECTAMO_BACKEND_TARGET || 'http://localhost:3001'
   return {
-    plugins: [react()],
+    plugins: [react(), localTropopauseSnapshots()],
     // 정적 자료 캐시 무효화용 빌드 값(shared/versionedAsset.js). 빌드할 때마다 바뀐다.
     define: { __BUILD_ID__: JSON.stringify(Date.now().toString(36)) },
     envDir: '..', // .env is at project root, not inside frontend/

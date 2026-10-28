@@ -1,13 +1,9 @@
+import { pressureToFl, sampleField } from './tropopauseJetSampling.js'
+import { selectJetAxes } from './jetAxisSelection.js'
+export { pressureToFl, sampleField } from './tropopauseJetSampling.js'
 import { isothermSegments, chainContourSegments } from '../../../shared/weather/gridContours.js'
 import { JET_MIN_KT, TROP_BANDS, TROP_CAP_FL, TROP_CLEAR_FL, TROP_EDGE_LEVELS } from '../../../shared/weather/tropopauseJetPresentation.js'
 
-
-// ISA 기압고도(100 ft 단위 FL). FL은 기압고도이므로 지오퍼텐셜고도가 아니라 기압에서 바로 환산한다.
-export function pressureToFl(hPa) {
-  if (!Number.isFinite(hPa) || hPa <= 0) return NaN
-  const meters = hPa >= 226.32 ? 44330.8 * (1 - (hPa / 1013.25) ** 0.190263) : 11000 + 6341.6 * Math.log(226.32 / hPa)
-  return meters / 0.3048 / 100
-}
 
 // 보기 시각에 가장 가까운 예보시각. 자료가 없는 시각을 다른 자료로 채우지 않는다.
 export function pickTropopauseTime(times, selectedMs) {
@@ -40,9 +36,9 @@ export function buildTropDisplayFl(field, passes = 6) {
   return values
 }
 
-export function tropBandColor(fl) {
+export function tropBandColor(fl, bands = TROP_BANDS) {
   if (!Number.isFinite(fl) || fl >= TROP_CLEAR_FL) return null
-  return TROP_BANDS.find(band => fl >= band.from && fl < band.to)?.color ?? null
+  return bands.find(band => fl >= band.from && fl < band.to)?.color ?? null
 }
 
 const hexRgb = hex => [1, 3, 5].map(k => Number.parseInt(hex.slice(k, k + 2), 16))
@@ -52,7 +48,7 @@ const latFromMercatorY = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 /
 
 // Mapbox 이미지 소스는 네 모서리 사이를 지도 투영 좌표에서 선형으로 편다.
 // 각 픽셀 중심의 Mercator 위도를 원 격자에 역투영해 경계선(map.project)과 면색을 맞춘다.
-export function buildTropJetRaster(field, displayFl, scale = 4) {
+export function buildTropJetRaster(field, displayFl, scale = 4, bands = TROP_BANDS) {
   const { nx, ny, latMin, latMax } = field.grid
   const width = nx * scale, height = ny * scale
   const top = mercatorY(latMax), bottom = mercatorY(latMin)
@@ -70,7 +66,7 @@ export function buildTropJetRaster(field, displayFl, scale = 4) {
     const gy = Math.min(ny - 1, Math.max(0, (lat - latMin) / (latMax - latMin) * (ny - 1)))
     for (let x = 0; x < width; x++) {
       const gx = (x + 0.5) / width * (nx - 1), o = (y * width + x) * 4
-      const color = tropBandColor(sample(displayFl, gx, gy))
+      const color = tropBandColor(sample(displayFl, gx, gy), bands)
       if (color) {
         if (!rgbCache.has(color)) rgbCache.set(color, hexRgb(color))
         const [r, g, b] = rgbCache.get(color)
@@ -89,16 +85,8 @@ function lines(field, values, level) {
 }
 
 // 권계면 단계 경계선(TROP 라벨 위치).
-export function buildTropEdges(field, displayFl) {
-  return TROP_EDGE_LEVELS.map(level => ({ level, lines: lines(field, displayFl, level === TROP_CAP_FL ? TROP_CLEAR_FL : level) }))
-}
-
-export function sampleField(field, name, lon, lat) {
-  const { nx, ny, lonMin, latMin, lonMax, latMax } = field.grid
-  const i = Math.round((lon - lonMin) / (lonMax - lonMin) * (nx - 1)), j = Math.round((lat - latMin) / (latMax - latMin) * (ny - 1))
-  if (i < 0 || j < 0 || i >= nx || j >= ny) return null
-  const v = field[name]?.[j * nx + i]
-  return Number.isFinite(v) ? v : null
+export function buildTropEdges(field, displayFl, levels = TROP_EDGE_LEVELS) {
+  return levels.map(level => ({ level, lines: lines(field, displayFl, level === TROP_CAP_FL ? TROP_CLEAR_FL : level) }))
 }
 
 const distanceKm = ([lo1, la1], [lo2, la2]) => Math.hypot((lo2 - lo1) * 111.2 * Math.cos((la1 + la2) / 2 * Math.PI / 180), (la2 - la1) * 111.2)
@@ -134,18 +122,20 @@ export function pickJetBarbs(field, jet, { minSpacingKm = 400, endKm = 130 } = {
 }
 
 // 렌더러에 넘길 한 시각의 표출 모델.
-export function buildTropopauseJetModel(field) {
+export function buildTropopauseJetModel(field, { rasterScale = 4 } = {}) {
   if (!field?.grid?.nx || !Array.isArray(field.trop)) return null
   const displayFl = buildTropDisplayFl(field)
+  const selection = selectJetAxes(field)
   return {
-    key: `${field.time.tmfc}:${field.time.hf}:${field.revision}`,
+    key: `${field.time.tmfc}:${field.time.hf}:${field.revision}:display-v2`,
     grid: field.grid,
-    raster: buildTropJetRaster(field, displayFl),
+    raster: buildTropJetRaster(field, displayFl, rasterScale),
     edges: buildTropEdges(field, displayFl),
     // 제트는 축 선과 가장 센 지점의 깃·FL 하나만 표시한다(강풍역 면·80 kt 선은 고도 정보가 없어 생략).
-    jets: field.jets.filter(jet => jet.axisShown).map(jet => ({ ...jet, barbs: pickJetBarbs(field, jet).filter(barb => barb.core),
+    jets: selection.jets.map(jet => ({ ...jet, barbs: pickJetBarbs(field, jet, { endKm: 0 }).filter(barb => barb.core),
       // 화면에 핵·변화 지점이 없을 때 쓸 축 위 원 격자 최대풍(렌더러가 보이는 구간 최대에 깃을 하나 둔다).
       samples: jet.coordinates.map(([lon, lat]) => ({ kt: sampleField(field, 'vmax', lon, lat), fl: pressureToFl(sampleField(field, 'pmax', lon, lat)) })) })),
+    declutter: true, cores: selection.cores, selection,
     checks: field.checks,
   }
 }
