@@ -158,12 +158,14 @@ test('user-alerts: 비로그인 상태에서 공항 설정의 로그인 창이 �
   expect(await auth.evaluate((node) => node.contains(document.activeElement))).toBe(true)
 })
 
-test('user-alerts: 공항 패널 종 버튼이 감시 여부를 글자로 보인다', async ({ page }) => {
+test('user-alerts: 공항 패널 종 버튼이 감시 여부를 글자로 보인다', async ({ page }, testInfo) => {
+  // PC는 공항 이름 아래, 휴대폰은 아래 탭 줄 오른쪽 끝(짧은 글자).
+  const mobile = testInfo.project.name === 'mobile'
   await installApi(page)
   await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('button', { name: '인천국제공항 알림 설정 · 감시 중' })).toContainText('알림 감시 중')
+  await expect(page.getByRole('button', { name: '인천국제공항 알림 설정 · 감시 중' })).toContainText(mobile ? '감시 중' : '알림 감시 중')
   await page.goto('/?airport=RKSS', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('button', { name: '김포국제공항 알림 설정', exact: true })).toContainText('알림 설정')
+  await expect(page.getByRole('button', { name: '김포국제공항 알림 설정', exact: true })).toContainText(mobile ? '알림' : '알림 설정')
 })
 
 test('user-alerts: 다른 공항을 이미 감시해도 누른 공항의 설정이 먼저 열린다', async ({ page }) => {

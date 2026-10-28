@@ -15,6 +15,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import DataProvenance from '../../shared/ui/DataProvenance.jsx'
 import ForecasterInquiry from './ForecasterInquiry.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import ReportTimeZone, { useReportTimeZone } from '../../shared/timezone/ReportTimeZone.jsx'
 import useDemoMode from '../../shared/demoMode/useDemoMode.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
@@ -69,6 +70,9 @@ function CatBadge({ category }) {
 export default function BriefingView({ frozenNotice = null, organizationContext = null, organizationBundle = null, organizationError = null, onOrganizationReload = null, briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null, externalHighlight = null, onMapView = null, onOpenAirport = null, onSetMapTime = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
+  const reportKey = `${briefing?.meta?.departureAirport}-${briefing?.meta?.arrivalAirport}`
+  const [metarTz, setMetarTz] = useReportTimeZone(reportKey)
+  const [tafTz, setTafTz] = useReportTimeZone(reportKey)
   const { nowMs } = useDemoMode()
   const containerRef = useRef(null)
   const [activeId, setActiveId] = useState(null)
@@ -318,7 +322,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const amosExpansion = (a, { withRaw = true } = {}) => {
     const takeoff = a.role === 'departure' ? takeoffBlock(a) : null
     const amos = amosBlock(a)
-    const prov = a.source ? <DataProvenance source={a.source} /> : null
+    const prov = a.source ? <DataProvenance source={a.source} displayTimeZone={metarTz} /> : null
     return (
       <div className="bv-expand-stack">
         {withRaw && <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>}
@@ -336,7 +340,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     <section data-bvid="current" className="bv-section">
       <Card>
         <div className="bv-haz-head">
-          <Subtitle2 as="h3">현재 실황</Subtitle2>
+          <Subtitle2 as="h3">현재 실황 <ReportTimeZone tz={metarTz} onChange={setMetarTz} label="브리핑 METAR" /></Subtitle2>
           <Caption1 style={{ color: 'var(--text-3)' }}>행을 누르면 원문과 상세가 펼쳐집니다</Caption1>
         </div>
         <table className="bv-current-matrix">
@@ -356,7 +360,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
                         <span className="bv-cur-role"><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao}</b></span>
                         {a.observationTime && (
                           <Caption1 style={{ color: 'var(--text-3)' }}>
-                            {formatBriefingTime(a.observationTime, tz)}
+                            {formatBriefingTime(a.observationTime, metarTz, { withDate: true })}
                             {a.reportType === 'SPECI' ? <Badge appearance="tint" color="warning" className="bv-speci">SPECI</Badge> : null}
                           </Caption1>
                         )}
@@ -384,13 +388,13 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const currentMobile = (
     <section data-bvid="current" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">현재 실황</Subtitle2>
+        <Subtitle2 as="h3">현재 실황 <ReportTimeZone tz={metarTz} onChange={setMetarTz} label="브리핑 METAR" /></Subtitle2>
         <div className="bv-current-tac">
           {airports.map((a) => (
             <article className="bv-current-tac-card" key={a.role}>
               <div className="bv-current-tac-head">
                 <span><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao} {a.reportType === 'SPECI' ? 'SPECI' : 'METAR'}</b></span>
-                <span className="bv-current-tac-meta">{a.observationTime && <Caption1 style={{ color: 'var(--text-3)' }}>{formatBriefingTime(a.observationTime, tz)}</Caption1>}<CatBadge category={a.category} /></span>
+                <span className="bv-current-tac-meta">{a.observationTime && <Caption1 style={{ color: 'var(--text-3)' }}>{formatBriefingTime(a.observationTime, metarTz, { withDate: true })}</Caption1>}<CatBadge category={a.category} /></span>
               </div>
               <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>
               <details className="bv-current-tac-detail">
@@ -665,20 +669,20 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
       </div>
     )
   }
-  const tzSuffix = tz === 'KST' ? 'KST' : 'Z'
+  const tzSuffix = tafTz === 'KST' ? 'KST' : 'Z'
   const kstParts = (iso) => {
     const ms = Date.parse(iso); if (!Number.isFinite(ms)) return null
-    const d = new Date(ms + (tz === 'UTC' ? 0 : 9 * 3600000)); const q = (n) => String(n).padStart(2, '0')
+    const d = new Date(ms + (tafTz === 'UTC' ? 0 : 9 * 3600000)); const q = (n) => String(n).padStart(2, '0')
     return { date: `${q(d.getUTCMonth() + 1)}/${q(d.getUTCDate())}`, time: `${q(d.getUTCHours())}:${q(d.getUTCMinutes())}` }
   }
 
   const destination = (
     <section data-bvid="destination" className="bv-section">
       <Card>
-        <Subtitle2 as="h3">목적지 예보</Subtitle2>
+        <Subtitle2 as="h3">목적지 예보 <ReportTimeZone tz={tafTz} onChange={setTafTz} label="브리핑 TAF" /></Subtitle2>
         {!dest.sourceTaf ? <Body1 style={{ color: 'var(--text-3)' }}>TAF 없음</Body1> : (
           <>
-            <EnhancedTafTab taf={dest.sourceTaf} icao={dest.icao} eta={meta.eta} forceCompact />
+            <EnhancedTafTab taf={dest.sourceTaf} icao={dest.icao} eta={meta.eta} forceCompact displayTimeZone={tafTz} />
             {dest.etaOutOfRange && (
               <MessageBar intent="warning"><MessageBarBody>도착(ETA)이 이 TAF 유효기간 밖입니다 — 표시된 TAF는 도착 시각을 포함하지 않습니다(최신 TAF 확인 필요).</MessageBarBody></MessageBar>
             )}
@@ -692,7 +696,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             <div className="bv-dest-head">
               {dest.alternate.category ? <CatBadge category={dest.alternate.category} /> : <Badge appearance="tint">정보 없음</Badge>}
               <b style={{ fontSize: 'var(--fs-400)' }}>{dest.alternate.icao}</b>
-              <Caption1 style={{ color: 'var(--text-3)' }}>교체 · ETA {formatBriefingTime(meta.eta, tz)}</Caption1>
+              <Caption1 style={{ color: 'var(--text-3)' }}>교체 · ETA {formatBriefingTime(meta.eta, tafTz)}</Caption1>
             </div>
             {dest.alternate.noTaf
               ? <Caption1 style={{ color: 'var(--text-3)' }}>TAF 없음 — 교체공항 예보 미확보</Caption1>

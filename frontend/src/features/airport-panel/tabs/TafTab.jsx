@@ -57,7 +57,7 @@ function computeColumnSpans(periods, textFn) {
 
 // 발표 이력 줄(공항 패널에서만 — eta·forceCompact로 쓰는 브리핑 화면은 제외): 현재 + 직전 2개 발표 칸, 누르면 그 발표로.
 // 응답에 붙은 직전 발표는 변화군 없이 시간별 예보만 있어 원문은 비고 시간별 타임라인으로 그린다.
-export default function EnhancedTafTab({ taf: latestTaf, history: panelHistory, icao, eta = null, forceCompact = false, tempoMode = 'inline' }) {
+export default function EnhancedTafTab({ taf: latestTaf, history: panelHistory, icao, eta = null, forceCompact = false, tempoMode = 'inline', displayTimeZone }) {
   const showHistory = Boolean(icao) && eta == null && !forceCompact
   const ownHistory = useAirportHistory(showHistory && !panelHistory ? icao : null, 'taf', { latest: latestTaf, latestTime: latestTaf?.header?.issued, latestKind: latestTaf?.header?.report_status === 'AMENDMENT' ? 'AMD' : 'TAF' })
   const history = panelHistory ?? ownHistory
@@ -77,7 +77,8 @@ export default function EnhancedTafTab({ taf: latestTaf, history: panelHistory, 
     if (window.matchMedia('(max-width: 1279px)').matches) return { view: 'table', compact: true }
     return { view: 'timeline', compact: false }
   })
-  const { tz } = useTimeZone()
+  const { tz: defaultTz } = useTimeZone()
+  const tz = displayTimeZone || defaultTz
   const { nowMs } = useDemoMode()
   if (!taf) return <div className="ap-empty">TAF 데이터 없음</div>
 

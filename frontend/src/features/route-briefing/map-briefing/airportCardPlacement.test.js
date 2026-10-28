@@ -33,3 +33,19 @@ test('지시선 끝은 공항 점에서 가장 가까운 카드 테두리 위', 
   assert.equal(card.side, 'ne')
   assert.deepEqual(card.lineEnd, [card.left, card.top + size.h])
 })
+
+
+test('태블릿: 시간대 선택으로 커진 카드도 화면 위·아래로 잘리지 않는다', () => {
+  const viewport = { left: 8, top: 8, right: 1186, bottom: 826 }
+  const own = { w: 360, h: 260 }
+  const placed = placeAirportCards([{ key: 'A', x: 580, y: 30, size: own }, { key: 'B', x: 800, y: 800, size: own }], {
+    size, bounds: viewport,
+    obstacles: [{ left: 8, top: 8, right: 350, bottom: 490 }, { left: 8, top: 680, right: 1186, bottom: 826 }],
+  })
+  for (const card of placed) {
+    assert.ok(card.top >= viewport.top)
+    assert.ok(card.top + own.h <= viewport.bottom)
+    assert.ok(card.left >= viewport.left)
+    assert.ok(card.left + own.w <= viewport.right)
+  }
+})

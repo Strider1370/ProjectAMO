@@ -2,6 +2,10 @@
 
 Run a focused contract with `npm run dev:contract -- --grep <id>`. The command checks ports, then Playwright owns the fixed-data backend and frontend lifecycle. `dev:test` only stops automatic collection; it does not provide route or weather fixtures.
 
+## METAR·TAF 임시 시간대
+
+- `report-timezone`: desktop / ipad-landscape / mobile에서 공항 패널과 문서형 브리핑의 METAR·TAF 독립 전환, 날짜 경계 변환, 원문·전체 설정 유지, 재진입 시 기본 설정 적용을 검사한다. 지도형 공항 카드의 개별 전환과 카드 폭도 desktop / ipad-landscape에서 검사한다. 기상 응답은 고정 자료를 사용한다.
+
 ## 공항 알림 실험실
 
 - `alert-lab`: 개발 전용 `/concepts/alerts`, desktop / ipad-landscape / mobile. 벨 알림창에서 공항 패널·별도 설정으로 이동, 묶음 알림, 감시 삭제, 자료 누락과 해소를 검증한다. 휴대폰 잠금화면 모의 푸시, 김포→제주 경로의 모의 SIGMET, 공항 강풍경보·낙뢰 예시에서 각 알림을 눌러 해당 상세로 이동하는 동작과 스타일 로딩도 검증한다. 고정 CSS 화면 크기·등비 축소·100% 스크롤 및 360/390/430px 알림창 경계·axe WCAG A/AA 검사도 포함한다. 서버 기상이나 외부 발송은 사용하지 않는다.

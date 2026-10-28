@@ -54,7 +54,13 @@ export function placeAirportCards(anchors, { size, bounds, obstacles = [], route
     const own = anchor.size ?? size
     let best = null
     for (const [order, candidate] of candidates(anchor, own).entries()) {
-      const rect = rectOf(candidate, own)
+      // Report time controls can increase the measured height. Keep each candidate
+      // inside the viewport before comparing overlaps with panels and other cards.
+      const rect = rectOf({
+        ...candidate,
+        left: Math.max(bounds.left, Math.min(candidate.left, bounds.right - own.w)),
+        top: Math.max(bounds.top, Math.min(candidate.top, bounds.bottom - own.h)),
+      }, own)
       const outside = Math.max(0, bounds.left - rect.left) + Math.max(0, rect.right - bounds.right)
         + Math.max(0, bounds.top - rect.top) + Math.max(0, rect.bottom - bounds.bottom)
       const blocked = [...obstacles, ...placed.map((p) => p.rect)].reduce((sum, other) => sum + overlapArea(rect, other), 0)

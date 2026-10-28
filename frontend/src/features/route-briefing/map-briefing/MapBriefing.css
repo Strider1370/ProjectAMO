@@ -361,3 +361,12 @@
 .mb-dock.is-document .mb-row-label { padding-left: var(--space-xs); gap: 2px; }
 .mb-dock.is-document .mb-row-dot, .mb-dock.is-document .mb-row-chips { display: none; }
 .mb-dock.is-document .mb-profile-body { display: block; overflow: visible; }
+
+/* Card labels occupy a narrow column; keep the date and touch target inside it. */
+.mb-ac-rows dt > span:has(.report-timezone) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xxs);
+  white-space: normal;
+}

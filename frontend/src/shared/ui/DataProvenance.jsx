@@ -15,8 +15,9 @@ function fmtProv(iso, tz) {
   return tz === 'KST' ? `${dd} ${hh}:${mm} KST` : `${dd} ${hh}:${mm}Z`
 }
 
-export default function DataProvenance({ source, className = '' }) {
-  const { tz } = useTimeZone()
+export default function DataProvenance({ source, className = '', displayTimeZone }) {
+  const { tz: defaultTz } = useTimeZone()
+  const tz = displayTimeZone || defaultTz
   if (!source) return null
 
   const publish = fmtProv(source.publish_time, tz)

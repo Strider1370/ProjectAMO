@@ -22,7 +22,7 @@ test('renders current airport reports as one comparison table on desktop and TAC
 })
 
 test('uses the airport panel compact TAF view once, without the old period table', () => {
-  assert.match(jsx, /<EnhancedTafTab taf=\{dest\.sourceTaf\} icao=\{dest\.icao\} eta=\{meta\.eta\} forceCompact \/>/)
+  assert.match(jsx, /<EnhancedTafTab taf=\{dest\.sourceTaf\} icao=\{dest\.icao\} eta=\{meta\.eta\} forceCompact( displayTimeZone=\{tafTz\})? \/>/)
   assert.doesNotMatch(jsx, /bv-dest-legacy|bv-dest-periods/)
 })
 
