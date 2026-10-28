@@ -672,8 +672,8 @@ export default function IntroPage() {
 
         <section className="cta" aria-labelledby="cta-title">
           <div className="wrap">
-            <div><h2 id="cta-title">지금 바로 확인해 보세요</h2><p>로그인 없이 대시보드를 볼 수 있어요.</p></div>
-            <p className="cta-note" role="note">{DISCLAIMER} <b>{DISCLAIMER_ACTION}</b></p>
+            <div><h2 id="cta-title">지금 바로 확인해 보세요</h2></div>
+            <p className="cta-note" role="note">{DISCLAIMER}<br /><b>{DISCLAIMER_ACTION}</b></p>
             <button className="btn btn-white" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
           </div>
         </section>

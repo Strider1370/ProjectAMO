@@ -56,7 +56,7 @@ export function alertView(n) {
       segment: Number.isFinite(p.intersectFromNm) && Number.isFinite(p.intersectToNm) ? `${Math.round(p.intersectFromNm)}–${Math.round(p.intersectToNm)}NM` : null,
       validFrom: p.validFrom ?? null, validTo: p.validTo ?? null }
   }
-  if (n?.type === 'metar') return { kind: 'metar', badge: 'METAR 기준 초과', title: metarHeadline(p.metrics), target: n.routeName ?? n.airportIcao, metrics: p.metrics ?? [], observedAt: p.observedAt ?? null }
+  if (n?.type === 'metar') return { kind: 'metar', badge: 'METAR', title: metarHeadline(p.metrics), target: n.routeName ?? n.airportIcao, metrics: p.metrics ?? [], observedAt: p.observedAt ?? null }
   if (n?.type === 'taf') return { kind: 'taf', badge: p.reportType === 'AMD' ? 'TAF AMD' : 'TAF', title: p.reportType === 'AMD' ? 'TAF AMD 발표' : 'TAF 발표', target: n.routeName ?? n.airportIcao,
     text: p.text ?? '', issuedAt: p.issuedAt ?? null, validFrom: p.validFrom ?? null, validTo: p.validTo ?? null }
   if (n?.type === 'airport_warning') return { kind: 'warning', badge: '공항경보', title: warningNameKo(p.warning) ?? p.title ?? '공항경보', target: n.routeName ?? n.airportIcao, validTo: p.validTo ?? null }
