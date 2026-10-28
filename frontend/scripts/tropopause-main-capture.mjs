@@ -28,7 +28,7 @@ async function ready() {
   await page.waitForFunction(revision => {
     const canvas = document.querySelector('.tropopause-jet-canvas')
     return window.__map?.isStyleLoaded() && window.__map?.isSourceLoaded('kim-tropopause-jet-source')
-      && canvas?.dataset.model?.includes(`${revision}:display-v2`) && JSON.parse(canvas.dataset.stats).jets === 2
+      && canvas?.dataset.model?.includes(`${revision}:display-v3`) && JSON.parse(canvas.dataset.stats).jets === 2
   }, item.revision, { timeout: 90_000 })
   await page.evaluate(() => new Promise(resolve => {
     const map = window.__map
@@ -51,8 +51,8 @@ try {
   await page.screenshot({ path: path.join(directory, 'screenshots/main-default.png') })
   await page.evaluate(() => { window.__map.jumpTo({ center: [120, 39.5], zoom: 5.2 }) })
   await ready()
-  await page.waitForFunction(() => JSON.parse(document.querySelector('.tropopause-jet-canvas').dataset.stats).cores > 0)
-  await page.screenshot({ path: path.join(directory, 'screenshots/main-zoomed-cores.png') })
+  await page.waitForFunction(() => JSON.parse(document.querySelector('.tropopause-jet-canvas').dataset.stats).cores === 0)
+  await page.screenshot({ path: path.join(directory, 'screenshots/main-zoomed-clean.png') })
   for (const name of [/^남색/, /^기본/]) {
     await page.getByRole('button', { name: /지도 선택$/ }).click()
     await page.getByRole('menuitemradio', { name }).click()
@@ -67,7 +67,7 @@ try {
   await entry.click()
   await ready()
   assert.deepEqual(errors, [])
-  const result = { checkedAt: new Date().toISOString(), field: item, checks: ['native layer toggle', '5000ft model', 'localized strong cores', 'two basemap switches', 'no duplicate canvas', 'source cleanup', 're-enable from cache'], requests, errors }
+  const result = { checkedAt: new Date().toISOString(), field: item, checks: ['native layer toggle', '5000ft model', 'no short-axis point markers', 'two basemap switches', 'no duplicate canvas', 'source cleanup', 're-enable from cache'], requests, errors }
   await fs.writeFile(path.join(directory, 'main-verification.json'), JSON.stringify(result, null, 2))
   console.log('Native map checks passed')
 } finally { await browser.close() }

@@ -129,7 +129,7 @@ export default function TropopauseJetComparison() {
     raster: fiveThousand ? models.proposed.raster : models.current.raster,
     edges: fiveThousand ? models.proposed.edges : models.current.edges,
     jets: cleanJets ? models.proposed.jets : models.current.jets,
-    declutter: cleanJets, cores: cleanJets ? models.selection.cores : [],
+    declutter: cleanJets, cores: [],
     hiddenJets: cleanJets && showHidden ? models.selection.rejected.filter(item => item.jet.axisShown).map(item => item.jet) : [],
   } : null, [models, fiveThousand, cleanJets, showHidden])
   const preset = (center, zoom) => {
@@ -158,10 +158,10 @@ export default function TropopauseJetComparison() {
       <CompareMap side="current" model={models?.current} field={field} registry={maps} onMove={onMove} onReady={onReady} view={view}
         bands={models?.currentBands} label="기존 표시" summary={models ? `제트 축 ${models.current.jets.length}개 · FL300/340/380/420/450` : '준비 중'} />
       <CompareMap side="proposed" model={proposed} field={field} registry={maps} onMove={onMove} onReady={onReady} view={view}
-        bands={fiveThousand ? models?.proposedBands : models?.currentBands} label="제안 표시" summary={stats ? `제트 축 ${cleanJets ? stats.axes : stats.original}개${cleanJets ? ` · 짧은 강풍 중심 ${stats.cores}개(확대 시)` : ''}` : '준비 중'} />
+        bands={fiveThousand ? models?.proposedBands : models?.currentBands} label="제안 표시" summary={stats ? `제트 축 ${cleanJets ? stats.axes : stats.original}개${cleanJets ? ` · 짧은 축 ${stats.hidden}개 생략` : ''}` : '준비 중'} />
     </div>
-    {stats && <details className="tjc-diagnostics"><summary>제트 판정표 · 기존 {stats.original}개 → 축 {stats.axes}개 + 강풍 중심 {stats.cores}개 · 연결 {stats.joined}건</summary>
-      <p>축 500km 이상 유지 · 300~500km는 독립적인 120kt 이상 중심만 유지 · 연결은 100km / 방향 25° / 고도 3,000ft 이내 및 연결 구간 80kt 이상 · 강풍 중심은 확대 수준 4.5부터 표시</p>
+    {stats && <details className="tjc-diagnostics"><summary>제트 판정표 · 기존 {stats.original}개 → 축 {stats.axes}개 · 연결 {stats.joined}건</summary>
+      <p>축 500km 이상 유지 · 300~500km는 독립적인 120kt 이상 중심만 유지 · 연결은 100km / 방향 25° / 고도 3,000ft 이내 및 연결 구간 80kt 이상 · 짧은 축의 점·풍속·고도 표시는 생략</p>
       <div><table><thead><tr><th>축 길이</th><th>최대풍</th><th>표시 제외 이유</th></tr></thead><tbody>{models.selection.rejected.filter(item => item.jet.axisShown).map((item, i) => <tr key={i}><td>{Math.round(item.jet.lengthKm)}km</td><td>{item.jet.core.speedKt}kt</td><td>{item.reason}</td></tr>)}</tbody></table></div>
       <small>사본 수신 {stamp(manifest.capturedAt)} · 원자료 SHA-256: {selected.sha256} · 운영 서비스 표시·계산은 변경하지 않았습니다.</small>
     </details>}

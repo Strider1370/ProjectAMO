@@ -16,7 +16,6 @@
 .tropopause-jet-legend__jet span { display: flex; align-items: center; gap: var(--space-xs); }
 .tropopause-jet-legend__jet i { display: block; width: 22px; height: 12px; }
 .tropopause-jet-legend__jet i.is-axis { height: 0; border-top: 3px solid var(--text-1); }
-.tropopause-jet-legend__jet i.is-core { width: 8px; height: 8px; margin-inline: 7px; border-radius: 50%; background: var(--text-1); box-shadow: 0 0 0 1px var(--bg-1); }
 .tropopause-jet-legend__note { font-size: var(--fs-100); }
 .tropopause-jet-legend__cases { display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
 .tropopause-jet-legend__cases button {

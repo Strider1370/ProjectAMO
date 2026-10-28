@@ -114,14 +114,6 @@ export function createTropopauseJetRenderer(map) {
       })
       if (best >= 0) drawBarb(jet, best, Math.round(jet.samples[best].kt / 5) * 5, Math.round(jet.samples[best].fl / 10) * 10, null)
     }
-    // 비교안의 짧은 강풍 중심: 확대했을 때만 작은 점과 값을 함께 표시한다.
-    if (map.getZoom() >= 4.5) for (const core of model.cores ?? []) {
-      const p = project(core.coordinates), box = { x: p.x - 45, y: p.y - 30, w: 90, h: 60 }
-      if (!inView(p) || reserved.some(b => box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y) || !uncovered(box)) continue
-      if (!jetLevelLabel(ctx, p, 0, [`${Math.round(core.speedKt / 5) * 5}kt · FL${Math.round(core.flightLevel / 10) * 10}`], { reserved, width, height, palette: PALETTE, font: FONT, accept: uncovered })) continue
-      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.strokeStyle = PALETTE.halo; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.fill()
-      reserved.push(box); stats.cores++
-    }
     // TROP 라벨: 경계선 하나에 최대 2개, 같은 높이 라벨끼리 화면 350 px 이상 떨어뜨린다.
     for (const edge of model.edges) {
       const placed = []

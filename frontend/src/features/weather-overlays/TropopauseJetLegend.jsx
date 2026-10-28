@@ -18,7 +18,6 @@ export default function TropopauseJetLegend({ enabled, cases = [], caseKey = nul
     <div className="tropopause-jet-legend__jet">
       <span><i aria-hidden="true" className="is-axis" />제트 축(최대풍 80 kt 이상)</span>
       <span>깃·FL = 가장 센 지점의 풍속과 고도</span>
-      <span><i aria-hidden="true" className="is-core" />점 = 짧은 강풍 중심(120kt 이상, 확대 시)</span>
     </div>
     {cases.length > 1 && onSelectCase && <div className="tropopause-jet-legend__cases" role="group" aria-label="저장된 사례 선택(개발용)">
       <button type="button" aria-pressed={!caseKey} onClick={() => onSelectCase(null)}>최신</button>

@@ -25,7 +25,7 @@ export function buildComparisonModels(field, { fiveThousand = true, cleanJets = 
     raster: fiveThousand ? production.raster : current.raster,
     edges: fiveThousand ? production.edges : current.edges,
     jets: cleanJets ? production.jets : current.jets,
-    declutter: cleanJets, cores: cleanJets ? selection.cores : [],
+    declutter: cleanJets, cores: [],
     hiddenJets: cleanJets && showHidden ? selection.rejected.filter(item => item.jet.axisShown).map(item => item.jet) : [],
   }
   return { current, proposed, selection, currentBands: LEGACY_BANDS, proposedBands: fiveThousand ? CANDIDATE_BANDS : LEGACY_BANDS,

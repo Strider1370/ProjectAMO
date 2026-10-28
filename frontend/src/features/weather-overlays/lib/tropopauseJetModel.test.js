@@ -122,3 +122,13 @@ test('the model draws only checked axes and the point report keeps raw values', 
   assert.deepEqual(point.maxWind, { speedKt: 60, flightLevel: 340 })
   assert.equal(describeTropopauseJetPoint(field(), 140, 32.5), null)
 })
+
+test('a short strong jet stays absent from the map, including point markers, while raw wind remains queryable', () => {
+  const raw = field({ vmax: Array(size).fill(135), jets: [{ coordinates: [[124, 32], [124.2, 32]], axisShown: true,
+    p95OffsetKm: 0, minor: true, core: { lon: 124, lat: 32, speedKt: 135, pressureHpa: 250 } }] })
+  const model = buildTropopauseJetModel(raw)
+  assert.equal(model.jets.length, 0)
+  assert.equal(model.selection.cores.length, 1)
+  assert.deepEqual(model.cores, [])
+  assert.deepEqual(describeTropopauseJetPoint(raw, 124, 32).maxWind, { speedKt: 135, flightLevel: 340 })
+})

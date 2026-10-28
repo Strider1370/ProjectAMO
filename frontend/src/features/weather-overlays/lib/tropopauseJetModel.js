@@ -127,7 +127,7 @@ export function buildTropopauseJetModel(field, { rasterScale = 4 } = {}) {
   const displayFl = buildTropDisplayFl(field)
   const selection = selectJetAxes(field)
   return {
-    key: `${field.time.tmfc}:${field.time.hf}:${field.revision}:display-v2`,
+    key: `${field.time.tmfc}:${field.time.hf}:${field.revision}:display-v3`,
     grid: field.grid,
     raster: buildTropJetRaster(field, displayFl, rasterScale),
     edges: buildTropEdges(field, displayFl),
@@ -135,7 +135,7 @@ export function buildTropopauseJetModel(field, { rasterScale = 4 } = {}) {
     jets: selection.jets.map(jet => ({ ...jet, barbs: pickJetBarbs(field, jet, { endKm: 0 }).filter(barb => barb.core),
       // 화면에 핵·변화 지점이 없을 때 쓸 축 위 원 격자 최대풍(렌더러가 보이는 구간 최대에 깃을 하나 둔다).
       samples: jet.coordinates.map(([lon, lat]) => ({ kt: sampleField(field, 'vmax', lon, lat), fl: pressureToFl(sampleField(field, 'pmax', lon, lat)) })) })),
-    declutter: true, cores: selection.cores, selection,
+    declutter: true, cores: [], selection,
     checks: field.checks,
   }
 }
