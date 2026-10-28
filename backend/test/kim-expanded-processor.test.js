@@ -81,6 +81,18 @@ test('a full expanded +0~12h is cropped and published as the Korean run once', t
   assert.equal(publishKoreaFromExpanded({ root, tmfc, hours }).reason, 'kim_korea_run_already_complete')
 })
 
+test('resuming an interrupted cycle needs only the space not yet used by that run', async t => {
+  const root = temporary(t)
+  const now = KST('2026-10-09', '20:15')
+  config.kim_expanded.enabled = true
+  // 4.6 GB 남음: 새 회차는 못 시작하지만, 5 GB를 이미 받아 둔 끊긴 회차는 이어서 한다.
+  const fresh = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 4.6e9, runBytes: () => 0 })
+  assert.equal(fresh.reason, 'disk_reserve')
+  const resumed = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 4.6e9,
+    runBytes: () => 5e9, collect: async () => ({ hours: [], failures: [] }) })
+  assert.notEqual(resumed.reason, 'disk_reserve')
+})
+
 test('a cycle job skips when unusable or short of disk, crops Korea from 06 UTC, and 06 UTC stops a running 00 UTC resume', async t => {
   const root = temporary(t)
   let now = KST('2026-10-09', '20:15')
