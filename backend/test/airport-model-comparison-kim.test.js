@@ -4,10 +4,11 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { collectKimAirportComparison, createKimComparisonHourLoader, sampleKimAirport } from '../src/airport-model-comparison/kim.js'
+import { collectKimAirportComparison, createExtendedKimComparisonHourLoader, createKimComparisonHourLoader, kimComparisonBounds, sampleKimAirport } from '../src/airport-model-comparison/kim.js'
 import { buildKimNwpGrid, KIM_NWP_LEVELS } from '../src/processors/kim-nwp-model.js'
 import { writeKimNwpGrid } from '../src/processors/kim-nwp-store.js'
-import { readCollectionAttempt } from '../src/airport-model-comparison/store.js'
+import { publishAirportWindow, readAirportComparison, readCollectionAttempt } from '../src/airport-model-comparison/store.js'
+import { recordFixture } from './fixtures/airport-model-comparison/records.js'
 
 const bounds = { lonMin: 129, lonMax: 130, latMin: 35, latMax: 36, dx: 1, dy: 1 }
 const airport = { icao: 'RKPU', lat: 35.45, lon: 129.35 }
@@ -22,6 +23,9 @@ test('collector loads each grid once for multiple airports and publishes complet
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-kim-comparison-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
   const airports = [airport, { icao: 'RKPK', lat: 35.2, lon: 129.2 }]
+  const legacy = recordFixture({ model: 'kim', airport_icao: 'RKPU', run_at: '2026-09-06T00:00:00.000Z' })
+  publishAirportWindow({ root, model: 'kim', airport_icao: 'RKPU', run_at: legacy[0].run_at,
+    window: { start_at: legacy[0].window_start_at, end_at: legacy[0].window_end_at, forecast_hours: legacy.map(record => record.forecast_hour) }, records: legacy })
   let loads = 0
   const loadHour = async ({ hf }) => {
     loads += 1
@@ -33,10 +37,48 @@ test('collector loads each grid once for multiple airports and publishes complet
       revision: `hour-${hf}`,
     }
   }
-  const report = await collectKimAirportComparison({ tmfc: '2026090600', forecastHours: Array.from({ length: 13 }, (_, i) => i), root, airports, loadHour })
-  assert.equal(loads, 13)
+  const report = await collectKimAirportComparison({ tmfc: '2026090600', forecastHours: Array.from({ length: 25 }, (_, i) => i), root, airports, loadHour })
+  assert.equal(loads, 25)
   assert.deepEqual(report.publishedAirports.sort(), ['RKPK', 'RKPU'])
   assert.equal(report.failedAirports.length, 0)
+  const published = readAirportComparison({ root, airport_icao: 'RKPU' }).models[0]
+  assert.equal(published.records.length, 25)
+  assert.equal(published.window_end_at, '2026-09-07T00:00:00.000Z')
+})
+
+test('extra hours fetch only the airport rectangle, reuse its own cache and never write Korea raw grids', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-kim-extended-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const requests = []
+  const options = { root, tmfc: '2026090600', airports: [airport], credential: 'fixture',
+    fetchGrid: async (request) => { requests.push(request); return '# i=2,j=2\n1 1\n1 1\n' } }
+  const loader = createExtendedKimComparisonHourLoader(options)
+  const hour = await loader({ tmfc: '2026090600', hf: 24 })
+  assert.ok(requests.length > 0)
+  assert.ok(requests.every((request) => request.sub === kimComparisonBounds([airport]).sub && request.hf === 24))
+  assert.equal(fs.existsSync(path.join(root, 'kim_nwp')), false)
+  const count = requests.length
+  const cached = await createExtendedKimComparisonHourLoader(options)({ tmfc: '2026090600', hf: 24 })
+  assert.equal(requests.length, count)
+  assert.equal(cached.revision, hour.revision)
+  assert.ok(Number.isFinite(sampleKimAirport(hour.surface.u10m, airport).value))
+})
+
+test('an incomplete extended run preserves the last usable 12-hour snapshot', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-kim-legacy-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const records = recordFixture({ model: 'kim', airport_icao: 'RKPU' })
+  publishAirportWindow({ root, model: 'kim', airport_icao: 'RKPU', run_at: records[0].run_at,
+    window: { start_at: records[0].window_start_at, end_at: records[0].window_end_at, forecast_hours: records.map(record => record.forecast_hour) }, records })
+  const before = readAirportComparison({ root, airport_icao: 'RKPU' }).models[0]
+  const loads = []
+  const result = await collectKimAirportComparison({ root, tmfc: '2026090606', airports: [airport],
+    loadHour: async ({ hf }) => { loads.push(hf); if (hf === 20) throw new Error('not yet uploaded'); return {} } })
+  assert.deepEqual(loads, Array.from({ length: 21 }, (_, hour) => hour))
+  assert.deepEqual(result.failedAirports, ['RKPU'])
+  const after = readAirportComparison({ root, airport_icao: 'RKPU' }).models[0]
+  assert.equal(after.revision, before.revision)
+  assert.equal(after.records.length, 13)
 })
 
 test('collector persists its abort attempt and stops before loading the next forecast hour', async (t) => {
@@ -45,7 +87,7 @@ test('collector persists its abort attempt and stops before loading the next for
   const controller = new AbortController()
   let loads = 0
   await assert.rejects(collectKimAirportComparison({
-    tmfc: '2026090600', forecastHours: Array.from({ length: 13 }, (_, i) => i), root, airports: [airport], signal: controller.signal,
+    tmfc: '2026090600', forecastHours: Array.from({ length: 25 }, (_, i) => i), root, airports: [airport], signal: controller.signal,
     loadHour: async () => { loads += 1; controller.abort(); return {} },
   }), /abort/i)
   assert.equal(loads, 1)
@@ -107,7 +149,7 @@ test('raw KIM sentinel is missing before sampling and conversion while tiny cond
 test('complete comparison window returns reused report without loading grids', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-kim-reuse-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
-  const hours = Array.from({ length: 13 }, (_, i) => i)
+  const hours = Array.from({ length: 25 }, (_, i) => i)
   const component = value => ({ nx: 2, ny: 2, bounds, values: [value, value, value, value] })
   const loadHour = async ({ hf }) => ({ surface: { u10m: component(2), v10m: component(-2), t2m: component(290), rh2m: component(70), psl: component(101300), tcld: component(.6), lcld: component(.4), mcld: component(.2), hcld: component(.1), topo: component(10), gust: hf ? component(5) : null, pr: hf ? component(.001) : null }, layers: [{ pressure_hpa: 1000, hgt: component(100), cld: component(.7), tqc: component(2e-6), tqi: component(0) }], revision: `hour-${hf}` })
   await collectKimAirportComparison({ tmfc: '2026090600', forecastHours: hours, root, airports: [airport], loadHour })
@@ -122,7 +164,7 @@ test('complete comparison window returns reused report without loading grids', a
 test('partial KIM attempt is persisted and runs comparison retention after publishing successes', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-kim-attempt-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
-  const hours = Array.from({ length: 13 }, (_, i) => i)
+  const hours = Array.from({ length: 25 }, (_, i) => i)
   const component = value => ({ nx: 2, ny: 2, bounds, values: [value, value, value, value] })
   const loadHour = async ({ hf }) => ({ surface: { u10m: component(2), v10m: component(-2), t2m: component(290), rh2m: component(70), psl: component(101300), tcld: component(.6), lcld: component(.4), mcld: component(.2), hcld: component(.1), topo: component(10), gust: hf ? component(5) : null, pr: hf ? component(.001) : null }, layers: [{ pressure_hpa: 1000, hgt: component(100), cld: component(.7), tqc: component(2e-6), tqi: component(0) }], revision: `hour-${hf}` })
   const runs = path.join(root, 'airport_model_comparison', 'kim', 'runs')

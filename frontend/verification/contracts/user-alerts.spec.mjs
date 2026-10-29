@@ -30,6 +30,45 @@ async function installApi(page) {
   await page.route('**/api/me/notifications', (route) => route.fulfill({ json: { notifications: [], unreadCount: 0 } }))
 }
 
+test('user-alerts: 종과 목록은 진행 중 미확인 수를 공유하고 모두 읽음 즉시 함께 줄어든다', async ({ page }, testInfo) => {
+  await installApi(page)
+  let notifications = [
+    { id: 'airport:101', active: true, readAt: null },
+    { id: 'airport:102', active: true, readAt: null },
+    { id: 'airport:103', active: true, readAt: now },
+    { id: 'airport:104', active: false, readAt: null },
+  ].map((item) => ({ ...item, source: 'airport', airportIcao: 'RKSI', routeName: '인천국제공항',
+    type: 'metar', detectedAt: now, payload: { metrics: [], observedAt: now } }))
+  await page.route('**/api/me/notifications', (route) => route.fulfill({ json: {
+    notifications, unreadCount: notifications.filter((item) => item.active && !item.readAt).length,
+  } }))
+  let finishRead
+  await page.route('**/api/me/notifications/read-all', async (route) => {
+    await new Promise((resolve) => { finishRead = resolve })
+    notifications = notifications.map((item) => ({ ...item, readAt: item.readAt || now }))
+    await route.fulfill({ json: { ok: true } })
+  })
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.locator('.map-shell').waitFor()
+  const bell = page.locator('.sidebar-icon-button[aria-label^="알림 · 진행 중 미확인"]')
+  if (testInfo.project.name !== 'mobile') await expect(bell).toHaveAttribute('aria-label', '알림 · 진행 중 미확인 2')
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('open-alert-panel', { detail: { view: 'list' } })))
+  const panel = page.getByRole('dialog', { name: '알림 관리' })
+  await expect(panel.getByRole('status')).toHaveText('미확인 2')
+  await expect(panel.getByRole('tab', { name: '진행 중 3' })).toBeVisible()
+  await panel.getByRole('tab', { name: '지난 알림' }).click()
+  await expect(panel.getByRole('region', { name: '지난 미확인 알림' })).toBeVisible()
+  await expect(panel.getByRole('status')).toHaveText('미확인 2')
+  await panel.getByRole('button', { name: '모두 읽음' }).click()
+  // The request is deliberately pending: both views must update optimistically.
+  await expect(panel.getByRole('status')).toHaveText('미확인 0')
+  if (testInfo.project.name !== 'mobile') await expect(bell).toHaveAttribute('aria-label', '알림 · 진행 중 미확인 0')
+  await expect.poll(() => Boolean(finishRead)).toBe(true)
+  finishRead()
+  await panel.getByRole('tab', { name: '진행 중 3' }).click()
+  await expect(panel.getByRole('region', { name: '읽은 알림' }).locator('.aa-card')).toHaveCount(3)
+})
+
 test('user-alerts: 공항 종에서 설정 패널을 열고 시험 알림 상세로 이동한다', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'PC 팝업은 데스크톱 전용(휴대폰은 푸시로 받는다)')
   await installApi(page)

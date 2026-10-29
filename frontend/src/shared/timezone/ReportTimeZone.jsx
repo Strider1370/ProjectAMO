@@ -14,7 +14,22 @@ export function useReportTimeZone(resetKey) {
   return [tz, (value) => setSelection({ key: resetKey, defaultTz, tz: value })]
 }
 
-export default function ReportTimeZone({ tz, onChange, label }) {
+export default function ReportTimeZone({ tz, onChange, label, variant = 'select' }) {
+  if (variant === 'segmented') {
+    return (
+      <span className="report-timezone-toggle" role="group" aria-label={`${label} 표시 시간대`}
+        title="이 영역만 임시 변경 · 전체 설정 유지" onKeyDown={(event) => event.stopPropagation()}>
+        {['KST', 'UTC'].map((value) => (
+          <button key={value} type="button" aria-pressed={tz === value}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onChange(value)
+            }}>{value}</button>
+        ))}
+      </span>
+    )
+  }
   return (
     <select className="report-timezone" aria-label={`${label} 표시 시간대`} title="이 영역만 임시 변경 · 전체 설정 유지"
       value={tz} onChange={(event) => onChange(event.target.value)}

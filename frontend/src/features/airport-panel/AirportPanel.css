@@ -1079,6 +1079,10 @@
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
+.ap-metar-tac-block > .ap-metar-tac {
+  flex: 1;
+  min-width: 0;
+}
 
 .ap-metar-tac {
   font-family: 'Consolas', 'Menlo', monospace;

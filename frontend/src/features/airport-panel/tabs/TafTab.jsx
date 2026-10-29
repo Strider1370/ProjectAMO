@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MoveUp } from 'lucide-react'
 import { buildTafViewModel, buildTafTacLines, formatTafHour, formatTafPeriodRange, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { buildTafForecastView } from '../lib/tafForecastViewModel.js'
@@ -55,6 +55,13 @@ function computeColumnSpans(periods, textFn) {
   return spans
 }
 
+function readTafLayout() {
+  if (typeof window === 'undefined') return { view: 'timeline', compact: false }
+  if (window.matchMedia('(max-width: 719px)').matches) return { view: 'table', compact: false }
+  if (window.matchMedia('(max-width: 1279px)').matches) return { view: 'table', compact: true }
+  return { view: 'timeline', compact: false }
+}
+
 // 발표 이력 줄(공항 패널에서만 — eta·forceCompact로 쓰는 브리핑 화면은 제외): 현재 + 직전 2개 발표 칸, 누르면 그 발표로.
 // 응답에 붙은 직전 발표는 변화군 없이 시간별 예보만 있어 원문은 비고 시간별 타임라인으로 그린다.
 export default function EnhancedTafTab({ taf: latestTaf, history: panelHistory, icao, eta = null, forceCompact = false, tempoMode = 'inline', displayTimeZone }) {
@@ -69,14 +76,15 @@ export default function EnhancedTafTab({ taf: latestTaf, history: panelHistory, 
   // 패널 597px, 가장 좁은 칸 57px이라 바람(14006KT)이 잘렸다.
   // 데스크톱 타임라인은 TafForecastTimeline이 그린다: 주 예보와 TEMPO/PROB를 나누고, 좁은 칸은 실측해서
   // 줄임 표기 → 두 줄 → 숨김 순으로 줄인다. 숨겨진 값은 아래 원문(TAC)을 펼치거나 칸 툴팁으로 본다.
-  const [{ view, compact }] = useState(() => {
-    if (forceCompact) return { view: 'table', compact: true }
-    if (typeof window === 'undefined') return { view: 'timeline', compact: false }
-    // 휴대폰은 기존 그대로(가로 스크롤 표). 태블릿·좁은 창은 표에 좁은 폭 기하까지 적용한다.
-    if (window.matchMedia('(max-width: 719px)').matches) return { view: 'table', compact: false }
-    if (window.matchMedia('(max-width: 1279px)').matches) return { view: 'table', compact: true }
-    return { view: 'timeline', compact: false }
-  })
+  const [layout, setLayout] = useState(readTafLayout)
+  useEffect(() => {
+    const queries = [window.matchMedia('(max-width: 719px)'), window.matchMedia('(max-width: 1279px)')]
+    const updateLayout = () => setLayout(readTafLayout())
+    queries.forEach((query) => query.addEventListener('change', updateLayout))
+    updateLayout()
+    return () => queries.forEach((query) => query.removeEventListener('change', updateLayout))
+  }, [])
+  const { view, compact } = forceCompact ? { view: 'table', compact: true } : layout
   const { tz: defaultTz } = useTimeZone()
   const tz = displayTimeZone || defaultTz
   const { nowMs } = useDemoMode()

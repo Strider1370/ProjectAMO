@@ -10,7 +10,15 @@
 
 각 모델의 포인터는 `DATA_PATH/airport_model_comparison/<model>/latest.json`에 있고 공항별 `run_at`, `available_at`, `collected_at`, `window_start_at`, `window_end_at`, `path`, `revision`을 보존한다. `path`는 같은 모델 디렉터리 아래 `runs/<run>/<airport>/...json`을 가리킨다. 값은 UTC ISO이며 화면에서만 KST 또는 사용자가 고른 시간대로 바꾼다.
 
-KIM, GFS, ICON은 실제 실행의 F000~F012를 쓴다. ECMWF는 실제 `run_at`을 유지하고 peer 최신 실행과 같은 유효시각을 덮도록 13개 forecast hour를 이동한다. 따라서 EC 00Z와 peer 06Z 조합은 EC F006~F018이 정상이다. `last-attempt.json`에는 대상 실행, 공항별 window, 성공·재사용·실패 공항, 오류와 수집 종료 이후의 다음 정기 점검 시각이 남는다.
+KIM은 실제 실행의 F000~F024를 1시간 간격으로 저장한다(25개 시각). GFS와 ICON은 F000~F012를 쓴다. ECMWF는 실제 `run_at`을 유지하고 peer 최신 실행과 같은 유효시각을 덮도록 13개 forecast hour를 이동한다. 따라서 EC 00Z와 peer 06Z 조합은 EC F006~F018이 정상이다. `last-attempt.json`에는 대상 실행, 공항별 window, 성공·재사용·실패 공항, 오류와 수집 종료 이후의 다음 정기 점검 시각이 남는다.
+
+## KIM 예보 범위
+
+공항 상세 분석의 KIM은 분석시각부터 +24시간까지 수집해, 새 회차 공개·수집 지연으로 이전 +12시간 예보가 먼저 끝나는 상황에 여유를 둔다. 한반도 지도용 기본 수집은 F000~F012를 유지한다. 공항 비교는 같은 정기 수집 작업에서 별도로 F024까지 완성한다.
+
+F000~F012는 기존 한반도 저장 격자를 재사용한다. 추가 F013~F024는 대상 공항들을 둘러싼 작은 직사각형 격자만 요청한다. 원문은 `airport_model_comparison/kim/runs/<run>/raw/<sub>/`에 별도로 캐시해 한반도 지도 격자와 섞이지 않으며, 최근 두 회차의 원문만 보존 정리에서 유지한다. 이 추가 캐시는 지도용 `KIM_NWP_KEEP_RAW`와 무관하게 재시도에 재사용한다.
+
+25개 시각이 모두 준비됐을 때 공항별 포인터를 발행한다. 추가 구간 수집이 실패하면 기존 포인터를 유지하고 다음 정기 점검에서 재시도한다. 기존 13개 시각의 저장본도 계속 읽을 수 있으므로 첫 +24시간 수집 성공 전에는 이전 범위를 표시한다. 수집이 장시간 실패해 실제 범위를 벗어나면 범위 밖 표시는 유지한다.
 
 ## 해외 모델 수집 시각
 
@@ -49,11 +57,11 @@ node scripts/verify-airport-model-comparison.mjs \
 
 `--airport fullsupport`는 지원 공항 8곳을 검사한다. `--model`은 `kim`, `ecmwf`, `gfs`, `icon`, `all` 또는 쉼표 목록을 받는다. KIM 실행을 이미 확인했다면 `--kim-run YYYYMMDDHH`(또는 `--run`)로 고정한다. 기본값은 최신 cycle을 완료된 것으로 가정하지 않고 실제 API 응답으로 후보를 확인하며, 사용할 수 없으면 이전 후보로 내려간다. 각 모델은 5분 timeout을 가지며 wait loop가 없다. 외부 자료가 없거나 인증이 맞지 않으면 report의 `success`가 false이고 오류가 정리되어 기록된다. Fixture 통과를 실자료 성공으로 합치지 않는다.
 
-KIM 검증은 전체 한반도 격자를 받지 않는다. 공항을 둘러싼 가장 가까운 2×2 격자점만 `sub`로 요청하고 production parser, comparison hour loader, normalizer와 store를 그대로 통과한다. 공항마다 별도 작업 raw cache를 써서 첫 공항의 2×2 응답을 다른 공항에 재사용하지 않는다. 운영 저장소의 오래된 실행을 최신 실행이라고 바꾸거나 쓰지 않는다. 18Z 실행은 `selectKimRunCredential`의 항공키 선택 규칙을 그대로 따른다.
+KIM 검증은 전체 한반도 격자를 받지 않는다. 공항을 둘러싼 가장 가까운 2×2 격자점만 `sub`로 요청하고 production parser, comparison hour loader, normalizer와 store를 그대로 통과한다. 공항마다 별도 작업 raw cache를 써서 첫 공항의 2×2 응답을 다른 공항에 재사용하지 않는다. 운영 저장소의 오래된 실행을 최신 실행이라고 바꾸거나 쓰지 않는다. 18Z 실행도 `selectKimRunCredential`에서 KIM 키를 사용하며, 항공 키로 대체하지 않는다.
 
 검증 실행 순서는 KIM → GFS → ICON → ECMWF다. EC window는 이 검증에서 실제로 발행된 peer 포인터만 다시 읽어 계산한다. KIM을 실행하지 않았거나 후보 수집이 실패했다면 추측한 KIM cycle로 EC를 이동하지 않는다. peer 모델을 하나도 실행하지 않은 EC 단독 검증은 EC 자체 실행의 F000~F012를 쓴다.
 
-`report.json`은 모델별 요청 실행/실제 실행/window, 필드 수, 허용 결측, 예상 밖 결측, 발행·재사용·실패 공항, 요청 횟수·바이트와 정리된 오류를 담는다. 공항별 JSON은 실제 store read 결과다. KIM/GFS/ICON은 각 13개 F000~F012, EC는 이동된 13개 시각인지 확인한다. 한 시각 또는 마지막 성공자료만으로 전체 실자료 검증 완료를 주장하지 않는다.
+`report.json`은 모델별 요청 실행/실제 실행/window, 필드 수, 허용 결측, 예상 밖 결측, 발행·재사용·실패 공항, 요청 횟수·바이트와 정리된 오류를 담는다. 공항별 JSON은 실제 store read 결과다. KIM은 25개 F000~F024, GFS/ICON은 각 13개 F000~F012, EC는 이동된 13개 시각인지 확인한다. 한 시각 또는 마지막 성공자료만으로 전체 실자료 검증 완료를 주장하지 않는다.
 
 Committed fixture의 출처와 SHA-256은 `backend/test/fixtures/airport-model-comparison/manifest.json`에 있다. GFS F008/F009 expected는 production parser와 독립적으로 저장한 ecCodes 2.48.0 결과다. 새 GRIB 실행을 추가할 때도 임시 검증 환경의 ecCodes로 template, level, step time, sample 값을 대조하며 제품 runtime에는 Python/ecCodes 의존성을 추가하지 않는다.
 

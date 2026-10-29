@@ -227,10 +227,10 @@ test('fetchKimGrid accounts 100/70 hPa T/hgt requests as the tropopause operatio
   assert.match(source, /operation = 'kim_grid_trop'/)
 })
 
-test('supplement key follows the run: 12 UTC radar key, 18 UTC aviation key', async () => {
+test('supplement key follows the run: 12 UTC radar key, 18 UTC KIM key', async () => {
   const { selectKimRunCredential } = await import('../src/processors/kim-run-credential.js')
   const keys = { kimCredential: 'kim', aviationCredential: 'aviation', radarCredential: 'radar' }
   assert.equal(selectKimRunCredential({ tmfc: '2099010112', ...keys }), 'radar')
-  assert.equal(selectKimRunCredential({ tmfc: '2099010118', ...keys }), 'aviation')
+  assert.equal(selectKimRunCredential({ tmfc: '2099010118', ...keys }), 'kim')
   assert.match(fs.readFileSync(new URL('../src/processors/kim-tropopause-processor.js', import.meta.url), 'utf8'), /selectKimRunCredential\(/)
 })

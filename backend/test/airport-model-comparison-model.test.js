@@ -8,6 +8,19 @@ test('UTC normalization rejects ambiguous instants and preserves offset instant'
   for (const value of ['09:00', '2026-09-06T00:00:00', 'bad', '2026-02-30T00:00:00Z']) assert.throws(() => normalizeUtc(value))
 })
 
+test('KIM accepts a complete 24-hour window and still reads legacy 12-hour snapshots', () => {
+  const legacy = recordFixture({ model: 'kim' })
+  const input = (records) => ({ airport_icao: 'RKPU', model: 'kim', run_at: records[0].run_at,
+    window: { start_at: records[0].window_start_at, end_at: records[0].window_end_at, forecast_hours: records.map(record => record.forecast_hour) }, records })
+  assert.equal(validateAirportRecords(input(legacy)).length, 13)
+  const window = selectForecastWindow({ model: 'kim', run_at: legacy[0].run_at, horizonHours: 24 })
+  const records = window.forecast_hours.map((hour) => ({ ...structuredClone(legacy[Math.min(hour, 12)]), forecast_hour: hour,
+    valid_at: new Date(Date.parse(legacy[0].run_at) + hour * 3600000).toISOString(), window_end_at: window.end_at }))
+  assert.equal(validateAirportRecords(input(records)).length, 25)
+  assert.throws(() => validateAirportRecords(input(records.slice(0, 24))), /forecast_window/)
+  assert.throws(() => selectForecastWindow({ model: 'icon', run_at: legacy[0].run_at, horizonHours: 24 }), /invalid_forecast_window/)
+})
+
 test('EC keeps actual run and shifts its thirteen forecast hours to complete peer anchor', () => {
   const window = selectForecastWindow({ model: 'ecmwf', run_at: '2026-09-06T00:00:00Z', selectedRuns: [{ model: 'kim', run_at: '2026-09-06T06:00:00Z' }] })
   assert.deepEqual(window.forecast_hours, [6,7,8,9,10,11,12,13,14,15,16,17,18])

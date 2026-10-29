@@ -174,8 +174,19 @@ test('KIM NWP scheduler checks every 20 minutes from analysis +3h to +7h, still 
   assert.equal(config.schedule.kim_surface_wind_interval, '12,32,52 0,1,3-7,9-13,15-19,21-23 * * *')
 })
 
-test('KIM NWP comparison collects F000 through F012', () => {
+test('KIM map collection retains F000 through F012', () => {
   assert.deepEqual(config.kim_nwp.forecast_hours, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+})
+
+test('airport comparison extends to F024 independently of the map hours', async () => {
+  let requestedHours
+  await collectKimComparisonIfEligible({ tmfc: '2026090600', forecastHours: config.kim_nwp.forecast_hours,
+    root: '/tmp', airports: [], single: false, collectComparison: async ({ forecastHours }) => {
+      requestedHours = forecastHours
+      return { reusedAirports: [] }
+    } })
+  assert.deepEqual(requestedHours, Array.from({ length: 25 }, (_, hour) => hour))
+  assert.equal(config.kim_nwp.forecast_hours.length, 13)
 })
 
 test('comparison failure is reported without throwing into map collection', async () => {
@@ -214,15 +225,15 @@ test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
   assert.equal(new URL(url).searchParams.get('authKey'), config.api.kim_nwp_auth_key)
 })
 
-test('buildKimGridUrl uses an explicitly selected aviation credential for 18Z', () => {
+test('buildKimGridUrl uses an explicitly selected KIM credential for 18Z', () => {
   const url = new URL(buildKimGridUrl({
     data: 'U', name: 'u10m', level: 0, tmfc: '2026081818', hf: 0,
-    sub: '1429,1441,1633,1609', credential: 'aviation-key',
+    sub: '1429,1441,1633,1609', credential: 'kim-key',
   }))
-  assert.equal(url.searchParams.get('authKey'), 'aviation-key')
+  assert.equal(url.searchParams.get('authKey'), 'kim-key')
 })
 
-test('18Z KIM sends every requested variable with the aviation credential', async () => {
+test('18Z KIM sends every requested variable with the KIM credential', async () => {
   const original = {
     basePath: config.storage.base_path,
     kimCredential: config.api.kim_nwp_auth_key,
@@ -249,7 +260,7 @@ test('18Z KIM sends every requested variable with the aviation credential', asyn
     await processKimNwp({ candidates: [{ tmfc: '2026081818', hf: 0 }] })
 
     assert.ok(requests.length > 0)
-    assert.ok(requests.every((url) => url.searchParams.get('authKey') === original.aviationCredential))
+    assert.ok(requests.every((url) => url.searchParams.get('authKey') === original.kimCredential))
     const names = new Set(requests.map((url) => url.searchParams.get('name')))
     for (const name of ['u', 'v', 'T', 'hgt', 'rh', 'q', 'w', 'rh_liq', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']) {
       assert.ok(names.has(name), `expected ${name} request`)
@@ -267,19 +278,19 @@ test('18Z KIM sends every requested variable with the aviation credential', asyn
   }
 })
 
-test('18Z KIM with an unavailable aviation credential makes zero requests and does not fall back', async () => {
+test('18Z KIM with an unavailable KIM credential makes zero requests and never uses aviation', async () => {
   const originalKimCredential = config.api.kim_nwp_auth_key
   const originalAviationCredential = config.api.auth_key
   const originalFetch = globalThis.fetch
   let requestCount = 0
   try {
-    config.api.kim_nwp_auth_key = 'kim-key'
-    config.api.auth_key = 'kim-key'
+    config.api.kim_nwp_auth_key = ''
+    config.api.auth_key = 'aviation-key'
     globalThis.fetch = async () => { requestCount += 1; return new Response('unexpected') }
 
     await assert.rejects(
       () => processKimNwp({ candidates: [{ tmfc: '2026081818', hf: 0 }] }),
-      { code: 'kim_18z_aviation_credential_unavailable' },
+      { code: 'kim_credential_unavailable' },
     )
     assert.equal(requestCount, 0)
   } finally {

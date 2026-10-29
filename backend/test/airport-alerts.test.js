@@ -69,7 +69,7 @@ test('공항별 여러 임계값·공항경보·낙뢰를 사용자마다 한 �
   assert.equal(markNotificationRead(db, 1, airportId, iso(start)), true)
   assert.equal(markAllNotificationsRead(db, 1, iso(start)), 4)
   assert.equal(listNotifications(db, 1).unreadCount, 0)
-  assert.equal(listNotifications(db, 2).unreadCount, 5)
+  assert.equal(listNotifications(db, 2).unreadCount, 3)
 })
 
 test('METAR 기준을 오가도 1시간 안에는 다시 울리지 않고, 1시간이 지나면 새 알림을 보낸다', async (t) => {

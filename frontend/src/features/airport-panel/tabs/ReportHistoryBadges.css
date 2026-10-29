@@ -1,17 +1,25 @@
+.ap-history-picker {
+  display: flex; align-items: center; flex: 0 1 auto; min-width: 0;
+  gap: var(--space-s); margin-left: var(--space-s); margin-right: var(--space-xl);
+}
+.ap-history-label {
+  flex: 0 0 auto; color: var(--text-3);
+  font-size: var(--fs-200); font-weight: var(--fw-medium);
+}
 .ap-history-badges {
   display: flex; align-items: center; flex: 0 1 auto; min-width: 0; gap: 4px;
-  overflow-x: auto; overflow-y: hidden; padding: 2px 0 4px; margin-right: 20px; scrollbar-width: thin;
+  overflow-x: auto; overflow-y: hidden; padding: 2px 0 4px; scrollbar-width: thin;
 }
 .ap-history-badge {
   --ap-history-color: var(--text-3);
   display: inline-flex; align-items: center; flex: 0 0 auto; gap: 4px;
   min-height: 24px; padding: 0 7px; border: 1px solid var(--stroke-2);
-  border-radius: 999px; background: var(--bg-1); color: var(--text-2);
+  border-radius: var(--radius-circular); background: transparent; color: var(--text-2);
   font: inherit; font-size: var(--fs-200); font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
 }
 .ap-history-badge:hover { border-color: var(--text-3); color: var(--text-1); }
-.ap-history-badge.is-selected { border-color: var(--text-1); background: var(--bg-1); color: var(--text-1); box-shadow: inset 0 0 0 1px var(--text-1); }
+.ap-history-badge.is-selected { border-color: var(--stroke-strong); background: var(--bg-3); color: var(--text-1); }
 .ap-history-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ap-history-badge.is-vfr { --ap-history-color: var(--cat-vfr); }
 .ap-history-badge.is-mvfr { --ap-history-color: var(--cat-mvfr); }
@@ -22,6 +30,8 @@
 .ap-history-badge-latest { color: var(--accent); font-size: var(--fs-100); font-weight: var(--fw-bold); }
 @media (max-width: 719px) {
   .ap-sec-head.has-history { flex-wrap: wrap; }
-  .ap-history-badges { order: 1; flex-basis: calc(100% - 29px); margin-left: 29px; }
+  .ap-history-picker { order: 1; flex-basis: calc(100% - 29px); margin-left: 29px; }
+  .ap-sec-head .report-timezone-toggle { order: 1; margin-left: calc(var(--space-xl) + var(--space-s)); }
+  .ap-sec-head:has(.report-timezone-toggle) .ap-history-picker { flex-basis: auto; margin-left: 0; margin-right: 0; }
   .ap-history-badge { min-height: 28px; }
 }

@@ -81,7 +81,7 @@ export function createAlertsRouter({ db = null } = {}) {
   return router
 }
 
-// 알림센터 피드: 소유·기관 소속 범위의 발생 알림 최신순과 안 읽음 수.
+// 알림센터 피드: 소유·기관 소속 범위의 발생 알림 최신순과 진행 중 미확인 수.
 export function listNotifications(db, userId) {
   const names = new Map(airports.map((airport) => [airport.icao, airport.nameKo]))
   const airportEvents = db.prepare(`SELECT id,icao,kind,payload,active,detected_at,read_at,pushed_at
@@ -112,12 +112,13 @@ export function listNotifications(db, userId) {
   const notifications = [...airportEvents, ...routeEvents, ...organizationEvents]
     .sort((a, b) => b.detectedAt.localeCompare(a.detectedAt) || String(b.id).localeCompare(String(a.id)))
     .slice(0, 200)
-  const unreadCount = db.prepare('SELECT COUNT(*) n FROM airport_alert_events WHERE user_id=? AND read_at IS NULL').get(userId).n
-    + db.prepare('SELECT COUNT(*) n FROM route_sigmet_events WHERE user_id=? AND read_at IS NULL').get(userId).n
+  // Badge = active and unread, including active events outside the 200-row feed.
+  const unreadCount = db.prepare('SELECT COUNT(*) n FROM airport_alert_events WHERE user_id=? AND active=1 AND read_at IS NULL').get(userId).n
+    + db.prepare('SELECT COUNT(*) n FROM route_sigmet_events WHERE user_id=? AND active=1 AND read_at IS NULL').get(userId).n
     + db.prepare(`SELECT COUNT(*) n FROM organization_alerts a
       JOIN organization_members m ON m.organization_id=a.organization_id AND m.user_id=? AND m.status='active'
       LEFT JOIN organization_alert_user_states s ON s.alert_id=a.id AND s.user_id=?
-      WHERE s.read_at IS NULL`).get(userId, userId).n
+      WHERE a.active=1 AND s.read_at IS NULL`).get(userId, userId).n
   return { notifications, unreadCount }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
+import useNotifications from '../notifications/useNotifications.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { warningNameKo } from '../../../../shared/warning-types.js'
 import './alertTestDetail.css'
@@ -51,6 +52,7 @@ function TestContent({ test, tz, isTest }) {
 
 export default function AlertTestDetail({ id, eventId, onClose, onAirport, onRoute, onLogin }) {
   const { user, loading } = useAuth()
+  const { markRead } = useNotifications()
   const { tz } = useTimeZone()
   const [test, setTest] = useState(null)
   const [error, setError] = useState('')
@@ -73,11 +75,11 @@ export default function AlertTestDetail({ id, eventId, onClose, onAirport, onRou
         if (cancelled) return
         setTest(data.test ?? data.event); setError('')
         // 푸시·팝업으로 열어 본 알림은 읽은 것으로 표시한다(종 배지 숫자가 남지 않게).
-        if (eventId) fetch(`/api/me/notifications/${encodeURIComponent(eventId)}/read`, { method: 'PATCH', credentials: 'include' }).catch(() => {})
+        if (eventId) markRead(eventId)
       })
       .catch((reason) => { if (!cancelled) setError(reason.message) })
     return () => { cancelled = true }
-  }, [id, eventId, user])
+  }, [id, eventId, user, markRead])
 
   return <div className="alert-test-shade"><section className="alert-test-detail" role="dialog" aria-modal="true" aria-label={eventId ? eventId.startsWith('route:') ? '경로 알림 상세' : '공항 알림 상세' : '시험 알림 상세'}>
     <header><div><span className="alert-test-tag">{eventId ? eventId.startsWith('route:') ? '경로 알림' : '공항 알림' : '테스트 · 모의 자료'}</span><h2>{test?.airportName ?? test?.payload?.routeName ?? '알림'}</h2></div><button type="button" aria-label="알림 닫기" onClick={onClose}><X size={20} /></button></header>

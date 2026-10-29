@@ -3,6 +3,7 @@ import https from 'node:https'
 import apiHubUsage from '../api-hub-usage.js'
 import { resolveApiOperation } from '../api-operation-registry.js'
 import stats from '../stats.js'
+import config from '../config.js'
 
 export const REQUEST_OBSERVED = Symbol('request_observed')
 
@@ -174,7 +175,7 @@ async function httpsFallback(url, policy, signal) {
   }
 }
 
-export function createRequestObservedApi({ usage = apiHubUsage, stats: executionStats = stats, fetchImpl = (...args) => globalThis.fetch(...args), sleep = defaultSleep, resolveOperation = resolveApiOperation, logger = console } = {}) {
+export function createRequestObservedApi({ usage = apiHubUsage, stats: executionStats = stats, fetchImpl = (...args) => globalThis.fetch(...args), sleep = defaultSleep, resolveOperation = resolveApiOperation, logger = console, aviationCredential = config.api.auth_key } = {}) {
   return async function requestObservedApi({ operation, url, options = {}, validate } = {}) {
     const requestUrl = new URL(url)
     const operationId = typeof operation === 'string' ? operation : operation?.id
@@ -182,6 +183,11 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
     const resolvedOperation = resolveOperation({ id: operationId, url: requestUrl })
     if (!resolvedOperation?.requestPolicy) throw requestError('invalid_api_operation')
     operation = resolvedOperation
+    // Only the regular KIM NWP operation is restricted. Other KIM products
+    // sharing this URL keep their existing credential policies.
+    if (operation.id === 'kim_grid' && aviationCredential && requestUrl.searchParams.getAll('authKey').includes(aviationCredential)) {
+      throw requestError('kim_nwp_aviation_credential_forbidden')
+    }
     const policy = operation.requestPolicy
     allowedOptions(policy, options)
     const maxAttempts = requestedAttempts(policy, options)

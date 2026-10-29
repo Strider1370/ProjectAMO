@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import airports from '../../../shared/airports.js'
-import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
+import { KIM_COMPARISON_FORECAST_HOURS, MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 
@@ -668,7 +668,7 @@ export function hasCompleteKoreaRunSince(minTmfc, root = config.storage.base_pat
 export async function collectKimComparisonIfEligible({ tmfc, forecastHours, credential, signal, root, airports: selectedAirports, single, collectComparison = collectKimAirportComparison }) {
   if (single || forecastHours.length !== 13) return { skipped: true, reason: 'kim_comparison_requires_13_hours' }
   try {
-    return await collectComparison({ tmfc, forecastHours, credential, signal, root, airports: selectedAirports })
+    return await collectComparison({ tmfc, forecastHours: KIM_COMPARISON_FORECAST_HOURS, credential, signal, root, airports: selectedAirports })
   } catch (error) {
     if (signal?.aborted || error?.name === 'AbortError') throw error
     return { failed: true, reason: 'kim_airport_comparison_failed', message: error.message }

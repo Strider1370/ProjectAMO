@@ -49,7 +49,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
   const cached = readKimRawText(file)
   let text = cached
   if (cached === null) {
-    // 기본 KIM 격자·GKTG 추가 입력과 같은 키: 발표회차(tmfc)로 고른다(00·06 KIM, 12 레이더·위성, 18 항공).
+    // 기본 KIM 격자·GKTG 추가 입력과 같은 키: 발표회차(tmfc)로 고른다(00·06·18 KIM, 12 레이더·위성; 항공 키 제외).
     // 키가 없거나 막혀도 다른 키로 대체하지 않는다.
     const credential = selectKimRunCredential({
       tmfc,

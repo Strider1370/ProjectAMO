@@ -38,7 +38,7 @@ function supplementText({ tmfc, hf, name, level }) {
     + Array(grid.ny).fill(Array(grid.nx).fill(value).join(' ')).join('\n') + '\n'
 }
 
-for (const [hour, expectedKey] of [['00', 'kim-key'], ['06', 'kim-key'], ['12', 'radar-key'], ['18', 'aviation-key']]) {
+for (const [hour, expectedKey] of [['00', 'kim-key'], ['06', 'kim-key'], ['12', 'radar-key'], ['18', 'kim-key']]) {
   test(`GKTG ${hour}Z supplements use the base run key despite a +12 hour forecast, and reuse cached inputs`, async t => {
     const tmfc = `20990101${hour}`
     const root = setup(t, tmfc, { kim_nwp_auth_key: 'kim-key', auth_key: 'aviation-key', radar_satellite_auth_key: hour === '12' ? 'radar-key' : '' })
@@ -65,7 +65,7 @@ test('GKTG missing run keys and budget blocks preserve the last complete run wit
   const previous = seedGktg(root, { tmfc: '2098123112' })
   let calls = 0
   const missing = await collect({ root, tmfc, forecastHours: [12], fetchGrid: async () => { calls++; assert.fail('must not fetch') } })
-  assert.deepEqual(missing.failures, [{ hf: 12, reason: 'gktg_run_credential_unavailable' }])
+  assert.deepEqual(missing.failures, [{ hf: 12, reason: 'kim_credential_unavailable' }])
   assert.equal(calls, 0)
   config.api.kim_nwp_auth_key = 'kim-key'
   const blocked = await collect({ root, tmfc, forecastHours: [12], fetchGrid: async request => {

@@ -147,7 +147,7 @@ async function main() {
     const timeout = setTimeout(() => controller.abort(new Error(`${model}_verification_timeout`)), 5 * 60_000)
     const requestedRunAt = model === 'kim' ? runHints.kim : runHints[model]
     const requestedWindow = requestedRunAt
-      ? modelModule.selectForecastWindow({ model, run_at: model === 'kim' ? new Date(Date.UTC(+requestedRunAt.slice(0, 4), +requestedRunAt.slice(4, 6) - 1, +requestedRunAt.slice(6, 8), +requestedRunAt.slice(8, 10))).toISOString() : requestedRunAt })
+      ? modelModule.selectForecastWindow({ model, horizonHours: model === 'kim' ? 24 : 12, run_at: model === 'kim' ? new Date(Date.UTC(+requestedRunAt.slice(0, 4), +requestedRunAt.slice(4, 6) - 1, +requestedRunAt.slice(6, 8), +requestedRunAt.slice(8, 10))).toISOString() : requestedRunAt })
       : null
     let collector = { model, requestedRunAt, publishedAirports: [], reusedAirports: [], failedAirports: airports.map((airport) => airport.icao), windows: requestedWindow ? Object.fromEntries(airports.map((airport) => [airport.icao, requestedWindow])) : {}, errors: [] }
     try {
@@ -176,7 +176,7 @@ async function main() {
                 }
               }
               const loadHour = kimModule.createKimComparisonHourLoader({ root: cacheRoot, credential, signal: controller.signal, fetchGrid, bounds: box.bounds })
-              const report = await kimModule.collectKimAirportComparison({ tmfc: candidate.tmfc, forecastHours: Array.from({ length: 13 }, (_, hour) => hour), credential, signal: controller.signal, root: temporaryRoot, airports: [airport], loadHour })
+              const report = await kimModule.collectKimAirportComparison({ tmfc: candidate.tmfc, forecastHours: Array.from({ length: 25 }, (_, hour) => hour), credential, signal: controller.signal, root: temporaryRoot, airports: [airport], loadHour })
               for (const key of ['publishedAirports', 'reusedAirports', 'failedAirports', 'errors']) candidateCollector[key].push(...(report[key] || []))
               Object.assign(candidateCollector.windows, report.windows || {})
             }

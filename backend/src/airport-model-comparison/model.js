@@ -25,14 +25,15 @@ export function assertComparisonIdentity({ model, airport_icao }) {
   if (airport_icao !== undefined && !MODEL_COMPARISON_AIRPORTS.includes(airport_icao)) throw new Error('invalid_comparison_airport')
 }
 
-export function selectForecastWindow({ model, run_at, selectedRuns = [] }) {
+export function selectForecastWindow({ model, run_at, selectedRuns = [], horizonHours = 12 }) {
   assertComparisonIdentity({ model })
+  if (horizonHours !== 12 && !(model === 'kim' && horizonHours === 24)) throw new Error('invalid_forecast_window')
   const runMs = Date.parse(normalizeUtc(run_at))
   const peers = selectedRuns.filter(r => MODEL_ORDER.includes(r.model) && r.model !== 'ecmwf').map(r => Date.parse(normalizeUtc(r.run_at)))
   const anchorMs = peers.length ? Math.max(...peers) : runMs
   const offset = model === 'ecmwf' ? Math.max(0, (anchorMs - runMs) / HOUR_MS) : 0
   if (!Number.isInteger(offset) || runMs % HOUR_MS !== 0) throw new Error('unaligned_forecast_window')
-  return { start_at: new Date(runMs + offset * HOUR_MS).toISOString(), end_at: new Date(runMs + (offset + 12) * HOUR_MS).toISOString(), forecast_hours: Array.from({ length: 13 }, (_, i) => offset + i) }
+  return { start_at: new Date(runMs + offset * HOUR_MS).toISOString(), end_at: new Date(runMs + (offset + horizonHours) * HOUR_MS).toISOString(), forecast_hours: Array.from({ length: horizonHours + 1 }, (_, i) => offset + i) }
 }
 
 export function estimateCeiling({ model, grid_elevation_m, layers }) {
@@ -61,10 +62,12 @@ export function estimateCeiling({ model, grid_elevation_m, layers }) {
 export function validateAirportRecords({ airport_icao, model, run_at, window, records }) {
   assertComparisonIdentity({ airport_icao, model })
   const run = normalizeUtc(run_at)
-  if (!window || !Array.isArray(window.forecast_hours) || window.forecast_hours.length !== 13 || window.forecast_hours.some((h,i,a) => !Number.isInteger(h) || h < 0 || (i && h !== a[i-1]+1)) || (model !== 'ecmwf' && window.forecast_hours[0] !== 0)) throw new Error('invalid_forecast_window')
+  // Keep legacy 13-hour KIM snapshots readable until the first extended run succeeds.
+  const allowedCounts = model === 'kim' ? [13, 25] : [13]
+  if (!window || !Array.isArray(window.forecast_hours) || !allowedCounts.includes(window.forecast_hours.length) || window.forecast_hours.some((h,i,a) => !Number.isInteger(h) || h < 0 || (i && h !== a[i-1]+1)) || (model !== 'ecmwf' && window.forecast_hours[0] !== 0)) throw new Error('invalid_forecast_window')
   const expected = window.forecast_hours.map(h => new Date(Date.parse(run)+h*HOUR_MS).toISOString())
   const start = normalizeUtc(window.start_at), end = normalizeUtc(window.end_at)
-  if (expected[0] !== start || expected.at(-1) !== end || !Array.isArray(records) || records.length !== 13) throw new Error('incomplete_forecast_window')
+  if (expected[0] !== start || expected.at(-1) !== end || !Array.isArray(records) || records.length !== expected.length) throw new Error('incomplete_forecast_window')
   const normalized = records.map(record => {
     const r = { ...record }
     for (const key of ['run_at','valid_at','window_start_at','window_end_at','collected_at']) r[key] = normalizeUtc(r[key])
@@ -88,6 +91,6 @@ export function validateAirportRecords({ airport_icao, model, run_at, window, re
     return r
   })
   const times = normalized.map(r => r.valid_at)
-  if (new Set(times).size !== 13 || expected.some(t => !times.includes(t))) throw new Error('incomplete_forecast_window')
+  if (new Set(times).size !== expected.length || expected.some(t => !times.includes(t))) throw new Error('incomplete_forecast_window')
   return normalized.sort((a,b) => a.forecast_hour-b.forecast_hour)
 }

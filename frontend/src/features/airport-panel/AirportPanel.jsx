@@ -201,7 +201,7 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
     { id: 'warn', label: lightning.active ? '경보·낙뢰' : '공항경보', titleText: lightning.active ? '공항경보 / 낙뢰관측' : '공항경보', badge: warnBadge, node: lightning.active
       ? <WarningLightningCarousel warning={warning} lightning={lightning} airportKey={icao} />
       : <WarningCarousel warning={warning} /> },
-    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, reportTz: metarTz, setReportTz: setMetarTz, meta: metarTime ? fmtKstShort(metarTime, metarTz) : '', flightCategory: metarViewModel?.flightCat?.category, badge: metarBadge, history: metarHistory, node: <MetarTab metar={metar} history={metarHistory} amosData={amos} icao={icao} airportMeta={airport} /> },
+    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, reportTz: metarTz, setReportTz: setMetarTz, meta: metarTime ? fmtKstShort(metarTime, metarTz) : '', badge: metarBadge, history: metarHistory, node: <MetarTab metar={metar} history={metarHistory} amosData={amos} icao={icao} airportMeta={airport} /> },
     { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, reportTz: tafTz, setReportTz: setTafTz, meta: tafValid, badge: tafBadge, history: tafHistory, node: <EnhancedTafTab taf={taf} history={tafHistory} icao={icao} displayTimeZone={tafTz} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     isFullFeature && { id: 'model-analysis', label: '상세 예보 분석', node: <AirportModelComparisonSection icao={icao} /> },
@@ -282,8 +282,8 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
                 <summary className={`ap-sec-head${s.history?.entries.length ? ' has-history' : ''}`}>
                   {Icon && <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />}
                   <span role="heading" aria-level="2" className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
-                  {s.meta && <span className="ap-sec-meta">{s.reportTz ? <>{s.meta.replace(/\s+(KST|UTC)$/, '')}{' '}<ReportTimeZone tz={s.reportTz} onChange={s.setReportTz} label={s.id.toUpperCase()} /></> : s.meta}</span>}
-                  {s.flightCategory && <span className={`ap-metar-tac-chip ap-metar-tac-chip--${s.flightCategory}`}>{s.flightCategory}</span>}
+                  {s.meta && <span className="ap-sec-meta">{s.reportTz ? s.meta.replace(/\s+(KST|UTC)$/, '') : s.meta}</span>}
+                  {s.meta && s.reportTz && <ReportTimeZone tz={s.reportTz} onChange={s.setReportTz} label={s.id.toUpperCase()} variant="segmented" />}
                   {s.badge && (
                     <span className={`ap-tab-badge ap-sec-badge ap-tab-badge--${s.badge.severity}`} aria-label={`${s.label} ${s.badge.count}건`}>{s.badge.count}</span>
                   )}

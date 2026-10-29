@@ -56,17 +56,17 @@ test('buildKtgUrl puts the selected run credential in the request', () => {
   assert.equal(url.searchParams.get('authKey'), 'aviation-key')
 })
 
-test('KTG selects the aviation credential only for 18Z and rejects an unsafe fallback', () => {
+test('KTG uses the KIM credential and never falls back to aviation', () => {
   const originalKim = config.api.kim_nwp_auth_key
   const originalAviation = config.api.auth_key
   try {
     config.api.kim_nwp_auth_key = 'kim-key'
     config.api.auth_key = 'aviation-key'
     assert.equal(selectKtgRunCredential('2026081812'), 'kim-key')
-    assert.equal(selectKtgRunCredential('2026081818'), 'aviation-key')
+    assert.equal(selectKtgRunCredential('2026081818'), 'kim-key')
 
-    config.api.auth_key = 'kim-key'
-    assert.throws(() => selectKtgRunCredential('2026081818'), { code: 'kim_18z_aviation_credential_unavailable' })
+    config.api.kim_nwp_auth_key = ''
+    assert.throws(() => selectKtgRunCredential('2026081818'), { code: 'kim_credential_unavailable' })
   } finally {
     config.api.kim_nwp_auth_key = originalKim
     config.api.auth_key = originalAviation

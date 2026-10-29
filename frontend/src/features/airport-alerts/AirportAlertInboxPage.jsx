@@ -15,7 +15,7 @@ export default function AirportAlertInboxPage({ embedded = false, watchCount = n
   const { tz } = useTimeZone()
   const { pushEnabled } = usePersonalSettings()
   const isMobile = useIsMobile()
-  const { notifications, markRead, markAllRead } = useNotifications()
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
   const [section, setSection] = useState('active')
   const userAlerts = notifications.filter((item) => ['airport', 'route', 'organization'].includes(item.source))
   const shown = userAlerts.filter((item) => section === 'active' ? item.active : !item.active)
@@ -40,6 +40,7 @@ export default function AirportAlertInboxPage({ embedded = false, watchCount = n
     <header className="aa-head">
       <BellRing size={20} aria-hidden="true" />
       <h1>알림</h1>
+      <span className="aa-pill" role="status" title="진행 중이면서 읽지 않은 알림">미확인 {unreadCount}</span>
       {embedded
         ? <button type="button" className="aa-head-link" onClick={onSettings}><Settings2 size={16} aria-hidden="true" />감시 대상{watchCount != null ? ` ${watchCount}` : ''}</button>
         : <a className="aa-head-link" href="/alerts/settings"><Settings2 size={16} aria-hidden="true" />감시 대상</a>}
@@ -50,14 +51,14 @@ export default function AirportAlertInboxPage({ embedded = false, watchCount = n
         <button type="button" role="tab" aria-selected={section === 'active'} onClick={() => setSection('active')}>진행 중 {userAlerts.filter((item) => item.active).length}</button>
         <button type="button" role="tab" aria-selected={section === 'history'} onClick={() => setSection('history')}>지난 알림</button>
       </div>
-      {userUnread > 0 && <button type="button" className="aa-text-button" onClick={markAllRead}>모두 읽음</button>}
+      {(userUnread > 0 || unreadCount > 0) && <button type="button" className="aa-text-button" onClick={markAllRead}>모두 읽음</button>}
     </div>
     <p className={`aa-recv${isMobile && pushEnabled ? ' is-on' : ''}`}>{isMobile && pushEnabled ? <Check size={15} aria-hidden="true" /> : <BellRing size={15} aria-hidden="true" />}
       <span>{!isMobile ? '이 화면에서는 웹 팝업으로 받습니다 · 휴대폰 푸시는 휴대폰에서 켭니다'
         : pushEnabled ? '이 휴대폰으로 푸시 받는 중' : '이 휴대폰의 푸시가 꺼져 있습니다'}</span>
       {embedded && <button type="button" className="aa-text-button" onClick={onSettings}>받는 방법</button>}</p>
     {!shown.length && <p className="aa-empty">{section === 'active' ? '진행 중인 알림이 없습니다.' : '지난 알림이 없습니다.'}</p>}
-    {fresh.length > 0 && <section className="aa-list" aria-label="새 알림"><h2 className="aa-list-title">새 알림 {fresh.length}</h2>{fresh.map(card)}</section>}
+    {fresh.length > 0 && <section className="aa-list" aria-label={section === 'active' ? '미확인 알림' : '지난 미확인 알림'}><h2 className="aa-list-title">{section === 'active' ? '미확인' : `지난 미확인 ${fresh.length}`}</h2>{fresh.map(card)}</section>}
     {read.length > 0 && <section className="aa-list" aria-label="읽은 알림"><h2 className="aa-list-title">읽음 {read.length}</h2>{read.map(card)}</section>}
   </div></main>
 }

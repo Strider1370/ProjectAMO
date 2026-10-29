@@ -1,10 +1,4 @@
-function unavailableAviationCredential() {
-  const error = new Error('kim_18z_aviation_credential_unavailable')
-  error.code = 'kim_18z_aviation_credential_unavailable'
-  return error
-}
-
-function bulkUnavailable(code) {
+function credentialUnavailable(code) {
   const error = new Error(code)
   error.code = code
   return error
@@ -29,8 +23,8 @@ export function kimBulkCredentialOptions(config, now = Date.now(), { required = 
 export function selectKimRunCredential({ tmfc, kimCredential, aviationCredential, radarCredential, bulkCredential, bulkRequired = false, bulkWindow, now = Date.now() }) {
   // 대용량 키를 쓰기로 했으면 발표회차와 관계없이 그 키만 쓴다. 쓸 수 없는 시간에는 일반 키로 넘어가지 않는다.
   if (bulkRequired) {
-    if (!bulkCredential) throw bulkUnavailable('kim_bulk_credential_unavailable')
-    if (!kimBulkWindowOpen({ now, ...bulkWindow })) throw bulkUnavailable('kim_bulk_credential_outside_window')
+    if (!bulkCredential || bulkCredential === aviationCredential) throw credentialUnavailable('kim_bulk_credential_unavailable')
+    if (!kimBulkWindowOpen({ now, ...bulkWindow })) throw credentialUnavailable('kim_bulk_credential_outside_window')
     return bulkCredential
   }
   if (String(tmfc).slice(-2) === '12') {
@@ -41,7 +35,9 @@ export function selectKimRunCredential({ tmfc, kimCredential, aviationCredential
     }
     return radarCredential
   }
-  if (String(tmfc).slice(-2) !== '18') return kimCredential
-  if (!aviationCredential || aviationCredential === kimCredential) throw unavailableAviationCredential()
-  return aviationCredential
+  // 항공 키는 KIM 수집·재시도·복구에 사용하지 않는다.
+  if (!kimCredential || kimCredential === aviationCredential) {
+    throw credentialUnavailable('kim_credential_unavailable')
+  }
+  return kimCredential
 }

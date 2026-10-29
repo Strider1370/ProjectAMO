@@ -187,6 +187,21 @@ test('a valid past selection remains on the shared axis while an outside-window 
   assert.equal(outsideVm.summary.modelCount, 0)
 })
 
+test('extended KIM records keep the next-day forecast available after the old 12-hour endpoint', () => {
+  const data = structuredClone(payload)
+  const kim = data.models.find(model => model.model === 'kim')
+  const template = kim.records.at(-1)
+  kim.records = Array.from({ length: 25 }, (_, forecastHour) => ({ ...template,
+    forecast_hour: forecastHour, valid_at: hour(run, forecastHour), window_end_at: hour(run, 24) }))
+  data.effective_now = hour(run, 18)
+  const vm = buildComparisonViewModel({ data, tz: 'KST' })
+  assert.equal(vm.times.at(-1), hour(run, 24))
+  assert.equal(vm.summary.modelCount, 1)
+  const cell = vm.rows.wind.find(row => row.id === 'kim').cells.find(cell => cell?.valid_at === hour(run, 18))
+  assert.equal(cell.status, 'value')
+  assert.ok(Number.isFinite(cell.value))
+})
+
 test('cumulative precipitation and SVG paths stop at the first missing value without treating zero as missing', () => {
   assert.deepEqual(cumulativeHourly([0, 0.5, null, 0.2]), [0, 0.5, null, null])
   assert.deepEqual(pathSegments([{ x: 0, value: 0 }, { x: 1, value: 2 }, { x: 2, value: null }, { x: 3, value: 4 }]), [[{ x: 0, value: 0 }, { x: 1, value: 2 }], [{ x: 3, value: 4 }]])

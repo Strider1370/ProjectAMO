@@ -9,7 +9,7 @@ KIM 전구모델(KIMG/NE57)로 WMO 열적 대류권계면과 제트기류(연직
 | 1000–150 hPa 21층 `T`·`hgt`·`u`·`v` | 기존 KIM 수집(`kim_surface_wind`) | 추가 없음 |
 | 100·70 hPa `T`·`hgt`·`u`·`v` | 이 processor | 8건 × 13시각 = 104건/회차 |
 
-추가 입력 키는 기본 KIM 격자·GKTG 추가 입력과 같은 `selectKimRunCredential`로 발표회차(`tmfc`)에 따라 고른다: 00·06 UTC KIM 키, 12 UTC 레이더·위성 키, 18 UTC 항공 키. 키가 없거나 막히면 요청하지 않고 다른 키로 대체하지도 않는다. 장부에는 실제 사용한 키로 기록된다. API Hub 장부 operation은 `kim_grid_trop`(이름 `T`/`hgt`/`u`/`v`, 층 100/70)이다. 100·70 hPa `u`·`v`는 권계면 계산·제트 탐색에 쓰지 않고, 연직단면의 상층 등풍속선(80 kt 선이 150 hPa 위에서 닫히도록)에만 쓴다. 기본 21층이 모두 있는 시각만 추가 요청하며, 받은 원문은 `kim_nwp/runs/<run>/raw/trop/`에 두고 재사용한다.
+추가 입력 키는 기본 KIM 격자·GKTG 추가 입력과 같은 `selectKimRunCredential`로 발표회차(`tmfc`)에 따라 고른다: 00·06·18 UTC KIM 키, 12 UTC 레이더·위성 키(항공 키는 사용하지 않음). 키가 없거나 막히면 요청하지 않고 다른 키로 대체하지도 않는다. 장부에는 실제 사용한 키로 기록된다. API Hub 장부 operation은 `kim_grid_trop`(이름 `T`/`hgt`/`u`/`v`, 층 100/70)이다. 100·70 hPa `u`·`v`는 권계면 계산·제트 탐색에 쓰지 않고, 연직단면의 상층 등풍속선(80 kt 선이 150 hPa 위에서 닫히도록)에만 쓴다. 기본 21층이 모두 있는 시각만 추가 요청하며, 받은 원문은 `kim_nwp/runs/<run>/raw/trop/`에 두고 재사용한다.
 
 ## 계산
 

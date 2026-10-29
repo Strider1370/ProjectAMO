@@ -23,7 +23,9 @@ export default function ReportHistoryBadges({ history, type, tz }) {
   if (history.entries.length === 0) return null
   const label = type === 'metar' ? 'METAR 관측 회차' : 'TAF 발표 회차'
   return (
-    <span ref={stripRef} className="ap-history-badges" role="group" aria-label={label}>
+    <span className="ap-history-picker" role="group" aria-label={label}>
+      <span className="ap-history-label" aria-hidden="true">발표</span>
+      <span ref={stripRef} className="ap-history-badges">
       {[...history.entries].reverse().map((entry) => {
         const selected = entry.key === history.selected?.key
         const kind = entry.kind === 'AMENDMENT' ? 'AMD' : entry.kind
@@ -48,6 +50,7 @@ export default function ReportHistoryBadges({ history, type, tz }) {
           </button>
         )
       })}
+      </span>
     </span>
   )
 }

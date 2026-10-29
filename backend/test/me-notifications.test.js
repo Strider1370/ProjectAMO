@@ -69,3 +69,39 @@ test('읽음은 소유자·활성 기관 구성원에게만 허용하고 모두 
     assert.equal(listNotifications(db, alice).notifications.some((item) => item.source === 'organization'), false)
   } finally { db.close() }
 })
+
+test('미확인 숫자는 공항·경로·기관의 진행 중이며 안 읽은 알림만 센다', () => {
+  const db = createDb(':memory:')
+  try {
+    const alice = user(db, 'alice'), bob = user(db, 'bob')
+    const airportId = airport(db, alice)
+    const routeId = route(db, alice)
+    const org = organization(db, alice)
+    airport(db, bob)
+    assert.equal(listNotifications(db, alice).unreadCount, 3)
+    for (const [table, id] of [['airport_alert_events', airportId], ['route_sigmet_events', routeId], ['organization_alerts', org.eventId]]) {
+      db.prepare(`UPDATE ${table} SET active=0 WHERE id=?`).run(id)
+      const ended = listNotifications(db, alice)
+      assert.equal(ended.unreadCount, 2)
+      assert.equal(ended.notifications.length, 3)
+      db.prepare(`UPDATE ${table} SET active=1 WHERE id=?`).run(id)
+    }
+    markNotificationRead(db, alice, `airport:${airportId}`, at)
+    assert.equal(listNotifications(db, alice).unreadCount, 2)
+    assert.equal(listNotifications(db, bob).unreadCount, 1)
+    markAllNotificationsRead(db, alice, at)
+    assert.equal(listNotifications(db, alice).unreadCount, 0)
+    assert.equal(listNotifications(db, alice).notifications.filter((item) => item.active).length, 3)
+  } finally { db.close() }
+})
+
+test('미확인 숫자는 목록의 200건 제한 밖에 있는 진행 중 알림도 포함한다', () => {
+  const db = createDb(':memory:')
+  try {
+    const alice = user(db, 'alice')
+    for (let index = 0; index < 205; index++) airport(db, alice)
+    const feed = listNotifications(db, alice)
+    assert.equal(feed.notifications.length, 200)
+    assert.equal(feed.unreadCount, 205)
+  } finally { db.close() }
+})

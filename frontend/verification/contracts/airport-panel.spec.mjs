@@ -190,3 +190,33 @@ test('airport-panel: TAF TAC starts folded and opens on demand', async ({ page }
   await tafTac.locator('summary').click()
   await expect(tafTac).toHaveJSProperty('open', true)
 })
+
+test('airport-panel: TAF switches between timeline and table when the viewport changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.addInitScript((version) => {
+    localStorage.setItem('amo.tour.v1.done', 'true')
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
+  await installMonitoringFixture(page, { now: new Date() })
+  await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
+
+  const taf = page.locator('#sec-taf .ap-taf')
+  const timeline = taf.locator('.ap-taf-timeline')
+  const table = taf.locator('.ap-taf-table')
+  await expect(timeline).toBeAttached()
+  for (const width of [1279, 719, 390, 1194]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await expect(table).toBeAttached()
+    await expect(timeline).toHaveCount(0)
+    if (width <= 719) await expect(taf).not.toHaveClass(/ap-taf--compact/)
+    else await expect(taf).toHaveClass(/ap-taf--compact/)
+  }
+  await page.setViewportSize({ width: 1280, height: 1000 })
+  await expect(timeline).toBeAttached()
+  await expect(table).toHaveCount(0)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(table).toBeAttached()
+  await expect(timeline).toHaveCount(0)
+})

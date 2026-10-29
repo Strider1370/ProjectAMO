@@ -30,11 +30,11 @@ test('production adapters publish through real store and API; synthetic horizons
   const gfs=recordFixture({model:'gfs',airport_icao:'RKSI',run_at});gfs[9]=actual
   publishAirportWindow({root,model:'gfs',airport_icao:'RKSI',run_at,window,records:gfs})
   const grid=value=>({nx:2,ny:2,bounds:{lonMin:126,lonMax:127,latMin:37,latMax:38,dx:1,dy:1},values:[value,value,value,value]})
-  const report=await collectKimAirportComparison({root,airports:[airport],tmfc:'2026090600',forecastHours:window.forecast_hours,loadHour:async()=>({revision:'synthetic-grid',surface:Object.fromEntries(Object.entries({u10m:2,v10m:3,t2m:296.15,td2m:291.15,rh2m:74,psl:100800,topo:95,gust:5,pr:0,tcld:.8,lcld:.7,mcld:.3,hcld:.1}).map(([k,v])=>[k,grid(v)])),layers:[{pressure_hpa:925,hgt:grid(800),cld:grid(.8),tqc:grid(2e-6),tqi:grid(0)}]})})
+  const report=await collectKimAirportComparison({root,airports:[airport],tmfc:'2026090600',loadHour:async()=>({revision:'synthetic-grid',surface:Object.fromEntries(Object.entries({u10m:2,v10m:3,t2m:296.15,td2m:291.15,rh2m:74,psl:100800,topo:95,gust:5,pr:0,tcld:.8,lcld:.7,mcld:.3,hcld:.1}).map(([k,v])=>[k,grid(v)])),layers:[{pressure_hpa:925,hgt:grid(800),cld:grid(.8),tqc:grid(2e-6),tqi:grid(0)}]})})
   assert.deepEqual(report.publishedAirports,['RKSI'])
   const result=buildAirportComparison({root,airport_icao:'RKSI',viewRevision:'adapter-integration',nowMs:Date.parse('2026-09-06T08:20:00Z')})
   assert.equal(result.status,'ready');assert.deepEqual(result.models.map(m=>m.model),['kim','ecmwf','gfs','icon'])
-  assert.ok(result.models.every(m=>m.records.length===13))
+  assert.ok(result.models.every(m=>m.records.length===(m.model==='kim'?25:13)))
   assert.equal(result.models.find(m=>m.model==='gfs').records[9].ceiling_status,'no_ceiling')
 })
 test('AMOS uses exact hourly source rows and never turns midnight reset or missing prior into dry weather',()=>{

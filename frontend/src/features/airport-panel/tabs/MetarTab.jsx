@@ -40,16 +40,17 @@ export default function MetarTab({ metar: latestMetar, history, amosData, icao, 
 
   return (
     <div className="ap-metar-v2">
-      {/* ── TAC 원문 — 임계값 색칠, 비행조건 배지는 섹션 헤더에 표시 ── */}
-      {rawText && (
-        <div className="ap-metar-tac-block">
+      {/* ── 비행조건 + TAC 원문 ── */}
+      <div className="ap-metar-tac-block">
+        <span className={`ap-metar-tac-chip ap-metar-tac-chip--${flightCat.category}`}>{flightCat.category}</span>
+        {rawText && (
           <code className="ap-metar-tac">
             {tacSegments.map((seg, i) => (
               <span key={i} className={seg.className}>{seg.text}</span>
             ))}
           </code>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── 해독 카드 — 기본 접힘, 필요할 때만 펼침 ── */}
       <details className="ap-metar-detail">

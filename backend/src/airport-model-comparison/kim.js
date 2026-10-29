@@ -2,14 +2,14 @@ import { createHash } from 'node:crypto'
 import path from 'node:path'
 
 import config from '../config.js'
-import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
+import { KIM_COMPARISON_FORECAST_HOURS, MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
 import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { decodeComponent, KIM_AIRPORT_SURFACE_REQUESTS, KIM_NWP_LEVELS, KIM_NWP_MODEL } from '../processors/kim-nwp-model.js'
 import { readKimNwpGridSafe, resolveKimNwpRunDir } from '../processors/kim-nwp-store.js'
 import { readKimRawText, writeKimRawText } from '../processors/kim-doc-store.js'
 import { estimateCeiling, selectForecastWindow, WEATHER_FIELDS } from './model.js'
-import { cleanupComparisonRuns, publishAirportWindow, readAirportComparison, writeCollectionAttempt } from './store.js'
+import { cleanupComparisonRuns, comparisonRunId, publishAirportWindow, readAirportComparison, resolveComparisonModelRoot, writeCollectionAttempt } from './store.js'
 
 const KNOTS_PER_MPS = 1.943844492
 const KIM_MISSING_VALUE = -99999
@@ -28,9 +28,10 @@ function decodeKimMissingValues(grid) {
   return { ...grid, values: grid.values.map(value => value === KIM_MISSING_VALUE ? Number.NaN : value) }
 }
 
-function rawPath({ root, tmfc, hf, levelId, name }) {
+function rawPath({ root, tmfc, hf, levelId, name, cacheDirectory }) {
   const fileName = name === 'u10m' ? 'u.txt' : name === 'v10m' ? 'v.txt' : name === 't2m' ? 'T.txt' : `${name}.txt`
-  return path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'raw', `hf${String(hf).padStart(3, '0')}`, levelId, fileName)
+  const directory = cacheDirectory || path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'raw')
+  return path.join(directory, `hf${String(hf).padStart(3, '0')}`, levelId, fileName)
 }
 
 function assertSameGrid(reference, candidate) {
@@ -38,21 +39,22 @@ function assertSameGrid(reference, candidate) {
     || ['lonMin','lonMax','latMin','latMax','dx','dy'].some(key => reference.bounds?.[key] !== candidate.bounds?.[key])) throw new Error('kim_grid_definition_mismatch')
 }
 
-export function createKimComparisonHourLoader({ root, credential, signal, fetchGrid = fetchKimGrid, bounds = config.kim_surface_wind.bounds } = {}) {
+export function createKimComparisonHourLoader({ root, credential, signal, fetchGrid = fetchKimGrid, bounds = config.kim_surface_wind.bounds,
+  sub = config.kim_surface_wind.sub, cacheDirectory, reuseStored = true, keepRaw = config.kim_nwp.keep_raw !== false } = {}) {
   let topoCache = null
   const readOrFetch = async ({ tmfc, hf, levelId, request }) => {
-    const file = rawPath({ root, tmfc, hf, levelId, name: request.name })
+    const file = rawPath({ root, tmfc, hf, levelId, name: request.name, cacheDirectory })
     let text = readKimRawText(file)
     if (!text) {
       signal?.throwIfAborted()
-      text = await fetchGrid({ data: request.data, name: request.name, level: request.level, tmfc, hf, sub: config.kim_surface_wind.sub, map: 'S', disp: 'A', credential, signal })
-      if (config.kim_nwp.keep_raw !== false) writeKimRawText(file, text)
+      text = await fetchGrid({ data: request.data, name: request.name, level: request.level, tmfc, hf, sub, map: 'S', disp: 'A', credential, signal })
+      if (keepRaw) writeKimRawText(file, text)
     }
     return { ...decodeKimMissingValues(parseKimGridText(text, { variable: request.name, level: request.level, bounds })), precision_source: 'raw' }
   }
   return async ({ tmfc, hf }) => {
     const surface = {}
-    const storedSurface = readKimNwpGridSafe({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: '10m' })
+    const storedSurface = reuseStored ? readKimNwpGridSafe({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: '10m' }) : null
     const storedNames = { u10m: 'u', v10m: 'v', t2m: 'T' }
     for (const base of SURFACE_REQUESTS) {
       if (hf === 0 && ['gust','pr','prec_acc'].includes(base.name)) continue
@@ -64,10 +66,10 @@ export function createKimComparisonHourLoader({ root, credential, signal, fetchG
     }
     const layers = []
     for (const level of KIM_NWP_LEVELS.filter(level => level.kind === 'pressure' && level.value >= 300)) {
-      const stored = readKimNwpGridSafe({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id })
+      const stored = reuseStored ? readKimNwpGridSafe({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id }) : null
       const layer = { pressure_hpa: level.level }
       for (const [output, variable] of [['hgt','hgt'],['cld','cld'],['tqc','tqc'],['tqi','tqi']]) {
-        const file = rawPath({ root, tmfc, hf, levelId: level.id, name: variable })
+        const file = rawPath({ root, tmfc, hf, levelId: level.id, name: variable, cacheDirectory })
         let raw = null
         try { raw = decodeKimMissingValues(parseKimGridText(readKimRawText(file), { variable, level: level.level, bounds })) } catch {}
         const normalized = componentFromStored(stored, variable)
@@ -83,6 +85,30 @@ export function createKimComparisonHourLoader({ root, credential, signal, fetchG
 
 function coordinates(airport) {
   return { lat: Number(airport.lat ?? airport.latitude), lon: Number(airport.lon ?? airport.longitude) }
+}
+
+// F013~F024 only need the rectangle surrounding the selected airports. Keep its
+// raw cache separate from the full Korea grids consumed by maps and cross-sections.
+export function kimComparisonBounds(airports) {
+  const points = airports.map(coordinates)
+  if (!points.length || points.some(({ lat, lon }) => !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || lon < 0 || lon > 180)) throw new Error('invalid_kim_comparison_airports')
+  const x0 = Math.floor(Math.min(...points.map(point => point.lon)) * 12 + 1)
+  const x1 = Math.ceil(Math.max(...points.map(point => point.lon)) * 12 + 1)
+  const y0 = Math.floor((Math.min(...points.map(point => point.lat)) + 90) * 12 + 1)
+  const y1 = Math.ceil((Math.max(...points.map(point => point.lat)) + 90) * 12 + 1)
+  return { sub: `${x0},${y0},${Math.max(x0 + 1, x1)},${Math.max(y0 + 1, y1)}`, bounds: {
+    lonMin: (x0 - 1) / 12, lonMax: (Math.max(x0 + 1, x1) - 1) / 12,
+    latMin: (y0 - 1) / 12 - 90, latMax: (Math.max(y0 + 1, y1) - 1) / 12 - 90, dx: 1 / 12, dy: 1 / 12,
+  } }
+}
+
+export function createExtendedKimComparisonHourLoader({ root, tmfc, airports, credential, signal, fetchGrid } = {}) {
+  const base = createKimComparisonHourLoader({ root, credential, signal, fetchGrid })
+  const box = kimComparisonBounds(airports)
+  const run_at = new Date(Date.UTC(+tmfc.slice(0,4), +tmfc.slice(4,6)-1, +tmfc.slice(6,8), +tmfc.slice(8,10))).toISOString()
+  const extra = createKimComparisonHourLoader({ root, credential, signal, fetchGrid, ...box, reuseStored: false, keepRaw: true,
+    cacheDirectory: path.join(resolveComparisonModelRoot({ root, model: 'kim' }), 'runs', comparisonRunId(run_at), 'raw', box.sub) })
+  return (request) => request.hf <= 12 ? base(request) : extra(request)
 }
 
 export function sampleKimAirport(grid, airport) {
@@ -154,24 +180,25 @@ function recordFor({ airport, tmfc, hf, window, hour, collectedAt }) {
   return { airport_icao: airport.icao, model: 'kim', run_at, forecast_hour: hf, valid_at: new Date(Date.parse(run_at)+hf*3600000).toISOString(), window_start_at: window.start_at, window_end_at: window.end_at, available_at: null, collected_at: collectedAt, source: 'KMA KIM NE57', requested_lat: coordinates(airport).lat, requested_lon: coordinates(airport).lon, grid_lat: position.grid_lat, grid_lon: position.grid_lon, grid_elevation_m: topo, selection_method: 'nearest_grid_point', temporal_method: 'native_hourly', source_payload_revision: hour.revision || createHash('sha256').update(JSON.stringify(hour)).digest('hex'), ...values, ...ceiling, field_provenance }
 }
 
-export async function collectKimAirportComparison({ tmfc, forecastHours, credential, signal,
+export async function collectKimAirportComparison({ tmfc, forecastHours = KIM_COMPARISON_FORECAST_HOURS, credential, signal,
   root = config.storage.base_path,
   airports = config.airports.filter(airport => MODEL_COMPARISON_AIRPORTS.includes(airport.icao)),
-  loadHour = createKimComparisonHourLoader({ root, credential, signal }) } = {}) {
-  if (!/^\d{10}$/.test(String(tmfc)) || !Array.isArray(forecastHours) || forecastHours.length !== 13) throw new Error('invalid_kim_comparison_window')
-  if (typeof loadHour !== 'function') throw new Error('kim_comparison_grid_loader_required')
+  loadHour } = {}) {
+  if (!/^\d{10}$/.test(String(tmfc)) || !Array.isArray(forecastHours) || forecastHours.length !== KIM_COMPARISON_FORECAST_HOURS.length) throw new Error('invalid_kim_comparison_window')
   const run_at = new Date(Date.UTC(+tmfc.slice(0,4), +tmfc.slice(4,6)-1, +tmfc.slice(6,8), +tmfc.slice(8,10))).toISOString()
-  const window = selectForecastWindow({ model: 'kim', run_at, selectedRuns: [{ model: 'kim', run_at }] })
+  const window = selectForecastWindow({ model: 'kim', run_at, horizonHours: 24, selectedRuns: [{ model: 'kim', run_at }] })
   if (forecastHours.some((hf, index) => hf !== window.forecast_hours[index])) throw new Error('invalid_kim_comparison_window')
   const complete = []
   for (const airport of airports) {
     signal?.throwIfAborted()
     const entry = readAirportComparison({ root, airport_icao: airport.icao }).models.find(model => model.model === 'kim')
-    if (entry?.run_at === run_at && entry.window_start_at === window.start_at && entry.window_end_at === window.end_at && entry.records?.length === 13) complete.push(airport)
+    if (entry?.run_at === run_at && entry.window_start_at === window.start_at && entry.window_end_at === window.end_at && entry.records?.length === forecastHours.length) complete.push(airport)
   }
   const report = { model: 'kim', run_at, publishedAirports: [], reusedAirports: complete.map(airport => airport.icao), failedAirports: [], windows: Object.fromEntries(airports.map(airport => [airport.icao, window])), deferred: false, errors: [] }
   const pending = airports.filter(airport => !complete.includes(airport))
   if (!pending.length) return report
+  if (!loadHour) loadHour = createExtendedKimComparisonHourLoader({ root, tmfc, airports, credential, signal })
+  if (typeof loadHour !== 'function') throw new Error('kim_comparison_grid_loader_required')
   const started_at = new Date().toISOString()
   const finishAttempt = () => {
     report.failed = report.failedAirports.length > 0

@@ -75,7 +75,8 @@ const aviationAuthKey = process.env.KMA_AVIATION_AUTH_KEY || process.env.KMA_AUT
 const radarSatelliteAuthKey = process.env.KMA_RADAR_SATELLITE_ENABLED === '0'
   ? ''
   : process.env.KMA_RADAR_SATELLITE_AUTH_KEY || aviationAuthKey
-const kimNwpAuthKey = process.env.KMA_KIM_NWP_AUTH_KEY || aviationAuthKey
+// KIM 수집에는 항공 키를 사용하지 않는다. 전용 키 누락 시 요청 경계에서 중단한다.
+const kimNwpAuthKey = process.env.KMA_KIM_NWP_AUTH_KEY || ''
 
 export const api = {
   base_url: process.env.API_BASE_URL || 'https://apihub.kma.go.kr/api/typ02/openApi',

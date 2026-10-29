@@ -53,12 +53,18 @@ export function buildKtgUrl({ tmfc, ef, credential = config.api.kim_nwp_auth_key
 }
 
 export function selectKtgRunCredential(tmfc) {
-  if (String(tmfc).slice(-2) === '12') return config.api.kim_nwp_auth_key
+  if (String(tmfc).slice(-2) === '12') {
+    const key = config.api.kim_nwp_auth_key
+    if (!key || key === config.api.auth_key) {
+      throw Object.assign(new Error('kim_credential_unavailable'), { code: 'kim_credential_unavailable' })
+    }
+    return key
+  }
   return selectKimRunCredential({
     tmfc,
     kimCredential: config.api.kim_nwp_auth_key,
     aviationCredential: config.api.auth_key,
-      radarCredential: config.api.radar_satellite_auth_key,
+    radarCredential: config.api.radar_satellite_auth_key,
   })
 }
 
