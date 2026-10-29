@@ -275,7 +275,7 @@
   --mb-ac-cat: var(--text-3);
   position: absolute; display: flex; flex-direction: column; gap: var(--space-s); box-sizing: border-box;
   padding: var(--space-s) var(--space-m) var(--space-s) var(--space-m); border-left: 5px solid var(--mb-ac-cat); border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.97); box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2); color: var(--text-1);
+  background: var(--bg-1); box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2); color: var(--text-1);
   font-family: var(--app-font, system-ui, sans-serif); pointer-events: auto;
 }
 .mb-airport-card.is-vfr { --mb-ac-cat: var(--cat-vfr); }
@@ -289,30 +289,33 @@
 .mb-ac-role.is-alternate { background: var(--level-amber); }
 .mb-ac-name { overflow: hidden; color: var(--text-2); font-size: var(--fs-300); text-overflow: ellipsis; }
 .mb-ac-cat { margin-left: auto; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--mb-ac-cat); color: #fff; font-size: var(--fs-200); font-weight: var(--fw-bold); }
-/* 2·3줄: 왼쪽 이름 칸(METAR 20:00 / TAF ETD±1h), 오른쪽 본문 14px */
-.mb-ac-rows { display: grid; grid-template-columns: 78px 1fr; align-items: baseline; gap: 4px var(--space-s); margin: 0; }
-.mb-ac-rows dt { display: flex; flex-direction: column; color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-bold); line-height: 1.15; }
-.mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-semibold); white-space: nowrap; }
+/* Each report uses the full card width: metadata above the TAC, with no narrow label column. */
+.mb-ac-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); margin: 0; }
+.mb-ac-rows dt { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-s); min-width: 0; color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-bold); line-height: var(--lh-200); }
+.mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-medium); white-space: nowrap; }
+.mb-ac-rows dd + dt { margin-top: var(--space-xs); padding-top: var(--space-s); border-top: 1px solid var(--stroke-2); }
 /* METAR·TAF는 자르지 않고 띄어쓰기 자리에서 줄을 바꾼다(카드가 아래로 늘어남). */
 .mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; line-height: 1.35; }
-.mb-ac-rows dd span { min-width: 0; overflow-wrap: anywhere; }
+.mb-ac-tac { min-width: 0; font-family: 'Consolas', 'Menlo', monospace; font-size: inherit; font-weight: var(--fw-regular); line-height: var(--lh-300); letter-spacing: 0; word-spacing: 0; white-space: normal; overflow-wrap: normal; }
 /* 카드 METAR·TAF 색칠 — 공항 패널 원문(.ap-metar-tac-hl)과 같은 색 */
 .mb-ac-hl { padding: 0 2px; border-radius: 3px; background: none; color: inherit; font-weight: var(--fw-bold); }
 .mb-ac-hl.is-ifr, .mb-ac-hl.is-mvfr { background: var(--level-amber-bg); color: var(--level-amber); }
 .mb-ac-hl.is-lifr, .mb-ac-hl.is-wind { background: var(--level-red-bg); color: var(--level-red); }
 .mb-ac-hl.is-precip { background: rgba(186, 230, 253, 0.72); color: #0c4a6e; } /* color-lint-ignore: 공항 패널 강수 강조와 같은 값 */
 .mb-ac-hl.is-special { background: var(--level-red-bg); color: var(--level-red); outline: 1.5px dashed var(--level-red); outline-offset: -1px; }
-.mb-ac-rows dd em { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-style: normal; font-weight: var(--fw-bold); }
-/* 과거 보기(7단계): 이름 칸 아래 이력 점(왼쪽 과거 → 오른쪽 최신, METAR 점 색 = 비행등급). 과거를 보는 줄은 연한 주황. */
+.mb-ac-change-count { flex: none; margin-left: auto; padding: 0 var(--space-snudge); border-radius: var(--radius-circular); background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
+/* The same report controls as the airport panel, wrapping to the card width. */
 .mb-ac-rows dt > span { white-space: nowrap; }
-.mb-ac-dots { display: flex; gap: 3px; margin-top: 4px; }
-.mb-ac-dots button { --mb-dot: var(--text-3); width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: var(--mb-dot); opacity: 0.55; cursor: pointer; }
-.mb-ac-dots button:hover { opacity: 1; }
-.mb-ac-dots button.is-vfr { --mb-dot: var(--cat-vfr); }
-.mb-ac-dots button.is-mvfr { --mb-dot: var(--cat-mvfr); }
-.mb-ac-dots button.is-ifr { --mb-dot: var(--cat-ifr); }
-.mb-ac-dots button.is-lifr { --mb-dot: var(--cat-lifr); }
-.mb-ac-dots button.is-selected { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--text-1); }
+.mb-ac-rows .ap-history-picker { flex-basis: 100%; align-items: baseline; margin: 0; }
+.mb-ac-rows .ap-history-badges { flex: 1; flex-wrap: wrap; gap: var(--space-xxs); overflow: visible; padding: var(--space-xxs); }
+.mb-ac-rows .ap-history-badge { padding-inline: var(--space-xs); }
+.mb-ac-rows .report-timezone-toggle button { position: relative; min-height: var(--space-xxl); min-width: 0; padding: var(--space-xxs) var(--space-snudge); line-height: var(--lh-200); }
+@media (pointer: coarse) {
+  /* A compact visible control inside a separate 44px touch row. */
+  .mb-ac-rows dt > span:has(.report-timezone-toggle) { min-height: var(--touch-min); }
+  .mb-ac-rows .report-timezone-toggle button { min-width: var(--touch-min); }
+  .mb-ac-rows .report-timezone-toggle button::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: var(--touch-min); transform: translateY(-50%); }
+}
 .mb-ac-rows dt.is-past, .mb-ac-rows dd.is-past { background: #fff4e5; }
 .mb-ac-rows dt.is-past { margin-left: -4px; padding-left: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
 .mb-ac-rows dd.is-past { margin-right: -4px; padding-right: 4px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
@@ -362,11 +365,10 @@
 .mb-dock.is-document .mb-row-dot, .mb-dock.is-document .mb-row-chips { display: none; }
 .mb-dock.is-document .mb-profile-body { display: block; overflow: visible; }
 
-/* Card labels occupy a narrow column; keep the date and touch target inside it. */
-.mb-ac-rows dt > span:has(.report-timezone) {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xxs);
+.mb-ac-rows dt > span:has(.report-timezone-toggle) {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-s);
   white-space: normal;
 }

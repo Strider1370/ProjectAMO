@@ -39,7 +39,8 @@ export default function ReportHistoryBadges({ history, type, tz }) {
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
-              event.currentTarget.closest('details').open = true
+              const section = event.currentTarget.closest('details')
+              if (section) section.open = true
               history.select(entry.key)
             }}>
             {entry.category && <i className="ap-history-badge-dot" aria-hidden="true" />}

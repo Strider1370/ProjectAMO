@@ -4,10 +4,11 @@ import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import ReportTimeZone, { useReportTimeZone } from '../../../shared/timezone/ReportTimeZone.jsx'
 import { formatBriefingTime } from '../lib/briefingTime.js'
 import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
+import ReportHistoryBadges from '../../airport-panel/tabs/ReportHistoryBadges.jsx'
 import { airportCards, cardLineSegments, changeLines, chipWidth, hasAlertFlag, metarText, tafTextAt } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
-const CARD_W = 360
+const CARD_W = 400 // 회차 버튼과 원문을 패널과 같은 글자 크기로 담아 불필요한 줄바꿈을 줄인다.
 const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄(최소 높이). METAR·TAF가 길면 줄을 바꿔 늘어나고, 자리 계산은 잰 높이를 쓴다.
 const CHIP_H = 28 // 접은 칩
 const LATEST_TAF = {} // TAF 이력 줄의 최신 칸 자리(글은 카드의 ±1시간 한 줄을 쓴다)
@@ -68,7 +69,11 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
       const size = collapsedRoles.includes(card.role) ? { w: chipWidth(card), h: CHIP_H } : { w: CARD_W, h: heights[card.icao] ?? CARD_H }
       return { key: card.icao, x: p.x, y: p.y, size }
     })
-    const bounds = { left: 8, top: 8, right: origin.width - 8, bottom: origin.height - 8 }
+    // Keep the whole card above the bottom dock, including after controls add rows.
+    const dockRects = [...wrapper.querySelectorAll('.mb-dock, .mb-dock-tab')]
+      .map(element => element.getBoundingClientRect()).filter(rect => rect.height > 0)
+    const bottom = Math.min(origin.height - 8, ...dockRects.map(rect => rect.top - origin.top - 8))
+    const bounds = { left: 8, top: 8, right: origin.width - 8, bottom }
     setLayout(placeAirportCards(anchors, { size: { w: CARD_W, h: CARD_H }, bounds, obstacles, route }))
   }, [cards, mapRef, routeSamples, frame, collapsedRoles, heights])
 
@@ -102,23 +107,6 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
         return <AirportCard key={card.icao} card={card} place={place} hhmm={hhmm} onOpenAirport={onOpenAirport} onToggleCollapse={onToggleCollapse} onHeight={reportHeight} />
       })}
     </div>
-  )
-}
-
-// 이력 점: 이름 칸 아래 한 줄, 왼쪽 = 과거 → 오른쪽 = 최신. METAR 점 색 = 비행등급, 고른 점은 테두리. 누르면 그 줄이 그 보고로.
-function HistoryDots({ history, label, describe }) {
-  if (history.entries.length < 2) return null
-  return (
-    <span className="mb-ac-dots" role="listbox" aria-label={`${label} 이력`}>
-      {history.entries.map((entry) => {
-        const selected = entry.key === history.selected?.key
-        return (
-          <button key={entry.key} type="button" role="option" aria-selected={selected} aria-label={describe(entry)} title={describe(entry)}
-            className={`is-${(entry.category ?? 'none').toLowerCase()}${selected ? ' is-selected' : ''}${entry.latest ? ' is-latest' : ''}`}
-            onClick={() => history.select(entry.key)} />
-        )
-      })}
-    </span>
   )
 }
 
@@ -161,17 +149,17 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
       </header>
       <dl className="mb-ac-rows">
         <dt className={pastMetar ? 'is-past' : undefined}>
-          <span>{metarKind} <small>{pastMetar ? metarTime(pastMetar.time) : (card.metar.time ? metarTime(card.metar.time) : '')}</small> <ReportTimeZone tz={metarTz} onChange={setMetarTz} label={`${card.icao} METAR`} /></span>
-          <HistoryDots history={metarHistory} label="METAR" describe={(entry) => `${metarTime(entry.time)} ${entry.kind}${entry.category ? ` · ${entry.category}` : ''}${entry.latest ? ' · 최신' : ''}`} />
+          <span>{metarKind} <small>{pastMetar ? metarTime(pastMetar.time) : (card.metar.time ? metarTime(card.metar.time) : '')}</small> <ReportTimeZone tz={metarTz} onChange={setMetarTz} label={`${card.icao} METAR`} variant="segmented" /></span>
+          <ReportHistoryBadges history={metarHistory} type="metar" tz={metarTz} />
         </dt>
-        <dd className={pastMetar ? 'is-past' : undefined}><span title={metarShown}><TacLine text={metarShown} icao={card.icao} /></span></dd>
+        <dd className={pastMetar ? 'is-past' : undefined}><code className="mb-ac-tac" title={metarShown}><TacLine text={metarShown} icao={card.icao} /></code></dd>
         <dt className={pastTaf ? 'is-past' : undefined} title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>
-          <span>TAF <small>{pastTaf ? `${tafTime(pastTaf.time)}${pastTaf.kind === 'AMD' ? ' AMD' : ''}` : `${card.taf.basis}±1h${card.taf.issued ? ` ${tafTime(card.taf.issued)}` : ''}`}</small> <ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} /></span>
-          <HistoryDots history={tafHistory} label="TAF" describe={(entry) => `${tafTime(entry.time)} ${entry.latest ? '발표 · 지금 기준' : `${entry.kind === 'AMD' ? 'AMD' : 'TAF'} 발표`}`} />
+          <span>TAF <small>{pastTaf ? `${tafTime(pastTaf.time)}${['AMD', 'AMENDMENT'].includes(pastTaf.kind) ? ' AMD' : ''}` : `${card.taf.basis}±1h${card.taf.issued ? ` ${tafTime(card.taf.issued)}` : ''}`}</small> <ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} variant="segmented" /></span>
+          {!pastTaf && changes.length > 0 && <span className="mb-ac-change-count">변화 {changes.length}</span>}
+          <ReportHistoryBadges history={tafHistory} type="taf" tz={tafTz} />
         </dt>
         <dd className={pastTaf ? 'is-past' : undefined}>
-          <span title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></span>
-          {!pastTaf && changes.length > 0 && <em>변화 {changes.length}</em>}
+          <code className="mb-ac-tac" title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></code>
         </dd>
       </dl>
       <footer className="mb-ac-foot">
