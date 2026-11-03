@@ -5,9 +5,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpGrid, buildKimNwpIndex, buildKimNwpIndexEntry, addForecastHours } from '../src/processors/kim-nwp-model.js'
 import { buildKimNwpRunId, resolveKimNwpGridPath, writeKimNwpGrid, writeKimNwpIndex, writeKimNwpLatest } from '../src/processors/kim-nwp-store.js'
+import config from '../src/config.js'
 import { clearRouteCrossSectionCache, loadRouteCrossSection, selectRouteKimDomain } from '../src/briefing/enroute-cross-section.js'
 
 const TMFC = '2099010100'
+config.kim_expanded.enabled = true
 const temporary = t => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-route-domain-')); t.after(() => fs.rmSync(root, { recursive: true, force: true })); return root }
 // 서울 근처만 지나는 국내 항로와 방콕까지 가는 해외 항로.
 const DOMESTIC = { type: 'LineString', coordinates: [[126.5, 37.5], [129.0, 35.2]] }
@@ -72,4 +74,17 @@ test('a route near the Korean grid edge, where GKTG is blank, uses the expanded 
     assert.equal(selectRouteKimDomain({ root, samples: [{ lon: 127, lat: 37 }] }), 'kr')
     assert.equal(selectRouteKimDomain({ root, samples: edge }), 'ea')
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('with expanded collection turned off, an overseas route falls back to the Korea run', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-route-domain-'))
+  try {
+    fs.mkdirSync(path.join(root, 'kim_nwp_ea'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'kim_nwp_ea', 'latest.json'), JSON.stringify({ latestRun: TMFC }))
+    config.kim_expanded.enabled = false
+    assert.equal(selectRouteKimDomain({ root, samples: [{ lon: 135.5, lat: 37 }] }), 'kr')
+  } finally {
+    config.kim_expanded.enabled = true
+    fs.rmSync(root, { recursive: true, force: true })
+  }
 })

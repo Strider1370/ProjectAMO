@@ -757,7 +757,8 @@ function readSelectedKimField(selection, buildFn) {
 // 모든 지도 레이어가 같은 기준(확대 기본 격자 latest)으로 골라 한 화면에서 영역이 섞이지 않는다.
 // 확대 회차는 GKTG·권계면을 먼저 게시한 뒤 기본 격자 latest를 바꾼다(kim-expanded-collector.js).
 function resolveKimDomain(value) {
-  if (value === 'auto') return readKimNwpLatest(DATA_ROOT, 'ea')?.latestRun ? 'ea' : KIM_DEFAULT_DOMAIN
+  // 확대 수집을 끄면(KIM_EXPANDED_ENABLED=0) 남은 확대 회차가 있어도 한반도로 돌아간다. 멈춘 회차를 계속 보여 주지 않기 위해서다.
+  if (value === 'auto') return config.kim_expanded?.enabled === true && readKimNwpLatest(DATA_ROOT, 'ea')?.latestRun ? 'ea' : KIM_DEFAULT_DOMAIN
   return parseKimDomain(value)
 }
 

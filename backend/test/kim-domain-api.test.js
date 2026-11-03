@@ -34,6 +34,7 @@ test('KIM map API serves the expanded domain only when asked and keeps Korea as 
   const root = await mkdtemp(path.join(os.tmpdir(), 'kim-domain-api-'))
   process.env.NODE_ENV = 'test'
   process.env.DATA_PATH = root
+  process.env.KIM_EXPANDED_ENABLED = '1'
   const tmfc = '2099010100'
   seed(root, { domain: 'kr', tmfc, hf: 0, temperature: 280, nx: 2 })
   seed(root, { domain: 'ea', tmfc, hf: 30, temperature: 250, nx: 4 })
@@ -86,9 +87,17 @@ test('KIM map API serves the expanded domain only when asked and keeps Korea as 
     assert.equal((await json(`/api/kim/temp/field?domain=xx&tmfc=${tmfc}&hf=0&level=850hPa`)).status, 400)
     assert.equal((await json('/api/kim/gktg/index?domain=xx')).status, 400)
     assert.equal((await json('/api/kim/tropopause/index?domain=ea')).status, 503)
+
+    // 확대 수집을 끄면 남은 확대 회차가 있어도 지도는 한반도로 돌아간다(대용량 키 정지 대응).
+    const { default: config } = await import('../src/config.js')
+    config.kim_expanded.enabled = false
+    try {
+      assert.equal((await json('/api/kim/temp/index?domain=auto')).body.domain, 'kr')
+    } finally { config.kim_expanded.enabled = true }
   } finally {
     await close(server)
     await rm(root, { recursive: true, force: true })
     delete process.env.DATA_PATH
+    delete process.env.KIM_EXPANDED_ENABLED
   }
 })

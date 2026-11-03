@@ -90,7 +90,7 @@ export function routeCrossSectionCacheMetrics() {
 const KOREA_EDGE_CELLS = 10
 
 // 항로 단면에 쓸 KIM 영역. 항로 전체가 한반도 격자(가장자리 제외) 안이면 한반도(하루 4회, 더 최신),
-// 밖으로 나가면 확대 영역(있을 때). 한 단면 안에서 두 영역을 섞지 않는다. 요청이 영역을 정하면 그대로 쓴다.
+// 밖으로 나가면 확대 영역(확대 수집이 켜져 있고 회차가 있을 때). 한 단면 안에서 두 영역을 섞지 않는다. 요청이 영역을 정하면 그대로 쓴다.
 export function selectRouteKimDomain({ root, samples, requested }) {
   if (requested !== undefined && requested !== null && requested !== '') return parseKimDomain(requested)
   const { bounds } = kimDomainRequest(config, KIM_DEFAULT_DOMAIN)
@@ -98,7 +98,7 @@ export function selectRouteKimDomain({ root, samples, requested }) {
   const marginLat = KOREA_EDGE_CELLS * bounds.dy
   const insideKorea = (samples ?? []).every((sample) => sample.lon >= bounds.lonMin + marginLon && sample.lon <= bounds.lonMax - marginLon
     && sample.lat >= bounds.latMin + marginLat && sample.lat <= bounds.latMax - marginLat)
-  if (insideKorea) return KIM_DEFAULT_DOMAIN
+  if (insideKorea || config.kim_expanded?.enabled !== true) return KIM_DEFAULT_DOMAIN
   return readKimNwpLatest(root, 'ea')?.latestRun || readKimGktgLatest(root, 'ea')?.tmfc ? 'ea' : KIM_DEFAULT_DOMAIN
 }
 
