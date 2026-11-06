@@ -81,9 +81,9 @@ test('detectSnapshotChanges does not re-fetch graphics metadata after the client
   assert.equal(detectSnapshotChanges(saved, latest).wissdomMeta, false)
 })
 
-test('main profile change set does not gain a notam key (NOTAM stays initial-load-only, per spec)', () => {
-  const changes = detectSnapshotChanges({}, {})
-  assert.ok(!('notam' in changes))
+test('NOTAM publications trigger incremental refresh', () => {
+  const changes = detectSnapshotChanges({ notam: { hash: 'old' } }, { notam: { hash: 'new' } })
+  assert.equal(changes.notam, true)
 })
 
 test('detectSnapshotChanges detects a same-time convective partial update by hash', () => {

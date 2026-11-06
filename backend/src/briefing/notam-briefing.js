@@ -1,14 +1,27 @@
 // 경로상 NOTAM 매칭(사실 계산). geo-time-match 코어 재사용 — hazardLevel() 심각도 그라데이션은 쓰지 않음.
 import { routeIntervalInGeometry, routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
 import { classifyEncounter } from './hazard-matcher.js'
+import { hydrateNotamItem } from '../../../shared/notam-fields.js'
 import { scheduleStateOverWindow } from './schedule-window.js'
 
 const HIGH_FT = 99999
 
 // NOTAM altitude { lower, upper, unit, ref } → { lowFt, highFt }. bandToFt(SIGMET shape)와 필드가 달라 별도 어댑터.
-// ponytail: AGL/AMSL 기준면 차이는 coarse 수직 겹침 판정에서 무시(지형고도 무시). 정밀 필요 시 ref별 지표고 보정.
+// AGL bounds require terrain; keep the vertical result unknown without it.
 export function notamBandToFt(altitude) {
-  if (!altitude) return null
+  if (!altitude || altitude.source === 'qline') return null
+  if (altitude.lowerBound && altitude.upperBound) {
+    const absoluteFt = (bound) => {
+      if (bound.unit === 'SFC') return 0
+      if (bound.unit === 'UNL') return HIGH_FT
+      if (bound.unit === 'FL') return bound.value * 100
+      if (bound.ref !== 'AMSL') return null
+      return bound.unit === 'M' ? bound.value / 0.3048 : bound.value
+    }
+    const lowFt = absoluteFt(altitude.lowerBound), highFt = absoluteFt(altitude.upperBound)
+    return lowFt == null || highFt == null ? null : { lowFt, highFt }
+  }
+  if (altitude.ref === 'AGL') return null
   const unit = String(altitude.unit || '').toUpperCase()
   const toFt = (v) => (unit === 'FL' ? Number(v) * 100 : Number(v))
   const lowFt = altitude.lower == null ? 0 : toFt(altitude.lower)
@@ -31,8 +44,9 @@ export function matchRouteNotams(items, ctx) {
   // 출발·도착이 같은 공항이면 역할이 여럿 — 제목을 '출발/도착'으로 낼 수 있게 함께 넘긴다.
   const rolesByIcao = new Map((ctx.airports ?? []).map((a) => [a.icao, a.roles ?? [a.role]]))
   const routeNotams = []
-  for (const it of (items ?? [])) {
-    if (it?.scope === 'fir') continue // 전국 스코프는 경로 매칭에서 제외(무의미한 전량 매칭)
+  for (const saved of (items ?? [])) {
+    const it = hydrateNotamItem(saved)
+    if (it?.scope === 'fir' && !RESTRICTION_CATEGORIES.has(it.category)) continue // 전국 스코프는 경로 매칭에서 제외(무의미한 전량 매칭)
     const flightTimeKnown = Number.isFinite(Date.parse(ctx.etd)) && Number.isFinite(Date.parse(ctx.eta))
     const validityKnown = Number.isFinite(Date.parse(it.valid_from)) && Number.isFinite(Date.parse(it.valid_to))
     const timeStatus = !flightTimeKnown ? 'not_provided' : !validityKnown ? 'unavailable' : 'matched'
@@ -67,7 +81,8 @@ export function matchRouteNotams(items, ctx) {
     // 고도 통과: 밴드 미상이면 보수적으로 통과 간주(under-alarm 금지, spec 안전 규칙).
     const passesAltitude = !verticalKnown || encounter === 'on'
     // 저촉 = 공역제한 계열 ∩ 발효중 ∩ 경로가 폴리곤을 계획고도에서 통과(경로 교차가 있어야 함).
-    const comparisonStatus = timeStatus === 'matched' && verticalKnown ? 'warn' : 'undetermined'
+    const geometryCertain = !it.approximated && !it.geographicExclusions?.length
+    const comparisonStatus = timeStatus === 'matched' && scheduleState === 'active' && verticalKnown && geometryCertain ? 'warn' : 'undetermined'
     const conflict = positionStatus === 'resolved' && scheduleState !== 'outside'
       && comparisonStatus === 'warn' && RESTRICTION_CATEGORIES.has(it.category)
       && interval.entered && passesAltitude
@@ -80,6 +95,8 @@ export function matchRouteNotams(items, ctx) {
       altitude: it.altitude,
       validFrom: it.valid_from,
       validTo: it.valid_to,
+      validityEnd: it.validity_end,
+      geographicExclusions: it.geographicExclusions || [],
       scheduleText: it.schedule_text || null, // D) 시간대 — 브리핑 목록도 발효 중/시간대 밖을 가르려면 필요
 
       onRoute: interval.entered,

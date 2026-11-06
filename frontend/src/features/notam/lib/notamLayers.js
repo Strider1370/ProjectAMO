@@ -10,6 +10,7 @@ const TIME_COLOR = [
   'match', ['get', 'timeState'],
   'active', LEVEL.red,
   'soon', LEVEL.amber,
+  'conditional', LEVEL.amber,
   /* upcoming */ LEVEL.gray,
 ]
 const POLYGON_FILTER = ['any', ['==', ['geometry-type'], 'Polygon'], ['==', ['geometry-type'], 'MultiPolygon']]
@@ -36,7 +37,7 @@ export function addNotamLayers(map, featureData) {
   if (!map.getLayer('notam-fill')) {
     map.addLayer({
       id: 'notam-fill', type: 'fill', source: 'notam-src', slot: 'top', minzoom: 8,
-      filter: POLYGON_FILTER,
+      filter: ['all', POLYGON_FILTER, NOT_FIR],
       paint: { 'fill-color': TIME_COLOR, 'fill-opacity': 0.1 },
     })
   }
@@ -131,7 +132,7 @@ export function setNotamCategoryFilter(map, activeCategoryIds, locationFilter = 
   const locFilter = (locationFilter && locationFilter !== 'all') ? ['==', ['get', 'location'], locationFilter] : true
   const idExpr = Array.isArray(idFilter) ? ['in', ['get', 'id'], ['literal', idFilter]] : true
   const F = (...conds) => ['all', catFilter, locFilter, idExpr, ...conds]
-  if (map.getLayer('notam-fill')) map.setFilter('notam-fill', F(POLYGON_FILTER))
+  if (map.getLayer('notam-fill')) map.setFilter('notam-fill', F(POLYGON_FILTER, NOT_FIR))
   if (map.getLayer('notam-line')) map.setFilter('notam-line', F(NOT_FIR))
   if (map.getLayer('notam-fir-line')) map.setFilter('notam-fir-line', F(IS_FIR))
   if (map.getLayer('notam-obstacle')) map.setFilter('notam-obstacle', F(IS_POINT, IS_OBSTACLE))
@@ -241,6 +242,7 @@ export function notamPopupHtml(features) {
       + `<span class="notam-pop-ts ts-${ts.key}">${ts.glyph} ${ts.label}</span>`
       + `<div class="notam-pop-sum">${escapeHtml(p.summary)}${alt}</div>`
       + (p.validPeriod ? `<div class="notam-pop-valid"><span class="notam-pop-valid-lbl">유효</span>${escapeHtml(p.validPeriod)}</div>` : '')
+      + (p.geometryNote ? `<div class="notam-geometry-note">${escapeHtml(p.geometryNote)}</div>` : '')
       + `${raw}</div>`
   }).join('')
   const header = features.length === 1 ? '' : `<div class="notam-pop-head">이 지점에 ${features.length}건</div>`

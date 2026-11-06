@@ -1,3 +1,4 @@
+import { hydrateNotamSnapshot } from '../shared/notam-fields.js'
 import { registerKimAciRoutes } from './src/http/kim-aci-routes.js'
 import { readKimAciLatest, ensureAciBinary } from './src/processors/kim-aci-store.js'
 import { createOrganizationPreviewRouter } from './src/organizations/preview-router.js'
@@ -381,8 +382,9 @@ function readLatest(type) {
 
   if (!fs.existsSync(filePath)) return cached
 
-  const latest = readJsonFileSafe(filePath)
+  let latest = readJsonFileSafe(filePath)
   if (!latest) return cached
+  if (type === 'notam') { latest = hydrateNotamSnapshot(latest); latest.content_hash = store.canonicalHash(latest) }
 
   const diskHash = latest.content_hash || store.canonicalHash(latest)
   const cachedHash = cached?.content_hash || (cached ? store.canonicalHash(cached) : null)

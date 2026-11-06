@@ -108,12 +108,12 @@ const notamData = () => ({
       altitude: { lower: 0, upper: 999, unit: 'FL', ref: null }, summary: 'DANGER AREA ACT', geometry: onRoutePoly },
     { id: 'O0002/26', category: 'obstacle', scope: 'airport', valid_from: '2026-06-26T08:00:00Z', valid_to: '2026-06-26T14:00:00Z',
       altitude: { lower: 0, upper: 500, unit: 'FT', ref: 'AGL' }, summary: 'CRANE', geometry: onRoutePoly },
-    { id: 'F0003/26', category: 'danger', scope: 'fir', valid_from: '2026-06-26T08:00:00Z', valid_to: '2026-06-26T14:00:00Z',
+    { id: 'F0003/26', category: 'other', scope: 'fir', valid_from: '2026-06-26T08:00:00Z', valid_to: '2026-06-26T14:00:00Z',
       altitude: { lower: 0, upper: 999, unit: 'FL', ref: null }, summary: 'NATIONWIDE', geometry: onRoutePoly },
   ] },
 })
 
-test('composeBriefing: routeNotams lists route-crossing NOTAMs, excludes scope:fir', () => {
+test('composeBriefing: routeNotams lists route-crossing NOTAMs, excludes FIR-wide information', () => {
   const b = composeBriefing(request, notamData())
   const ids = b.routeNotams.map((n) => n.id)
   assert.ok(ids.includes('D0001/26'))

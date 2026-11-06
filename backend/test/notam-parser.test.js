@@ -14,15 +14,15 @@ test('dmsToIso: YYMMDDHHMM UTC → ISO', () => {
 })
 
 test('parseQcodeBand: F)/G) with AGL preserved', () => {
-  assert.deepEqual(parseQcodeBand('x', 'SFC', '4920FT AGL'), { lower: 0, upper: 4920, unit: 'FT', ref: 'AGL', source: 'fg' })
+  assert.deepEqual(parseQcodeBand('x', 'SFC', '4920FT AGL'), { lower: 0, upper: 4920, unit: 'FT', ref: 'AGL', source: 'fg', lowerBound: { value: 0, unit: 'SFC', ref: 'AGL' }, upperBound: { value: 4920, unit: 'FT', ref: 'AGL' } })
 })
 
 // 실제 NOTAM 376건 중 13건이 F)/G) 단위가 섞여 나온다(F)SFC G)FL360 등). unit 필드는 밴드당
 // 하나뿐이라 한쪽 단위만 취하면 FL360이 360ft로 남는다 — 3만6천ft 구역이 360ft 조각이 되어
 // 순항 중인 항공기가 구역 위에 있다고 오판한다(경보 누락 방향). 둘 다 ft로 정규화한다.
 test('parseQcodeBand: mixed FT floor and FL ceiling normalizes to feet', () => {
-  assert.deepEqual(parseQcodeBand('x', 'SFC', 'FL360'), { lower: 0, upper: 36000, unit: 'FT', ref: 'AGL', source: 'fg' })
-  assert.deepEqual(parseQcodeBand('x', '7000FT AMSL', 'FL430'), { lower: 7000, upper: 43000, unit: 'FT', ref: 'AMSL', source: 'fg' })
+  assert.deepEqual(parseQcodeBand('x', 'SFC', 'FL360'), { lower: 0, upper: 36000, unit: 'FT', ref: null, source: 'fg', lowerBound: { value: 0, unit: 'SFC', ref: 'AGL' }, upperBound: { value: 360, unit: 'FL', ref: 'STD' } })
+  assert.deepEqual(parseQcodeBand('x', '7000FT AMSL', 'FL430'), { lower: 7000, upper: 43000, unit: 'FT', ref: null, source: 'fg', lowerBound: { value: 7000, unit: 'FT', ref: 'AMSL' }, upperBound: { value: 430, unit: 'FL', ref: 'STD' } })
 })
 
 test('parseQcodeBand: band never comes out inverted for mixed units', () => {
@@ -32,7 +32,7 @@ test('parseQcodeBand: band never comes out inverted for mixed units', () => {
 
 // 단위가 같으면 기존 표기를 유지한다 — FL 밴드는 UI가 'FL200-FL300' 형태로 그대로 보여준다.
 test('parseQcodeBand: matching units keep their original unit', () => {
-  assert.deepEqual(parseQcodeBand('x', 'FL200', 'FL300'), { lower: 200, upper: 300, unit: 'FL', ref: null, source: 'fg' })
+  assert.deepEqual(parseQcodeBand('x', 'FL200', 'FL300'), { lower: 200, upper: 300, unit: 'FL', ref: null, source: 'fg', lowerBound: { value: 200, unit: 'FL', ref: 'STD' }, upperBound: { value: 300, unit: 'FL', ref: 'STD' } })
 })
 
 test('parseQcodeBand: falls back to Q-line FL band', () => {
@@ -60,7 +60,7 @@ test('parseNotamKml: 4 real records with correct fields', () => {
   const d = byId['D0816/26']
   assert.equal(d.location, 'RKRR')
   assert.equal(d.qcode, 'QRDCA')
-  assert.deepEqual(d.altitude, { lower: 0, upper: 4920, unit: 'FT', ref: 'AGL', source: 'fg' })
+  assert.deepEqual(d.altitude, { lower: 0, upper: 4920, unit: 'FT', ref: 'AGL', source: 'fg', lowerBound: { value: 0, unit: 'SFC', ref: 'AGL' }, upperBound: { value: 4920, unit: 'FT', ref: 'AGL' } })
   assert.equal(d.geometry.type, 'Polygon')
 
   // QOBCE obstacle — multi-line E) with many ')' still captured
@@ -77,7 +77,7 @@ test('parseNotamKml: 4 real records with correct fields', () => {
   // 372333N1291339E-372318N1291408E-373951N1300407E-374150N1300200E-372333N1291339E
   // (여는 좌표를 닫는 좌표로 반복 — 4개의 서로 다른 꼭짓점 + 닫는 반복 1개)
   assert.equal(l.geometry.coordinates[0].length, 5)
-  assert.deepEqual(l.altitude, { lower: 0, upper: 6561, unit: 'FT', ref: 'AGL', source: 'fg' })
+  assert.deepEqual(l.altitude, { lower: 0, upper: 6561, unit: 'FT', ref: 'AGL', source: 'fg', lowerBound: { value: 0, unit: 'SFC', ref: 'AGL' }, upperBound: { value: 6561, unit: 'FT', ref: 'AGL' } })
 })
 
 test('parseNotamKml: broken placemark skipped, others survive', () => {
@@ -122,7 +122,7 @@ test('불꽃놀이 도형이 본문 좌표에서 나온다', () => {
 // 그러면 "고도가 적혀 있었다"는 사실을 잃어 순항고도 판정이 통째로 미상이 된다.
 test('parseQcodeBand: UNL을 무제한으로 읽고 출처를 F)/G)로 남긴다', () => {
   assert.deepEqual(parseQcodeBand('Q)RKRR/QRPCA/IV/NBO/W/000/999/3735N12659E003', 'SFC', 'UNL'),
-    { lower: 0, upper: 99900, unit: 'FT', ref: 'AGL', source: 'fg' })
+    { lower: 0, upper: 99999, unit: 'FT', ref: null, source: 'fg', lowerBound: { value: 0, unit: 'SFC', ref: 'AGL' }, upperBound: { value: null, unit: 'UNL', ref: null } })
 })
 
 // 000/999는 ICAO가 "고도 무관"에 넣는 기본값이라, 값만으로는 지표~무제한과 구분되지 않는다.

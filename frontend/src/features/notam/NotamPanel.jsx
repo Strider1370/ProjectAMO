@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Ban, Crosshair, AlertTriangle, ShieldHalf, Swords, RadioTower, Radio, MoreHorizontal, ChevronDown, MapPin } from 'lucide-react'
-import { NOTAM_CATEGORIES, TIME_STATE, deriveNotamTime, formatAltitude, formatValidPeriod, sortOperationalFirst } from './lib/notamViewModel.js'
+import { NOTAM_CATEGORIES, TIME_STATE, deriveNotamTime, formatAltitude, formatValidPeriod, sortOperationalFirst, notamGeometryNote, filterNotamTime } from './lib/notamViewModel.js'
 import './NotamPanel.css'
 
 const CAT_ICON = {
@@ -44,11 +44,12 @@ function fmtCollected(iso, tz = 'KST') {
 function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
   // deriveTimeState는 B~C(공지 유효기간)만 본다 — D)의 시간대까지 반영하려면 deriveNotamTime.
   const { state } = deriveNotamTime(item, nowMs)
-  const where = item.scope === 'fir' ? '전역' : item.location
+  const where = item.location
   return (
     <>
       <tr
         className="notam-row"
+        data-notam-id={item.id}
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
@@ -72,7 +73,8 @@ function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
         </td>
         <td className="notam-td-sum">
           <div className="notam-sum-text">{item.summary || item.id}</div>
-          <div className="notam-sum-valid">{formatValidPeriod(item.valid_from, item.valid_to, tz)}</div>
+          {(item.approximated || item.geographicExclusions?.length > 0) && <div className="notam-geometry-note">{item.approximated ? '근사 영역 · 원문 확인' : '제외 구역 확인 필요'}</div>}
+          <div className="notam-sum-valid">{formatValidPeriod(item.valid_from, item.valid_to, tz, item.validity_end)}</div>
         </td>
         <td className="notam-td-alt">{formatAltitude(item.altitude) || '—'}</td>
         <td className="notam-td-state">
@@ -84,6 +86,7 @@ function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
         <tr className="notam-raw-row">
           <td colSpan={5}>
             <div className="notam-full-sum"><b>E)</b> {item.summary || item.id}</div>
+            {notamGeometryNote(item) && <p className="notam-geometry-note">{notamGeometryNote(item)}</p>}
             <details className="notam-raw-details">
               <summary>TAC 원문 보기</summary>
               <pre className="notam-raw">{item.rawText || item.summary}</pre>
@@ -95,7 +98,7 @@ function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
   )
 }
 
-function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle, locationFilter = 'all', onLocationChange, masterOn, onMasterToggle, onLocate, nowMs = Date.now(), tz = 'KST' }) {
+function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle, locationFilter = 'all', onLocationChange, masterOn, onMasterToggle, onLocate, nowMs = Date.now(), tz = 'KST', activeOnly = false, onActiveOnlyChange, uncertainCount = 0 }) {
   const [limit, setLimit] = useState(CHUNK)
   const [openId, setOpenId] = useState(null)
 
@@ -108,10 +111,10 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [items])
   const filtered = useMemo(
-    () => sortOperationalFirst(items.filter((it) =>
+    () => sortOperationalFirst(filterNotamTime(items, nowMs, activeOnly).filter((it) =>
       activeFilter.includes(it.category) && (locationFilter === 'all' || it.location === locationFilter),
     ), nowMs),
-    [items, activeFilter, locationFilter, nowMs],
+    [items, activeFilter, locationFilter, nowMs, activeOnly],
   )
   const priority = useMemo(
     () => selectedAirport ? filtered.filter((it) => it.location === selectedAirport) : [],
@@ -149,6 +152,14 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
         <div className="notam-legend" aria-hidden="true">
           <span className="notam-legend-lbl">색+형태 = 발효 시각</span>
           <TimeBadge state="active" /><TimeBadge state="soon" /><TimeBadge state="upcoming" />
+        </div>
+
+        <div className="notam-time-filter">
+          <button type="button" aria-pressed={activeOnly} onClick={() => { onActiveOnlyChange?.(!activeOnly); setLimit(CHUNK) }}>
+            지금 유효한 NOTAM만
+          </button>
+          <span>{activeOnly ? '현재 활동 시간에 해당하는 항목 · 목록과 지도에 적용' : '유효기간 내 공지 · 예정 포함'}</span>
+          {activeOnly && uncertainCount > 0 && <button type="button" onClick={() => onActiveOnlyChange?.(false)}>시간 확인 {uncertainCount}건 보기</button>}
         </div>
 
         <div className="notam-filter">
@@ -227,7 +238,7 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
               </tbody>
             </table>
             <div className="notam-foot">
-              발효 중 먼저 정렬 · 행 클릭 시 원문 · {filtered.length}건 중 {Math.min(limit, filtered.length)}건
+              운항 우선순위·발효 상태순 · 행 클릭 시 원문 · {filtered.length}건 중 {Math.min(limit, filtered.length)}건
               {limit < filtered.length && (
                 <button type="button" className="notam-more" onClick={() => setLimit((l) => l + CHUNK)}> 더 보기</button>
               )}

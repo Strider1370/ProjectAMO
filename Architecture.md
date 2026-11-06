@@ -167,9 +167,9 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/lib/lightningLayers.js` -> lightning GeoJSON, icon, layer, visibility, and blink helpers.
 - `frontend/src/features/weather-overlays/lib/advisoryLayers.js` -> SIGMET/AIRMET GeoJSON and layer helpers.
 - `frontend/src/features/weather-overlays/lib/sigwxData.js` -> SIGWX_LOW GeoJSON/icon mapping helpers.
-- `frontend/src/features/notam/NotamPanel.jsx` -> (surface A) global NOTAM sidebar panel: category filter tiles (`layer-tile` pattern), dense table, selected-airport priority, data-horizon disclosure, colorblind time-state badges (color+glyph+text); master toggle via `metVisibility.notam`.
-- `frontend/src/features/notam/lib/notamViewModel.js` -> pure NOTAM helpers: `deriveTimeState` (active/soon/upcoming = color axis), `formatAltitude` (AGL/AMSL preserved, 전고도 shortening), `sortActiveFirst`, `NOTAM_CATEGORIES`, `TIME_STATE`.
-- `frontend/src/features/notam/lib/notamGeoJson.js` -> payload -> GeoJSON with category+timeState properties; excludes `scope:'fir'` and null geometry (keeps LineString for map/tab).
+- `frontend/src/features/notam/NotamPanel.jsx` -> (surface A) global NOTAM sidebar panel: category filter tiles (`layer-tile` pattern), dense table, selected-airport priority, data-horizon disclosure, and time-state badges; current-only filtering is shared with the map through `useNotamDisplay.js`, while the master toggle uses `metVisibility.notam`.
+- `frontend/src/features/notam/lib/notamViewModel.js` -> pure NOTAM helpers: `deriveTimeState` (active/soon/upcoming/conditional/expired), D)-aware current filtering, `formatAltitude` (independent lower/upper AGL/AMSL/FL bounds), `sortActiveFirst`, `NOTAM_CATEGORIES`, `TIME_STATE`.
+- `frontend/src/features/notam/lib/notamGeoJson.js` -> payload -> GeoJSON with category+timeState properties; excludes expired, facility and null-geometry items; draws corridor half-widths as polygons and carries approximation/exclusion notes. FIR affiliation does not hide local airspace restrictions.
 - `frontend/src/features/notam/lib/notamLayers.js` -> Mapbox NOTAM source/fill/line/marker install+sync, time-state color (`--level-*`) + colorblind shape, category `filter`, zoom split (marker<->polygon), overlap-popup HTML; owns `NOTAM_SOURCE_IDS`/`NOTAM_LAYER_IDS`.
 - `frontend/src/features/airport-panel/tabs/NotamTab.jsx` -> (surface B) selected-airport NOTAM list (A-field match); reads `weatherData.notam`.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
@@ -282,9 +282,9 @@ ProjectAMO/
 - `backend/src/lib/request-observability.js` -> the sole outbound HTTP/HTTPS transport seam. It enforces the declared request policy, records each physical API Hub attempt once, persists bounded API operation outcomes, and confines the explicitly declared TLS fallback transport.
 - `backend/src/api-client.js` -> registered KMA/NOAA request construction and payload validation through the common observable transport.
 - `backend/src/store.js` -> in-memory cache and SHA-256 change detection.
-- `backend/src/notam/notam-crawler.js` -> headless Playwright crawler for KOCA 유효 NOTAM KML (site-default 24h window; no date manipulation).
-- `backend/src/parsers/notam-parser.js` -> KML -> structured NOTAM records (Q-code, B/C UTC times, D) schedule text, F)/G) altitude with AGL/AMSL, geometry).
-- `backend/src/processors/notam-processor.js` -> Q-code -> category/scope plus conservative `operational` priority hint (target/action/reason; not an official safety grade), crawl+parse orchestration, `store.save('notam')`.
+- `backend/src/notam/notam-crawler.js` -> headless Playwright collector for the KOCA complete valid-NOTAM search response and KML geometry (site-default 24h window; no date manipulation).
+- `backend/src/parsers/notam-parser.js` -> KML/search TAC -> structured NOTAM records. `shared/notam-fields.js` owns field boundaries, strict UTC timestamps, PERM/EST, independent altitude bounds, geographic-exclusion notes and legacy snapshot hydration.
+- `backend/src/processors/notam-processor.js` -> Q-code -> category/scope plus conservative `operational` priority hint (target/action/reason; not an official safety grade), search/KML reconciliation (including multipart checklists), fail-closed publication, bounded raw source archives (12 gzip captures under `notam/source/`), and `store.save('notam')`.
 - `backend/server.js` -> exposes `GET /api/notam` (latest NOTAM snapshot from `store.getCached('notam')`).
 - `backend/src/parsers/*` -> per-type raw response parsers.
 - `backend/src/processors/*` -> per-type normalized data processors.

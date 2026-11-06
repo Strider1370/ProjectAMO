@@ -9,6 +9,7 @@ import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
 import { pickPrimaryWeatherIcon } from './parsers/parse-utils.js'
 import { validateCollectionResult } from './collector-execution.js'
 import { resultOutcomesForCollector } from './collector-registry.js'
+import { hydrateNotamSnapshot } from '../../shared/notam-fields.js'
 
 const TYPES = ['metar', 'taf', 'warning', 'kma_special_warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'asos_ceiling', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon', 'terminal_flights', 'overseas_forecast']
 const FILE_PREFIX = {
@@ -268,12 +269,22 @@ export function mergeWithPrevious(result, type, failedAirports) {
 }
 
 export function updateCache(type, data, hash) {
+  if (type === 'notam') {
+    data = hydrateNotamSnapshot(data)
+    hash = canonicalHash(data)
+    data.content_hash = hash
+  }
   hydrateTacPresentation(type, data)
   cache[type].hash = hash
   cache[type].prev_data = data
 }
 
 export function updateLiveCache(type, data, hash) {
+  if (type === 'notam') {
+    data = hydrateNotamSnapshot(data)
+    hash = canonicalHash(data)
+    data.content_hash = hash
+  }
   hydrateTacPresentation(type, data)
   liveCache[type].hash = hash
   liveCache[type].prev_data = data
@@ -320,6 +331,7 @@ export function initFromFiles(basePath) {
 
 export function save(type, data) {
   if (!TYPES.includes(type)) throw new Error(`Unsupported type: ${type}`)
+  if (type === 'notam') data = hydrateNotamSnapshot(data)
 
   const basePath = config.storage.base_path
   const dir = getTypeDir(basePath, type)

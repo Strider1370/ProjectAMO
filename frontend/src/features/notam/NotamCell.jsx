@@ -10,7 +10,7 @@ const CAT_ICON = {
 }
 const catLabelOf = (id) => (NOTAM_CATEGORIES.find((c) => c.id === id) || { label: '기타' }).label
 
-export default function NotamCell({ category, timeState, summary, metaText, altitude, rawText, validText, conflict = false, priority }) {
+export default function NotamCell({ category, timeState, summary, metaText, altitude, rawText, validText, conflict = false, priority, geometryNote }) {
   const t = TIME_STATE[timeState] || TIME_STATE.upcoming
   const Icon = CAT_ICON[category] || MoreHorizontal
   const isBand = altitude && altitude !== '전고도' // 실제 밴드만 진하게, "전고도"는 흐리게
@@ -32,6 +32,7 @@ export default function NotamCell({ category, timeState, summary, metaText, alti
         <ChevronDown size={16} className="notam-cell-chev" aria-hidden="true" />
       </summary>
       <div className="notam-cell-expand">
+        {geometryNote ? <p className="notam-geometry-note">{geometryNote}</p> : null}
         {validText ? <div className="notam-cell-valid"><span className="notam-cell-valid-lbl">유효</span>{validText}</div> : null}
         {rawText ? <pre className="notam-cell-raw">{rawText}</pre> : null}
       </div>

@@ -165,5 +165,5 @@ test('deriveNotamTime: no D) at all is simply active', () => {
 })
 
 test('deriveNotamTime: outside B)~C) never consults D)', () => {
-  assert.equal(deriveNotamTime(CATA_7H, at('2026-08-15T08:00:00Z')).state, 'upcoming')
+  assert.equal(deriveNotamTime(CATA_7H, at('2026-08-15T08:00:00Z')).state, 'expired')
 })

@@ -1,5 +1,9 @@
-import { deriveNotamTime, formatAltitude, formatAltitudeBand, formatValidPeriod, NOTAM_CATEGORIES } from './notamViewModel.js'
+import { deriveNotamTime, formatAltitude, formatAltitudeBand, formatValidPeriod, NOTAM_CATEGORIES, filterNotamTime, notamGeometryNote } from './notamViewModel.js'
 import { obstacleType, parseObstacleHeight } from './notamObstacleIcons.js'
+import { buffer } from '@turf/buffer'
+import { lineString } from '@turf/helpers'
+
+const corridorCache = new WeakMap()
 
 // 지도 라벨용 카테고리명: 구역 계열은 정식 명칭, 그 외는 짧은 라벨(notam-label은 구역만 렌더).
 const AREA_LABEL = { prohibited: '비행금지구역', restricted: '제한구역', danger: '위험구역', firing: '사격훈련구역' }
@@ -26,6 +30,13 @@ export function parsePsnPoint(text) {
 export function displayGeometry(item) {
   const g = item?.geometry
   if (!g) return null
+  if (g.type === 'LineString' && Number(item.bufferNm) > 0) {
+    if (!corridorCache.has(item)) {
+      try { corridorCache.set(item, buffer(lineString(g.coordinates), Number(item.bufferNm) * 1.852, { units: 'kilometers', steps: 12 })?.geometry || g) }
+      catch { corridorCache.set(item, g) }
+    }
+    return corridorCache.get(item)
+  }
   if (item.category === 'obstacle') {
     const p = parsePsnPoint(item.summary) || parsePsnPoint(item.rawText)
     return p ? { type: 'Point', coordinates: p } : g
@@ -36,11 +47,11 @@ export function displayGeometry(item) {
 // 백엔드 페이로드 → GeoJSON. 지오메트리 없는 항목만 제외.
 // scope:'fir'(전국 폴리곤)도 포함하되, 레이어에서 fill 없이 외곽선만 그려 화면을 덮지 않게 함
 // (notamLayers.js 의 scope 기반 filter 참조). LineString(회랑형)도 유지 — 브리핑 자동매칭만 Phase C에서 제외.
-export function notamToFeatureCollection(payload, nowMs = Date.now()) {
+export function notamToFeatureCollection(payload, nowMs = Date.now(), tz = 'KST') {
   const items = Array.isArray(payload?.items) ? payload.items : []
   return {
     type: 'FeatureCollection',
-    features: items
+    features: filterNotamTime(items, nowMs)
       // 시설(주파수·GPS·유도로/활주로 폐쇄 등)은 지도 미표시 — 공항 패널 NOTAM 탭·목록에서 확인.
       .filter((it) => it?.category !== 'facility')
       .map((it) => ({ it, geom: displayGeometry(it) }))
@@ -51,14 +62,15 @@ export function notamToFeatureCollection(payload, nowMs = Date.now()) {
         properties: {
           id: it.id,
           category: it.category || 'other',
-          scope: it.scope || 'airport',
+          scope: it.coverage === 'area' ? 'airspace' : it.scope || 'airport',
           // B~C만 보는 deriveTimeState가 아니라 D)까지 반영 — 지도 색이 목록과 어긋나면 안 된다.
           timeState: deriveNotamTime(it, nowMs).state,
           summary: it.summary || it.id,
-          validPeriod: formatValidPeriod(it.valid_from, it.valid_to),
+          validPeriod: formatValidPeriod(it.valid_from, it.valid_to, tz, it.validity_end),
           altitude: formatAltitude(it.altitude),
           mapLabel: buildMapLabel(it), // 구역 라벨: 카테고리명 + 차트식 고도밴드 (notam-label 레이어)
           location: it.location || '',
+          geometryNote: notamGeometryNote(it),
           rawText: it.rawText || it.summary || '', // 지도 팝업 '원문 보기'용
           // 장애물 심볼용(다른 카테고리엔 무해)
           obstacleType: it.category === 'obstacle' ? obstacleType(it.summary || it.rawText) : '',

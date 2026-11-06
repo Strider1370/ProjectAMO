@@ -8,6 +8,8 @@
 - Data storage: VM local disk at `/opt/projectamo/shared/data`
 - Backend bind: `127.0.0.1`
 
+NOTAM의 검색/KML 대조, 원본 보관, 고도·시간 해석과 현재 유효 필터는 [NOTAM 운영 안내](notam.md)를 따른다.
+
 SIGWX HIGH 실자료: 루트 `.env`에 `WIFS_API_KEY`를 넣고 백엔드를 재시작하면 수집기가 등록된다.
 UTC 12:30에 하루 한 번 최신 KKCI 회차를 확인하고 F06~F36의 11장을 순서대로 받는다.
 메타데이터 조회부터 각 XML 요청 사이에 65초를 두므로 한 회차에 약 12분이 걸린다.
@@ -120,6 +122,7 @@ npm run demo:repair-weather -- --data-root backend/data --name demo --skip-weath
 
 Current incremental keys:
 
+- `notam`
 - `metar`
 - `taf`
 - `warning`

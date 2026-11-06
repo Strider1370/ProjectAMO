@@ -3,56 +3,10 @@
 
 import { resolveNotamGeometry } from '../notam/notam-geometry.js'
 
-export function dmsToIso(field) {
-  if (!/^\d{10}$/.test(String(field || ''))) return null
-  const s = String(field)
-  const yy = 2000 + Number(s.slice(0, 2))
-  const mo = Number(s.slice(2, 4)) - 1
-  const dd = Number(s.slice(4, 6))
-  const hh = Number(s.slice(6, 8))
-  const mi = Number(s.slice(8, 10))
-  const d = new Date(Date.UTC(yy, mo, dd, hh, mi))
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
-}
+import { splitNotamFields, notamInstant, parseNotamAltitude, notamGeographicExclusions } from '../../../shared/notam-fields.js'
 
-// "4000FT AMSL" / "1500FT AGL" / "SFC" / "FL060" → { value:number, ref:'AMSL'|'AGL'|null, unit }
-function parseHeightToken(tok) {
-  if (!tok) return null
-  const t = tok.trim().toUpperCase()
-  if (t === 'SFC' || t === 'GND') return { value: 0, ref: 'AGL', unit: 'FT' }
-  // UNL(제한 없음)을 못 읽으면 F)SFC G)UNL 짜리 금지·위험구역이 통째로 Q-line 자리표시자로
-  // 떨어져, "고도가 적혀 있었다"는 사실을 잃는다(실측 2건). FL999는 하류에서 무제한으로 푼다.
-  if (t === 'UNL' || t === 'UNLTD' || t === 'UNLIMITED') return { value: 999, ref: null, unit: 'FL' }
-  const fl = t.match(/^FL\s*(\d+)/)
-  if (fl) return { value: Number(fl[1]), ref: null, unit: 'FL' }
-  const ft = t.match(/(\d+)\s*FT\s*(AMSL|AGL)?/)
-  if (ft) return { value: Number(ft[1]), ref: ft[2] || null, unit: 'FT' }
-  return null
-}
-
-// D)필드 해석은 shared/notam-schedule.js가 담당한다(단순 HHMM-HHMM만 알던 옛 파서는 호출부가
-// 없어 삭제). 여기서는 원문 문자열만 scheduleText로 넘긴다 — 월·연도 복원에 B)/C)가 필요해서
-// 파싱 시점이 아니라 판정 시점에 푼다.
-
-export function parseQcodeBand(qLine, fLine, gLine) {
-  const f = parseHeightToken(fLine)
-  const g = parseHeightToken(gLine)
-  // F)와 G)의 단위가 다르게 오는 NOTAM이 있다(F)SFC G)FL360, F)7000FT AMSL G)FL430).
-  // unit은 밴드당 하나뿐이라 f.unit만 취하면 FL360이 360ft로 남아 밴드가 100배 좁아지거나
-  // 아예 뒤집힌다. 섞였을 때만 둘 다 ft로 펴고, 같은 단위면 원래 표기를 유지한다.
-  // source: 'fg' = F)/G)에 실제 고도가 적혀 있었음. 'qline' = Q-line 값뿐 —
-  // ICAO는 고도가 무관한 NOTAM에 000/999를 기본값으로 넣으므로, 이 값만으로는
-  // "지표~무제한"인지 "고도 정보 없음"인지 구분할 수 없다. 그 구분을 출처로 남긴다.
-  if (f && g && f.unit !== g.unit) {
-    const toFt = (h) => (h.unit === 'FL' ? h.value * 100 : h.value)
-    return { lower: toFt(f), upper: toFt(g), unit: 'FT', ref: f.ref || g.ref || null, source: 'fg' }
-  }
-  if (f && g) return { lower: f.value, upper: g.value, unit: f.unit, ref: f.ref || g.ref || null, source: 'fg' }
-  // Q-line: .../lower/upper/coord — e.g. /000/999/3459N12623E005
-  const m = String(qLine || '').match(/\/(\d{3})\/(\d{3})\/\d/)
-  if (m) return { lower: Number(m[1]), upper: Number(m[2]), unit: 'FL', ref: null, source: 'qline' }
-  return null
-}
+export const dmsToIso = notamInstant
+export const parseQcodeBand = parseNotamAltitude
 
 // Order matters: Polygon → LineString → Point. The Point in a KOCA MultiGeometry is the
 // label anchor, not the affected area; only fall back to it when no polygon/line exists.
@@ -77,46 +31,27 @@ function extractGeometry(placemarkXml) {
   return null
 }
 
+export function parseNotamText(rawText, id, kmlGeometry = null) {
+  const fields = splitNotamFields(rawText)
+  const qcode = fields.Q?.match(/^[A-Z]{4}\/(Q[A-Z]{4})\//)?.[1] || null
+  const location = fields.A?.match(/^[A-Z]{4}\b/)?.[0] || null
+  const validFrom = notamInstant(fields.B)
+  const validTo = fields.C === 'PERM' ? '2099-12-31T23:59:00.000Z' : notamInstant(fields.C)
+  if (!/^[A-Z]\d{4}\/\d{2}(?:[AB]\d{2})?$/.test(id || '') || !location || !validFrom || !validTo || !fields.E) return null
+  const resolved = resolveNotamGeometry({ rawText, kmlGeometry })
+  return { id, series: id[0], location, qcode, validFrom, validTo,
+    validityEnd: fields.C === 'PERM' ? 'permanent' : /EST$/.test(fields.C) ? 'estimated' : 'fixed',
+    scheduleText: fields.D || null, altitude: parseNotamAltitude(fields.Q, fields.F, fields.G),
+    summary: fields.E, rawText: rawText.trim(), geometry: resolved.geometry,
+    bufferNm: resolved.bufferNm, geometrySource: resolved.source, geometryReason: resolved.reason,
+    approximated: resolved.approximated, geographicExclusions: notamGeographicExclusions(fields.E) }
+}
+
 function parseOnePlacemark(xml) {
-  const idMatch = xml.match(/<Placemark id='([A-Z]\d{4}\/\d{2})/)
-  if (!idMatch) return null
-  const id = idMatch[1]
-  const cdata = xml.match(/<!\[CDATA\[([\s\S]*?)\]\]>/)
-  const text = (cdata ? cdata[1] : '').replace(/<br\s*\/?>/gi, '\n').replace(/<h3>[\s\S]*?<\/h3>/i, '')
-  const qLine = (text.match(/Q\)([^\n]+)/) || [])[0] || ''
-  const qcode = (qLine.match(/Q\)[A-Z]{4}\/(Q[A-Z]{4})/) || [])[1] || null
-  const location = (text.match(/A\)\s*([A-Z]{4})/) || [])[1] || null
-  const bField = (text.match(/B\)\s*(\d{10})/) || [])[1] || null
-  const cField = (text.match(/C\)\s*(\d{10})/) || [])[1] || null
-  // C)PERM(영구)은 종료시각이 숫자가 아니다. 통째로 버리지 않고 먼 미래로 둔다.
-  const permanent = !cField && /C\)\s*PERM\b/i.test(text)
-  const scheduleText = (text.match(/D\)\s*([\s\S]*?)(?=\n\s*E\)|\)?\s*$)/) || [])[1]?.trim() || null
-  const validFrom = dmsToIso(bField)
-  const validTo = permanent ? '2099-12-31T23:59:00.000Z' : dmsToIso(cField)
-  if (!id || !location || !validFrom || !validTo) return null // required fields
-  // F)SFC / F)4000FT AMSL — allow SFC/GND word or a number+unit token; stop before space or ')'
-  const fField = (text.match(/F\)\s*(SFC|GND|[^\n G)]+)/) || [])[1] || null
-  const gField = (text.match(/G\)\s*([^\n)]+)/) || [])[1] || null
-  const summary = (text.match(/E\)\s*([\s\S]*?)(?:\n[FG]\)|\)?\s*$)/) || [])[1]?.trim().replace(/\)\s*$/, '') || ''
-  const kmlGeometry = extractGeometry(xml)
-  const resolved = resolveNotamGeometry({ rawText: text, kmlGeometry })
-  return {
-    id,
-    series: id[0],
-    location,
-    qcode,
-    validFrom,
-    validTo,
-    scheduleText,
-    altitude: parseQcodeBand(qLine, fField, gField),
-    summary,
-    rawText: text.trim(),
-    geometry: resolved.geometry,
-    bufferNm: resolved.bufferNm,
-    geometrySource: resolved.source,       // 'text' | 'q' | 'kml' | 'none'
-    geometryReason: resolved.reason,
-    approximated: resolved.approximated,
-  }
+  const id = xml.match(/<Placemark\s[^>]*id=["']([A-Z]\d{4}\/\d{2}(?:[AB]\d{2})?)(?:_|["'])/)?.[1]
+  const cdata = xml.match(/<!\[CDATA\[([\s\S]*?)\]\]>/)?.[1] || ''
+  const text = cdata.replace(/<br\s*\/?>/gi, '\n').replace(/<h3>[\s\S]*?<\/h3>/i, '')
+  return parseNotamText(text, id, extractGeometry(xml))
 }
 
 export function parseNotamKml(kml) {

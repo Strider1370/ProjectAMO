@@ -41,7 +41,7 @@ import { countAircraft, hasActiveFilters, visibleIds } from '../traffic/trafficF
 import { applyAdsbFilter } from '../traffic/applyAdsbFilter.js'
 import { notamToFeatureCollection, displayGeometry } from '../notam/lib/notamGeoJson.js'
 import { registerNotamObstacleImages } from '../notam/lib/notamObstacleIcons.js'
-import { NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
+import { useNotamDisplay } from '../notam/useNotamDisplay.js'
 import { SIGWX_FILTER_OPTIONS } from '../weather-overlays/lib/sigwxData.js'
 import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
 import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
@@ -507,8 +507,8 @@ const MapView = forwardRef(function MapView({
   const [openAdvisoryPanel, setOpenAdvisoryPanel] = useState(null)
   const [sigwxFilter, setSigwxFilter] = useState(() => Object.fromEntries(SIGWX_FILTER_OPTIONS.map((option) => [option.key, true])))
   const [hiddenAdvisoryKeys, setHiddenAdvisoryKeys] = useState({ sigwxLow: [], sigmet: [], airmet: [] })
-  const [notamCategoryFilter, setNotamCategoryFilter] = useState(() => NOTAM_CATEGORIES.map((c) => c.id))
-  const [notamLocationFilter, setNotamLocationFilter] = useState('all')
+  const notamDisplay = useNotamDisplay(notamData, demoNowMs)
+  const { categoryFilter: notamCategoryFilter, setCategoryFilter: setNotamCategoryFilter, locationFilter: notamLocationFilter, setLocationFilter: setNotamLocationFilter } = notamDisplay
   const [selectedSigwxFrontMeta, setSelectedSigwxFrontMeta] = useState(sigwxFrontMeta)
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
@@ -570,7 +570,7 @@ const MapView = forwardRef(function MapView({
     setSaveBriefingOpen(true)
   }
   const effectiveLightningReferenceTimeMs = demoMode ? demoNowMs : lightningReferenceTimeMs
-  const notamFc = useMemo(() => notamToFeatureCollection(notamData, demoNowMs), [notamData, demoNowMs])
+  const notamFc = useMemo(() => notamToFeatureCollection(notamDisplay.payload, notamDisplay.nowMs, tz), [notamDisplay.payload, notamDisplay.timeRevision, tz])
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     registerNotamObstacleImages(map) // 장애물 종류별 아이콘 등록(비동기, 준비되면 심볼 레이어가 참조)
     updateNotamLayerData(map, notamFc)
@@ -584,6 +584,7 @@ const MapView = forwardRef(function MapView({
     // 겹침 팝업(surface D): 클릭 지점의 모든 NOTAM 후보를 해석(1 / 2-3 미니리스트 / 4+ 전체보기).
     // 폴리곤은 point-in-polygon으로 직접 판정(투명/줌 무관, 네모·동그라미 내부 어디든), 점·선은 queryRenderedFeatures.
     const lineLayers = ['notam-marker', 'notam-obstacle', 'notam-line', 'notam-fir-line'].filter((id) => map.getLayer(id))
+    let notamPopup = null
     function onNotamClick(e) {
       if (!metVisibility.notam) return
       if (hasAirportAtMapPoint(map, e.point)) return
@@ -598,8 +599,10 @@ const MapView = forwardRef(function MapView({
         if (id && !seen.has(id)) { seen.add(id); uniq.push(f) }
       }
       if (uniq.length === 0) return
+      notamPopup?.remove()
       const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '380px' })
         .setLngLat(e.lngLat).setHTML(notamPopupHtml(uniq)).addTo(map)
+      notamPopup = popup
       const moreBtn = popup.getElement()?.querySelector('.notam-pop-more')
       if (moreBtn) moreBtn.addEventListener('click', () => { onOpenNotamPanel?.(); popup.remove() })
     }
@@ -610,6 +613,7 @@ const MapView = forwardRef(function MapView({
     const onNotamLeave = () => { map.getCanvas().style.cursor = '' }
     for (const id of hoverLayers) { map.on('mouseenter', id, onNotamEnter); map.on('mouseleave', id, onNotamLeave) }
     return () => {
+      notamPopup?.remove()
       map.off('click', onNotamClick)
       for (const id of hoverLayers) { map.off('mouseenter', id, onNotamEnter); map.off('mouseleave', id, onNotamLeave) }
     }
@@ -2641,6 +2645,9 @@ const MapView = forwardRef(function MapView({
       {activePanel === 'notam' && (
         <NotamPanel
           payload={notamData}
+          activeOnly={notamDisplay.activeOnly}
+          onActiveOnlyChange={notamDisplay.setActiveOnly}
+          uncertainCount={notamDisplay.uncertainCount}
           selectedAirport={selectedAirport}
           categoryFilter={notamCategoryFilter}
           onCategoryToggle={(id) => setNotamCategoryFilter((cur) => cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id])}
@@ -2649,7 +2656,7 @@ const MapView = forwardRef(function MapView({
           masterOn={metVisibility.notam}
           onMasterToggle={() => toggleMet('notam')}
           onLocate={locateNotam}
-          nowMs={demoNowMs}
+          nowMs={notamDisplay.nowMs}
           tz={tz}
         />
       )}

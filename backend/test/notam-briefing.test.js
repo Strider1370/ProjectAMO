@@ -2,10 +2,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { notamBandToFt, matchRouteNotams } from '../src/briefing/notam-briefing.js'
 import { buildRouteAxis } from '../src/briefing/route-axis.js'
+import { parseNotamAltitude } from '../../shared/notam-fields.js'
 import { resolveNotamGeometry } from '../src/notam/notam-geometry.js'
 
-test('notamBandToFt: FT band passes through', () => {
-  assert.deepEqual(notamBandToFt({ lower: 0, upper: 4000, unit: 'FT', ref: 'AGL' }), { lowFt: 0, highFt: 4000 })
+test('notamBandToFt: absolute FT band passes through; legacy AGL remains unknown', () => {
+  assert.deepEqual(notamBandToFt({ lower: 0, upper: 4000, unit: 'FT', ref: 'AMSL' }), { lowFt: 0, highFt: 4000 })
+  assert.equal(notamBandToFt({ lower: 0, upper: 4000, unit: 'FT', ref: 'AGL' }), null)
 })
 
 test('notamBandToFt: FL band × 100', () => {
@@ -50,9 +52,9 @@ test('matchRouteNotams: route-crossing restriction in effect at altitude → con
   assert.equal(routeConflicts[0].id, 'A0001/26')
 })
 
-test('matchRouteNotams: scope:fir excluded entirely', () => {
+test('matchRouteNotams: local FIR restrictions remain eligible for route matching', () => {
   const { routeNotams } = matchRouteNotams([notam({ scope: 'fir' })], ctx)
-  assert.equal(routeNotams.length, 0)
+  assert.equal(routeNotams.length, 1)
 })
 
 test('matchRouteNotams: outside ETD~ETA time window excluded', () => {
@@ -219,11 +221,11 @@ test('Q-line 000/999뿐인 지상 시설 NOTAM은 순항고도에서 고도 미�
   assert.equal(routeNotams[0].conflict, false)
 })
 
-test('F)/G)에 고도가 적힌 구역은 그대로 고도 확인 처리한다', () => {
+test('F)/G)의 SFC~UNL 구역은 전체 수직 범위를 확정할 수 있다', () => {
   const prohibited = {
     ...groundFacility,
     id: 'D1768/26', category: 'prohibited', summary: 'TEMPO PROHIBITED AREA ACT',
-    altitude: { lower: 0, upper: 99900, unit: 'FT', ref: 'AGL', source: 'fg' },
+    altitude: parseNotamAltitude('', 'SFC', 'UNL'),
   }
   const { routeNotams, routeConflicts } = matchRouteNotams([prohibited], ctx)
   assert.equal(routeNotams[0].verticalKnown, true)

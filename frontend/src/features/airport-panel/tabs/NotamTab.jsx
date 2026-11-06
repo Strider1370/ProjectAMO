@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NOTAM_CATEGORIES, deriveNotamTime, formatAltitude, formatValidPeriod, sortOperationalFirst } from '../../notam/lib/notamViewModel.js'
+import { NOTAM_CATEGORIES, deriveNotamTime, formatAltitude, formatValidPeriod, sortOperationalFirst, filterNotamTime, notamGeometryNote } from '../../notam/lib/notamViewModel.js'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import NotamCell from '../../notam/NotamCell.jsx'
 
 const catLabelOf = (id) => (NOTAM_CATEGORIES.find((c) => c.id === id) || { label: '기타' }).label
 
 function NotamTab({ notam, icao, nowMs = Date.now() }) {
+  const { tz } = useTimeZone()
   const [expanded, setExpanded] = useState(false)
   const items = useMemo(() => Array.isArray(notam?.items) ? notam.items : [], [notam])
-  const airportItems = useMemo(() => sortOperationalFirst(items.filter((it) => it.scope !== 'fir' && it.location === icao), nowMs), [items, icao, nowMs])
+  const airportItems = useMemo(() => sortOperationalFirst(filterNotamTime(items, nowMs).filter((it) => it.scope !== 'fir' && it.location === icao), nowMs), [items, icao, nowMs])
   useEffect(() => { setExpanded(false) }, [icao])
   if (airportItems.length === 0) return <div className="ap-empty">유효한 NOTAM이 없습니다.</div>
 
@@ -17,7 +19,7 @@ function NotamTab({ notam, icao, nowMs = Date.now() }) {
   const cell = (it) => {
     const time = deriveNotamTime(it, nowMs)
     const metaText = [catLabelOf(it.category), it.id, it.operational?.confidence === 'review' && '검토 필요'].filter(Boolean).join(' · ')
-    return <NotamCell key={it.id} category={it.category} timeState={time.state} summary={it.summary || it.id} metaText={metaText} altitude={formatAltitude(it.altitude)} rawText={it.rawText || it.summary} validText={formatValidPeriod(it.valid_from, it.valid_to)} priority={it.operational?.priority} />
+    return <NotamCell key={it.id} category={it.category} timeState={time.state} summary={it.summary || it.id} metaText={metaText} altitude={formatAltitude(it.altitude)} rawText={it.rawText || it.summary} validText={formatValidPeriod(it.valid_from, it.valid_to, tz, it.validity_end)} priority={it.operational?.priority} geometryNote={notamGeometryNote(it)} />
   }
 
   return <div className="ap-notam-tab">

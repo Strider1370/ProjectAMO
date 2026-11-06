@@ -18,14 +18,27 @@ async function downloadOnce(ctx) {
   const page = await ctx.newPage()
   try {
     await page.goto(NOTAM_URL, { waitUntil: 'networkidle', timeout: config.notam.timeout_ms })
-    const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: config.notam.timeout_ms }),
-      page.click('a:has-text("KML다운로드")'),
-    ])
-    const stream = await download.createReadStream()
-    let kml = ''
-    for await (const chunk of stream) kml += chunk.toString('utf8')
-    return kml
+    // Same form and endpoints used by KOCA's KML button. Read the complete
+    // result list as well: the KML exporter omits QKKKK checklists.
+    const form = await page.evaluate(() => new URLSearchParams(new FormData(document.querySelector('#searchForm'))).toString())
+    const query = new URLSearchParams(form)
+    query.set('sch_select', 'KML')
+    const response = await ctx.request.post('https://aim.koca.go.kr/xNotam/searchValidNotam.do', {
+      form: Object.fromEntries(query), timeout: config.notam.timeout_ms,
+    })
+    if (!response.ok()) throw new Error(`KOCA search HTTP ${response.status()}`)
+    const search = await response.json()
+    if (!Array.isArray(search?.DATA) || !search.DATA.length) throw new Error('KOCA search returned no records')
+    const searchItems = search.DATA
+    if (Number(search.Total) !== searchItems.length) throw new Error('KOCA search returned a truncated result list')
+    if (searchItems.some(row => !row.NOTAM_NO || !row.FULL_TEXT || !row.SEQ)) throw new Error('KOCA search record is incomplete')
+    const notamSeq = searchItems.filter(row => !['SW', 'AH'].includes(row.AIS_TYPE)).map(row => row.SEQ).join('|')
+    const exported = await ctx.request.post('https://aim.koca.go.kr/xNotam/airportValidNotam2.do?button=Y', {
+      form: { notam_gubun: 'NR', notam_seq: notamSeq, snowtam_seq: '', inorout: 'D', from_date: '', to_date: '', fullText: '' },
+      timeout: config.notam.timeout_ms,
+    })
+    if (!exported.ok()) throw new Error(`KOCA KML HTTP ${exported.status()}`)
+    return { kml: await exported.text(), searchItems, query: Object.fromEntries(query) }
   } finally {
     await page.close()
   }
@@ -41,10 +54,11 @@ export async function crawlNotamKml() {
     const ctx = await browser.newContext({ acceptDownloads: true })
     let lastKml = ''
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const kml = await downloadOnce(ctx)
+      const result = await downloadOnce(ctx)
+      const { kml } = result
       lastKml = kml
       if (isKml(kml) && countPlacemarks(kml) > 0) {
-        return { kml, fetchedAt: new Date().toISOString() }
+        return { ...result, fetchedAt: new Date().toISOString() }
       }
     }
     if (!isKml(lastKml)) throw new Error('crawlNotamKml: response is not KML')

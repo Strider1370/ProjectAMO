@@ -186,12 +186,12 @@ test('optional JSON decode failures preserve healthy initial siblings and change
   assert.ok(changed.taf)
 })
 
-test('main periodic loader never polls NOTAM without an explicit refresh', async () => {
+test('main periodic loader refreshes a changed NOTAM publication', async () => {
   const recorder = installFetchRecorder()
   try {
     const changed = await loadChangedWeatherData({ notam: true })
-    assert.deepEqual(changed, {})
-    assert.deepEqual(recorder.calls, [])
+    assert.deepEqual(changed, { notam: { content_hash: '/api/notam-hash' } })
+    assert.deepEqual(recorder.calls, ['/api/notam'])
   } finally {
     recorder.restore()
   }

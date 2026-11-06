@@ -89,6 +89,14 @@
 .notam-locfilter-label { font-size: 11px; font-weight: 800; color: var(--text-3); }
 .notam-locfilter-select { flex: 1; min-width: 0; padding: 5px 8px; font-size: 12px; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-1); }
 .notam-td-alt { padding: 9px 6px; color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.notam-td-alt { white-space: normal; overflow-wrap: anywhere; }
+.notam-sum-valid { white-space: normal; }
+.notam-time-filter { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; margin-bottom: var(--space-m); }
+.notam-time-filter button { min-height: var(--touch-min); padding: var(--space-s) var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-1); font: inherit; cursor: pointer; }
+.notam-time-filter button[aria-pressed="true"] { background: var(--accent); color: var(--bg-1); border-color: var(--accent); }
+.notam-time-filter span { font-size: var(--fs-200); color: var(--text-2); }
+.notam-geometry-note { color: var(--level-amber); font-size: var(--fs-200); }
+.ts-expired { color: var(--text-3); background: var(--bg-3); }
 .notam-td-state { padding: 9px 6px; text-align: right; white-space: nowrap; }
 .notam-chev { vertical-align: middle; margin-left: 4px; color: var(--text-3); transition: transform 0.15s; }
 .notam-chev.is-open { transform: rotate(180deg); }

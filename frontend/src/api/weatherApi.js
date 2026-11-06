@@ -111,6 +111,7 @@ function buildHashEntry(payload) {
 
 export function buildSnapshotMetaFromData(data = {}) {
   return {
+    notam: buildHashEntry(data.notam),
     metar: buildHashEntry(data.metar),
     metarOverseas: buildHashEntry(data.metarOverseas),
     metar_overseas: buildHashEntry(data.metarOverseas),
@@ -413,6 +414,7 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all', si
   const keys = []
   const preserveJson = (url) => fetchJson(url, { optional: 'preserve', signal })
 
+  if (changes.notam) { fetches.push(preserveJson('/api/notam')); keys.push('notam') }
   if (changes.metar) { fetches.push(preserveJson('/api/metar')); keys.push('metar') }
   if (changes.metarOverseas) { fetches.push(preserveJson('/api/metar-overseas')); keys.push('metarOverseas') }
   if (changes.taf) { fetches.push(preserveJson('/api/taf')); keys.push('taf') }

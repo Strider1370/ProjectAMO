@@ -1,7 +1,11 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { gzipSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
 import store from '../store.js'
 import config from '../config.js'
 import { crawlNotamKml } from '../notam/notam-crawler.js'
-import { parseNotamKml } from '../parsers/notam-parser.js'
+import { parseNotamKml, parseNotamText } from '../parsers/notam-parser.js'
 
 // Q-code 2nd/3rd letter (subject) → category. Facility-family subject codes are listed
 // explicitly (spec Q-code table); genuinely unmapped/malformed codes → 'other'.
@@ -66,16 +70,54 @@ export function classifyOperationalNotam(qcode, summary) {
   return { target, action, priority, confidence, reason: `${target}:${action}` }
 }
 
-export async function process() {
-  let crawled
+export function reconcileNotamSources(kml, searchItems) {
+  const { items, placemarks, dropped } = parseNotamKml(kml)
+  if (dropped) throw new Error(`KML parse dropped ${dropped}/${placemarks}`)
+  const byId = new Map(items.map(item => [item.id, item]))
+  if (byId.size !== items.length) throw new Error('duplicate KML NOTAM ids')
+  if (searchItems) {
+    const sourceIds = new Set(searchItems.map(row => row.NOTAM_NO))
+    if (sourceIds.size !== searchItems.length) throw new Error('duplicate search NOTAM ids')
+    if (items.some(item => !sourceIds.has(item.id))) throw new Error('KML/search identity mismatch')
+    for (const row of searchItems) {
+      // Search text is the lossless source; KML contributes geometry only.
+      const parsed = parseNotamText(row.FULL_TEXT, row.NOTAM_NO, byId.get(row.NOTAM_NO)?.geometry || null)
+      if (!parsed) throw new Error(`unparsed search NOTAM ${row.NOTAM_NO}`)
+      const kmlItem = byId.get(row.NOTAM_NO)
+      if (kmlItem && ['qcode', 'location', 'validFrom', 'validTo'].some(key => kmlItem[key] !== parsed[key])) {
+        throw new Error(`KML/search fields disagree for ${row.NOTAM_NO}`)
+      }
+      byId.set(row.NOTAM_NO, kmlItem ? { ...parsed, geometry: kmlItem.geometry, bufferNm: kmlItem.bufferNm,
+        geometrySource: kmlItem.geometrySource, approximated: kmlItem.approximated } : parsed)
+    }
+  }
+  return { items: [...byId.values()], audit: { searchCount: searchItems?.length ?? null, kmlCount: placemarks,
+    parsedCount: byId.size, supplementedCount: byId.size - items.length, dropped } }
+}
+
+function archiveSource(crawled, audit) {
+  const dir = path.join(config.storage.base_path, 'notam', 'source')
+  fs.mkdirSync(dir, { recursive: true })
+  const record = { ...crawled, audit, parser_version: 2 }
+  const bytes = Buffer.from(JSON.stringify(record))
+  const hash = createHash('sha256').update(bytes).digest('hex')
+  const name = `${crawled.fetchedAt.replace(/[^0-9TZ]/g, '')}-${hash.slice(0, 12)}.json.gz`
+  fs.writeFileSync(path.join(dir, `${name}.tmp`), gzipSync(bytes))
+  fs.renameSync(path.join(dir, `${name}.tmp`), path.join(dir, name))
+  for (const old of fs.readdirSync(dir).filter(name => name.endsWith('.json.gz')).sort().slice(0, -12)) fs.rmSync(path.join(dir, old))
+  return { path: `notam/source/${name}`, sha256: hash }
+}
+
+export async function process({ crawl = crawlNotamKml, save = store.save, archive = archiveSource } = {}) {
+  let crawled, reconciled, archived
   try {
-    crawled = await crawlNotamKml()
+    crawled = await crawl()
+    reconciled = reconcileNotamSources(crawled.kml, crawled.searchItems)
+    archived = archive(crawled, reconciled.audit)
   } catch (err) {
     return { type: 'notam', saved: false, reason: `crawl_failed: ${err.message}`, items: 0 }
   }
-  const { items: parsed, placemarks, dropped } = parseNotamKml(crawled.kml)
-  // 조용한 유실을 없앤다 — 이전에는 몇 건이 사라졌는지 알 방법이 없었다.
-  if (dropped > 0) console.warn(`[notam] Placemark ${placemarks}건 중 ${dropped}건이 레코드가 되지 못했습니다`)
+  const parsed = reconciled.items
   const items = parsed.map((r) => ({
     id: r.id,
     series: r.series,
@@ -85,6 +127,7 @@ export async function process() {
     scope: deriveScope(r.location),
     valid_from: r.validFrom,
     valid_to: r.validTo,
+    validity_end: r.validityEnd,
     schedule_text: r.scheduleText,
     altitude: r.altitude,
     operational: classifyOperationalNotam(r.qcode, r.summary),
@@ -94,12 +137,14 @@ export async function process() {
     bufferNm: r.bufferNm,
     geometrySource: r.geometrySource,
     approximated: r.approximated,
+    geographicExclusions: r.geographicExclusions,
+    coverage: deriveScope(r.location) === 'fir' && ['prohibited', 'restricted', 'danger', 'firing'].includes(categorize(r.qcode)) ? 'area' : deriveScope(r.location),
   }))
   if (items.length === 0) {
     return { type: 'notam', saved: false, reason: 'empty', items: 0 }
   }
-  const result = { fetched_at: crawled.fetchedAt, horizon_hours: config.notam.horizon_hours, items }
-  const saveResult = store.save('notam', result)
+  const result = { fetched_at: crawled.fetchedAt, horizon_hours: config.notam.horizon_hours, parser_version: 2, audit: reconciled.audit, source: archived, items }
+  const saveResult = save('notam', result)
   return { type: 'notam', saved: saveResult.saved, items: items.length }
 }
 

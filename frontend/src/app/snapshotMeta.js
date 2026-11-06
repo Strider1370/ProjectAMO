@@ -21,6 +21,7 @@ function overlayMetaDiffer(prev, next) {
 
 export function detectSnapshotChanges(prev, next) {
   const changes = {
+    notam: hashesDiffer(prev?.notam, next?.notam),
     metar: hashesDiffer(prev?.metar, next?.metar),
     metarOverseas: hashesDiffer(prev?.metarOverseas || prev?.metar_overseas, next?.metarOverseas || next?.metar_overseas),
     taf: hashesDiffer(prev?.taf, next?.taf),

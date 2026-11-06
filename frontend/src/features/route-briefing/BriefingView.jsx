@@ -28,7 +28,7 @@ import EnhancedTafTab from '../airport-panel/tabs/TafTab.jsx'
 import { useCrossSectionLayers } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { catColorOf, catDisplay, worstAirport, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
-import { deriveNotamTime, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
+import { deriveNotamTime, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES, notamGeometryNote } from '../notam/lib/notamViewModel.js'
 import NotamCell from '../notam/NotamCell.jsx'
 import RouteWeatherLegTable from './RouteWeatherLegTable.jsx'
 import './BriefingView.css'
@@ -582,7 +582,8 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
       metaText={`${NOTAM_CAT_LABEL[n.category] || n.category} · ${n.id}${n.routeIntervalNm ? ` · ${n.routeIntervalNm.startNm}–${n.routeIntervalNm.endNm}NM` : ''}`}
       altitude={formatAltitude(n.altitude)}
       rawText={n.rawText}
-      validText={formatValidPeriod(n.validFrom, n.validTo, tz)}
+      validText={formatValidPeriod(n.validFrom, n.validTo, tz, n.validityEnd)}
+      geometryNote={notamGeometryNote(n)}
       conflict={n.conflict}
       priority={showPriority ? n.operational?.priority : undefined}
     />

@@ -1,6 +1,8 @@
 import { evaluateHorizontalExposure, evaluateTimeStatus, evaluateAltitudeExposure, hazardBandFt } from './hazard-exposure.js'
 import { notamBandToFt } from './notam-briefing.js'
-import { routeIntervalInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { routeIntervalInGeometry, routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { hydrateNotamItem } from '../../../shared/notam-fields.js'
+import { scheduleStateOverWindow } from './schedule-window.js'
 import { gktgIntensity } from '../../../shared/gktg.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 
@@ -266,13 +268,18 @@ function matchHazards(hazards, axis, altitudeFt, etd, eta) {
 }
 
 function matchNotams(notams, axis, altitudeFt, etd, eta) {
-  return (notams ?? []).flatMap((item) => {
-    if (item.scope === 'fir') return []
-    const interval = item.geometry ? routeIntervalInGeometry(axis, item.geometry) : { entered: false }
+  return (notams ?? []).flatMap((saved) => {
+    const item = hydrateNotamItem(saved)
+    if (item.scope === 'fir' && !RESTRICTION_CATEGORIES.has(item.category)) return []
+    const interval = !item.geometry ? { entered: false } : item.bufferNm && item.geometry.type === 'LineString'
+      ? routeCorridorInGeometry(axis, item.geometry, item.bufferNm) : routeIntervalInGeometry(axis, item.geometry)
     if (!interval.entered) return []
     const timeKnown = !!item.valid_from && !!item.valid_to && !!etd && !!eta
     if (!timeKnown) return [{ id: item.id, status: 'undetermined' }]
     if (!timeWindowsOverlap(etd, eta, item.valid_from, item.valid_to)) return []
+    const schedule = scheduleStateOverWindow({ scheduleText: item.schedule_text, validFrom: item.valid_from, validTo: item.valid_to, etd, eta })
+    if (schedule === 'outside') return []
+    if (schedule === 'unknown' || item.approximated || item.geographicExclusions?.length) return [{ id: item.id, status: 'undetermined' }]
     const band = notamBandToFt(item.altitude)
     if (!band) return [{ id: item.id, status: 'undetermined' }]
     const vertical = altitudeFt >= band.lowFt && altitudeFt <= band.highFt

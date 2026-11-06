@@ -1,5 +1,5 @@
 // 시간상태(색의 유일한 축) + 고도 포맷(AGL/AMSL 기준면 보존). 순수 함수, 렌더 시점 계산.
-import { isScheduleActiveAt } from '../../../../../shared/notam-schedule.js'
+import { isScheduleActiveAt, notamScheduleWindows } from '../../../../../shared/notam-schedule.js'
 
 export const SOON_WINDOW_MS = 2 * 60 * 60 * 1000 // "곧 발효" 판정 임계값(config 상수)
 
@@ -8,6 +8,7 @@ export const TIME_STATE = {
   soon:     { key: 'soon',     glyph: '◐', label: '곧 발효' },
   upcoming: { key: 'upcoming', glyph: '○', label: '예정' },
   conditional: { key: 'conditional', glyph: '◌', label: '시간 확인' },
+  expired: { key: 'expired', glyph: '×', label: '종료' },
 }
 
 // 카테고리는 아이콘 + 라벨로만 구분(색과 무관). icon 키는 NotamPanel/Tab에서 tabler로 매핑.
@@ -25,8 +26,9 @@ export const NOTAM_CATEGORIES = [
 export function deriveTimeState(validFrom, validTo, nowMs, soonWindowMs = SOON_WINDOW_MS) {
   const from = typeof validFrom === 'number' ? validFrom : Date.parse(validFrom)
   const to = typeof validTo === 'number' ? validTo : Date.parse(validTo)
-  if (!Number.isFinite(from) || !Number.isFinite(to)) return 'upcoming'
-  if (nowMs >= from && nowMs <= to) return 'active'
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 'conditional'
+  if (nowMs >= to) return 'expired'
+  if (nowMs >= from && nowMs < to) return 'active'
   if (nowMs < from && from - nowMs <= soonWindowMs) return 'soon'
   return 'upcoming'
 }
@@ -38,7 +40,9 @@ export function deriveNotamTime(item, nowMs) {
   if (base !== 'active' || !item.schedule_text) return { state: base, note: '' }
   const withinSchedule = isScheduleActiveAt(item.schedule_text, item.valid_from, item.valid_to, nowMs)
   if (withinSchedule === null) return { state: 'conditional', note: 'D) 시간 조건 확인' }
-  return withinSchedule ? { state: 'active', note: '' } : { state: 'upcoming', note: 'D) 시간대 외' }
+  if (withinSchedule) return { state: 'active', note: '' }
+  const next = notamScheduleWindows(item.schedule_text, item.valid_from, item.valid_to, nowMs, nowMs + SOON_WINDOW_MS)?.[0]
+  return { state: next ? 'soon' : 'upcoming', note: 'D) 시간대 외', ...(next ? { nextStart: next[0] } : {}) }
 }
 
 export function sortOperationalFirst(items, nowMs) {
@@ -57,6 +61,13 @@ function lowFlToFt(v) { return Number(v) === 0 ? 'SFC' : `${comma(Number(v) * 10
 // SFC(0)~무제한(FL 999 등) → "전고도". 저고도 FL은 ft. 그 외 FL은 FLxxx. FT는 AGL/AMSL 라벨 보존.
 export function formatAltitude(altitude) {
   if (!altitude) return ''
+  if (altitude.source === 'qline') return '고도 확인'
+  if (altitude.lowerBound && altitude.upperBound) {
+    const lo = altitude.lowerBound, hi = altitude.upperBound
+    if (lo.unit === 'SFC') return `SFC–${formatBound(hi)}`
+    if (lo.unit === hi.unit && lo.ref === hi.ref && lo.unit === 'FT') return `${comma(lo.value)}–${formatBound(hi)}`
+    return `${formatBound(lo)}–${formatBound(hi)}`
+  }
   const { lower, upper, unit, ref } = altitude
   if (unit === 'FL' && Number(lower) === 0 && Number(upper) >= 999) return '전고도'
   if (unit === 'FL' && Number(upper) <= LOW_FL_MAX) return `${lowFlToFt(lower)}–${lowFlToFt(upper)}`
@@ -71,6 +82,8 @@ export function formatAltitude(altitude) {
 // 예) 4920FT AGL → "4920\n───\nSFC", 전고도 → "UNL\n───\nSFC", FL밴드 → "FL120\n───\nFL060".
 export function formatAltitudeBand(altitude) {
   if (!altitude) return ''
+  if (altitude.source === 'qline') return '고도 확인'
+  if (altitude.lowerBound && altitude.upperBound) return `${formatBound(altitude.upperBound)}\n───\n${formatBound(altitude.lowerBound)}`
   const { lower, upper, unit } = altitude
   const isFL = String(unit || '').toUpperCase() === 'FL'
   if (isFL && Number(lower) === 0 && Number(upper) >= 999) return '전고도' // 목록/탭과 동일 라벨(밴드 대신)
@@ -81,7 +94,7 @@ export function formatAltitudeBand(altitude) {
 }
 
 // 유효기간(NOTAM 최우선 정보). B) ~ C) 를 'MM/DD HH:MM ~ MM/DD HH:MM KST'(또는 Z)로 — 설정탭 tz 반영 + 표기.
-export function formatValidPeriod(validFrom, validTo, tz = 'KST') {
+export function formatValidPeriod(validFrom, validTo, tz = 'KST', endKind = 'fixed') {
   const off = tz === 'KST' ? 9 * 3600000 : 0
   const fmt = (v) => {
     const ms = typeof v === 'number' ? v : Date.parse(v)
@@ -91,7 +104,27 @@ export function formatValidPeriod(validFrom, validTo, tz = 'KST') {
     return `${p(d.getUTCMonth() + 1)}/${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`
   }
   const suffix = tz === 'KST' ? 'KST' : 'Z'
-  return `${fmt(validFrom)} ~ ${fmt(validTo)} ${suffix}`
+  return `${fmt(validFrom)} ~ ${endKind === 'permanent' ? 'PERM' : fmt(validTo)} ${suffix}${endKind === 'estimated' ? ' (EST)' : ''}`
+}
+
+function formatBound(bound) {
+  if (bound.unit === 'SFC' || bound.unit === 'UNL') return bound.unit
+  if (bound.unit === 'FL') return `FL${bound.value}`
+  return `${comma(bound.value)}${bound.unit}${bound.ref ? ` ${bound.ref}` : ''}`
+}
+
+export function filterNotamTime(items, nowMs, activeOnly = false) {
+  return (items || []).filter(item => {
+    const state = deriveNotamTime(item, nowMs).state
+    return activeOnly ? state === 'active' : state !== 'expired'
+  })
+}
+
+export function notamGeometryNote(item) {
+  const notes = []
+  if (item.approximated) notes.push('근사 영역 · 원문 확인')
+  if (item.geographicExclusions?.length) notes.push(`제외 구역 미반영: ${item.geographicExclusions.join('; ')}`)
+  return notes.join(' · ')
 }
 
 // 목적(RMK/FOR) 키워드 → 한글. 없으면 ''.
@@ -148,7 +181,7 @@ export function notamSummary(item) {
   return head.slice(0, 70)
 }
 
-const RANK = { active: 0, soon: 1, upcoming: 2 }
+const RANK = { active: 0, conditional: 1, soon: 2, upcoming: 3, expired: 4 }
 export function sortActiveFirst(items, nowMs) {
   return [...items].sort((a, b) =>
     RANK[deriveTimeState(a.valid_from, a.valid_to, nowMs)] -

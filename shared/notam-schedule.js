@@ -108,6 +108,7 @@ export function isScheduleActiveAt(scheduleText, validFrom, validTo, nowMs) {
   const fromMs = Date.parse(validFrom)
   const toMs = Date.parse(validTo)
   if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return null
+  if (nowMs < fromMs || nowMs >= toMs) return false
 
   // 날짜 해석은 B)부터 시간순으로 진행한다. 마지막 그룹이 C) 이후로 넘어가는 표기도 있어 여유를 둔다.
   const limitMs = toMs + 40 * DAY_MS
@@ -143,4 +144,42 @@ export function isScheduleActiveAt(scheduleText, validFrom, validTo, nowMs) {
   return false
 }
 
-export default { parseNotamSchedule, isScheduleActiveAt }
+// Exact UTC intersections. Short activities must not disappear between samples.
+export function notamScheduleWindows(scheduleText, validFrom, validTo, fromMs, toMs) {
+  const validStart = Date.parse(validFrom), validEnd = Date.parse(validTo)
+  if (![validStart, validEnd, fromMs, toMs].every(Number.isFinite)) return null
+  const start = Math.max(validStart, fromMs), end = Math.min(validEnd, toMs)
+  if (start >= end) return []
+  if (!scheduleText) return [[start, end]]
+  const groups = parseNotamSchedule(scheduleText)
+  if (!groups) return null
+  const result = []
+  const add = (a, b) => { if (a < end && b > start) result.push([Math.max(a, start), Math.min(b, end)]) }
+  let cursor = validStart
+  for (const group of groups) {
+    if (group.cross) {
+      const date = findDate(group.days[0][0], group.month, cursor, validEnd + 40 * DAY_MS)
+      if (date == null) return null
+      cursor = date
+      const endDate = findDate(group.cross.endDay, group.cross.endMonth, date, validEnd + 40 * DAY_MS)
+      if (endDate == null) return null
+      add(date + group.cross.startMin * 60000, endDate + group.cross.endMin * 60000)
+      continue
+    }
+    if (!group.days.length) {
+      for (let day = Math.floor(start / DAY_MS) * DAY_MS - DAY_MS; day < end; day += DAY_MS) {
+        for (const [s, e] of group.times) add(day + s * 60000, day + (e < s ? 1440 + e : e) * 60000)
+      }
+      continue
+    }
+    for (const [a, b] of group.days) for (let dom = a; dom <= b; dom++) {
+      const date = findDate(dom, group.month, cursor, validEnd + 40 * DAY_MS)
+      if (date == null) return null
+      cursor = date
+      for (const [s, e] of group.times) add(date + s * 60000, date + (e <= s ? 1440 + e : e) * 60000)
+    }
+  }
+  return result.sort((a, b) => a[0] - b[0])
+}
+
+export default { parseNotamSchedule, isScheduleActiveAt, notamScheduleWindows }
