@@ -45,13 +45,18 @@ test.describe('airport-panel', () => {
       itemsFit: [...strip.children].every((item) => item.scrollWidth <= item.clientWidth),
       inHeader: strip.parentElement?.classList.contains('airport-panel-head'),
       rightGap: Math.round(strip.parentElement.getBoundingClientRect().right - strip.getBoundingClientRect().right),
+      textLeftGap: Math.round(strip.firstElementChild.getBoundingClientRect().left - strip.parentElement.querySelector('.airport-panel-info').getBoundingClientRect().left),
       bottomGap: Math.round(strip.parentElement.getBoundingClientRect().bottom - strip.getBoundingClientRect().bottom),
     }))
     expect(stripLayout.itemCount).toBe(2)
     expect(stripLayout.itemsFit).toBe(true)
     expect(stripLayout.inHeader).toBe(true)
-    expect(stripLayout.rightGap).toBeGreaterThanOrEqual(0)
-    expect(stripLayout.rightGap).toBeLessThanOrEqual(24)
+    if (testInfo.project.name === 'mobile') {
+      expect(Math.abs(stripLayout.textLeftGap)).toBeLessThanOrEqual(1)
+    } else {
+      expect(stripLayout.rightGap).toBeGreaterThanOrEqual(0)
+      expect(stripLayout.rightGap).toBeLessThanOrEqual(24)
+    }
     expect(stripLayout.bottomGap).toBeGreaterThanOrEqual(0)
     expect(stripLayout.bottomGap).toBeLessThanOrEqual(12)
 

@@ -244,6 +244,7 @@
 
 /* ── Body (단일 스크롤 컨테이너) ── */
 .airport-panel-body {
+  container: airport-reports / inline-size;
   flex: 1;
   overflow-y: auto;
   /* 패널 스크롤이 끝에 닿아도 뒤 문서로 넘기지 않는다(터치 기기에서 패널이 밀리는 것 방지). */
@@ -331,14 +332,32 @@
 }
 .ap-sec-head.has-history .ap-sec-fold { margin-left: auto; }
 .ap-sec-badge { margin-left: 4px; }
+.ap-sec--empty .ap-sec-head {
+  margin-bottom: 0;
+  cursor: default;
+}
+.ap-sec-status {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xxs) var(--space-s);
+  border-radius: var(--radius-circular);
+  background: var(--bg-3);
+  color: var(--text-3);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+}
+.ap-sec-status--clear {
+  background: var(--level-green-bg);
+  color: var(--level-green);
+}
 .ap-sec-fold {
   margin-left: auto;
   color: var(--text-3);
   transition: transform 0.2s ease;
   flex: 0 0 auto;
 }
-.ap-sec:not([open]) .ap-sec-fold { transform: rotate(-90deg); }
-.ap-sec:not([open]) .ap-sec-head {
+details.ap-sec:not([open]) .ap-sec-fold { transform: rotate(-90deg); }
+details.ap-sec:not([open]) .ap-sec-head {
   margin-bottom: 0;
   border-bottom-color: transparent;
 }
@@ -2623,6 +2642,12 @@
     max-height: 112px;
     padding-bottom: 38px;
     overflow: hidden;
+  }
+
+  .ap-operations-strip {
+    left: calc(var(--space-xxl) - var(--space-s) - 1px);
+    right: auto;
+    justify-content: flex-start;
   }
 
   .airport-panel-close {

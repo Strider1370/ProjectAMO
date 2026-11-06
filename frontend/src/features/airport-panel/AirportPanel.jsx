@@ -74,6 +74,11 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
   const [activeSection, setActiveSection] = useState('warn')
   const [infoRequested, setInfoRequested] = useState(false)
   const [headerUsesWeather, setHeaderUsesWeather] = useState(false)
+  const demoNowMs = useDemoNowMs()
+  const warning = weatherData?.warning?.airports?.[icao] || null
+  const warnCount = warning?.warnings?.length || 0
+  const lightning = buildAirportLightningModel(weatherData?.lightning, airport, demoNowMs ?? nowMs ?? Date.now())
+  const compactWarning = warnCount === 0 && !lightning.active
 
   // 공항 전환 시 스크롤 상단 리셋
   useEffect(() => {
@@ -149,10 +154,7 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
     )
     secEls.forEach((el) => io.observe(el))
     return () => io.disconnect()
-  }, [icao, isFullFeature, airportInfo, onRequestDeferredWeatherData])
-
-  // 시연 중이면 TAF 배지·NOTAM 유효 판단을 시연 기준시각으로 한다(TAF 탭 자체는 TafTab이 따로 맞춘다).
-  const demoNowMs = useDemoNowMs()
+  }, [icao, isFullFeature, airportInfo, onRequestDeferredWeatherData, compactWarning])
 
   const airportWeatherSource = airport?.overseas ? 'overseas' : 'domestic'
   const metarPayload = airportWeatherSource === 'overseas' ? weatherData?.metarOverseas : weatherData?.metar
@@ -174,9 +176,6 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
     ? `/images/weather-${weatherBanner}.png`
     : `/images/${String(icao || 'RKSI').toLowerCase()}_banner.webp`
   const amos = weatherData?.amos?.airports?.[icao] || null
-  const warning = weatherData?.warning?.airports?.[icao] || null
-  const warnCount = warning?.warnings?.length || 0
-  const lightning = buildAirportLightningModel(weatherData?.lightning, airport, demoNowMs ?? nowMs ?? Date.now())
 
   const metarTime = displayedMetar?.header?.observation_time || displayedMetar?.header?.issue_time
   const tafValid = displayedTaf?.header?.valid_start
@@ -277,6 +276,20 @@ function AirportPanel({ airport, weatherData, nowMs, onClose, onRequestDeferredW
         <div className="airport-panel-body" ref={bodyRef}>
           {sections.map((s) => {
             const Icon = SECTION_ICON[s.id]
+            if (s.id === 'warn' && compactWarning) {
+              const loaded = !!weatherData?.warning
+              return (
+                <section key={s.id} id="sec-warn" className="ap-sec ap-sec--empty">
+                  <div className="ap-sec-head">
+                    <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />
+                    <span role="heading" aria-level="2" className="ap-sec-title">공항경보</span>
+                    <span className={`ap-sec-status${loaded ? ' ap-sec-status--clear' : ''}`} aria-label={loaded ? '공항경보 없음' : '공항경보 확인 중'}>
+                      {loaded ? '없음' : '확인 중'}
+                    </span>
+                  </div>
+                </section>
+              )
+            }
             return (
               <details key={s.id} id={`sec-${s.id}`} className="ap-sec" open>
                 <summary className={`ap-sec-head${s.history?.entries.length ? ' has-history' : ''}`}>

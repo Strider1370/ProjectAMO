@@ -28,10 +28,57 @@
 .ap-history-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ap-history-color); }
 .ap-history-badge-kind { padding: 0 3px; border-radius: 3px; background: var(--level-amber); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); }
 .ap-history-badge-latest { color: var(--accent); font-size: var(--fs-100); font-weight: var(--fw-bold); }
-@media (max-width: 719px) {
+@container airport-reports (max-width: 760px) {
   .ap-sec-head.has-history { flex-wrap: wrap; }
-  .ap-history-picker { order: 1; flex-basis: calc(100% - 29px); margin-left: 29px; }
-  .ap-sec-head .report-timezone-toggle { order: 1; margin-left: calc(var(--space-xl) + var(--space-s)); }
-  .ap-sec-head:has(.report-timezone-toggle) .ap-history-picker { flex-basis: auto; margin-left: 0; margin-right: 0; }
-  .ap-history-badge { min-height: 28px; }
+  .ap-sec-head .ap-history-picker {
+    order: 1;
+    flex: 1 0 100%;
+    margin: 0;
+    align-items: flex-start;
+  }
+  .ap-history-label { line-height: 28px; }
+  .ap-history-badges {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    overflow: visible;
+    padding: 2px 0;
+  }
+}
+@media (max-width: 719px) {
+  .ap-sec-head:has(.report-timezone-toggle) { flex-wrap: wrap; gap: var(--space-snudge); }
+  .ap-sec-head:has(.report-timezone-toggle) .ap-sec-icon { width: 16px; height: 16px; }
+  .ap-sec-head:has(.report-timezone-toggle) .ap-sec-title { font-size: var(--fs-300); flex: 0 0 auto; }
+  .ap-sec-head:has(.report-timezone-toggle) .ap-sec-meta { font-size: 11px; }
+  .ap-sec-head .report-timezone-toggle {
+    margin-left: auto;
+    gap: 0;
+    padding: var(--space-xxs);
+  }
+  .ap-sec-head .report-timezone-toggle button {
+    min-width: 34px;
+    min-height: 24px;
+    padding: 0 var(--space-xs);
+    line-height: 24px;
+    font-size: var(--fs-200);
+  }
+  .ap-sec-head:has(.report-timezone-toggle) .ap-sec-fold { margin-left: 0; width: 14px; }
+  .ap-sec-head.has-history { flex-wrap: wrap; }
+  .ap-sec-head .ap-history-picker {
+    order: 1;
+    flex: 1 0 100%;
+    margin: 0;
+    align-items: flex-start;
+  }
+  .ap-history-label { line-height: 28px; }
+  .ap-history-badges {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    overflow: visible;
+    padding: 0;
+  }
+  .ap-history-badge { min-height: 28px; padding-inline: var(--space-xs); gap: 3px; }
+}
+@media (max-width: 374px) {
+  .ap-sec-head:has(.report-timezone-toggle) { gap: var(--space-xs); }
+  .ap-sec-head:has(.report-timezone-toggle) .ap-sec-meta { font-size: var(--fs-100); }
 }
