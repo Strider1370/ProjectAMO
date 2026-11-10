@@ -18,7 +18,7 @@ test('monitoring map passes only its approved weather overlays', () => {
     assert.match(source, new RegExp(`${prop}=\\{weather\\?\\.`))
   }
   assert.match(source, /sigmetData=\{weather\?\.sigmet \|\| null\}/)
-  for (const prop of ['echoMeta', 'wissdomMeta', 'qpfMeta', 'echoTopMeta', 'rainviewerMeta', 'convectiveMeta', 'sigwxLowData', 'notamData']) {
+  for (const prop of ['echoMeta', 'wissdomMeta', 'rainviewerMeta', 'convectiveMeta', 'sigwxLowData', 'notamData']) {
     assert.doesNotMatch(source, new RegExp(`${prop}=`))
   }
   assert.match(source, /metLayerIds=\{MONITORING_MET_LAYER_IDS\}/)

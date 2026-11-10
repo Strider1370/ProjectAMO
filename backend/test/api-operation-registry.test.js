@@ -71,7 +71,7 @@ test('resolves KMA radar graphic assets through the declared observable transpor
 
   assert.equal(asset.id, 'kma_radar_graphics_asset')
   assert.equal(asset.apiHub, false)
-  assert.deepEqual(asset.dataHealthKeys, ['radar', 'hci', 'wissdom', 'qpf'])
+  assert.deepEqual(asset.dataHealthKeys, ['radar', 'hci', 'wissdom'])
 })
 
 test('rejects ambiguous operations and non-on-demand operations without data health rows', () => {
@@ -211,7 +211,7 @@ test('reports on-demand APIs without an expected timestamp', () => {
 
 test('scheduled satellite API Hub operations inherit their collector cadence', () => {
   const collectors = activeCollectorRegistry(config)
-  for (const id of ['satellite_ir', 'satellite_fog', 'satellite_ci', 'satellite_ctps', 'satellite_visible']) {
+  for (const id of ['satellite_ir', 'satellite_fog', 'satellite_ctps', 'satellite_visible']) {
     const operation = API_OPERATION_REGISTRY.find((candidate) => candidate.id === id)
     const collector = collectors.find((candidate) => candidate.type === operation.collectorType)
     const expected = describeExpectedApiCall(operation, collector, Date.parse('2026-08-10T00:00:00.000Z'))
@@ -229,4 +229,8 @@ test('KIM surface chart calls share the KIM grid URL but are told apart by the c
   assert.equal(chart.requestPolicy.timeoutMs, config.kim_surface_chart.timeout_ms)
   assert.equal(resolveApiOperation({ url: url(config.kim_surface_wind.sub) }).id, 'kim_grid')
   assert.throws(() => resolveApiOperation({ id: 'kim_grid', url: url(config.kim_surface_chart.sub) }), /mismatch/)
+})
+
+test('retired CI is absent from active API operations', () => {
+  assert.equal(API_OPERATION_REGISTRY.some(operation => operation.id === 'satellite_ci'), false)
 })

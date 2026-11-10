@@ -15,8 +15,10 @@ export function mobilePressureSliderBounds(basemapRect, navigationRect, { gap = 
 }
 
 // Card/rail rectangles are viewport coordinates. Return map-relative offsets.
+// 좁은 지도에서는 시각 카드가 왼쪽 아래로 내려가므로, 지도 위쪽에 붙은 카드만 레일을 밀어낸다.
 export function sigwxRailLayout({ mapRect, cardRect, sliderRects = [], lowerTop = mapRect.bottom - 100 }) {
-  const top = Math.max(108, Math.ceil((cardRect?.bottom ?? mapRect.top) - mapRect.top) + 12)
+  const cardAtTop = Boolean(cardRect) && !(cardRect.top - mapRect.top >= 80)
+  const top = Math.max(108, Math.ceil((cardAtTop ? cardRect.bottom : mapRect.top) - mapRect.top) + 12)
   const clearance = sliderRects.length ? Math.ceil(mapRect.right - Math.min(...sliderRects.map(rect => rect.left))) + 12 : 12
-  return { top, clearance, trackHeight: Math.max(40, Math.min(400, Math.floor(lowerTop - mapRect.top - top - 64))) }
+  return { top, clearance, trackHeight: Math.max(40, Math.min(520, Math.floor(lowerTop - mapRect.top - top - 64))) }
 }

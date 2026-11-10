@@ -1,10 +1,8 @@
-import { addOrUpdateGeoJsonSource, setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
+import { setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 export const CTPS_SOURCE = 'gk2a-ctps-source'
 export const CTPS_LAYER = 'gk2a-ctps-raster'
-export const CI_SOURCE = 'gk2a-ci-source'
-export const CI_LAYER = 'gk2a-ci-fill'
-const EMPTY = { type: 'FeatureCollection', features: [] }
 
 function coordinates(bounds) {
   if (!Array.isArray(bounds) || bounds.length !== 2) return null
@@ -26,27 +24,11 @@ function ensureCtps(map, frame) {
     map.removeSource?.(CTPS_SOURCE)
     map.addSource(CTPS_SOURCE, { type: 'image', url, coordinates: imageCoordinates })
   }
-  if (!map.getLayer(CTPS_LAYER)) map.addLayer({ id: CTPS_LAYER, type: 'raster', source: CTPS_SOURCE, slot: 'middle', paint: { 'raster-opacity': 0.55, 'raster-fade-duration': 0 } })
-  map.moveLayer?.(CI_LAYER)
+  if (!map.getLayer(CTPS_LAYER)) map.addLayer({ id: CTPS_LAYER, type: 'raster', source: CTPS_SOURCE, slot: 'middle', paint: { 'raster-opacity': MAP_LAYER_OPACITY.ctps, 'raster-fade-duration': 0 } })
   return true
 }
 
-export function installConvectiveLayers(map) {
-  addOrUpdateGeoJsonSource(map, CI_SOURCE, EMPTY)
-  if (!map.getLayer(CI_LAYER)) map.addLayer({ id: CI_LAYER, type: 'fill', source: CI_SOURCE, slot: 'top', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.55 } })
-  setMapLayerVisible(map, CI_LAYER, false)
-}
-
-export function syncConvectiveLayers(map, { ciFrame, ctpsFrame, minFl = 'all', ciVisible, ctpsVisible }) {
-  installConvectiveLayers(map)
+export function syncConvectiveLayers(map, { ctpsFrame, minFl = 'all', ctpsVisible }) {
   const hasCtps = ensureCtps(map, ctpsFrame && { ...ctpsFrame, minFl })
-  map.getSource(CI_SOURCE)?.setData(ciVisible && ciFrame?.path ? ciFrame.path : EMPTY)
   setMapLayerVisible(map, CTPS_LAYER, Boolean(ctpsVisible && hasCtps))
-  setMapLayerVisible(map, CI_LAYER, Boolean(ciVisible && ciFrame?.path))
-}
-
-export function queryCiAtPoint(map, point) {
-  const features = map?.queryRenderedFeatures?.(point, { layers: [CI_LAYER] }) || []
-  const feature = features.reduce((best, candidate) => !best || Number(candidate?.properties?.signal) > Number(best?.properties?.signal) ? candidate : best, null)
-  return feature?.properties ? { ...feature.properties } : null
 }

@@ -3,6 +3,7 @@ import { selectJetAxes } from './jetAxisSelection.js'
 export { pressureToFl, sampleField } from './tropopauseJetSampling.js'
 import { isothermSegments, chainContourSegments } from '../../../shared/weather/gridContours.js'
 import { JET_MIN_KT, TROP_BANDS, TROP_CAP_FL, TROP_CLEAR_FL, TROP_EDGE_LEVELS } from '../../../shared/weather/tropopauseJetPresentation.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 
 // 보기 시각에 가장 가까운 예보시각. 자료가 없는 시각을 다른 자료로 채우지 않는다.
@@ -70,7 +71,7 @@ export function buildTropJetRaster(field, displayFl, scale = 4, bands = TROP_BAN
       if (color) {
         if (!rgbCache.has(color)) rgbCache.set(color, hexRgb(color))
         const [r, g, b] = rgbCache.get(color)
-        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 150
+        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = Math.round(MAP_LAYER_OPACITY.tropopause * 255)
       }
     }
   }

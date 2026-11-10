@@ -74,11 +74,11 @@ function TimelineRail({
   }, [referenceNowMs])
 
   const futureMs = normalizeNwpTimes(nwpTimes).map((time) => time.ms)
-  // QPF valid times are selectable only on an exact match, so they must be reachable ticks —
+  // Exact forecast times (SIGWX HIGH) are selectable only on an exact match, so they must be reachable ticks —
   // by keyboard and by drag — not just times the playback loop happens to step onto.
   const forecastMs = (Array.isArray(forecastTicksMs) ? forecastTicksMs : []).filter(Number.isFinite)
   const keyboardTicks = [...new Set([...pastTicksMs, ...forecastMs, ...futureMs])].sort((a, b) => a - b)
-  const domain = buildTimelineDomain({ pastTicksMs, nwpTimesMs: futureMs, qpfTimesMs: forecastMs, nowMs })
+  const domain = buildTimelineDomain({ pastTicksMs, nwpTimesMs: futureMs, forecastTimesMs: forecastMs, nowMs })
   const selected = Number.isFinite(selectedMs)
     ? clampMs(domain, selectedMs)
     : (pastTicksMs.length ? pastTicksMs[pastTicksMs.length - 1] : nowMs)

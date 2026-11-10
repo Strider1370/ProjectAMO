@@ -35,34 +35,26 @@ test('main profile still detects RainViewer changes', () => {
   assert.equal(detectSnapshotChanges(prev, next).rainviewerMeta, true)
 })
 
-test('detectSnapshotChanges tracks WISSDOM and QPF graphics metadata independently', () => {
-  const prev = {
-    wissdomMeta: { tm: '202608041700', hash: 'wissdom-old' },
-    qpfMeta: { tm: '202608041700', hash: 'qpf-stable' },
-  }
-  const next = {
-    wissdomMeta: { tm: '202608041700', hash: 'wissdom-new' },
-    qpfMeta: { tm: '202608041700', hash: 'qpf-stable' },
-  }
+test('detectSnapshotChanges tracks WISSDOM graphics metadata by hash', () => {
+  const prev = { wissdomMeta: { tm: '202608041700', hash: 'wissdom-old' }, hsrMeta: { tm: '202608041700', hash: 'hsr-stable' } }
+  const next = { wissdomMeta: { tm: '202608041700', hash: 'wissdom-new' }, hsrMeta: { tm: '202608041700', hash: 'hsr-stable' } }
 
   const changes = detectSnapshotChanges(prev, next)
 
   assert.equal(changes.wissdomMeta, true)
-  assert.equal(changes.qpfMeta, false)
+  assert.equal(changes.hsrMeta, false)
 })
 
 test('detectSnapshotChanges tracks every independently published timeline metadata file', () => {
   const prev = {
     hsrMeta: { tm: '202608041700', hash: 'hsr-old' },
     hciMeta: { tm: '202608041700', hash: 'hci-stable' },
-    echoTopMeta: { tm: '202608041700', hash: 'etop-stable' },
     satVisibleMeta: { tm: '202608041700', hash: 'visible-stable' },
   }
   const next = {
     ...prev,
     hsrMeta: { tm: '202608041710', hash: 'hsr-new' },
     hciMeta: { tm: '202608041710', hash: 'hci-new' },
-    echoTopMeta: { tm: '202608041710', hash: 'etop-new' },
     satVisibleMeta: { tm: '202608041710', hash: 'visible-new' },
   }
 
@@ -70,7 +62,6 @@ test('detectSnapshotChanges tracks every independently published timeline metada
 
   assert.equal(changes.hsrMeta, true)
   assert.equal(changes.hciMeta, true)
-  assert.equal(changes.echoTopMeta, true)
   assert.equal(changes.satVisibleMeta, true)
 })
 

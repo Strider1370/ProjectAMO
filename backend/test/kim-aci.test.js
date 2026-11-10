@@ -20,7 +20,7 @@ function setup(t) {
   const names=level.kind==='pressure'?['T','q']:['T']
   writeKimNwpGrid({root,domain,grid:buildKimNwpGrid({tmfc,hf,level,components:names.map(variable=>({variable,unit:variable==='T'?'K':'kg/kg',nx:2,ny:2,bounds:grid,values:Array(4).fill(variable==='T'?285:.005)}))})})
  }
- for(const [name,value,unit] of [['ps',100000,'Pa'],['q2m',.005,'kg/kg'],['pr',1/3600,'kg/m2/s'],['ulwrtoa',180,'W/m2']]) {
+ for(const [name,value,unit] of [['ps',100000,'Pa'],['q2m',.005,'kg/kg'],['precc',1.5,'kg/m2'],['ulwrtoa',150,'W/m2']]) {
   const text=`# /NE57/file.ft012.${tmfc}.nc\n# = ${name}, unit = ${unit}, level = 0,\n# i = 2, j = 2\n# lon1 = 90.0, lat1 = 6.0, lon2 = 90.1, lat2 = 6.1\n${value} ${value}\n${value} ${value}\n`
   writeKimRawText(path.join(root,'kim_nwp_ea','runs',`KIMG_NE57_${tmfc}`,'raw',name==='ps'?'gktg':'aci',`hf${hf}-${name}-0.txt`),text)
  }
@@ -32,10 +32,13 @@ test('NC round trip, immutable binary/JSON, CAPE reuse across score changes and 
  const result=await calculateAci({root,domain,tmfc,forecastHours:[hf],calculate})
  assert.deepEqual(result.failures,[]);assert.equal(calls,1)
  const revision=result.entries[0].revision,field=readKimAciField({root,domain,tmfc,hf,revision})
- assert.equal(field.status[3],1);assert.equal(field.score[3],-32768);assert.equal(field.validCount,3)
+ // ACIM(가을): OLR 150 < OLR1 → M_OLR=1, 강수 1.5 > APCP2 → M_APCP=1 → ACI 1, 운정 FL350.
+ // CAPE 계산이 안 된 칸(status 1)도 ACIM 점수는 그대로 있다.
+ assert.equal(field.season,'SON');assert.equal(field.status[3],1);assert.equal(field.cape[3],null)
+ assert.deepEqual(field.score,[10000,10000,10000,10000]);assert.deepEqual(field.topFl,[350,350,350,350]);assert.equal(field.validCount,4)
  const binary=decodeKimMapBinary(gunzipSync(ensureAciBinary({root,domain,tmfc,hf,revision}).gzip))
  assert.deepEqual(binary,aciMapField(field))
- const changed=await calculateAci({root,domain,tmfc,forecastHours:[hf],calculate,scoreSpec:{version:'test-v3',settings:{...ACI_SPEC.settings,capeHigh:5000}}})
+ const changed=await calculateAci({root,domain,tmfc,forecastHours:[hf],calculate,scoreSpec:{...ACI_SPEC,version:'test-v3'}})
  assert.equal(calls,1);assert.notEqual(changed.entries[0].revision,revision);assert.equal(changed.entries[0].capeRevision,result.entries[0].capeRevision)
  cleanupKimNwpRuns({root,domain,maxRuns:1,latestRunId:'KIMG_NE57_2026100906'})
  assert.ok(fs.existsSync(aciPath({root,domain,tmfc,hf,revision})))
@@ -54,15 +57,16 @@ test('empty failed calculation preserves previous usable ACI publication',async 
  const failed=await calculateAci({root,domain,tmfc,forecastHours:[0],calculate:fakeCalculate})
  assert.equal(failed.entries.length,0);assert.equal(failed.failures.length,1);assert.deepEqual(readKimAciLatest(root,domain),before)
 })
-test('API point shares the published score; bad selectors and outside points are rejected',async t=>{
+test('API point shares the published ACIM value and cloud top; bad selectors and outside points are rejected',async t=>{
  const root=setup(t),r=await calculateAci({root,domain,tmfc,forecastHours:[hf],calculate:fakeCalculate}),revision=r.entries[0].revision
  const app=express();registerKimAciRoutes(app,{root,resolveDomain:()=>domain,sendIndex:(res,v,key)=>res.set('ETag',key).json(v),sendField:(res,v,key)=>res.set('ETag',key).json(v)})
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>server.close())
  const base=`http://127.0.0.1:${server.address().port}/api/kim/aci`
- const index=await (await fetch(base+'/index')).json();assert.equal(index.times[0].hf,hf)
+ const index=await (await fetch(base+'/index')).json();assert.equal(index.times[0].hf,hf);assert.equal(index.product,'ACIM')
  const query=`tmfc=${tmfc}&hf=${hf}&revision=${revision}`
  const point=await (await fetch(`${base}/point?${query}&lon=90&lat=6`)).json(),field=await (await fetch(`${base}/field?${query}`)).json()
- assert.equal(point.score,field.score[0]*field.scoreScale)
+ assert.equal(point.score,1);assert.equal(field.score,undefined);assert.equal(point.topFl,350);assert.equal(point.shown,true);assert.equal(field.displayFl[0],350);assert.equal(field.topFl,undefined)
+ assert.equal(point.precc,1.5);assert.equal(point.olr,150);assert.equal(point.cape,2500)
  assert.equal((await fetch(`${base}/point?${query}&lon=80&lat=6`)).status,404)
  assert.equal((await fetch(`${base}/field?${query.replace(revision,'bad')}`)).status,400)
 })
@@ -80,4 +84,17 @@ test('base replacement during calculation prevents publication and records a fai
  assert.equal(result.entries.length,0)
  assert.match(result.failures[0].reason,/inputs changed/)
  assert.equal(readKimAciLatest(root,domain),null)
+})
+
+test('ACIM uses precc instead of pr and rejects a wrong precipitation unit',()=>{
+ const text=`# /NE57/file.ft012.${tmfc}.nc\n# = precc, unit = kg/m2/s, level = 0,\n# i = 2, j = 2\n# lon1 = 90.0, lat1 = 6.0, lon2 = 90.1, lat2 = 6.1\n1 1\n1 1\n`
+ assert.throws(()=>validateAciSupplement(text,{name:'precc',tmfc,hf,grid}),/unit mismatch/)
+})
+
+test('an index still pointing at the old three-variable score shows no times until ACIM is published',async t=>{
+ const root=setup(t);await calculateAci({root,domain,tmfc,forecastHours:[hf],calculate:fakeCalculate})
+ const file=path.join(root,'kim_nwp_ea','derived','aci','latest.json'),latest=JSON.parse(fs.readFileSync(file,'utf8'))
+ fs.writeFileSync(file,JSON.stringify({...latest,scoreSpec:{version:'aci-3var-v2'}}))
+ const index=readKimAciIndex(root,domain)
+ assert.deepEqual(index.times,[]);assert.equal(index.reason,'acim_pending')
 })

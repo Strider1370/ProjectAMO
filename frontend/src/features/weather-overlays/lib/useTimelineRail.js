@@ -23,8 +23,8 @@ export function useTimelineRail() {
 
 // Advances selectedMs through the ordered frame times while playing. Separate hook so it can read
 // the tick list produced after the overlay model runs, without adding effects to MapView.
-export function useTimelinePlayback({ isPlaying, speed, pastTicksMs = [], nwpTimes = [], qpfTimesMs = [], setSelectedMs }) {
-  const ordered = buildOrderedTimes(pastTicksMs, nwpTimes, qpfTimesMs)
+export function useTimelinePlayback({ isPlaying, speed, pastTicksMs = [], nwpTimes = [], forecastTimesMs = [], setSelectedMs }) {
+  const ordered = buildOrderedTimes(pastTicksMs, nwpTimes, forecastTimesMs)
   const orderedKey = ordered.join(',')
 
   useEffect(() => {
@@ -39,10 +39,10 @@ export function useTimelinePlayback({ isPlaying, speed, pastTicksMs = [], nwpTim
   }, [isPlaying, speed, orderedKey, setSelectedMs]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-export function buildOrderedTimes(pastTicksMs, nwpTimes, qpfTimesMs = []) {
+export function buildOrderedTimes(pastTicksMs, nwpTimes, forecastTimesMs = []) {
   const future = normalizeNwpTimes(nwpTimes).map((time) => time.ms)
-  const qpf = Array.isArray(qpfTimesMs) ? qpfTimesMs : []
-  const all = [...(Array.isArray(pastTicksMs) ? pastTicksMs : []), ...future, ...qpf]
+  const exact = Array.isArray(forecastTimesMs) ? forecastTimesMs : []
+  const all = [...(Array.isArray(pastTicksMs) ? pastTicksMs : []), ...future, ...exact]
     .filter((ms) => Number.isFinite(ms))
   return [...new Set(all)].sort((a, b) => a - b)
 }

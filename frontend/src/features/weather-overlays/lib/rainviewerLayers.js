@@ -1,4 +1,5 @@
 import { setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 // 해외 레이더(RainViewer). KMA 레이더가 '한반도 그림 한 장'(image overlay + 고정 bounds)인 것과 달리,
 // RainViewer는 웹지도 표준 XYZ 래스터 타일이라 Mapbox가 필요한 칸을 알아서 요청한다(정합 작업 없음).
@@ -91,7 +92,7 @@ export function syncRainviewerLayers(map, { meta, frame, visible }) {
     sourceId: RAINVIEWER_SOURCE,
     layerId: RAINVIEWER_LAYER,
     url: radUrl,
-    opacity: 0.7,
+    opacity: MAP_LAYER_OPACITY.rainviewer,
   })
 
   // 프레임 교체는 타일 주소만 갈아끼운다. 레이어를 지웠다 다시 만들면 slot 순서가 흔들리고 깜빡인다.

@@ -88,7 +88,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   const profileTitle = <h3 className="mb-dock-title">연직단면도</h3>
   // 대류(실험)는 단면도 범례에 없어 위험 막대에 대류 줄이 있을 때만 같은 범례 줄에 덧붙인다.
   const legendExtra = ribbon?.rows?.some((row) => row.key === 'convection' && row.model.length)
-    ? <span className="mb-legend-extra" title="KIM 대류영역(실험) 점수 0.5 이상 MOD, 0.75 이상 SEV">대류(실험){['MOD', 'SEV'].map((level) => <b key={level}><i style={hazardSwatchStyle('convection', level)} />{level}</b>)}</span>
+    ? <span className="mb-legend-extra" title="KIM ACIM 예상 운정 FL250 이상 MOD, FL300 이상 SEV">대류{['MOD', 'SEV'].map((level) => <b key={level}><i style={hazardSwatchStyle('convection', level)} />{level}</b>)}</span>
     : null
   const profileFold = fold(profileOpen, () => toggle('profileOpen'), '연직단면도')
 

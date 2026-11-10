@@ -48,7 +48,7 @@ test('geo boundaries show on every basemap when NWP overlays are active', () => 
 })
 
 test('geo boundaries show for area weather overlays and stay off for point advisories', () => {
-  for (const layerId of ['echoTop', 'ci', 'ctps', 'aciExperiment', 'visibility', 'terrainHazard', 'sigwx', 'sigwxHigh', 'typhoon']) {
+  for (const layerId of ['ci', 'ctps', 'aciExperiment', 'visibility', 'terrainHazard', 'sigwx', 'sigwxHigh', 'typhoon']) {
     assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { [layerId]: true } }), true, layerId)
   }
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { sigmet: true, airmet: true, lightning: true } }), false)

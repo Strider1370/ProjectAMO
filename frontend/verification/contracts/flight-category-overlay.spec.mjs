@@ -26,14 +26,14 @@ const POINT_FIXTURE = JSON.parse(fs.readFileSync(path.join(here, 'fixtures', 'fl
 // 운고·관측지점이 매 주기 바뀐다. 그날의 실측에 맞춰 못 박은 좌표·시각·픽셀 값은
 // 다음 폴링에서 어긋난다: 관측소가 다른 밴드로 옮겨가고, 스크린샷 기준 이미지이 다른
 // 시정/운고 격자와 비교되고, 층별 시각이 그날의 실제 값과 달라진다.
-// echo-top.spec.mjs가 이미 쓰는 방식대로 두 API 문 앞에서 응답을 가로챈다(page.route) —
+// 두 API 문 앞에서 응답을 가로챈다(page.route) —
 // 이 뒤로는 화면이 실제 backend가 무엇을 들고 있든 완전히 같은 자료를 본다.
 async function installFixture(page) {
   await page.route('**/api/weather/flight-category-overlay', (route) => route.fulfill({
     contentType: 'application/json',
     body: JSON.stringify(OVERLAY_FIXTURE),
   }))
-  // 클릭 좌표와 무관하게 같은 값을 준다 — echo-top-point와 같은 방식. 지도 어디를
+  // 클릭 좌표와 무관하게 같은 값을 준다. 지도 어디를
   // 눌러도 팝업 내용이 결정적이다(실제 sampleQueryGrid를 흉내 낼 필요가 없다).
   await page.route('**/api/weather/flight-category-overlay/point*', (route) => route.fulfill({
     contentType: 'application/json',
@@ -41,7 +41,7 @@ async function installFixture(page) {
   }))
 }
 
-// 앱 기동은 echo-top.spec.mjs와 같은 패턴 — 온보딩·릴리스노트 패널을 먼저 지워야
+// 앱 기동 — 온보딩·릴리스노트 패널을 먼저 지워야
 // 사이드바 버튼이 가려지지 않는다.
 async function openWeatherPanel(page, testInfo) {
   await installFixture(page)
@@ -68,7 +68,8 @@ function panelToggle(page, testInfo) {
 async function revealLegends(page, testInfo) {
   // 패널이 열려 있으면 지도와 범례 버튼을 덮는다 — 먼저 닫는다.
   await panelToggle(page, testInfo).click()
-  await page.getByRole('button', { name: '범례', exact: true }).click()
+  // 데스크톱은 범례가 왼쪽 아래 자료 시각 상자에 늘 펼쳐져 있다. 모바일만 범례 시트를 연다.
+  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: '범례', exact: true }).click()
 }
 
 // 지도 locator의 toHaveScreenshot({clip})은 무시되고 캔버스 전체가 찍힌다 — page 기준
@@ -375,19 +376,26 @@ test.describe('flight-category-overlay', () => {
     if (testInfo.project.name === 'mobile') await revealLegends(page, testInfo)
     else await panelToggle(page, testInfo).click()
 
-    const bar = page.getByLabel('기상자료 시각', { exact: true })
-    const header = bar.locator('.layer-timestamp-header span').first()
+    // 데스크톱은 왼쪽 아래 상자에서 레이어를 고르고(선택 상자), 모바일은 범례 시트 안 화살표로 넘긴다.
+    const mobile = testInfo.project.name === 'mobile'
+    const bar = page.getByLabel(mobile ? '기상자료 시각' : '기상자료 시각과 범례', { exact: true })
     const issueCell = bar.locator('.weather-time-card__times > span').first()
     await expect(bar).toBeVisible()
-    const previous = bar.getByRole('button', { name: '이전 기상 레이어' })
-    for (let i = 0; i < 10 && await previous.isEnabled(); i++) await previous.click()
+    const select = bar.getByRole('combobox', { name: '기상 레이어 선택' })
+    const header = mobile ? bar.locator('.layer-timestamp-header span').first() : null
+    const pick = async (label) => {
+      if (!mobile) { await select.selectOption({ label }); return }
+      const previous = bar.getByRole('button', { name: '이전 기상 레이어' })
+      for (let i = 0; i < 10 && await previous.isEnabled(); i++) await previous.click()
+      if (label === '운고') await bar.getByRole('button', { name: '다음 기상 레이어' }).click()
+      await expect(header).toHaveText(label)
+    }
 
-    await expect(header).toHaveText('시정')
+    await pick('시정')
     await expect(issueCell).toContainText('관측')
     await expect(issueCell).toContainText('16:40')
 
-    await bar.getByRole('button', { name: '다음 기상 레이어' }).click()
-    await expect(header).toHaveText('운고')
+    await pick('운고')
     await expect(issueCell).toContainText('유효')
     await expect(issueCell).toContainText('18:00')
   })

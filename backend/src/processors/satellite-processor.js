@@ -1,3 +1,4 @@
+import { buildSatelliteNcUrl } from '../lib/satellite-api.js'
 import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
@@ -29,11 +30,11 @@ export function getCandidateTms(delayMinutes = config.satellite.delay_minutes, r
 }
 
 function buildIrUrl(activeConfig, tm) {
-  return `${activeConfig.satellite.url}/${activeConfig.satellite.channel}/${activeConfig.satellite.region}/data?date=${tm}&authKey=${activeConfig.api.radar_satellite_auth_key}`
+  return buildSatelliteNcUrl({ endpoint: activeConfig.satellite.nc_url, level: 'l1b', element: activeConfig.satellite.channel, area: activeConfig.satellite.region, tm, key: activeConfig.api.radar_satellite_auth_key })
 }
 
 function buildFogUrl(activeConfig, tm) {
-  return `${activeConfig.satellite.fog_url}/${activeConfig.satellite.fog_product}/${activeConfig.satellite.region}/data?date=${tm}&authKey=${activeConfig.api.radar_satellite_auth_key}`
+  return buildSatelliteNcUrl({ endpoint: activeConfig.satellite.nc_url, level: 'l2', element: activeConfig.satellite.fog_product, area: activeConfig.satellite.region, tm, key: activeConfig.api.radar_satellite_auth_key })
 }
 
 export function needsFogRefetch(frame) {

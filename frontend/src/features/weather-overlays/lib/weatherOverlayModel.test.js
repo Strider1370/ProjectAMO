@@ -16,7 +16,7 @@ test('collects every enabled timeline source as source-aware availability entrie
   assert.deepEqual(collectActiveFrameEntries({
     visibility: {
       radar: true, radarHsr: true, radarHci: true, radarOverseas: true,
-      echoTop: true, satellite: true, satelliteVisible: true, ci: true, ctps: true,
+      satellite: true, satelliteVisible: true, ctps: true,
       lightning: true,
     },
     radarFrames: [{ timeMs: 500 }],
@@ -26,8 +26,6 @@ test('collects every enabled timeline source as source-aware availability entrie
     satelliteVisibleFrames: [{ timeMs: 4000 }],
     lightningFrames: [{ timeMs: 5000 }],
     wissdomFrames: [],
-    qpfFrames: [{ validTimeMs: 5000 }],
-    echoTopFrames: [{ timeMs: 6000 }],
     rainviewerFrames: [{ timeMs: 7000 }],
     convectiveFrames: [{ timeMs: 8000 }],
   }), [
@@ -37,7 +35,6 @@ test('collects every enabled timeline source as source-aware availability entrie
     { ms: 3000, cadenceMs: 10 * 60_000 },
     { ms: 4000, cadenceMs: 10 * 60_000 },
     { ms: 5000, cadenceMs: 5 * 60_000 },
-    { ms: 6000, cadenceMs: 5 * 60_000 },
     { ms: 7000, cadenceMs: 10 * 60_000 },
     { ms: 8000, cadenceMs: 10 * 60_000 },
   ])
@@ -269,149 +266,6 @@ test('uses the requested WISSDOM height independently of the KIM selection', () 
   assert.deepEqual(model.nwpSelection, { tmfc: '202608040000', hf: 6 })
 })
 
-test('selects only an exact future QPF frame and hides observed radar and motion', () => {
-  const analysisTimeMs = Date.UTC(2026, 7, 4, 10, 25)
-  const model = buildWeatherOverlayModel({
-    echoMeta: { frames: [{
-      tm: '202608041925', path: '/radar-1025.webp',
-      motion: { observedAtMs: analysisTimeMs, path: '/motion-1025.geojson' },
-    }] },
-    qpfMeta: { frames: [
-      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },
-      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-20.webp' },
-      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 55), leadMinutes: 30, path: '/qpf-30.webp' },
-    ] },
-    visibility: { radar: true },
-    nowMs: Date.UTC(2026, 7, 4, 10, 30),
-    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
-  })
-
-  assert.equal(model.qpfFrame.path, '/qpf-20.webp')
-  assert.deepEqual(model.qpfStatus, { source: 'MAPLE', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, unit: 'mm/h' })
-  assert.equal(model.radarDisplayVisible, false)
-  assert.equal(model.radarFrame, null)
-  assert.equal(model.radarMotion.dataUrl, null)
-  assert.deepEqual(model.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 35), Date.UTC(2026, 7, 4, 10, 45), Date.UTC(2026, 7, 4, 10, 55)])
-})
-
-test('keeps QPF unavailable when the radar layer is off', () => {
-  const validTimeMs = Date.UTC(2026, 7, 4, 10, 45)
-  const model = buildWeatherOverlayModel({
-    qpfMeta: { frames: [{
-      tm: '202608041925',
-      analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25),
-      validTimeMs,
-      leadMinutes: 20,
-      path: '/qpf-20.webp',
-    }] },
-    visibility: { radarHsr: false },
-    nowMs: Date.UTC(2026, 7, 4, 10, 30),
-    selectedWeatherTimeMs: validTimeMs,
-  })
-
-  assert.deepEqual(model.forecastTimelineTicks, [])
-  assert.equal(model.qpfFrame, null)
-  assert.equal(model.qpfStatus, null)
-})
-
-test('never offers a QPF frame whose valid time has already passed', () => {
-  // MAPLE takes about 15 minutes to publish, so the shortest leads of a fresh analysis are
-  // already history when they arrive. The past belongs to the radar observation, not a forecast.
-  const analysisTimeMs = Date.UTC(2026, 7, 4, 10, 25)
-  const nowMs = Date.UTC(2026, 7, 4, 10, 42)
-  const args = {
-    echoMeta: { frames: [{ tm: '202608041935', path: '/radar-1035.webp' }] },
-    qpfMeta: { frames: [
-      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },
-      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-20.webp' },
-    ] },
-    visibility: { radar: true },
-    nowMs,
-  }
-
-  const past = buildWeatherOverlayModel({ ...args, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 35) })
-  assert.equal(past.qpfFrame, null, 'a lapsed forecast must not render')
-  assert.equal(past.qpfStatus, null)
-  assert.equal(past.radarDisplayVisible, true, 'the past stays with the observation')
-  assert.deepEqual(past.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 45)], 'no forecast tick in the past')
-
-  const future = buildWeatherOverlayModel({ ...args, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45) })
-  assert.equal(future.qpfFrame.path, '/qpf-20.webp')
-  assert.equal(future.radarDisplayVisible, false)
-})
-
-test('keeps live selection on the latest observed tick when future QPF ticks exist', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
-    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
-    visibility: { radar: true },
-    selectedWeatherTimeMs: null,
-  })
-
-  assert.equal(model.selectedWeatherTimeMs, Date.UTC(2026, 7, 4, 10, 25))
-  assert.equal(model.radarFrame.path, '/radar-1025.webp')
-  assert.equal(model.qpfFrame, null)
-})
-
-test('keeps live selection null when only future QPF ticks exist', () => {
-  const model = buildWeatherOverlayModel({
-    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
-    visibility: { radar: true },
-    selectedWeatherTimeMs: null,
-  })
-
-  assert.equal(model.selectedWeatherTimeMs, null)
-  assert.equal(model.qpfFrame, null)
-})
-
-test('deduplicates overlapping QPF valid times in favour of the newest analysis', () => {
-  const model = buildWeatherOverlayModel({
-    qpfMeta: { frames: [
-      { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-1025-p20.webp' },
-      { tm: '202608041930', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 30), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 15, path: '/qpf-1030-p15.webp' },
-    ] },
-    visibility: { radar: true },
-    nowMs: Date.UTC(2026, 7, 4, 10, 32),
-    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
-  })
-
-  assert.equal(model.qpfFrames.length, 1)
-  assert.equal(model.qpfFrame.path, '/qpf-1030-p15.webp')
-  assert.equal(model.qpfStatus.analysisTimeMs, Date.UTC(2026, 7, 4, 10, 30))
-  assert.equal(model.qpfStatus.leadMinutes, 15)
-})
-
-test('never selects a nearest QPF frame outside its exact future tick', () => {
-  const qpfMeta = { frames: [
-    { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },
-    { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-20.webp' },
-  ] }
-  for (const selectedWeatherTimeMs of [Date.UTC(2026, 7, 4, 10, 40), Date.UTC(2026, 7, 4, 10, 25), Date.UTC(2026, 7, 4, 10, 55)]) {
-    const model = buildWeatherOverlayModel({ qpfMeta, visibility: { radar: true }, selectedWeatherTimeMs })
-    assert.equal(model.qpfFrame, null)
-    assert.equal(model.qpfStatus, null)
-  }
-})
-
-test('crossing the final observation and first QPF tick clears each stale raster', () => {
-  const base = {
-    echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
-    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
-    visibility: { radar: true },
-    nowMs: Date.UTC(2026, 7, 4, 10, 30),
-  }
-  const observation = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25) })
-  const forecast = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 35) })
-  const returned = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25) })
-
-  assert.equal(observation.radarFrame.path, '/radar-1025.webp')
-  assert.equal(observation.qpfFrame, null)
-  assert.equal(forecast.radarFrame, null)
-  assert.equal(forecast.qpfFrame.path, '/qpf-10.webp')
-  assert.equal(returned.radarFrame.path, '/radar-1025.webp')
-  assert.equal(returned.qpfFrame, null)
-})
-
 test('uses the actually rendered radar frame\'s own motion, not an earlier stale one', () => {
   const selectedMs = Date.UTC(2026, 4, 14, 3, 7)
   const model = buildWeatherOverlayModel({
@@ -638,10 +492,9 @@ test('convective layers use an exact satellite frame without satellite visibilit
     echoMeta: null, satMeta: { frames: [{ tm: '202607231200' }] },
     convectiveMeta: { frames: [{ tm: '202607231200', ci: { path: '/ci.geojson' }, ctps: { images: { all: '/ctps.webp' } } }] },
     lightningData: null, sigwxLowData: null, sigwxLowHistoryData: [], sigmetData: { items: [] }, airmetData: { items: [] },
-    visibility: { ci: true, satellite: false }, sigwxHistoryIndex: 0, sigwxFilter: {}, hiddenAdvisoryKeys: {}, lightningReferenceTimeMs: 0,
+    visibility: { ctps: true, satellite: false }, sigwxHistoryIndex: 0, sigwxFilter: {}, hiddenAdvisoryKeys: {}, lightningReferenceTimeMs: 0,
   })
   assert.equal(model.weatherTimelineVisible, true)
-  assert.equal(model.ciFrame.path, '/ci.geojson')
   assert.equal(model.ctpsFrame.images.all, '/ctps.webp')
 })
 
@@ -650,82 +503,7 @@ test('convective layers hide for raw future selection and never use an older fra
     echoMeta: null, satMeta: { frames: [{ tm: '202607231200' }] },
     convectiveMeta: { frames: [{ tm: '202607231150', ci: { path: '/old.geojson' } }] },
     lightningData: null, sigwxLowData: null, sigwxLowHistoryData: [], sigmetData: { items: [] }, airmetData: { items: [] },
-    visibility: { ci: true }, selectedWeatherTimeMs: Date.UTC(2026, 6, 23, 4, 0), sigwxHistoryIndex: 0, sigwxFilter: {}, hiddenAdvisoryKeys: {}, lightningReferenceTimeMs: 0,
+    visibility: { ctps: true }, selectedWeatherTimeMs: Date.UTC(2026, 6, 23, 4, 0), sigwxHistoryIndex: 0, sigwxFilter: {}, hiddenAdvisoryKeys: {}, lightningReferenceTimeMs: 0,
   })
-  assert.equal(model.ciFrame, null)
   assert.equal(model.ctpsFrame, null)
-})
-
-const echoTopMeta = {
-  tm: '202607252035',
-  frames: [
-    { tm: '202607252030', path: '/data/radar/echotop/echotop_202607252030.webp', observedAt: '2026-07-25T11:30:00.000Z', bounds: [[30, 120], [44, 136]], siteCount: { ok: 12, total: 13 } },
-    { tm: '202607252035', path: '/data/radar/echotop/echotop_202607252035.webp', observedAt: '2026-07-25T11:35:00.000Z', bounds: [[30, 120], [44, 136]], siteCount: { ok: 13, total: 13 } },
-  ],
-}
-const radarMeta = { tm: '202607252035', frames: [{ tm: '202607252030', path: '/a.png' }, { tm: '202607252035', path: '/b.png' }] }
-
-test('an exactly matching echo top frame is used and is not marked stale', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: radarMeta, echoTopMeta,
-    visibility: { radar: true, echoTop: true },
-    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
-  })
-  assert.equal(model.echoTopFrame.tm, '202607252035')
-  assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:35:00.000Z')
-  assert.equal(model.echoTopFrame.stale, false)
-})
-
-// 레이더와 같은 선택 규칙 — 같이 켜면 같이 보인다. 대신 대체된 프레임은 stale로 드러난다.
-test('a missed cycle falls back to the previous frame, flagged stale, like radar does', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: radarMeta,
-    echoTopMeta: { tm: '202607252030', frames: [echoTopMeta.frames[0]] },
-    visibility: { radar: true, echoTop: true },
-    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
-  })
-  assert.equal(model.echoTopFrame.tm, '202607252030')
-  assert.equal(model.echoTopFrame.stale, true)
-  // 표시되는 시각은 어디까지나 그 프레임의 실제 관측시각이다.
-  assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:30:00.000Z')
-  assert.equal(model.radarFrame.tm, '202607252035', 'radar still shows its own newest frame')
-})
-
-test('with no echo top frames at all the layer stays hidden', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: radarMeta,
-    echoTopMeta: { tm: null, frames: [] },
-    visibility: { radar: true, echoTop: true },
-    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
-  })
-  assert.equal(model.echoTopFrame, null)
-})
-
-test('the echo top frame is hidden while the layer is off', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: radarMeta, echoTopMeta,
-    visibility: { radar: true, echoTop: false },
-    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
-  })
-  assert.equal(model.echoTopFrame, null)
-})
-
-test('partial site coverage is carried on the frame so the UI can flag it', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: radarMeta, echoTopMeta,
-    visibility: { radar: true, echoTop: true },
-    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 30),
-  })
-  assert.equal(model.echoTopFrame.partial, true)
-  assert.deepEqual(model.echoTopFrame.siteCount, { ok: 12, total: 13 })
-})
-
-test('a time earlier than every echo top frame shows nothing, not the newest frame', () => {
-  const model = buildWeatherOverlayModel({
-    echoMeta: radarMeta,
-    echoTopMeta: { tm: '202607252035', frames: [echoTopMeta.frames[1]] },
-    visibility: { radar: true, echoTop: true },
-    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 30),
-  })
-  assert.equal(model.echoTopFrame, null, 'a frame observed later must not stand in for an earlier time')
 })

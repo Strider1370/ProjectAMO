@@ -23,11 +23,6 @@ import {
   syncRainviewerLayers,
 } from './rainviewerLayers.js'
 import {
-  QPF_LAYER,
-  QPF_SOURCE,
-  syncQpfLayer,
-} from './qpfLayers.js'
-import {
   WISSDOM_LAYER,
   WISSDOM_SOURCE,
   syncWissdomLayer,
@@ -35,8 +30,9 @@ import {
 import { syncRasterFrame } from './rasterFrameTransition.js'
 import { createSigwxMarkerImage } from './sigwxMarkerImages.js'
 import { ICING_OUTLINE_COLOR, ICING_PRESENTATION, cloudSpreadColor } from '../../../shared/weather/cloudIcingPresentation.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
-export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
+export { WISSDOM_LAYER, WISSDOM_SOURCE }
 
 export const SATELLITE_SOURCE = 'kma-satellite-overlay'
 export const SATELLITE_LAYER = 'kma-satellite-overlay'
@@ -74,7 +70,6 @@ export const WEATHER_OVERLAY_SOURCE_IDS = [
   SATELLITE_SOURCE,
   RADAR_SOURCE,
   WISSDOM_SOURCE,
-  QPF_SOURCE,
   RAINVIEWER_SOURCE,
   RAINVIEWER_COVERAGE_SOURCE,
   ...SIGWX_FRONT_ZOOM_LAYERS,
@@ -97,7 +92,6 @@ export const WEATHER_OVERLAY_LAYER_IDS = [
   SATELLITE_LAYER,
   RADAR_LAYER,
   WISSDOM_LAYER,
-  QPF_LAYER,
   RAINVIEWER_LAYER,
   RAINVIEWER_COVERAGE_LAYER,
   ...SIGWX_FRONT_ZOOM_LAYERS,
@@ -172,11 +166,9 @@ export const MET_LAYERS = [
   { id: 'radarHsr', label: '레이더', color: '#38bdf8' },
   { id: 'radarHci', label: '강수 형태', color: '#0ea5e9' },
   { id: 'radarOverseas', label: 'Radar(해외)', color: '#38bdf8' },
-  { id: 'echoTop', label: '에코탑(재산출)', color: '#7E22CE' },
   { id: 'satellite', label: '적외영상', color: '#64748b' },
   { id: 'satelliteVisible', label: '가시영상', color: '#94a3b8' },
   { id: 'aciExperiment', label: '대류영역', color: '#fb923c' },
-  { id: 'ci', label: '대류 가능성', color: '#F6C945' },
   { id: 'ctps', label: '구름 꼭대기', color: '#7E22CE' },
   { id: 'lightning', label: 'Lightning', color: '#facc15' },
   { id: 'surfaceChart', label: '강수', color: '#1e293b' },
@@ -558,10 +550,9 @@ export function syncRasterAndSigwxLayers(map, model, { syncRaster = syncRasterFr
     sourceId: RADAR_SOURCE,
     layerId: RADAR_LAYER,
     frame: model.radarFrame,
-    opacity: 0.88,
+    opacity: MAP_LAYER_OPACITY.radar,
   })
   syncWissdomLayer(map, model, { syncRaster })
-  syncQpfLayer(map, model, { syncRaster })
   // 해외 레이더 — 국내와 상호배타라 z-order 다툼이 없다. 프레임이 없으면(커버 시간 밖) 스스로 숨는다.
   syncRainviewerLayers(map, {
     meta: model.rainviewerMeta,

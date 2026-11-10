@@ -59,12 +59,12 @@ server {
     return 404;
   }
 
-  # These exact raw composites are read only by their point APIs.  They share
+  # This exact raw composite is read only by its point API.  They share
   # the active data root with browser frames, so deny them before the alias can
   # bypass backend/server.js's corresponding boundary.  Do not blanket-deny
   # .bin: terrain and other explicitly supported binary assets have different
   # consumers and contracts.
-  location ~* "^/data/(?:satellite/convective/ctps_\d{12}|radar/echotop/echotop_\d{12})\.bin$" {
+  location ~* "^/data/satellite/convective/ctps_\d{12}\.bin$" {
     return 404;
   }
 
@@ -78,14 +78,14 @@ server {
   # Published frame names are immutable.  Keep this list synchronized with
   # backend/server.js:setGeneratedDataCacheHeaders because this direct alias
   # does not run Express middleware.
-  location ~* "^/data/(radar/(?:echo_korea_\d{12}\.png|echotop/echotop_\d{12}\.webp|(?:wissdom/wissdom_\d+_\d{12}|qpf/qpf_\d{12}_p\d+)(?:_legend)?\.webp)|satellite/(?:sat_korea_\d{12}\.(?:png|webp)|convective/(?:ci_\d{12}\.geojson|ctps_\d{12}_(?:all|fl\d{3})\.webp))|sigwx_low/(?:fronts|clouds)_\d{10}\.png|sigwx_high/runs/\d{10}/frame-\d{2}\.json|kim_surface_chart/runs/KIMG_NE57_\d{10}/hf\d{3}/(?:(?:isobars|centers|wind)\.json|precip3h\.png))$" {
+  location ~* "^/data/(radar/(?:echo_korea_\d{12}\.png|wissdom/wissdom_\d+_\d{12}(?:_legend)?\.webp)|satellite/(?:sat_korea_\d{12}\.(?:png|webp)|convective/(?:ci_\d{12}\.geojson|ctps_\d{12}_(?:all|fl\d{3})\.webp))|sigwx_low/(?:fronts|clouds)_\d{10}\.png|sigwx_high/runs/\d{10}/frame-\d{2}\.json|kim_surface_chart/runs/KIMG_NE57_\d{10}/hf\d{3}/(?:(?:isobars|centers|wind)\.json|precip3h\.png))$" {
     if ($projectamo_demo_view) { rewrite ^ /__projectamo_demo$uri last; }
     add_header Vary "Cookie" always;
     alias /opt/projectamo/shared/data/.active-data/$1;
     add_header Cache-Control "public, max-age=10800, immutable";
   }
 
-  location ~* "^/data/(radar/(?:echo_meta|rainviewer_meta)\.json|radar/(?:hsr/hsr_meta|hci/hci_meta|wissdom/wissdom_meta|qpf/qpf_meta|echotop/echotop_meta)\.json|satellite/(?:sat_meta|convective/convective_meta)\.json|sigwx_low/(fronts_meta|clouds_meta)_\d{10}\.json|sigwx_high/latest\.json)$" {
+  location ~* "^/data/(radar/(?:echo_meta|rainviewer_meta)\.json|radar/(?:hsr/hsr_meta|hci/hci_meta|wissdom/wissdom_meta)\.json|satellite/(?:sat_meta|convective/convective_meta)\.json|sigwx_low/(fronts_meta|clouds_meta)_\d{10}\.json|sigwx_high/latest\.json)$" {
     if ($projectamo_demo_view) { rewrite ^ /__projectamo_demo$uri last; }
     add_header Vary "Cookie" always;
     alias /opt/projectamo/shared/data/.active-data/$1;

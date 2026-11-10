@@ -7,12 +7,6 @@ import { fileURLToPath } from 'node:url'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const source = fs.readFileSync(path.join(here, 'WeatherOverlayPanel.jsx'), 'utf8')
 
-test('Echo Top button is controlled by the Vite feature flag', () => {
-  assert.match(source, /VITE_ECHO_TOP_ENABLED/)
-  assert.match(source, /echoTopEnabled/)
-  assert.ok(source.includes("filter((id) => echoTopEnabled || id !== 'echoTop')"))
-})
-
 test('surface chart wind display is one title button that names the other mode', () => {
   assert.match(source, /surfaceChart: '강수'/)
   assert.match(source, /surfaceChart: CloudRain/)

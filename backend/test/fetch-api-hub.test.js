@@ -6,7 +6,7 @@ import { createFetchApiHub, endpointFor } from '../src/lib/fetch-api-hub.js'
 test('classifies every direct KMA API Hub collector endpoint without using its query text as a label', () => {
   assert.equal(endpointFor(new URL('https://apihub.kma.go.kr/api/typ01/url/amos.php?authKey=secret')), 'amos')
   assert.equal(endpointFor(new URL('https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-sfc_obs_nc_api?authKey=secret')), 'sfc_vis')
-  assert.equal(endpointFor(new URL('https://apihub.kma.go.kr/api/typ05/api/GK2A/LE1B/IR105/KO/data?authKey=secret')), 'satellite_ir')
+  assert.equal(endpointFor(new URL('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l1b&chn=ir105&area=ko&authKey=secret')), 'satellite_ir')
 })
 
 test('records exact response bytes and returns a readable replacement response', async (t) => {

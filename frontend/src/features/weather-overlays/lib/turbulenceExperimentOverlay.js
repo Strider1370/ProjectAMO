@@ -1,4 +1,5 @@
 import { cellCoordinatesForGrid, mercatorSourceRows } from './overlayUtils.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 export const EXPERIMENT_SOURCE = 'kim-turbulence-experiment-image'
 export const EXPERIMENT_LAYER = 'kim-turbulence-experiment-raster'
@@ -10,9 +11,9 @@ export const EXPERIMENT_COLORS = ['#00224e', '#434e6c', '#7c7b78', '#bcae6c', '#
 // NIL uses transparency as in amo_gdps_diag_gktg_plot_wf.ncl:94–95.
 export const GKTG_BANDS = [
   { label: 'NIL', min: 0, range: '<0.15', color: 'transparent', rgba: [0, 0, 0, 0] },
-  { label: 'LGT', min: .15, range: '0.15–<0.22', color: '#33ff00', rgba: [51, 255, 0, 185] },
-  { label: 'MOD', min: .22, range: '0.22–<0.34', color: '#ffcc00', rgba: [255, 204, 0, 185] },
-  { label: 'SEV', min: .34, range: '≥0.34', color: '#ff2900', rgba: [255, 41, 0, 185] },
+  { label: 'LGT', min: .15, range: '0.15–<0.22', color: '#33ff00', rgba: [51, 255, 0, Math.round(MAP_LAYER_OPACITY.gktg * 255)] },
+  { label: 'MOD', min: .22, range: '0.22–<0.34', color: '#ffcc00', rgba: [255, 204, 0, Math.round(MAP_LAYER_OPACITY.gktg * 255)] },
+  { label: 'SEV', min: .34, range: '≥0.34', color: '#ff2900', rgba: [255, 41, 0, Math.round(MAP_LAYER_OPACITY.gktg * 255)] },
 ]
 const stateByMap = new WeakMap()
 

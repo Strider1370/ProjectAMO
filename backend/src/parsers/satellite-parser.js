@@ -1,12 +1,13 @@
 
 import sharp from 'sharp'
 import { randomUUID } from 'node:crypto'
-import { KO_DISPLAY_GRID, displayPixelToSourceIndex } from '../lib/satellite-ko-grid.js'
+import { KO_DISPLAY_GRID, KO_SOURCE_GRID, displayPixelToSourceIndex } from '../lib/satellite-ko-grid.js'
+import { resampleGeosCtpsToKo } from '../lib/satellite-geos-grid.js'
 
 const { width: BASE_OUTPUT_WIDTH } = KO_DISPLAY_GRID
 
 // KO-domain defaults (shared by all KO-region NC files)
-const KO_DEFAULTS = { width: 900, height: 900, pixelSize: 2000, ulEasting: -899000, ulNorthing: 899000 };
+const KO_DEFAULTS = KO_SOURCE_GRID;
 const IR_BT_COLD_K = 190;
 const IR_BT_WARM_K = 310;
 const IR_DISPLAY_GAMMA = 1.15;
@@ -155,9 +156,22 @@ async function parseCtpsNC(buffer, runtime) {
     const cthDs = requiredDataset(file, 'CTH')
     const cttDs = requiredDataset(file, 'CTT')
     const flagDs = requiredDataset(file, 'CTPS_flag')
-    const attrs = readProjection(file)
+    const projection = file.keys().includes('gk2a_imager_projection') ? file.get('gk2a_imager_projection').attrs : null
+    const isGeos = resolveAttr(projection?.grid_mapping_name) === 'geostationary'
+    let geosGrid
+    if (isGeos) {
+      const shape = cthDs.shape
+      if (!Array.isArray(shape) || shape.length !== 2 || !shape.every((v) => Number.isInteger(v) && v > 0)) throw new Error('Invalid GEOS CTPS dimensions')
+      geosGrid = { width: shape[1], height: shape[0] }
+      for (const [key, name] of Object.entries({ longitude: 'longitude_of_projection_origin', satelliteHeight: 'perspective_point_height', semiMajor: 'semi_major_axis', semiMinor: 'semi_minor_axis', columnScale: 'column_scale_factor', lineScale: 'line_scale_factor', columnOffset: 'column_offset', lineOffset: 'line_offset' })) {
+        geosGrid[key] = requiredNumberAttr(projection, name, 'gk2a_imager_projection')
+      }
+      if (['satelliteHeight', 'semiMajor', 'semiMinor', 'columnScale', 'lineScale'].some((key) => geosGrid[key] <= 0)) throw new Error('Invalid GEOS CTPS navigation')
+    }
+    const attrs = isGeos ? { width: geosGrid.width, height: geosGrid.height } : readProjection(file)
     for (const [name, dataset] of [['CTH', cthDs], ['CTT', cttDs], ['CTPS_flag', flagDs]]) assertArrayLength(dataset.value, attrs, name)
-    return { cth: cthDs.value, ctt: cttDs.value, flag: flagDs.value, attrs: { ...attrs, cthScale: requiredNumberAttr(cthDs.attrs || {}, 'scale_factor', 'CTH'), cthOffset: requiredNumberAttr(cthDs.attrs || {}, 'add_offset', 'CTH'), cthFill: fillValue(cthDs, 'CTH'), cttScale: requiredNumberAttr(cttDs.attrs || {}, 'scale_factor', 'CTT'), cttOffset: requiredNumberAttr(cttDs.attrs || {}, 'add_offset', 'CTT'), cttFill: fillValue(cttDs, 'CTT'), flagFill: fillValue(flagDs, 'CTPS_flag') } }
+    const parsed = { cth: cthDs.value, ctt: cttDs.value, flag: flagDs.value, attrs: { ...attrs, cthScale: requiredNumberAttr(cthDs.attrs || {}, 'scale_factor', 'CTH'), cthOffset: requiredNumberAttr(cthDs.attrs || {}, 'add_offset', 'CTH'), cthFill: fillValue(cthDs, 'CTH'), cttScale: requiredNumberAttr(cttDs.attrs || {}, 'scale_factor', 'CTT'), cttOffset: requiredNumberAttr(cttDs.attrs || {}, 'add_offset', 'CTT'), cttFill: fillValue(cttDs, 'CTT'), flagFill: fillValue(flagDs, 'CTPS_flag') } }
+    return isGeos ? resampleGeosCtpsToKo(parsed, geosGrid) : parsed
   }, runtime)
 }
 /**

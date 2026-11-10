@@ -15,7 +15,6 @@ test('revalidates every KMA radar graphics metadata document at nginx', () => {
     '/data/radar/hsr/hsr_meta.json',
     '/data/radar/hci/hci_meta.json',
     '/data/radar/wissdom/wissdom_meta.json',
-    '/data/radar/qpf/qpf_meta.json',
   ]) assert.match(path, matcher)
 
   const blockStart = config.indexOf(line)

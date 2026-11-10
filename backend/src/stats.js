@@ -7,11 +7,11 @@ import { API_OPERATION_REGISTRY } from './api-operation-registry.js'
 // 'radar_echo'(bin→이미지 변환)와 'adsb'는 뺐다: 전자는 이미지 API 직결로 대체돼 2026-08-15 이후
 // 아무도 안 부르고, 후자는 온디맨드라 수집기가 아니라 api_operations로 집계된다. 남겨두면 옛 실패
 // 기록이 얼어붙은 채 누적 성공률만 갉아먹는다(adsb 938/958 실패가 2026-06-24에 멈춘 채 남아 있었다).
-//  echo_top·satellite·rainviewer·ground_forecast·environment·airport_info·takeoff_fcst·ktg·notam·typhoon도
+//  satellite·rainviewer·ground_forecast·environment·airport_info·takeoff_fcst·ktg·notam·typhoon도
 //  같은 이유로 빠져 있었다: 등록 안 된 새 수집기 추가 때마다 이 목록을 안 늘려서 실패가 조용히 유실됐다.)
 const TYPES = [
   'nwp_ecmwf', 'nwp_icon', 'nwp_gfs',
-  'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'sigwx_high', 'lightning', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top',
+  'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'sigwx_high', 'lightning', 'wissdom', 'hsr', 'hci',
   'satellite', 'rainviewer', 'amos', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
   'satellite_visible', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'kim_gktg', 'kim_tropopause', 'notam', 'typhoon', 'kim_surface_wind', 'kim_surface_chart', 'kim_expanded_00', 'kim_expanded_06', 'flight_category', 'asos_ceiling', 'terminal_flights', 'overseas_forecast',
 ]

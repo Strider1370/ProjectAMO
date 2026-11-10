@@ -37,25 +37,30 @@ async function installSatelliteAssets(page) {
 }
 
 test.describe('satellite-assets', () => {
-  test('loads IR/FOG, VI006, CI, and CTPS assets through their published metadata', async ({ page }, testInfo) => {
+  test('loads IR/FOG, VI006, and CTPS without requesting retired CI assets', async ({ page }, testInfo) => {
     await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
       localStorage.setItem('projectamo:lastSeenVersion', version)
     }, CURRENT_VERSION)
+    const ciRequests = []
+    page.on('request', request => { if (/\/ci_.*\.geojson/.test(request.url())) ciRequests.push(request.url()) })
     await installSatelliteAssets(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
 
     const entry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
     await page.locator(`[aria-label="${entry}"]`).first().click()
-    for (const name of ['적외영상', '가시영상', '대류 가능성', '구름 꼭대기']) {
+    for (const name of ['적외영상', '가시영상', '운정고도']) {
       const button = page.getByRole('button', { name, exact: true })
       if (await button.getAttribute('aria-pressed') !== 'true') await button.click()
       await expect(button).toHaveAttribute('aria-pressed', 'true')
     }
 
-    await expect.poll(() => page.evaluate(() => ['kma-satellite-overlay', 'gk2a-visible-overlay', 'gk2a-ci-fill', 'gk2a-ctps-raster']
+    await expect(page.getByRole('button', { name: '대류 가능성', exact: true })).toHaveCount(0)
+    await expect.poll(() => page.evaluate(() => ['kma-satellite-overlay', 'gk2a-visible-overlay', 'gk2a-ctps-raster']
       .map((id) => window.__map?.getLayer(id)?.id ?? null))).toEqual([
-      'kma-satellite-overlay', 'gk2a-visible-overlay', 'gk2a-ci-fill', 'gk2a-ctps-raster',
+      'kma-satellite-overlay', 'gk2a-visible-overlay', 'gk2a-ctps-raster',
     ])
+    expect(ciRequests).toEqual([])
+    expect(await page.evaluate(() => Boolean(window.__map?.getLayer('gk2a-ci-fill')))).toBe(false)
   })
 })

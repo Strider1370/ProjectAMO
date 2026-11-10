@@ -1,4 +1,3 @@
-import AxeBuilder from '@axe-core/playwright'
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
@@ -6,8 +5,6 @@ const WEBP_STUB = Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAADQAQCdASoBAAEAAUAmJaQAA
 const BOUNDS = [[30.12520229746768, 118.82639855789549], [43.56590987094148, 133.58114159940212]]
 const TM = { observed: '202608041020', latest: '202608041025' }
 const ANALYSIS_TIME_MS = Date.UTC(2026, 7, 4, 1, 25)
-const QPF_10 = ANALYSIS_TIME_MS + 10 * 60 * 1000
-const QPF_30 = ANALYSIS_TIME_MS + 30 * 60 * 1000
 
 const radarFrame = (tm) => ({ tm, path: `/data/radar/hsr/hsr_${tm}.webp`, bounds: BOUNDS })
 const hciFrame = (tm) => ({ tm, path: `/data/radar/hci/hci_${tm}.webp`, bounds: BOUNDS })
@@ -29,18 +26,9 @@ const staleWissdomFrame = (heightM) => ({
   path: `/data/radar/wissdom/wissdom_${heightM}_202608041000.webp`,
   legendPath: `/data/radar/wissdom/wissdom_${heightM}_202608041000_legend.webp`,
 })
-const qpfFrame = (validTimeMs, leadMinutes) => ({
-  tm: TM.latest,
-  analysisTimeMs: ANALYSIS_TIME_MS,
-  validTimeMs,
-  leadMinutes,
-  bounds: BOUNDS,
-  path: `/data/radar/qpf/qpf_${TM.latest}_p${leadMinutes}.webp`,
-  legendPath: `/data/radar/qpf/qpf_${TM.latest}_p${leadMinutes}_legend.webp`,
-})
 
-// The forecast/observation split is measured against "지금", so the clock must be fixed for the
-// fixture's timestamps to mean anything. QPF +10 and +30 sit after this instant; the radar frames sit before.
+// The live/observation split is measured against "지금", so the clock must be fixed for the
+// fixture's timestamps to mean anything. The radar frames sit before this instant.
 const NOW_MS = ANALYSIS_TIME_MS + 5 * 60 * 1000
 
 async function installFixture(page) {
@@ -72,10 +60,6 @@ async function installFixture(page) {
         '3048': [wissdomFrame(3048, TM.observed)],
         '2743': [staleWissdomFrame(2743)],
       } }),
-    })
-    if (pathname.endsWith('/qpf/qpf_meta.json')) return route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ type: 'QPF', frames: [qpfFrame(QPF_10, 10), qpfFrame(QPF_30, 30)] }),
     })
     if (/\.(?:png|webp)$/.test(pathname)) return route.fulfill({ contentType: 'image/webp', body: WEBP_STUB })
     return route.fallback()
@@ -156,7 +140,7 @@ async function moveWissdomHeight(height, key, targetText) {
   await expect(height).toHaveAttribute('aria-valuetext', targetText)
 }
 
-test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
+test.describe('레이더 WISSDOM', () => {
   test.beforeEach(async ({ page }) => { await installFixture(page) })
 
   test('HSR starts on while the WISSDOM panel button needs an explicit toggle', async ({ page }, testInfo) => {
@@ -226,30 +210,6 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await expect.poll(() => rasterPresentation(page)).toMatchObject({ brightness: 0.13, contrast: 0.01 })
   })
 
-  test('QPF replaces observed layers and exposes its exact MAPLE status and legend', async ({ page }, testInfo) => {
-    await openWeatherPanel(page, testInfo)
-    await ensureRadarOn(page)
-    await selectTimeline(page, QPF_30)
-
-    await expect.poll(async () => (await layerState(page, 'kma-hsr-overlay'))?.visibility ?? 'absent').toMatch(/^(none|absent)$/)
-    await expect.poll(async () => (await layerState(page, 'kma-wissdom-overlay'))?.visibility ?? 'absent').toMatch(/^(none|absent)$/)
-    await expect.poll(() => layerState(page, 'kma-qpf-overlay')).toMatchObject({ visibility: 'visible' })
-    const status = page.getByLabel('초단기 강수예측 상태')
-    await expect(status).toContainText('MAPLE')
-    await expect(status).toContainText('+30분')
-    await expect(status).toContainText('mm/h')
-
-    await page.locator(`[aria-label="${testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'}"]`).first().click()
-    await page.getByRole('button', { name: '범례', exact: true }).click()
-    await expect(page.getByLabel('MAPLE 초단기 강수예측 범례')).toBeVisible()
-    await expect(page.getByAltText('MAPLE 초단기 강수예측 범례')).toHaveAttribute('src', /qpf_202608041025_p30_legend\.webp/)
-
-    await selectTimeline(page, Date.UTC(2026, 7, 4, 1, 25))
-    await expect.poll(() => layerState(page, 'kma-qpf-overlay')).toMatchObject({ visibility: 'none' })
-    await expect(status).toHaveCount(0)
-    await expect.poll(() => layerState(page, 'kma-hsr-overlay')).toMatchObject({ visibility: 'visible' })
-  })
-
   test('WISSDOM height and KIM pressure remain independent', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
     await ensureRadarOn(page)
@@ -272,24 +232,20 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await expect(wissdomHeight).toHaveAttribute('aria-valuetext', '6,000 ft')
   })
 
-  test('playback and two basemap switches retain single current WISSDOM/QPF ownership', async ({ page }, testInfo) => {
+  test('playback and two basemap switches retain single current WISSDOM ownership', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
     await ensureRadarOn(page)
     await page.getByRole('button', { name: '레이더 바람장 (WISSDOM)', exact: true }).click()
     if (testInfo.project.name === 'mobile') {
       await page.locator('[aria-label="기상정보 레이어"]').first().click()
     }
-    await selectTimeline(page, QPF_30)
+    await selectTimeline(page, Date.UTC(2026, 7, 4, 1, 25))
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
     await mapChoice.click()
     await page.getByRole('menuitemradio', { name: /^남색/ }).click()
     await mapChoice.click()
     await page.getByRole('menuitemradio', { name: /^위성/ }).click()
-    await expect.poll(() => layerState(page, 'kma-qpf-overlay')).toMatchObject({ visibility: 'visible', sourceCount: 1 })
-
-    await selectTimeline(page, Date.UTC(2026, 7, 4, 1, 25))
     await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'visible', sourceCount: 1 })
-    await selectTimeline(page, QPF_30)
     await page.getByRole('button', { name: '재생', exact: true }).click()
     await expect.poll(() => layerState(page, 'kma-hsr-overlay')).toMatchObject({ visibility: 'visible' })
     await page.getByRole('button', { name: '재생 일시정지', exact: true }).click()
@@ -298,13 +254,9 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await page.screenshot({ path: testInfo.outputPath('hsr-bounds-calibration.png') })
   })
 
-  test('QPF status card is axe-clean and fixtures expose no KMA key', async ({ page }, testInfo) => {
+  test('fixtures expose no KMA key', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
     await ensureRadarOn(page)
-    await selectTimeline(page, QPF_30)
-    const results = await new AxeBuilder({ page }).include('.qpf-status-card').analyze()
-    expect(results.violations).toEqual([])
-
     const fixtureBodies = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => entry.name))
     expect(JSON.stringify(fixtureBodies)).not.toMatch(/(?:authKey|KMA_[A-Z_]*KEY|serviceKey)/i)
   })

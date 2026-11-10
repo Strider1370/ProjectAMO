@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import sharp from 'sharp'
 
-import { processQpf, processWissdom } from '../src/processors/radar-graphics-processor.js'
+import { processHsr, processWissdom } from '../src/processors/radar-graphics-processor.js'
 import { scheduleRadarGraphicsJobs } from '../src/index.js'
 
 const root = () => fs.mkdtempSync(path.join(os.tmpdir(), 'amo-radar-graphics-'))
@@ -20,18 +20,18 @@ const descriptor = ({ tm, title, product }) => ({
   } },
 })
 
-function depsFor(rootDir, { wissdomTm = null, qpfTm = '202608041705', fail = null } = {}) {
+function depsFor(rootDir, { wissdomTm = null, hsrTm = null, fail = null } = {}) {
   const calls = []
   const imageCalls = []
   return {
     root: rootDir,
-    config: { api: { radar_satellite_auth_key: 'test-only', radar_graphics_url: 'https://kma.invalid' }, radar_graphics: { enabled: true, wissdom_heights_m: [1524], qpf_lead_minutes: [60], frame_step_minutes: 5, delay_minutes: 10, max_frames: 2, timeout_ms: 1 } },
+    config: { api: { radar_satellite_auth_key: 'test-only', radar_graphics_url: 'https://kma.invalid' }, radar_graphics: { enabled: true, wissdom_heights_m: [1524], frame_step_minutes: 5, delay_minutes: 10, max_frames: 2, timeout_ms: 1 } },
     fetchJson: async (url) => {
       calls.push(url)
       if (fail === 'json') throw new Error('network down')
       const parsed = new URL(url)
-      const product = parsed.pathname.includes('wis') ? 'wissdom' : 'qpf'
-      return descriptor({ tm: product === 'wissdom' ? (wissdomTm || parsed.searchParams.get('tm')) : qpfTm, title: product, product })
+      const product = parsed.pathname.includes('wis') ? 'wissdom' : 'hsr'
+      return descriptor({ tm: (product === 'wissdom' ? wissdomTm : hsrTm) || parsed.searchParams.get('tm'), title: product, product })
     },
     fetchImage: async (url) => {
       imageCalls.push(url)
@@ -61,15 +61,12 @@ test('publishes exact WISSDOM frames as WebP before atomic metadata and removes 
   assert.deepEqual([...data.slice(4, 8)], [20, 90, 220, 255])
 })
 
-test('publishes QPF valid time from its analysis time and preserves last complete metadata on transport failure', async () => {
+test('preserves the last complete composite metadata on transport failure', async () => {
   const dataRoot = root()
-  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(dataRoot) })
-  const before = fs.readFileSync(path.join(dataRoot, 'radar', 'qpf', 'qpf_meta.json'), 'utf8')
-  await processQpf({ now: new Date('2026-08-04T08:12:00Z'), deps: depsFor(dataRoot, { fail: 'json' }) })
-  const meta = readMeta(dataRoot, 'qpf')
-  assert.equal(meta.frames.at(-1).leadMinutes, 60)
-  assert.equal(meta.frames.at(-1).validTimeMs, Date.UTC(2026, 7, 4, 9, 5))
-  assert.equal(fs.readFileSync(path.join(dataRoot, 'radar', 'qpf', 'qpf_meta.json'), 'utf8'), before)
+  await processHsr({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(dataRoot) })
+  const before = fs.readFileSync(path.join(dataRoot, 'radar', 'hsr', 'hsr_meta.json'), 'utf8')
+  await processHsr({ now: new Date('2026-08-04T08:17:00Z'), deps: depsFor(dataRoot, { fail: 'json' }) })
+  assert.equal(fs.readFileSync(path.join(dataRoot, 'radar', 'hsr', 'hsr_meta.json'), 'utf8'), before)
 })
 
 test('treats missing data as absent but preserves a frame on a wrong returned timestamp', async () => {
@@ -98,23 +95,9 @@ test('does not register graphics collectors without an enabled backend credentia
   const scheduler = { schedule: (...args) => { scheduled.push(args); return args } }
   assert.deepEqual(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: false }, api: { radar_satellite_auth_key: 'key' } }), [])
   assert.deepEqual(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: '' } }), [])
-  // WISSDOM · HSR · 수상체 셋을 같은 주기로 건다. QPF는 따로 켰을 때만 넷째로 붙는다.
+  // WISSDOM · HSR · 수상체 셋을 같은 주기로 건다.
   assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 3)
-  assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true, qpf_enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 4)
-  assert.equal(scheduled.length, 7)
-})
-
-test('uses one lagged QPF analysis timestamp for every lead and retains only its configured assets', async () => {
-  const dataRoot = root(), deps = depsFor(dataRoot, { qpfTm: '202608041700' })
-  deps.config.radar_graphics.qpf_lead_minutes = [5, 60]
-  deps.config.radar_graphics.max_frames = 1
-  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps })
-  const frames = readMeta(dataRoot, 'qpf').frames
-  assert.equal(frames.length, 1)
-  assert.equal(frames[0].tm, '202608041700')
-  assert.equal(frames[0].leadMinutes, 60)
-  assert.equal(frames[0].validTimeMs, Date.UTC(2026, 7, 4, 9, 0))
-  assert.equal(fs.readdirSync(path.join(dataRoot, 'radar', 'qpf')).filter((name) => name.endsWith('.webp')).length, 2)
+  assert.equal(scheduled.length, 3)
 })
 
 test('keeps complete metadata when image validation fails and product failures remain independent', async () => {
@@ -123,23 +106,23 @@ test('keeps complete metadata when image validation fails and product failures r
   const before = JSON.stringify(readMeta(dataRoot, 'wissdom'))
   const invalid = depsFor(dataRoot)
   invalid.fetchImage = async () => Buffer.from('not an image')
-  const goodQpf = depsFor(dataRoot)
-  await Promise.all([processWissdom({ now: new Date('2026-08-04T08:12:00Z'), deps: invalid }), processQpf({ now: new Date('2026-08-04T08:12:00Z'), deps: goodQpf })])
+  const goodHsr = depsFor(dataRoot)
+  await Promise.all([processWissdom({ now: new Date('2026-08-04T08:12:00Z'), deps: invalid }), processHsr({ now: new Date('2026-08-04T08:12:00Z'), deps: goodHsr })])
   assert.equal(JSON.stringify(readMeta(dataRoot, 'wissdom')), before)
-  assert.equal(readMeta(dataRoot, 'qpf').frames.length, 1)
+  assert.equal(readMeta(dataRoot, 'hsr').frames.length, 1)
 })
 
-test('drops the QPF white canvas but never edits legend pixels', async () => {
+test('drops a near-white canvas but never edits legend pixels', async () => {
   const dataRoot = root(), deps = depsFor(dataRoot)
-  // KMA renders QPF over an opaque near-white canvas, and its legend over pure white with black text.
+  // KMA can render a product over an opaque near-white canvas, and its legend over pure white with black text.
   const body = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 250, g: 250, b: 250, alpha: 1 } } })
     .composite([{ input: Buffer.from([0, 200, 255, 255]), raw: { width: 1, height: 1, channels: 4 }, left: 1, top: 0 }]).png().toBuffer()
   const legend = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } })
     .composite([{ input: Buffer.from([0, 0, 0, 255]), raw: { width: 1, height: 1, channels: 4 }, left: 1, top: 0 }]).png().toBuffer()
   deps.fetchImage = async (url) => url.includes('legend') ? legend : body
-  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps })
+  await processHsr({ now: new Date('2026-08-04T08:07:00Z'), deps })
 
-  const frame = readMeta(dataRoot, 'qpf').frames.at(-1)
+  const frame = readMeta(dataRoot, 'hsr').frames.at(-1)
   // A fully opaque WebP drops its alpha channel, so read every published asset as RGBA.
   const published = (relative) => sharp(path.join(dataRoot, relative.replace(/^\/data\//, ''))).ensureAlpha().raw().toBuffer()
   const bodyPixels = await published(frame.path)
@@ -150,7 +133,7 @@ test('drops the QPF white canvas but never edits legend pixels', async () => {
 })
 
 test('publishes a blank render without re-requesting it', async () => {
-  // 맑은 날 WISSDOM·QPF는 원래 빈 그림이다. 빈 캔버스를 실패로 보고 다시 받으면 맑은 날 내내
+  // 맑은 날 WISSDOM·HSR은 원래 빈 그림이다. 빈 캔버스를 실패로 보고 다시 받으면 맑은 날 내내
   // 모든 산출물이 3배로 나가 레이더/위성 키의 일일 한도를 태운다. 자료 부재는 재시도 사유가 아니다.
   const blank = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 127, g: 127, b: 127, alpha: 0 } } }).png().toBuffer()
   const filled = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 250, g: 250, b: 250, alpha: 1 } } })
@@ -159,19 +142,19 @@ test('publishes a blank render without re-requesting it', async () => {
   const dryRoot = root(), dry = depsFor(dryRoot)
   let dryCalls = 0
   dry.fetchImage = async (url) => { if (!url.includes('legend')) dryCalls += 1; return url.includes('legend') ? filled : blank }
-  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: dry })
+  await processHsr({ now: new Date('2026-08-04T08:07:00Z'), deps: dry })
   assert.equal(dryCalls, 1, 'a blank render must be fetched exactly once')
-  assert.equal(readMeta(dryRoot, 'qpf').frames.length, 1, 'the blank frame is still published')
+  assert.equal(readMeta(dryRoot, 'hsr').frames.length, 1, 'the blank frame is still published')
 })
 
 test('builds change-detectable snapshot entries for both graphics metadata shapes', async () => {
   process.env.NODE_ENV = 'test'
   const { buildRadarGraphicsSnapshotEntry } = await import('../server.js')
   const wissdom = buildRadarGraphicsSnapshotEntry({ type: 'WISSDOM', updatedAt: '2026-08-04T08:00:00Z', framesByHeight: { '1524': [{ tm: '202608041705' }] } })
-  const qpf = buildRadarGraphicsSnapshotEntry({ type: 'QPF', updatedAt: '2026-08-04T08:00:00Z', frames: [{ tm: '202608041700', validTimeMs: Date.UTC(2026, 7, 4, 8, 5) }] })
+  const hsr = buildRadarGraphicsSnapshotEntry({ type: 'HSR', updatedAt: '2026-08-04T08:00:00Z', frames: [{ tm: '202608041700', validTimeMs: Date.UTC(2026, 7, 4, 8, 0) }] })
   assert.equal(wissdom.tm, '202608041705')
-  assert.equal(qpf.tm, '202608041700')
-  assert.notEqual(wissdom.hash, qpf.hash)
+  assert.equal(hsr.tm, '202608041700')
+  assert.notEqual(wissdom.hash, hsr.hash)
 })
 
 test('publishes both assets before their metadata and stops immediately when aborted', async () => {
@@ -191,5 +174,5 @@ test('publishes both assets before their metadata and stops immediately when abo
   }
   assert.deepEqual(observed.slice(-3), ['wissdom_1524_202608041650.webp', 'wissdom_1524_202608041650_legend.webp', 'wissdom_meta.json'])
   const controller = new AbortController(); controller.abort(new Error('stop'))
-  await assert.rejects(processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(root()), signal: controller.signal }), /stop/)
+  await assert.rejects(processHsr({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(root()), signal: controller.signal }), /stop/)
 })

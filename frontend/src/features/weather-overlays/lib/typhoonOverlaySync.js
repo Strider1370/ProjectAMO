@@ -62,8 +62,8 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
     return () => { cancelled = true }
   }, [enabled])
 
-  // useEchoTopOverlay.js:9-12와 같은 형태다. MapView 지역 헬퍼(useStyleSyncedEffect)를
-  // 끌어다 쓰지 않는다 — 기존 오버레이 훅은 전부 이렇게 직접 가드한다.
+  // MapView 지역 헬퍼(useStyleSyncedEffect)를 끌어다 쓰지 않는다 — 기존 오버레이 훅은
+  // 전부 이렇게 직접 가드한다.
   useEffect(() => {
     const map = mapRef.current
     if (map && isStyleReady) syncTyphoonLayers(map, { typhoons: snapshot?.typhoons ?? [], visible, selected, hiddenKeys })

@@ -14,7 +14,6 @@ import sigwxHighProcessor from './processors/sigwx-high-processor.js'
 import amosProcessor from './processors/amos-processor.js'
 import lightningProcessor from './processors/lightning-processor.js'
 import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
-import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
 import kimSurfaceWindProcessor, { hasCompleteKoreaRunSince } from './processors/kim-surface-wind-processor.js'
 import { expandedRunTmfc, processExpandedCycle } from './processors/kim-expanded-processor.js'
@@ -48,7 +47,7 @@ net.setDefaultAutoSelectFamily(false)
 // GKTG·권계면은 백엔드 이벤트 루프를 막지 않도록 자식 프로세스에서 돈다(kim-derived-worker.js).
 const kimGktgJob = (options) => runKimDerivedWorker('kim_gktg', options)
 const kimTropopauseJob = (options) => runKimDerivedWorker('kim_tropopause', options)
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, kim_gktg: false, kim_tropopause: false, kim_expanded_00: false, kim_expanded_06: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, kim_gktg: false, kim_tropopause: false, kim_expanded_00: false, kim_expanded_06: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const satelliteWorkQueue = createSatelliteWorkQueue({ runWorker: runSatelliteWorker })
 let collectorWatchdog = null
@@ -63,7 +62,7 @@ function safeCollectorLog(type, outcome, fields = {}) {
 // 확대 회차(00·06 UTC)가 도는 동안 한반도 기본 수집과 GKTG·권계면 재확인은 쉰다. 한반도가 그 회차 이상을 이미 다
 // 갖췄을 때만이다(00 UTC 한반도는 따로 받으므로 14:12 수집이 덜 끝났으면 15:12·16:12 재시도가 필요하다).
 // 쉬지 않으면 확대 계산과 같은 순번을 잡아 계산을 밀고, 2026-10-13 21:12 KST에는 옛 00 UTC를 다시 받아 게시했다.
-// 확대 회차가 한반도를 잘라 게시한 뒤 부르는 GKTG·권계면(kim_korea_from_expanded)은 그대로 돈다.
+// 확대 수집·계산·게시를 마친 뒤 부르는 한반도 후속 작업(kim_korea_from_expanded)은 그대로 돈다.
 const KOREA_KIM_TYPES = ['kim_surface_wind', 'kim_gktg', 'kim_tropopause']
 export function koreaYieldsToExpanded({ type, source, lockState = locks, koreaComplete = hasCompleteKoreaRunSince, now = Date.now() }) {
   if (!KOREA_KIM_TYPES.includes(type) || source === 'kim_korea_from_expanded') return false
@@ -202,10 +201,10 @@ const processorBindings = {
   kma_special_warning: kmaSpecialWarningProcessor.process, sigmet: sigmetProcessor.process, airmet: airmetProcessor.process,
   sigwx_low: sigwxLowProcessor.process, amos: amosProcessor.process, lightning: lightningProcessor.process,
   sigwx_high: sigwxHighProcessor.process,
-  wissdom: radarGraphicsProcessor.processWissdom, qpf: radarGraphicsProcessor.processQpf, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
-  echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
+  wissdom: radarGraphicsProcessor.processWissdom, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
+  rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
   kim_surface_chart: kimSurfaceChartProcessor.process,
-  // 06 UTC 한반도 회차를 확대 영역에서 잘라 게시하면 한반도 권계면을 이어서 계산한다(기본 수집 뒤와 같다). GKTG는 확대 회차
+  // 한반도 기본자료는 준비 즉시 게시하고, 추가 권계면 계산은 확대회차 게시가 끝난 뒤 별도로 실행한다. GKTG는 확대 회차
   // 결과에서 잘라 게시하고(kim-expanded-processor.js), 그게 안 될 때만 예전처럼 한반도에서 계산한다.
   ...Object.fromEntries(['00', '06'].map((cycle) => [`kim_expanded_${cycle}`, ({ signal }) => processExpandedCycle({ cycle, signal,
     onKoreaPublished: async () => {
@@ -254,7 +253,6 @@ export function registerCollectorSchedules({ scheduler = cron, config: activeCon
 export function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
   const graphicJobs = new Set([
     radarGraphicsProcessor.processWissdom,
-    radarGraphicsProcessor.processQpf,
     radarGraphicsProcessor.processHsr,
     radarGraphicsProcessor.processHci,
   ])
@@ -277,7 +275,6 @@ function buildInitialCollectionJobs({
   includeOverseasNwp = config.overseas_nwp?.enabled !== false,
   includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
   includeRadarSatellite = activeCollectorRegistry(config).some((collector) => collector.type === 'satellite'),
-  includeEchoTop = includeRadarSatellite && config.radar_echo_top?.enabled !== false,
   includeKimSurfaceChart = includeKimNwp && activeCollectorRegistry(config).some((collector) => collector.type === 'kim_surface_chart'),
   satelliteJob = runSatelliteCollection,
 } = {}) {
@@ -297,8 +294,6 @@ function buildInitialCollectionJobs({
     ["lightning", lightningProcessor.process],
     ...(includeRadarSatellite ? [
       ...(activeCollectorRegistry(config).some((collector) => collector.type === 'wissdom') ? [['wissdom', radarGraphicsProcessor.processWissdom], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
-      ...(activeCollectorRegistry(config).some((collector) => collector.type === 'qpf') ? [['qpf', radarGraphicsProcessor.processQpf]] : []),
-      ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
     ] : []),
     ["rainviewer", rainviewerProcessor.process],
     ...(includeRadarSatellite ? [
@@ -362,9 +357,7 @@ async function main() {
   console.log("Scheduler started");
 
   registerCollectorSchedules()
-  if (activeCollectorRegistry(config).some((collector) => collector.type === 'echo_top')) {
-    runWithLock('echo_top', echoTopProcessor.backfill, runOptionsForCollector('echo_top', config, 'manual'))
-  } else {
+  if (!activeCollectorRegistry(config).some((collector) => collector.type === 'satellite')) {
     console.warn('[collection] KMA radar/satellite key disabled — radar and satellite collection skipped.')
   }
   startCollectorWatchdog()

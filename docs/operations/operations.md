@@ -147,8 +147,7 @@ Current incremental keys:
 ### Generated overlay frames
 
 - `/data/radar/echo_korea_<tm>.png`: `public, max-age=10800, immutable`
-- `/data/radar/echotop/echotop_<tm>.webp`: `public, max-age=10800, immutable`
-- `/data/radar/wissdom/wissdom_<height>_<tm>(_legend)?.webp` and `/data/radar/qpf/qpf_<tm>_p<lead>(_legend)?.webp`: `public, max-age=10800, immutable`
+- `/data/radar/wissdom/wissdom_<height>_<tm>(_legend)?.webp`: `public, max-age=10800, immutable`
 - `/data/satellite/sat_korea_<tm>.webp|png`: `public, max-age=10800, immutable`
 - `/data/satellite/convective/ci_<tm>.geojson` and `ctps_<tm>_(all|fl###).webp`: `public, max-age=10800, immutable`
 - `/data/sigwx_low/fronts_<tmfc>.png`: `public, max-age=10800, immutable`
@@ -159,8 +158,7 @@ Current incremental keys:
 
 - `/data/radar/echo_meta.json`: `no-cache`
 - `/data/radar/rainviewer_meta.json`: `no-cache`
-- `/data/radar/{hsr,hci,wissdom,qpf}/..._meta.json`: `no-cache`
-- `/data/radar/echotop/echotop_meta.json`: `no-cache`
+- `/data/radar/{hsr,hci,wissdom}/..._meta.json`: `no-cache`
 - `/data/satellite/sat_meta.json`: `no-cache`
 - `/data/satellite/convective/convective_meta.json`: `no-cache`
 - `/data/sigwx_low/fronts_meta_<tmfc>.json`: `no-cache`
@@ -168,8 +166,8 @@ Current incremental keys:
 
 ### Server-only generated data
 
-- `ctps_<tm>.bin` and `echotop_<tm>.bin` are raw composites for the backend point APIs, not browser assets. nginx must return `404` for exactly `/data/satellite/convective/ctps_<tm>.bin` and `/data/radar/echotop/echotop_<tm>.bin` before its `/data/` alias.
-- Do not replace those exact rules with a blanket `.bin` denial: terrain tiles and any future binary format need their own consumer and exposure review.
+- `ctps_<tm>.bin` is a raw composite for the backend point API, not a browser asset. nginx must return `404` for exactly `/data/satellite/convective/ctps_<tm>.bin` before its `/data/` alias.
+- Do not replace that exact rule with a blanket `.bin` denial: terrain tiles and any future binary format need their own consumer and exposure review.
 - The nginx direct alias resolves through `$DATA_PATH/.active-data`; validate the same deny, frame, and metadata behavior after a live/demo view switch when applying configuration on a VM. The committed example and `deploy/test-nginx-rate-limit.mjs` are static checks, not proof that an installed production nginx loaded it.
 
 ### Frontend/static assets served by nginx
@@ -182,10 +180,19 @@ Current incremental keys:
 ## PM2
 
 PM2 owns only the long-lived API server and scheduler. Every satellite collection
-(IR/FOG, CI/CTPS, and VI006 visible) runs in one short-lived child Node process.
+(IR/FOG, CTPS, and VI006 visible) runs in one short-lived child Node process.
 The child exits after it atomically publishes its result, which releases h5wasm,
 HDF5, and image-processing memory without restarting the API server. The queue
 permits only one satellite child at a time on the 2 GiB VM.
+
+The CI (대류 가능성) overlay and collection are retired. CTPS (운정고도)
+publishes independently through the existing `satellite/convective` paths;
+`SATELLITE_CONVECTIVE_ENABLED` now controls CTPS collection only. KIM ACI
+(대류영역) remains a separate product.
+
+GK2A downloads use the unified `sat_file_nc_down.php` API. CTPS ELA GEOS data
+is resampled to the existing KO grid; see [satellite API migration](satellite-api-migration.md)
+for parameters, validation, and download-volume changes.
 
 During a collection, inspect the parent and temporary child separately:
 
@@ -248,7 +255,7 @@ location /api/ {
 - PM2 app name and start command are fixed
 - nginx reverse proxy is configured
 - nginx cache headers for frontend static assets are configured
-- nginx `/data/` deny rules cover CTPS/Echo Top raw composites without blocking published WebP/GeoJSON or unrelated binary consumers
+- nginx `/data/` deny rule covers the CTPS raw composite without blocking published WebP/GeoJSON or unrelated binary consumers
 - `/api/*` rate limit policy is configured
 
 ### After deploy
@@ -256,9 +263,9 @@ location /api/ {
 - `curl http://127.0.0.1:3001/api/health`
 - `curl http://127.0.0.1:3001/api/snapshot-meta`
 - Verify `/api/*` returns `Cache-Control: no-store`
-- Verify radar/satellite/SIGWX, CTPS/Echo Top, WISSDOM/QPF frame files return `max-age=10800, immutable`
-- Verify overlay meta JSON, including `echotop_meta.json` and `convective_meta.json`, returns `no-cache`
-- Verify direct CTPS/Echo Top raw binary URLs and DB/organization-file URLs return `404`, while their point APIs and published WebP/GeoJSON remain available
+- Verify radar/satellite/SIGWX, CTPS, WISSDOM frame files return `max-age=10800, immutable`
+- Verify overlay meta JSON, including `convective_meta.json`, returns `no-cache`
+- Verify direct CTPS raw binary URLs and DB/organization-file URLs return `404`, while their point APIs and published WebP/GeoJSON remain available
 - Verify `SIGWX_LOW` history keeps at least 2 days of snapshots
 - Verify `pm2 restart` preserves service using existing `latest.json`
 - During one normal and one visible satellite collection, verify at most one

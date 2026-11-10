@@ -27,7 +27,6 @@ import { deeplinkFlightId as deeplinkFlightIdFromUrl, consumeDeeplinkFlight } fr
 import CopilotPanel from '../features/copilot/CopilotPanel.jsx'
 import { createUiActionExecutor } from '../features/copilot/uiActions.js'
 import { shouldShowIntro } from '../features/intro/introEntry.js'
-import { QPF_ENABLED } from '../features/weather-overlays/lib/qpfLayers.js'
 import AirportAlertPopup from '../features/notifications/AirportAlertPopup.jsx'
 import AlertTestDetail from '../features/airport-alerts/AlertTestDetail.jsx'
 import FeedbackLauncher from '../features/feedback/FeedbackLauncher.jsx'
@@ -342,11 +341,9 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
           warningData={weatherData?.warning || null}
           echoMeta={weatherData?.echoMeta || null}
           wissdomMeta={weatherData?.wissdomMeta || null}
-          qpfMeta={QPF_ENABLED ? weatherData?.qpfMeta || null : null}
           hsrMeta={weatherData?.hsrMeta || null}
           hciMeta={weatherData?.hciMeta || null}
           satVisibleMeta={weatherData?.satVisibleMeta || null}
-          echoTopMeta={weatherData?.echoTopMeta || null}
           rainviewerMeta={weatherData?.rainviewerMeta || null}
           satMeta={weatherData?.satMeta || null}
           convectiveMeta={weatherData?.convectiveMeta || null}

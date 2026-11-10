@@ -1,3 +1,4 @@
+import { buildSatelliteNcUrl } from '../lib/satellite-api.js'
 // 가시영상(GK2A VI006) 수집기.
 //
 // 조종사 브리핑에서 실제로 쓰이는 위성 자료는 가시·적외·수증기 셋뿐이고, 상용 제품(ForeFlight)도
@@ -177,7 +178,7 @@ export async function processSatelliteVisible({ now = new Date(), fillAll = fals
   const sunElevation = (deps.sunElevation || maxSolarElevationDeg)(observedMs, KO_DISPLAY_GRID.bounds)
   if (sunElevation < DARK_SUN_ELEVATION_DEG) return recordNight({ sunElevation: Math.round(sunElevation * 10) / 10 })
 
-  const url = `${activeConfig.satellite.url}/${CHANNEL}/${REGION}/data?date=${tmUtc}&authKey=${activeConfig.api.radar_satellite_auth_key}`
+  const url = buildSatelliteNcUrl({ endpoint: activeConfig.satellite.nc_url, level: 'l1b', element: CHANNEL, area: REGION, tm: tmUtc, key: activeConfig.api.radar_satellite_auth_key })
   const fetchNc = deps.fetchNc || (async (target) => {
     const response = await fetchWithTimeout(target, activeConfig.satellite?.timeout_ms || 60_000)
     return response.ok ? Buffer.from(await response.arrayBuffer()) : { status: response.status }

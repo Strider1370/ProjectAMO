@@ -240,3 +240,11 @@ test('version 2 uses the explicit parent and normalizes legacy temperature/detai
   assert.equal(contoursOnly.cloudIcing && contoursOnly.temp, true)
   assert.equal(contoursOnly.cloud || contoursOnly.icing, false)
 })
+
+
+test('saved CI visibility is retired while CTPS remains available', () => {
+  const restored = createInitialMetVisibility(['ctps'], { ci: true, ctps: true })
+  assert.equal(restored.ci, undefined)
+  assert.equal(restored.ctps, true)
+  assert.deepEqual(getNextMetVisibility(restored, 'ci'), restored)
+})

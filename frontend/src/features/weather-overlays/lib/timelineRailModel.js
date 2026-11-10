@@ -103,14 +103,14 @@ export function nwpAvailabilityEntries(nwpTimes) {
 export function buildTimelineDomain({
   pastTicksMs = [],
   nwpTimesMs = [],
-  qpfTimesMs = [],
+  forecastTimesMs = [],
   nowMs,
   pastWindowMs = DEFAULT_PAST_WINDOW_MS,
   futureWindowMs = DEFAULT_FUTURE_WINDOW_MS,
 }) {
   const now = finite(nowMs) ? nowMs : Date.now()
   const past = pastTicksMs.filter(finite)
-  const future = [...nwpTimesMs, ...qpfTimesMs].filter(finite)
+  const future = [...nwpTimesMs, ...forecastTimesMs].filter(finite)
   // Archived NWP frames also belong to the selectable domain, even when all
   // observation layers are off. Otherwise the rail visually clamps an exact
   // historical field selection to today's start while the map uses its date.

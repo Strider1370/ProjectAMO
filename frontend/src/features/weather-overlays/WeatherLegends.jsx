@@ -1,95 +1,48 @@
-import './WeatherLegends.css'
 import CloudIcingLegend from './CloudIcingLegend.jsx'
-import { useEffect, useRef, useState } from 'react'
-import useIsMobile from '../../shared/ui/useIsMobile.js'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
 import { WISSDOM_WIND_LEGEND } from './lib/weatherOverlayLayers.js'
-import { entriesLeftToRight } from './lib/legendOrder.js'
-import { QPF_LEGEND } from './lib/rasterLegendModel.js'
+import { LegendScale } from './MapLegend.jsx'
+import { MAP_LAYER_OPACITY } from './lib/mapLayerOpacity.js'
 
-function HLegend({ title, entries = [], reverse = false, note = null }) {
-  const cells = entriesLeftToRight(entries, reverse)
-  const step = Math.max(1, Math.ceil(cells.length / 7))
-  return (
-    <div className="hlegend">
-      <div className="hlegend-title">{title}</div>
-      <div className="hlegend-bar" aria-hidden="true">
-        {cells.map((e, i) => (
-          <span key={i} className="hlegend-cell" style={{ backgroundColor: e.background || e.color }}>
-            {e.background && <span style={{ display: 'block', width: '100%', height: '100%', backgroundColor: e.color }} />}
-          </span>
-        ))}
-      </div>
-      <div className="hlegend-labels" aria-hidden="true">
-        {cells.map((e, i) => (
-          <span key={i} className="hlegend-label">{i % step === 0 ? e.label : ''}</span>
-        ))}
-      </div>
-      {note && <div className="hlegend-note">{note}</div>}
-    </div>
-  )
-}
-
+// 난류: 등급 세 칸. 지수 범위는 마우스를 올리면 보인다.
 function TurbulenceLegend({ product, entries }) {
   const ranges = product === 'GKTG'
     ? ['0.15–<0.22', '0.22–<0.34', '≥0.34']
     : ['0.30–<0.475', '0.475–<0.75', '≥0.75']
+  const grades = ['LGT', 'MOD', 'SEV']
   return (
-    <section className="turbulence-legend" aria-label={`${product} 난류 범례`}>
-      <strong className="hlegend-title">난류 · {product}</strong>
-      <div className="turbulence-legend__scale">
-        {entries.map((entry, index) => (
-          <div className="turbulence-legend__band" key={entry.label}>
-            <i style={{ backgroundColor: entry.color }} aria-hidden="true" />
-            <strong>{['LGT', 'MOD', 'SEV'][index]}</strong>
-            <span>{ranges[index]}</span>
-          </div>
-        ))}
-      </div>
-    </section>
+    <LegendScale title={`난류 · ${product}`} unit={product} ariaLabel={`${product} 난류 범례`} opacity={product === 'GKTG' ? MAP_LAYER_OPACITY.gktg : 1}
+      entries={entries.map((entry, index) => ({ color: entry.color, label: grades[index] }))}
+      hint={`${product} 지수 ${grades.map((grade, index) => `${grade} ${ranges[index]}`).join(' · ')}`} />
   )
 }
 
-function FlightCategoryBandLegend({ title, entries }) {
+function FlightCategoryBandLegend({ title, unit = null, entries, opacity = 1, note = null }) {
   return (
-    <section className="flight-category-band-legend" aria-label={`${title} 범례`}>
-      <strong className="hlegend-title">{title}</strong>
-      <div className="flight-category-band-legend__scale" style={{ '--band-count': entries.length }}>
-        {entries.map(entry => (
-          <div className="flight-category-band-legend__band" key={entry.label}>
-            <i style={{ backgroundColor: entry.color }} aria-hidden="true" />
-            <span>{entry.compactLabel || entry.label}</span>
-            {entry.detail && <small>{entry.detail}</small>}
-          </div>
-        ))}
-      </div>
-    </section>
+    <LegendScale title={title} unit={unit} opacity={opacity} note={note}
+      entries={entries.map(entry => ({ color: entry.color, label: entry.compactLabel || entry.label }))}
+      hint={entries.map(entry => entry.detail ? `${entry.label}(${entry.detail})` : entry.label).join(' · ')} />
   )
 }
 
-const CI_LEGEND = [{ label: '중간 상승기류 신호', color: '#F6C945' }, { label: '강한 상승기류 신호', color: '#E8751A' }]
 const CTPS_LEGEND = [{ label: '< FL100', color: '#16A34A' }, { label: 'FL100–199', color: '#EAB308' }, { label: 'FL200–299', color: '#F97316' }, { label: 'FL300–399', color: '#DC2626' }, { label: '≥ FL400', color: '#7E22CE' }]
-// Echo Top(재산출)은 위성 운정고도와 같은 물리량(높이)이라 같은 FL 밴드 색을 쓴다.
-// 색은 높이만 뜻하며 위험등급·회피 권고가 아니다.
-const ECHO_TOP_LEGEND = CTPS_LEGEND
+const FL_EDGE_LEGEND = CTPS_LEGEND.map((entry, index) => ({ color: entry.color, label: index ? String(index * 100) : '' }))
+// 바람: 칸이 시작하는 풍속(kt)을 경계에 단다.
+const windEdgeEntries = entries => entries.map(entry => ({ color: entry.color, label: String(entry.label).split(/[-+ ]/)[0] }))
 
-function ConvectiveLegend({ title, entries, note }) {
-  return <div className="temperature-legend convective-legend" aria-label={title + ' 범례'}><div className="temperature-legend-title">{title}</div><div className="temperature-legend-scale">{entries.map((entry) => <div key={entry.label} className="temperature-legend-row"><span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span><span className="temperature-legend-swatch" style={{ backgroundColor: entry.color }} aria-hidden="true" /></div>)}</div><div className="convective-legend__note">{note}</div></div>
-}
-
-function WeatherLegends({
-  radarLegendVisible,
+// 켜진 레이어마다 범례 한 장. layer는 자료 시각 카드 항목의 key(MapView timestampEntries)와 같다.
+// 데스크톱은 이 key로 시각 카드의 해당 레이어 밑에 범례를 붙이고, 모바일 범례 시트는 같은 목록을 순서대로 그린다.
+export function buildMapLegendBlocks({
+  radarLegendVisible = false,
   hsrLegendVisible = false,
   hciLegendVisible = false,
   wissdomLegendVisible = false,
   hsrLegend = [],
   hciLegend = [],
-  radarOverseasLegendVisible,
+  radarOverseasLegendVisible = false,
   rainviewerOutOfRange = false,
-  echoTopOutOfRange = false,
-  lightningLegendVisible,
-  blinkLightning = false,
-  onBlinkLightningChange,
+  lightningLegendVisible = false,
   flightCategoryLegendVisible = false,
   flightCategoryVisibilityOn = false,
   flightCategoryCeilingOn = false,
@@ -97,25 +50,19 @@ function WeatherLegends({
   flightCategoryCeilingBands = [],
   flightCategoryStationLegendVisible = false,
   flightCategoryStationBands = [],
-  radarRainrateLegend,
-  qpfStatus = null,
-  qpfLegendPath = null,
-  lightningLegendEntries,
-  windSpeedLegendVisible,
+  radarRainrateLegend = [],
+  lightningLegendEntries = [],
+  windSpeedLegendVisible = false,
   windSpeedLegendEntries = [],
-  temperatureLegendVisible,
-  temperatureLegendEntries = [],
-  cloudLegendVisible,
+  temperatureLegendVisible = false,
+  cloudLegendVisible = false,
   cloudLegendEntries = [],
   cloudIcingLevelId = null,
-  icingLegendVisible,
-  icingLegendEntries = [],
-  turbulenceLegendVisible,
+  icingLegendVisible = false,
+  turbulenceLegendVisible = false,
   turbulenceLegendEntries = [],
   turbulenceProduct = 'GKTG',
-  ciLegendVisible = false,
   ctpsLegendVisible = false,
-  echoTopLegendVisible = false,
   surfaceChartLegendVisible = false,
   surfaceChartLegendEntries = [],
   surfaceChartLegendNote = null,
@@ -124,16 +71,57 @@ function WeatherLegends({
   radarWindLegendVisible = false,
   radarWindObservedAtMs,
   formatReferenceTimeLabel,
-  bottomDock = false,
+  aciLegendContent = null,
+  tropopauseLegendContent = null,
+  terrainHazardLegendContent = null,
+  cloudIcingControls = null,
+} = {}) {
+  // 색은 우리가 그리지만 시각은 기상청 분석 시각이다 — 어느 시점의 바람인지 함께 밝힌다.
+  const wissdomVisible = wissdomLegendVisible || radarWindLegendVisible
+  const wissdomNote = radarWindLegendVisible && formatReferenceTimeLabel
+    ? `KMA 관측 ${formatReferenceTimeLabel(radarWindObservedAtMs)}`
+    : null
+  const scale = (key, layer, props) => ({ key, layer, node: <LegendScale key={key} {...props} /> })
+  return [
+    aciLegendContent && { key: 'aci', layer: 'aci', node: <Fragment key="aci">{aciLegendContent}</Fragment> },
+    tropopauseLegendContent && { key: 'tropopause', layer: 'tropopauseJet', node: <Fragment key="tropopause">{tropopauseLegendContent}</Fragment> },
+    terrainHazardLegendContent && { key: 'terrainHazard', layer: 'terrainHazard', node: <Fragment key="terrainHazard">{terrainHazardLegendContent}</Fragment> },
+    turbulenceLegendVisible && { key: 'turbulence', layer: 'turbulence', node: <TurbulenceLegend key="turbulence" product={turbulenceProduct} entries={turbulenceLegendEntries} /> },
+    (cloudLegendVisible || icingLegendVisible || temperatureLegendVisible || cloudIcingControls) && { key: 'cloudIcing', layer: 'cloudIcing',
+      node: <CloudIcingLegend key="cloudIcing" cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} mode="map" compact controls={cloudIcingControls} /> },
+    hsrLegendVisible && scale('hsr', 'radar', { title: 'HSR · mm/h', unit: 'mm/h', entries: hsrLegend, labels: 'edge', opacity: MAP_LAYER_OPACITY.hsr }),
+    radarLegendVisible && scale('radar', 'radar', { title: '레이더 · mm/h', unit: 'mm/h', entries: radarRainrateLegend, reverse: true, labels: 'edge', opacity: MAP_LAYER_OPACITY.radar }),
+    hciLegendVisible && scale('hci', 'radarHci', { title: 'HCI · 강수 형태', unit: '형태', entries: hciLegend, opacity: MAP_LAYER_OPACITY.hci }),
+    wissdomVisible && scale('wissdom', 'wissdom', { title: 'WISSDOM · m/s', unit: 'm/s', entries: WISSDOM_WIND_LEGEND, labels: 'edge', opacity: MAP_LAYER_OPACITY.wissdom, note: wissdomNote }),
+    // 해외 레이더는 픽셀 색만 받아 강수량으로 바꿀 수 없다. 국내 mm/h 범례와 다른 반사도 척도임을 밝힌다.
+    radarOverseasLegendVisible && (rainviewerOutOfRange
+      ? scale('rainviewer', 'radarOverseas', { title: '해외 레이더 · dBZ', unit: 'dBZ', entries: [], note: '이 시각 자료 없음 · 최근 2시간만 제공' })
+      : scale('rainviewer', 'radarOverseas', { title: '해외 레이더 · dBZ', unit: 'dBZ', entries: RAINVIEWER_LEGEND, reverse: true, labels: 'edge', opacity: MAP_LAYER_OPACITY.rainviewer,
+        note: <>국내 레이더(mm/h)와 다른 척도 · <a href="https://www.rainviewer.com" target="_blank" rel="noreferrer noopener">RainViewer</a></> })),
+    // 낙뢰는 타임라인처럼 왼쪽이 과거, 오른쪽이 지금이다. 경계 시각은 칸이 시작하는(더 오래된) 쪽이다.
+    lightningLegendVisible && scale('ltg', 'lightning', { title: '낙뢰 · 관측 시각', unit: '관측', entries: lightningLegendEntries, reverse: true, labels: 'edge',
+      endLabel: formatReferenceTimeLabel?.(radarLegendVisible ? radarReferenceTimeMs : lightningReferenceTimeMs) ?? null }),
+    ctpsLegendVisible && scale('ctps', 'ctps', { title: '구름 꼭대기 · FL', unit: 'FL', entries: FL_EDGE_LEGEND, labels: 'edge', opacity: MAP_LAYER_OPACITY.ctps, note: '위성 CTH 기반 높이 · 위험등급 아님' }),
+    surfaceChartLegendVisible && scale('surfaceChart', 'surfaceChart', { title: '강수 · KIM · mm/3h', unit: 'mm/3h', entries: surfaceChartLegendEntries, labels: 'edge', opacity: MAP_LAYER_OPACITY.surfaceChartPrecip, note: surfaceChartLegendNote }),
+    windSpeedLegendVisible && scale('wind', 'wind', { title: '바람 · kt', unit: 'kt', entries: windEdgeEntries(windSpeedLegendEntries), labels: 'edge' }),
+    flightCategoryLegendVisible && flightCategoryVisibilityOn && { key: 'fcVisibility', layer: 'visibility',
+      node: <FlightCategoryBandLegend key="fcVisibility" title="시정 · km" unit="km" opacity={MAP_LAYER_OPACITY.visibility} note="면을 채워 표시" entries={[...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]} /> },
+    flightCategoryLegendVisible && flightCategoryCeilingOn && { key: 'fcCeiling', layer: 'ceiling',
+      node: <FlightCategoryBandLegend key="fcCeiling" title="운고 · m" unit="m" note="옅은 채움과 굵은 윤곽으로 표시" entries={[...flightCategoryCeilingBands, { label: '자료 없음', color: '#9ca3af' }]} /> },
+    flightCategoryStationLegendVisible && { key: 'fcStations', layer: 'fcStations',
+      node: <FlightCategoryBandLegend key="fcStations" title="관측지점 · 운고 m" unit="운고 m" entries={flightCategoryStationBands} /> },
+  ].filter(Boolean)
+}
+
+// 모바일 범례 시트. 데스크톱은 범례를 자료 시각 카드 안에 펼쳐 두므로 이 시트를 쓰지 않는다.
+function WeatherLegends({
   open: controlledOpen,
   onOpenChange,
   onOpenPanelHeightChange,
   supplementalContent = null,
-  aciLegendContent = null,
-  tropopauseLegendContent = null,
   sampleWarning = false,
+  ...legendProps
 }) {
-  const isMobile = useIsMobile()
   const bottomPanelRef = useRef(null)
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
@@ -142,166 +130,7 @@ function WeatherLegends({
     if (controlledOpen === undefined) setUncontrolledOpen(resolved)
     onOpenChange?.(resolved)
   }
-  const qpfLegendVisible = Boolean(qpfStatus && qpfLegendPath)
-  // 색은 우리가 그리지만 시각은 기상청 분석 시각이다 — 어느 시점의 바람인지 함께 밝힌다.
-  // 바람장이 꺼져 있으면 형식 함수 자체가 안 넘어올 수 있으므로 그때는 만들지 않는다.
-  const wissdomNote = radarWindLegendVisible
-    ? `KMA 관측 ${formatReferenceTimeLabel?.(radarWindObservedAtMs) ?? ''}`
-    : null
-  const panel = (
-    <div className="map-right-legends">
-      {hsrLegendVisible && (
-        <div className="rainrate-legend" aria-label="HSR rain rate legend">
-          <HLegend title="HSR · mm/h" entries={hsrLegend} />
-          {wissdomLegendVisible && (
-            <div className="radar-wind-control">
-              <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
-            </div>
-          )}
-        </div>
-      )}
-      {hciLegendVisible && (
-        <div className="rainrate-legend" aria-label="HCI precipitation type legend">
-          <HLegend title="HCI · 강수 형태" entries={hciLegend} />
-        </div>
-      )}
-      {radarLegendVisible && (
-        <div className="rainrate-legend" aria-label="Radar rain rate legend">
-          <div className="rainrate-legend-title">mm/h</div>
-          <div className="rainrate-legend-scale">
-            {radarRainrateLegend.map((entry) => (
-              <div key={entry.label} className="rainrate-legend-row">
-                <span className="rainrate-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="rainrate-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-          {radarWindLegendVisible && (
-            <div className="radar-wind-control">
-              <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
-            </div>
-          )}
-        </div>
-      )}
-      {qpfLegendVisible && (
-        <div className="rainrate-legend" aria-label="MAPLE 초단기 강수예측 범례">
-          <HLegend title="초단기 강수예측 · MAPLE · mm/h" entries={QPF_LEGEND} />
-        </div>
-      )}
-      {/* 해외 레이더(RainViewer): 우리는 픽셀만 받고 숫자가 없다 → mm/h 눈금을 붙이면 오독을 부른다.
-          국내 레이더와 색 기준이 다르므로 정량 해석 불가임을 명시하고, 질적 강약만 보여준다. */}
-      {radarOverseasLegendVisible && (
-        <div className="rainviewer-legend" aria-label="Overseas radar legend">
-          <div className="rainviewer-legend-title">해외 레이더 · dBZ</div>
-          {rainviewerOutOfRange ? (
-            <div className="rainviewer-legend-empty">
-              해외 레이더 없음
-              <span className="rainviewer-legend-note">최근 2시간만 제공</span>
-            </div>
-          ) : (
-            <>
-              {/* RainViewer 공식 색상표(스킴 2)에서 뽑은 실제 색. 단위는 dBZ(반사도) — 국내 범례(mm/h)와 다른 척도다. */}
-              <div className="rainrate-legend-scale">
-                {RAINVIEWER_LEGEND.map((entry) => (
-                  <div key={entry.label} className="rainrate-legend-row">
-                    <span className="rainrate-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                    <span
-                      className="rainrate-legend-swatch"
-                      style={{ backgroundColor: entry.color }}
-                      aria-hidden="true"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="rainviewer-legend-coverage">
-                <span className="rainviewer-legend-swatch" aria-hidden="true" />
-                레이더 미수신 지역
-              </div>
-            </>
-          )}
-          <div className="rainviewer-legend-note">
-            반사도(dBZ) — 국내 레이더의 강수량(mm/h)과 다른 척도
-          </div>
-          <a
-            className="rainviewer-legend-credit"
-            href="https://www.rainviewer.com"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            RainViewer
-          </a>
-        </div>
-      )}
-      {lightningLegendVisible && (
-        <div className="lightning-time-legend" aria-label="Lightning time legend">
-          <div className="lightning-time-legend-title">LIGHTNING</div>
-          <div className="lightning-time-legend-sub">5 MIN</div>
-          <div className="lightning-time-legend-current">
-            {formatReferenceTimeLabel(radarLegendVisible ? radarReferenceTimeMs : lightningReferenceTimeMs)}
-          </div>
-          <div className="lightning-time-legend-scale">
-            {lightningLegendEntries.map((entry) => (
-              <div key={entry.iconId} className="lightning-time-legend-row">
-                <span className="lightning-time-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="lightning-time-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-          {isMobile && (
-            <button
-              type="button"
-              className={`lightning-legend-blink${blinkLightning ? ' is-on' : ''}`}
-              onClick={() => onBlinkLightningChange?.((prev) => !prev)}
-              aria-pressed={blinkLightning}
-            >
-              깜빡임 {blinkLightning ? 'ON' : 'OFF'}
-            </button>
-          )}
-        </div>
-      )}
-      {windSpeedLegendVisible && (
-        <div className="wind-speed-legend" aria-label="Wind speed legend">
-          <div className="wind-speed-legend-title">kt</div>
-          <div className="wind-speed-legend-scale">
-            {windSpeedLegendEntries.map((entry) => (
-              <div key={entry.label} className="wind-speed-legend-row">
-                <span className="wind-speed-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="wind-speed-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} mode="map" cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} />
-      {aciLegendContent}
-      {tropopauseLegendContent}
-      {ciLegendVisible && <ConvectiveLegend title="대류 가능성" entries={CI_LEGEND} note="위성 기반 대류 발생 가능성 참고 — 레이더 실황·위험등급 아님" />}
-      {ctpsLegendVisible && <ConvectiveLegend title="구름 꼭대기" entries={CTPS_LEGEND} note="CTH 기반 높이 — 위험등급 아님" />}
-      {echoTopLegendVisible && (echoTopOutOfRange ? (
-        <div className="rainviewer-legend" aria-label="Echo top legend">
-          <div className="rainviewer-legend-title">에코탑(재산출) · FL</div>
-          <div className="rainviewer-legend-empty">
-            이 시각 에코탑 자료 없음
-          </div>
-        </div>
-      ) : (
-        <ConvectiveLegend title="에코탑(재산출)" entries={ECHO_TOP_LEGEND} note="재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님" />
-      ))}
-      {turbulenceLegendVisible && <TurbulenceLegend product={turbulenceProduct} entries={turbulenceLegendEntries} />}
-    </div>
-  )
+  const blocks = buildMapLegendBlocks(legendProps)
 
   useEffect(() => {
     if (!onOpenPanelHeightChange) return undefined
@@ -317,55 +146,13 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible && !supplementalContent && !aciLegendContent && !tropopauseLegendContent) return null
-
-  // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
-  if (!isMobile && !bottomDock) return panel
-
-  const mobileLegends = [
-    hsrLegendVisible && { key: 'hsr', title: 'HSR · mm/h', entries: hsrLegend },
-    hciLegendVisible && { key: 'hci', title: 'HCI · 강수 형태', entries: hciLegend },
-    wissdomLegendVisible && { key: 'wissdom', title: 'WISSDOM · m/s', entries: WISSDOM_WIND_LEGEND, note: wissdomNote },
-    radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
-    lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
-    surfaceChartLegendVisible && { key: 'surfaceChart', title: '강수 · KIM · mm/3h', entries: surfaceChartLegendEntries, note: surfaceChartLegendNote },
-    windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
-    ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
-    ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
-    // 이 하단 독이 데스크톱·모바일 모두에서 실제로 렌더되는 범례다(MapView가 bottomDock={!isMobile}).
-    // FR-006이 요구하는 `재산출 · 18 dBZ · MSL` 표기와 자료 없음 안내가 여기 있어야 화면에 나온다.
-    echoTopLegendVisible && (echoTopOutOfRange
-      ? { key: 'echoTop', title: '에코탑(재산출)', entries: [], note: '이 시각 에코탑 자료 없음' }
-      : { key: 'echoTop', title: '에코탑(재산출) · FL', entries: ECHO_TOP_LEGEND, note: '재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님' }),
-  ].filter(Boolean)
+  if (!blocks.length && !supplementalContent) return null
 
   return (
-    <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
+    <div className="map-legend-mobile-dock">
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {supplementalContent}
-        {aciLegendContent}
-        {tropopauseLegendContent}
-        {turbulenceLegendVisible && <TurbulenceLegend product={turbulenceProduct} entries={turbulenceLegendEntries} />}
-        <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} mode="map" compact />
-        {mobileLegends.map((l) => (
-          <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
-        ))}
-        {radarWindLegendVisible && (
-          <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
-        )}
-        {qpfLegendVisible && (
-          <HLegend title="초단기 강수예측 · MAPLE · mm/h" entries={QPF_LEGEND} />
-        )}
-        {flightCategoryLegendVisible && (
-          <section className="flight-category-legend" aria-label="시정·운고 범례">
-            {flightCategoryVisibilityOn && <FlightCategoryBandLegend title="시정 · km" entries={[...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]} />}
-            {flightCategoryCeilingOn && <FlightCategoryBandLegend title="운고 · m" entries={[...flightCategoryCeilingBands, { label: '자료 없음', color: '#9ca3af' }]} />}
-            <p className="flight-category-legend__note">
-              {[flightCategoryVisibilityOn && '시정: 채움', flightCategoryCeilingOn && '운고: 옅은 채움·윤곽'].filter(Boolean).join(' · ')}
-            </p>
-            {flightCategoryStationLegendVisible && <FlightCategoryBandLegend title="관측지점 · 운고 m" entries={flightCategoryStationBands} />}
-          </section>
-        )}
+        {blocks.map((block) => block.node)}
       </div>
       <button
         type="button"

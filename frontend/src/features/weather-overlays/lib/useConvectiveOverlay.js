@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { queryCiAtPoint, syncConvectiveLayers } from './convectiveLayers.js'
+import { syncConvectiveLayers } from './convectiveLayers.js'
 import { canApplyConvectiveResponse, makeConvectiveRequestKey } from './convectiveSelectionModel.js'
 
-export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, inspectionEnabled, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone }) {
+export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, inspectionEnabled, ctpsVisible, ctpsFrame, fetchCtpsPoint, timeZone }) {
   const [minFl, setMinFl] = useState('all')
   const [selection, setSelection] = useState(null)
   const [point, setPoint] = useState(null)
@@ -11,19 +11,19 @@ export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, insp
 
   useEffect(() => {
     const map = mapRef.current
-    if (map && isStyleReady) syncConvectiveLayers(map, { ciFrame, ctpsFrame, minFl, ciVisible, ctpsVisible })
-  }, [mapRef, isStyleReady, styleRevision, ciFrame, ctpsFrame, minFl, ciVisible, ctpsVisible])
+    if (map && isStyleReady) syncConvectiveLayers(map, { ctpsFrame, minFl, ctpsVisible })
+  }, [mapRef, isStyleReady, styleRevision, ctpsFrame, minFl, ctpsVisible])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isStyleReady || !inspectionEnabled || (!ciVisible && !ctpsVisible)) return undefined
+    if (!map || !isStyleReady || !inspectionEnabled || !ctpsVisible) return undefined
     const onClick = (event) => setPoint({ lng: event.lngLat.lng, lat: event.lngLat.lat, mapPoint: event.point })
     map.on('click', onClick)
     return () => map.off?.('click', onClick)
-  }, [mapRef, isStyleReady, inspectionEnabled, ciVisible, ctpsVisible])
+  }, [mapRef, isStyleReady, inspectionEnabled, ctpsVisible])
 
   useEffect(() => {
-    if (!inspectionEnabled || (!ciVisible && !ctpsVisible)) {
+    if (!inspectionEnabled || !ctpsVisible) {
       requestTokenRef.current += 1
       currentKeyRef.current = null
       setPoint(null)
@@ -32,28 +32,26 @@ export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, insp
     }
     const map = mapRef.current
     if (!map || !point) return undefined
-    const ci = ciVisible && ciFrame ? queryCiAtPoint(map, point.mapPoint) : null
-    const ciSelection = ci && { ...ci, observedAt: ciFrame?.observedAt ?? null }
     if (!ctpsVisible || !ctpsFrame || !fetchCtpsPoint) {
-      setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
+      setSelection(null)
       return undefined
     }
     const key = makeConvectiveRequestKey({ tm: ctpsFrame.tm, lat: point.lat, lon: point.lng, minFl })
     const token = ++requestTokenRef.current
     currentKeyRef.current = key
     const controller = new AbortController()
-    setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
+    setSelection(null)
     fetchCtpsPoint({ tm: ctpsFrame.tm, lat: point.lat, lon: point.lng, minFl }, { signal: controller.signal })
       .then((ctps) => {
         if (!canApplyConvectiveResponse({ requestToken: token, currentToken: requestTokenRef.current, requestKey: key, currentKey: currentKeyRef.current, aborted: controller.signal.aborted })) return
-        setSelection({ lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps })
+        setSelection({ lng: point.lng, lat: point.lat, point: point.mapPoint, ctps })
       })
       .catch(() => {
         if (!canApplyConvectiveResponse({ requestToken: token, currentToken: requestTokenRef.current, requestKey: key, currentKey: currentKeyRef.current, aborted: controller.signal.aborted })) return
-        setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
+        setSelection(null)
       })
     return () => controller.abort()
-  }, [mapRef, point, minFl, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone, inspectionEnabled])
+  }, [mapRef, point, minFl, ctpsVisible, ctpsFrame, fetchCtpsPoint, timeZone, inspectionEnabled])
 
   const clearSelection = () => {
     requestTokenRef.current += 1

@@ -1,15 +1,13 @@
-// kind: 'height'(WISSDOM 고도별) | 'lead'(QPF 예측시간별) | 'single'(시각당 그림 한 장)
+// kind: 'height'(WISSDOM 고도별) | 'single'(시각당 그림 한 장)
 // zoomLevel: 산출물마다 알맞은 값이 다르다 — 아래 KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL 주석 참고.
 export const KMA_GRAPHIC_PRODUCTS = Object.freeze({
   wissdom: Object.freeze({ endpoint: 'nph-rdr_wis_ana_imgp', dataDtlCd: 'rdr_rdr_wis_nqc_0', data1: 'r01', data2: 'rdr_wis_nqc', cmp: 'HSR', obs: 'wv', qcd: 'NQC', kind: 'height' }),
-  qpf: Object.freeze({ endpoint: 'nph-qpf_ana_imgp', dataDtlCd: 'rdr_rdr_qpf_ana1_0', data1: 'r01', data2: 'rdr_qpf_ana1', cmp: 'HSR', obs: 'ECHO', qcd: 'NQC', kind: 'lead' }),
   // 합성영상 계열(nph-rdr_cmp1_imgp). 격자가 500 m라 ZOOMLVL 14(353 m/px)가 원본에 가장 가깝다.
   hsr: Object.freeze({ endpoint: 'nph-rdr_cmp1_imgp', dataDtlCd: 'rdr_hsr_0', data1: 'h01', data2: 'hsr', cmp: 'HSP', obs: 'ECHD', qcd: 'HSLP', kind: 'single', zoomLevel: 14 }),
   hci: Object.freeze({ endpoint: 'nph-rdr_cmp1_imgp', dataDtlCd: 'rdr_hsr_0', data1: 'h01', data2: 'hsr', cmp: 'HCI', obs: 'ECHD', qcd: 'HSLP', kind: 'single', zoomLevel: 14 }),
 })
 
 export const KMA_GRAPHIC_WISSDOM_HEIGHTS_M = Object.freeze([305, 610, 914, 1219, 1524, 1829, 2134, 2438, 2743, 3048])
-export const KMA_GRAPHIC_QPF_LEAD_MINUTES = Object.freeze([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60])
 // WISSDOM analyses land on :00, :10, :20 … — a five-minute request is answered with the previous slot.
 export const KMA_GRAPHIC_WISSDOM_STEP_MINUTES = 10
 
@@ -63,14 +61,13 @@ function projectedBounds(result) {
   return startX !== endX && startY !== endY ? numeric : null
 }
 
-export function parseImpgResult(payload, { product, requestedTm, leadMinutes = 0 } = {}) {
+export function parseImpgResult(payload, { product, requestedTm } = {}) {
   if (!KMA_GRAPHIC_PRODUCTS[product] || payload?.meta?.errCd !== '000') return null
   const result = payload?.data?.result
   const parsed = parseKmaDateTime(result?.dateTime)
   const bounds = projectedBounds(result)
   if (!parsed || !bounds || !isDataPath(result?.url) || !isDataPath(result?.bar) || typeof result?.title !== 'string') return null
   if (requestedTm && !parseKmaKstTm(requestedTm)) return null
-  if (!Number.isInteger(leadMinutes) || leadMinutes < 0) return null
   // 그림은 LCC로 그려져 오고 지도는 메르카토르다 — 수집기가 이 범위로 다시 표본화한다.
   // 환산이 한반도 밖으로 나가면 응답을 믿을 수 없다는 뜻이라 프레임째 버린다(직전 프레임 유지).
   const displayBounds = coverageBounds(bounds)
@@ -79,8 +76,7 @@ export function parseImpgResult(payload, { product, requestedTm, leadMinutes = 0
   return {
     tm: parsed.tm,
     timeMs: parsed.timeMs,
-    validTimeMs: parsed.timeMs + leadMinutes * 60_000,
-    leadMinutes,
+    validTimeMs: parsed.timeMs,
     imagePath: result.url,
     legendPath: result.bar,
     projectedBounds: bounds,
@@ -103,7 +99,7 @@ export const KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL = 13
 // 그 상한을 받으려고 기본 창보다 동서로 넓게 요청한다 — 남는 요청은 무시될 뿐 손해가 없다.
 const REQUEST_WINDOW = Object.freeze({ STARTX: '-800000', STARTY: '5200000', ENDX: '900000', ENDY: '3600000' })
 
-export function buildImpgRequest(product, { tm, heightM, leadMinutes, zoomLevel } = {}) {
+export function buildImpgRequest(product, { tm, heightM, zoomLevel } = {}) {
   const definition = KMA_GRAPHIC_PRODUCTS[product]
   if (!definition || !parseKmaKstTm(tm)) throw new TypeError('Invalid KMA graphics request')
   const level = zoomLevel ?? definition.zoomLevel ?? KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL
@@ -127,11 +123,6 @@ export function buildImpgRequest(product, { tm, heightM, leadMinutes, zoomLevel 
   if (product === 'wissdom') {
     if (!KMA_GRAPHIC_WISSDOM_HEIGHTS_M.includes(heightM)) throw new TypeError('Invalid WISSDOM height')
     params.set('ht', String(heightM))
-  }
-  if (product === 'qpf') {
-    if (!KMA_GRAPHIC_QPF_LEAD_MINUTES.includes(leadMinutes)) throw new TypeError('Invalid QPF lead time')
-    params.set('qpf', 'M')
-    params.set('ef', String(leadMinutes))
   }
   return params
 }

@@ -53,6 +53,9 @@ test('HIGH rails clear a growing legend and shorten before the bottom controls',
   assert.equal(mapRect.top + tall.top, 312)
   assert.equal(short.trackHeight - tall.trackHeight, 80)
   assert.ok(mapRect.top + tall.top + tall.trackHeight + 64 <= options.lowerTop)
+  // 좁은 지도에서 왼쪽 아래로 내려간 시각 카드는 레일을 밀어내지 않는다.
+  const lowered = sigwxRailLayout({ ...options, cardRect: { top: 420, bottom: 560 } })
+  assert.equal(lowered.top, 108)
   const mobile = mobilePressureSliderBounds({ bottom: 300 }, { top: 590 })
   assert.ok(mobile.top > 300)
   assert.ok(mobile.top + mobile.height < 590)

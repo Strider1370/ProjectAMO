@@ -324,11 +324,12 @@
 
 .feedback-release li svg { flex: none; margin-top: 4px; color: #14532d; }
 
-/* 지도 위 입구 — 오른쪽 위, 지도 조작 버튼과 떨어진 자리. 데스크톱에서만 보인다. */
+/* 지도 위 입구 — 오른쪽 맨 아래, 타임라인에서 조금 띄워 둔다. 데스크톱·태블릿에서만 보인다.
+   아래 24px은 화면 맨 아래 시각 줄, 52px은 타임라인과 그 위 여백이다(왼쪽 아래 자료 시각 상자와 바닥을 맞춘다). */
 .feedback-launcher {
   position: fixed;
-  top: var(--space-l);
-  right: var(--space-l);
+  bottom: calc(24px + 52px);
+  right: 12px;
   z-index: 110;
   display: inline-flex;
   align-items: center;
@@ -346,8 +347,8 @@
   cursor: pointer;
 }
 
-/* 문서형 브리핑과 수치예보 카드·고도 막대를 가리지 않도록 입구를 숨긴다(사이드바에서 열 수 있다). */
-.app:has(.briefing-view, .weather-time-card, .vertical-level-rail-stack > *) > .feedback-launcher { display: none; }
+/* 문서형 브리핑을 가리지 않도록 입구를 숨긴다(사이드바에서 열 수 있다). */
+.app:has(.briefing-view) > .feedback-launcher { display: none; }
 
 .feedback-launcher:focus-visible,
 .feedback-tabs button:focus-visible,

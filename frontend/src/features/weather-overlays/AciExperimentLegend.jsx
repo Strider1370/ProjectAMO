@@ -1,22 +1,18 @@
-import { ACI_BANDS } from './lib/aciExperimentModel.js'
+import { ACIM_DISPLAY_BANDS } from '../../../../shared/acim.js'
+import { LegendScale } from './MapLegend.jsx'
+import { MAP_LAYER_OPACITY } from './lib/mapLayerOpacity.js'
 import './AciExperiment.css'
 
+// 원본 일기도 색 중 표시 기준(FL250 이상) 다섯 단계만 쓴다. ACIM 운정고도는 25 FL 간격 값이라 칸마다 그 값을 단다.
 export default function AciExperimentLegend({ overlay }) {
   if (!overlay.enabled) return null
   const { problem } = overlay
   return (
-    <section className="aci-experiment" aria-label="대류영역 범례">
-      <strong>대류영역 · 실험 점수</strong>
-      <div className="aci-experiment__bands">
-        {ACI_BANDS.map((band, index) => (
-          <span key={band.min}>
-            <i className={index === 0 ? 'aci-experiment__transparent' : undefined}
-              style={index === 0 ? undefined : { backgroundColor: band.color }} aria-hidden="true" />
-            {index === 0 ? '<0.25 (투명)' : `${band.min.toFixed(2)}–${index === 3 ? '1.00' : ACI_BANDS[index + 1].min.toFixed(2)}`}
-          </span>
-        ))}
-      </div>
-      {problem && <p role="alert">{problem}</p>}
-    </section>
+    <LegendScale title="대류영역 · ACIM 운정 FL" unit="운정 FL" ariaLabel="대류영역 범례" opacity={MAP_LAYER_OPACITY.acim}
+      entries={ACIM_DISPLAY_BANDS.map(band => ({ color: band.color, label: String(band.minFl) }))}
+      note="강한 대류(운정 FL250 이상)만 표시"
+      hint="국립기상과학원 ACIM 검증 기준(레이더 에코 정상고도 FL250 이상). FL350은 변환표의 최상위 등급입니다.">
+      {problem && <p className="aci-experiment__problem" role="alert">{problem}</p>}
+    </LegendScale>
   )
 }

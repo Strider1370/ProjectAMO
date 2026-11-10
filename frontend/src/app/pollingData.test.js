@@ -28,14 +28,14 @@ test('mergePollingData preserves previous values for undefined (failed) keys', (
 test('loadChangedWeatherData fetches only the changed graphics metadata', async () => {
   const recorder = installFetchRecorder()
   try {
-    const wissdom = await loadChangedWeatherData({ wissdomMeta: true, qpfMeta: false })
-    const qpf = await loadChangedWeatherData({ wissdomMeta: false, qpfMeta: true })
+    const wissdom = await loadChangedWeatherData({ wissdomMeta: true, hsrMeta: false })
+    const hsr = await loadChangedWeatherData({ wissdomMeta: false, hsrMeta: true })
 
     assert.deepEqual(wissdom, { wissdomMeta: { tm: '202608041705' } })
-    assert.deepEqual(qpf, { qpfMeta: { tm: '202608041705' } })
+    assert.deepEqual(hsr, { hsrMeta: { tm: '202608041705' } })
     assert.deepEqual(recorder.calls, [
       '/data/radar/wissdom/wissdom_meta.json',
-      '/data/radar/qpf/qpf_meta.json',
+      '/data/radar/hsr/hsr_meta.json',
     ])
   } finally {
     recorder.restore()
@@ -45,13 +45,13 @@ test('loadChangedWeatherData fetches only the changed graphics metadata', async 
 test('mergePollingData retains known-good graphics metadata when its refresh fails', () => {
   const previous = {
     wissdomMeta: { type: 'WISSDOM', updatedAt: '2026-08-04T08:00:00Z' },
-    qpfMeta: { type: 'QPF', updatedAt: '2026-08-04T08:00:00Z' },
+    hsrMeta: { type: 'HSR', updatedAt: '2026-08-04T08:00:00Z' },
   }
-  const changed = { wissdomMeta: undefined, qpfMeta: { type: 'QPF', updatedAt: '2026-08-04T08:05:00Z' } }
+  const changed = { wissdomMeta: undefined, hsrMeta: { type: 'HSR', updatedAt: '2026-08-04T08:05:00Z' } }
 
   assert.deepEqual(mergePollingData(previous, changed), {
     wissdomMeta: previous.wissdomMeta,
-    qpfMeta: changed.qpfMeta,
+    hsrMeta: changed.hsrMeta,
   })
 })
 

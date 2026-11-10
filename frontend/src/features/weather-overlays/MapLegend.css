@@ -1,0 +1,61 @@
+/* 지도 범례 공통 모양. 모든 범례가 같은 제목·색띠·라벨·설명 크기를 쓴다(MapLegend.jsx).
+   제목은 자료 시각 카드와 같은 12px, 라벨·설명은 11px — 지도 위에서 읽히는 하한. */
+.hlegend { display: grid; gap: 3px; min-width: 0; }
+.hlegend-title {
+  display: flex; align-items: center; gap: var(--space-xs); min-width: 0;
+  font-size: var(--fs-200); line-height: var(--lh-200); font-weight: var(--fw-bold); color: var(--text-1);
+}
+.hlegend-bar {
+  display: grid; grid-template-columns: repeat(var(--cells, 1), minmax(0, 1fr));
+  height: 12px; border: 1px solid rgba(17, 24, 39, 0.14); border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--bg-1);
+}
+.hlegend-cell { display: block; min-width: 0; opacity: var(--cell-opacity, 1); }
+.hlegend-cell > i { display: block; width: 100%; height: 100%; }
+.hlegend-labels { display: grid; grid-template-columns: repeat(var(--cells, 1), minmax(0, 1fr)); min-height: 14px; }
+.hlegend-label {
+  min-width: 0; font-size: 11px; line-height: 14px; color: var(--text-2);
+  text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+/* 경계값 라벨: 칸의 왼쪽 경계에 가운데를 맞추고, 양 끝 라벨은 색띠 밖으로 나가지 않게 안쪽으로 붙인다. */
+.hlegend-labels.is-edge { display: block; position: relative; height: 14px; margin: 0 1px; }
+.hlegend-labels.is-edge .hlegend-label { position: absolute; top: 0; transform: translateX(-50%); }
+.hlegend-labels.is-edge .hlegend-label.is-start { transform: none; }
+.hlegend-labels.is-edge .hlegend-label.is-end { transform: translateX(-100%); }
+.hlegend-note {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; line-height: var(--lh-100); color: var(--text-3);
+}
+.hlegend-note a { color: inherit; }
+.hlegend-keys {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-m); min-width: 0;
+  font-size: 11px; line-height: 14px; color: var(--text-2);
+}
+.hlegend-keys__name { min-width: 28px; font-weight: var(--fw-semibold); color: var(--text-1); }
+.hlegend-key { display: inline-flex; align-items: center; gap: var(--space-xs); white-space: nowrap; }
+.hlegend-key.is-separated { padding-left: var(--space-m); border-left: 1px solid var(--stroke-2); }
+.hlegend-swatch {
+  display: block; flex: 0 0 auto; width: 18px; height: 12px; box-sizing: border-box;
+  border: 1px solid rgba(17, 24, 39, 0.14); border-radius: var(--radius-sm);
+}
+.hlegend-swatch.is-line { height: 0; border: 0; border-top: 2px solid currentColor; border-radius: 0; }
+/* 범례 안의 선택 상자(지형 근접 기준 고도 등). */
+.hlegend-select select {
+  height: 24px; max-width: 100%; padding: 0 6px; border: 1px solid var(--stroke-2); border-radius: var(--radius-md);
+  background: var(--bg-1); color: var(--text-1); font: inherit; font-size: 12px; font-weight: 700;
+}
+.hlegend-select select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 단위 칸: 자료 시각 상자 안에서만 제목 대신 왼쪽에 보인다(MapView.css). 모바일 시트는 제목을 쓴다. */
+.hlegend-unit { display: none; }
+
+/* 범례 제목 줄의 켬/끔과 상태(구름·착빙처럼 한 범례 안에 하위 레이어가 있을 때). */
+.hlegend-title > .hlegend-toggle { margin-left: auto; }
+.hlegend-toggle {
+  min-width: 36px; padding: 1px var(--space-s); border: 1px solid var(--stroke-2); border-radius: 999px;
+  background: var(--bg-1); color: var(--text-2); font: inherit; font-size: 11px; font-weight: var(--fw-semibold); cursor: pointer;
+}
+.hlegend-toggle[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: var(--bg-1); }
+.hlegend-toggle:disabled { background: var(--bg-2); color: var(--text-disabled); cursor: default; }
+.hlegend-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hlegend-status { color: var(--text-3); font-size: 11px; font-weight: 400; }

@@ -78,6 +78,20 @@
   bottom: calc(100% + 6px);
 }
 
+/* 데스크톱·태블릿 오른쪽 위 도구(지점 정보·지도). 왼쪽 위 네모 패널 버튼과 달리 지도에 바로 작용하는 둥근 알약이다. */
+.map-tool-pills { position: absolute; top: 18px; right: 12px; z-index: 7; display: flex; align-items: center; gap: 8px; }
+.map-tool-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 9px; border: 0; border-radius: 20px;
+  background: var(--bg-1); color: var(--text-1); box-shadow: 0 2px 10px rgba(15, 23, 42, 0.22);
+  font: inherit; font-family: var(--app-font, system-ui, sans-serif); font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.map-tool-pill:hover { background: var(--bg-2); }
+.map-tool-pill.is-active, .map-tool-pill[aria-pressed='true'] { background: #1e293b; color: #ffffff; }
+.map-tool-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.map-tool-pill__thumb { width: 24px; height: 24px; border-radius: 12px; object-fit: cover; border: 1px solid var(--stroke-2); }
+.basemap-switcher.is-pill { position: relative; top: auto; right: auto; z-index: auto; }
+.basemap-switcher.is-pill .basemap-switcher-menu { top: calc(100% + 6px); right: 0; left: auto; z-index: 8; }
+
 /* 모바일은 같은 우측 여백을 사용한다. */
 @media (max-width: 719px) {
   .basemap-switcher { right: 12px; }
@@ -829,38 +843,7 @@
   visibility: visible;
 }
 
-.hlegend {
-  display: grid;
-  gap: 3px;
-}
-.hlegend-title {
-  font-size: var(--fs-100);
-  font-weight: var(--fw-bold);
-  color: var(--text-2);
-  letter-spacing: 0.02em;
-}
-.hlegend-bar {
-  display: flex;
-  height: 12px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-}
-.hlegend-cell {
-  flex: 1 1 0;
-}
-.hlegend-labels {
-  display: flex;
-}
-.hlegend-label {
-  flex: 1 1 0;
-  text-align: center;
-  font-size: 0.5rem;
-  line-height: 1;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
+/* 가로 범례(.hlegend*) 모양은 weather-overlays/MapLegend.css에 모았다. */
 
 .map-view-wrapper .rainrate-legend {
   display: grid;
@@ -1507,30 +1490,29 @@
 
 /* Aviation-style pressure selector: evenly-spaced KIM pressure-surface snap
    points. FL is a display reference only; the selected data remains hPa. */
+/* 예전에 마우스를 올려야 보이던 반투명 판을 항상 깔아, 지도 위에서도 눈금이 묻히지 않게 한다. */
 .pressure-level-slider {
   width: 116px;
-  padding: var(--space-s) 0;
-  border: 1px solid transparent;
+  /* 맨 위·맨 아래 눈금 글자(FL450, 10 m AGL)가 판 끝에 걸치지 않도록 위아래를 조금 더 띄운다. */
+  padding: var(--space-m) 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: var(--radius-lg);
-  background: transparent;
-  box-shadow: none;
-  -webkit-backdrop-filter: blur(0) saturate(100%);
-  backdrop-filter: blur(0) saturate(100%);
-  color: var(--text-1);
-  font-family: var(--app-font, system-ui, sans-serif);
-  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, -webkit-backdrop-filter 180ms ease, backdrop-filter 180ms ease;
-}
-.pressure-level-slider:hover,
-.pressure-level-slider:has(.pressure-level-slider__track:focus-visible) {
-  border-color: rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.12);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
   -webkit-backdrop-filter: blur(12px) saturate(125%);
   backdrop-filter: blur(12px) saturate(125%);
+  color: var(--text-1);
+  font-family: var(--app-font, system-ui, sans-serif);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.pressure-level-slider:hover,
+.pressure-level-slider:has(.pressure-level-slider__track:focus-visible) {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.22);
 }
 .pressure-level-slider__track {
   position: relative;
-  height: min(400px, calc(100vh - 300px));
+  height: min(520px, calc(100vh - 300px));
   min-height: 320px;
   margin: 0 34px 0 22px;
   touch-action: none;
@@ -2121,22 +2103,25 @@
 }
 
 /* 자료 시각은 패널과 범례가 닫혀 있어도 지도 상단에서 확인할 수 있다. */
+/* 자료 시각·범례 상자: 지도 왼쪽 아래, 타임라인 바로 위. 위로만 늘어나 타임라인 쪽은 움직이지 않는다. */
 .weather-time-card {
   position: absolute;
-  top: 12px;
-  left: 50%;
+  left: 12px;
+  bottom: 52px;
   z-index: 6;
-  width: max-content;
-  max-width: min(360px, calc(100% - 32px));
-  padding: 5px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 380px;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 8px 10px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 10px;
-  background: rgba(215, 231, 240, 0.78);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(10px) saturate(130%);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
   color: var(--text-1);
   font-family: var(--app-font, system-ui, sans-serif);
-  transform: translateX(-50%);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2144,9 +2129,12 @@
 .weather-time-card__content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 5px;
+  gap: 10px;
 }
+.weather-time-card:not(.weather-time-card--embedded) .weather-time-card__heading { flex-wrap: wrap; row-gap: 4px; }
+.weather-time-card:not(.weather-time-card--embedded) .weather-time-card__times { flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
+.weather-time-card--embedded .weather-time-card__heading,
+.weather-time-card--embedded .weather-time-card__content { justify-content: space-between; gap: 5px; }
 
 .weather-time-card__heading > strong {
   color: var(--accent);
@@ -2162,7 +2150,7 @@
   font-weight: 700;
 }
 
-.weather-time-card__content {
+.weather-time-card--embedded .weather-time-card__content {
   margin-top: 2px;
 }
 
@@ -2192,25 +2180,32 @@
 
 .weather-time-card .layer-timestamp-history-arrow { width: 18px; height: 20px; }
 
-@media (min-width: 1100px) {
-  .app:not(.sidebar-is-expanded) .map-view-wrapper:has(.weather-time-card) .qpf-status-card,
-  .app:not(.sidebar-is-expanded) .map-view-wrapper:has(.weather-time-card) .route-map-interaction-status {
-    top: 104px;
-  }
-  .app:not(.sidebar-is-expanded) .map-view-wrapper:has(.weather-time-card):has(.qpf-status-card) .route-map-interaction-status {
-    top: 184px;
-  }
+/* 레이어 고르기: 알약 모양 선택 상자. 켜진 레이어 가운데 몇 번째인지 옆에 붙인다. */
+.weather-time-card__layer { position: relative; display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.weather-time-card__layer-chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; box-sizing: border-box;
+  border: 1px solid var(--stroke-2); border-radius: 999px; background: var(--bg-1);
+  font-size: 12px; font-weight: 700; white-space: nowrap;
 }
-
-@media (min-width: 1300px) {
-  .app.sidebar-is-expanded .map-view-wrapper:has(.weather-time-card) .qpf-status-card,
-  .app.sidebar-is-expanded .map-view-wrapper:has(.weather-time-card) .route-map-interaction-status {
-    top: 104px;
-  }
-  .app.sidebar-is-expanded .map-view-wrapper:has(.weather-time-card):has(.qpf-status-card) .route-map-interaction-status {
-    top: 184px;
-  }
+.weather-time-card__caret { color: var(--text-3); font-size: 10px; }
+.weather-time-card__layer select {
+  position: absolute; inset: 0 auto 0 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 12px;
 }
+.weather-time-card__layer select:disabled { cursor: default; }
+.weather-time-card__layer:focus-within .weather-time-card__layer-chip { outline: 2px solid var(--accent); outline-offset: 2px; }
+.weather-time-card__count { color: var(--text-3); font-size: 10px; font-weight: 600; }
+/* 범례: 이름·단위를 왼쪽 칸에, 색띠·견본을 오른쪽에 둔다(MapLegend의 unit). */
+.weather-time-card__legend {
+  display: grid; gap: var(--space-s);
+  max-height: min(34vh, 240px); overflow-y: auto; overscroll-behavior: contain;
+}
+.weather-time-card__legend .hlegend:has(> .hlegend-unit) {
+  grid-template-columns: 52px minmax(0, 1fr); column-gap: var(--space-s); align-items: start;
+}
+.weather-time-card__legend .hlegend:has(> .hlegend-unit) > .hlegend-title { display: none; }
+.weather-time-card__legend .hlegend:has(> .hlegend-unit) > :not(.hlegend-unit) { grid-column: 2; }
+.weather-time-card__legend .hlegend:has(> .hlegend-unit) > .hlegend-note { grid-column: 1 / -1; }
+.weather-time-card__legend .hlegend-unit { display: block; grid-column: 1; grid-row: 1; padding-top: 1px; color: var(--text-2); font-size: 11px; line-height: 12px; }
 
 .active-weather-summary {
   position: absolute;
@@ -2279,7 +2274,7 @@
   .app.map-controls-visible .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer {
     display: flex;
     flex-direction: column;
-    max-height: calc(100% - 176px - var(--legend-popover-height, 0px));
+    max-height: calc(100% - 176px - var(--legend-popover-height, 0px) - var(--weather-time-card-height, 0px));
   }
 
   .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer-body {
@@ -2289,34 +2284,16 @@
   }
 }
 
-/* 좁은 지도에서 시각 카드는 범례 위로 내려 두어 정보 패널과 겹치지 않는다. */
+/* 좁은 지도에서는 레이어 패널이 왼쪽 아래 자료 시각 상자 위에서 멈춘다. */
 @media (min-width: 720px) and (max-width: 1299px) {
-  .app.sidebar-is-expanded .map-view-wrapper .weather-time-card {
-    top: auto;
-    bottom: calc(100px + var(--legend-popover-height, 0px));
-    left: 14px;
-    width: max-content;
-    max-width: min(360px, calc(100% - 28px));
-    transform: none;
-  }
-
   .app.sidebar-is-expanded.map-controls-visible .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer {
-    max-height: calc(100% - 272px - var(--legend-popover-height, 0px));
+    max-height: calc(100% - 272px - var(--legend-popover-height, 0px) - var(--weather-time-card-height, 0px));
   }
 }
 
 @media (min-width: 720px) and (max-width: 1099px) {
-  .app:not(.sidebar-is-expanded) .map-view-wrapper .weather-time-card {
-    top: auto;
-    bottom: calc(100px + var(--legend-popover-height, 0px));
-    left: 14px;
-    width: max-content;
-    max-width: min(360px, calc(100% - 28px));
-    transform: none;
-  }
-
   .app:not(.sidebar-is-expanded).map-controls-visible .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer {
-    max-height: calc(100% - 272px - var(--legend-popover-height, 0px));
+    max-height: calc(100% - 272px - var(--legend-popover-height, 0px) - var(--weather-time-card-height, 0px));
   }
 }
 
@@ -2716,22 +2693,18 @@
 .vertical-level-rail-label { display:none; max-width:100%; overflow:hidden; color:var(--text-1); font-size:10px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 3px #fff; }
 .vertical-level-rail-stack:has(> .vertical-level-rail-item:nth-child(2)) .vertical-level-rail-label { display:block; }
 
+/* 오른쪽 아래에 지도 선택·GPS가 빠져(데스크톱) 생긴 높이만큼 연직 레일을 늘린다. */
 @media (min-width:1100px) {
-  .app:not(.sidebar-is-expanded) .map-view-wrapper .weather-time-card { right:12px; left:auto; transform:none; }
   .app:not(.sidebar-is-expanded) .map-view-wrapper .advisory-badge-bar { right:auto; left:50%; transform:translateX(-50%); }
   .app:not(.sidebar-is-expanded) .vertical-level-rail-stack { top:108px; }
-  .app:not(.sidebar-is-expanded) .vertical-level-rail-stack .pressure-level-slider__track { height:clamp(160px, calc(100vh - 434px), 400px); min-height:0; }
+  .app:not(.sidebar-is-expanded) .vertical-level-rail-stack .pressure-level-slider__track { height:clamp(160px, calc(100vh - 366px), 520px); min-height:0; }
 }
 
 @media (min-width:1300px) {
-  .app.sidebar-is-expanded .map-view-wrapper .weather-time-card { right:12px; left:auto; transform:none; }
   .app.sidebar-is-expanded .map-view-wrapper .advisory-badge-bar { right:auto; left:50%; transform:translateX(-50%); }
   .app.sidebar-is-expanded .vertical-level-rail-stack { top:108px; }
-  .app.sidebar-is-expanded .vertical-level-rail-stack .pressure-level-slider__track { height:clamp(160px, calc(100vh - 434px), 400px); min-height:0; }
+  .app.sidebar-is-expanded .vertical-level-rail-stack .pressure-level-slider__track { height:clamp(160px, calc(100vh - 366px), 520px); min-height:0; }
 }
-.qpf-status-card { position:absolute; top:var(--space-m); left:50%; z-index:6; display:grid; gap:2px; width:max-content; max-width:min(360px, calc(100% - 2 * var(--space-m))); padding:var(--space-s) var(--space-m); border:1px solid var(--stroke-1); border-radius:var(--radius-lg); background:rgba(255,255,255,.96); color:var(--text-1); font-size:var(--fs-200); line-height:var(--lh-200); box-shadow:0 2px 8px rgba(15,23,42,.16); transform:translateX(-50%); pointer-events:none; }
-.qpf-status-card strong { font-size:var(--fs-300); line-height:var(--lh-300); }
-.qpf-status-card span { overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
 .convective-overlay-card { position:absolute; left:calc(var(--convective-card-x) + var(--space-m)); top:calc(var(--convective-card-y) - var(--space-m)); z-index:6; display:grid; gap:var(--space-s); min-width:260px; max-width:320px; padding:var(--space-l); border:3px solid var(--stroke-1); border-radius:var(--radius-lg); background:rgba(255,255,255,.94); color:var(--text-1); font-size:var(--fs-300); line-height:var(--lh-300); box-shadow:0 2px 8px rgba(15,23,42,.16); transform:translateY(-100%); }
 .convective-overlay-card__time,.convective-legend__note { color:var(--text-3); font-size:var(--fs-200); line-height:var(--lh-200); }
 .weather-point-inspector { position:absolute; top:calc(var(--weather-point-y) - var(--space-m)); z-index:7; width:min(360px, calc(100% - 32px)); padding:var(--space-m); border:3px solid var(--weather-point-accent); border-radius:var(--radius-lg); background:rgba(255,255,255,.96); color:var(--text-1); box-shadow:0 4px 14px rgba(15,23,42,.2); transform:translateY(-100%); }
@@ -2882,13 +2855,13 @@
   text-shadow: none;
 }
 
-/* Extend the shared surface leftward; keep the track axis in its old position. */
+/* 판이 늘 깔리므로 모든 지도에서 판을 왼쪽으로 넓혀 선택 고도 글자가 판 안에 들어오게 한다. 눈금 축 위치는 그대로다. */
 @media (min-width: 720px) {
-  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .vertical-level-rail-item,
-  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider {
+  .vertical-level-rail-item,
+  .pressure-level-slider {
     width: 136px;
   }
-  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider__track {
+  .pressure-level-slider__track {
     margin-left: 42px;
   }
 }
@@ -2900,5 +2873,42 @@
     width: 96px;
     padding-left: 40px;
     box-sizing: border-box;
+  }
+}
+
+/* 연직 고도 막대(데스크톱·태블릿): 배경 판 없이 얇은 막대 하나와 손잡이 말풍선만 둔다(항공 앱 방식).
+   막대·눈금·글자는 흰 테두리를 둘러 밝은 지도·어두운 지도 어디서나 읽힌다. 눈금에는 FL만, hPa는 말풍선에만 적는다. */
+@media (min-width: 720px) {
+  .app .map-view-wrapper .pressure-level-slider,
+  .app .map-view-wrapper .pressure-level-slider:hover,
+  .app .map-view-wrapper .pressure-level-slider:has(.pressure-level-slider__track:focus-visible) {
+    border-color: transparent; background: transparent; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .app .map-view-wrapper .pressure-level-slider__rail {
+    width: 6px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.9);
+    background: rgba(15, 23, 42, 0.55); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+  }
+  .app .map-view-wrapper .pressure-level-slider__tick { background: #1e293b; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8); }
+  .app .map-view-wrapper .pressure-level-slider__tick span {
+    color: #1e293b; font-weight: 700; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  }
+  .app .map-view-wrapper .pressure-level-slider__tick span small { display: none; }
+  .app .map-view-wrapper .pressure-level-slider__value {
+    right: calc(50% + 17px); padding: 4px 9px; border-radius: 8px;
+    background: #1e293b; color: #ffffff; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35); line-height: 1.15;
+  }
+  .app .map-view-wrapper .pressure-level-slider__value::after {
+    content: ''; position: absolute; top: 50%; right: -6px; width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 7px solid #1e293b;
+    transform: translateY(-50%);
+  }
+  .app .map-view-wrapper .pressure-level-slider__value strong { font-size: 14px; }
+  .app .map-view-wrapper .pressure-level-slider__value small { color: #cbd5e1; font-size: 10px; font-weight: 600; }
+  .app .map-view-wrapper .pressure-level-slider__value em { color: #cbd5e1; }
+  .app .map-view-wrapper .pressure-level-slider__thumb { width: 18px; height: 18px; background: #1e293b; box-shadow: 0 1px 5px rgba(15, 23, 42, 0.45); }
+  .app .map-view-wrapper .vertical-level-rail-label {
+    padding: 0; border-radius: 0; background: transparent; color: #0f172a; font-size: 11px;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
   }
 }

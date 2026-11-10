@@ -1,6 +1,23 @@
 # KIM 대류 영역(ACI)
 
-확대영역 KIM의 지상 CAPE·강수강도·OLR를 결합한 실험 점수다. 발생 확률이나 운정고도는 아니다. 시간축은 다른 KIM 레이어와 공유하며 고도 변경에는 반응하지 않는다.
+2026-11-10부터 지도·지점·경로 브리핑의 대류영역은 **ACIM(기상청 대류영역 예측모델) 예상 운정고도**다.
+근거: 「(2026)항공기상 예측모델 통합운영계정 운영 매뉴얼_ACIM_v5」 3.3.1과 원본 `ACI_Indices.f90`·`ACIintoFL`.
+시간축은 다른 KIM 레이어와 공유하며 고도 변경에는 반응하지 않는다. 발생확률(시간지연 앙상블)은 아직 없다.
+
+## ACIM 계산 (`shared/acim.js`)
+
+- 입력: 같은 시각의 `ulwrtoa`(OLR, W/m²)와 `precc`(KIM 1시간 대류성 강수량, kg/m²). 이전 3변수 점수의 `pr`은 받지 않는다(호출 수 변화 없음).
+- 계절: 기준시각(UTC) 달로 DJF/MAM/JJA/SON. 계절별 위험 범위 안에서 6차 다항식, `ACI = 0.5·M_OLR + 0.5·M_APCP`, 최종값만 0~1로 자른다.
+- 운정고도: 변환표 15단계(FL000~FL350, 보간 없음). 양자화 전 ACI로 정하고 `topFl`로 저장한다.
+- 원본과 다르게 정한 것: `olr == OLR1`은 1(원본 분기 누락). `precc < 0.005`는 0(API 2바이트 압축 잡음 4.77e-7이 봄철 APCP1=0에서 전역 FL200을 만드는 것을 막음).
+- 검증: 독립 Decimal 404사례 최대 오차 2.35e-14, 2026-10-03 실측 34,645격자 운정고도가 연구 코드와 전부 일치.
+- 미확정: 원본 슈퍼컴 입력(`glob_sfc`)의 `precc` 누적 구간이 API(`etc.2byte.1hr`)의 1시간과 같은지. 3시간이라면 우리 값이 낮게 나온다.
+- 지도: **운정 FL250 이상만** 원본 일기도 색(`ACIM.rgb`: FL250 #ffe200, 275 #ff8200, 300 #ff4d00, 325 #ff0000, 350 #9900bf)으로 칠한다.
+  근거: 국립기상과학원 「KIM-전구 기반 대류영역 예측모델 운영 매뉴얼」(2026.3)이 강한 대류를 레이더 18 dBZ 에코 정상고도 FL250 이상으로 정의해 검증(AUC 0.654, TSS 0.14, PODY 0.17). 원본 일기도처럼 FL025부터 칠하면 2026-11-10 확대영역에서 강수(≥0.1 mm/h) 면적의 2.4배, 그중 60%가 무강수 지역이었다. FL250 이상은 7.5~8.2%, 무강수 11~12%.
+- 지점: FL250 이상이면 "운정 FL…", 미만이면 "강한 대류 없음". 아래 줄에 ACIM 지수(FL), OLR, 대류성 강수, CAPE(참고).
+- 경로 위험 막대: 운정 FL250 이상 MOD, FL300 이상 SEV.
+- 미확인: KIM판 고도 변환표 `kimg_ACIintoFL` 값(현재 v5 매뉴얼·`DABA/ACIintoFL`과 같은 표를 사용).
+- CAPE는 계속 계산하지만 ACIM 점수에는 쓰지 않는다. 옛 3변수 회차(`scoreSpec.version`이 ACIM이 아님)는 목록에서 시각을 내보내지 않고 `reason: acim_pending`으로 알린다.
 
 ## 실행과 배포
 
@@ -11,13 +28,13 @@
 - MetPy 의존성이 추가됐으므로 `deploy/deploy-vm-full.sh`로 환경을 준비해야 한다. fast deploy만으로는 의존성을 설치하지 않는다.
 - ACI를 위한 중복 EA cron은 없다. 추가3변수는 대용량 키 사용시간에 다운로드하고 계산은 캐시만 사용한다.
 
-입력은 같은domain/tmfc/hf의21개기압면T·q,10m문서T,기존GKTG ps 캐시와신규q2m·pr·ulwrtoa다. 임계값은공유`shared/aci.js`에서CAPE0~2500J/kg,강수0.2~5mm/h,OLR230→180W/m²,가중치0.2:0.4:0.4로정의한다. 적분은20hPa이며수평격자를줄이지않는다. 색상은노랑·주황·빨강, 경계0.25/0.50/0.75다.
+CAPE(참고값) 입력은 같은domain/tmfc/hf의21개기압면T·q,10m문서T,기존GKTG ps 캐시와q2m이다. 적분은20hPa이며수평격자를줄이지않는다. (2026-11-10 이전 3변수 실험 점수: CAPE0~2500J/kg, 강수0.2~5mm/h, OLR230→180W/m², 가중치0.2:0.4:0.4, `shared/aci.js`에 남아 있음.)
 
 ## 저장·조회
 
 `kim_nwp_ea/runs/KIMG_NE57_<tmfc>/derived/aci/`의 시각별 불변 NC와manifest,`kim_nwp_ea/derived/aci/latest.json`을 사용한다. CAPE와최종score revision을분리한다. 점수설정만바뀌면CAPE는재사용한다. 보조입력은`raw/aci`, ps는기존`raw/gktg`를공유한다.
 
-`/api/kim/aci/index?domain=auto`와`/api/kim/aci/field`,`/api/kim/aci/point`로조회한다. field/point에는domain/tmfc/hf/revision을명시하며level은없다. 지도는기존KMB1 압축정적파일의score i16배열을먼저읽는다. 색·클릭점수는동일저장결과를쓴다. 일반사용자에게가중치변경은제공하지않는다.
+`/api/kim/aci/index?domain=auto`와`/api/kim/aci/field`,`/api/kim/aci/point`로조회한다. field/point에는domain/tmfc/hf/revision을명시하며level은없다. 지도는KMB1 압축정적파일(`aci-<revision>-acim-v1`)의`topFl`배열을먼저읽는다. 색·클릭점수는동일저장결과를쓴다. 일반사용자에게가중치변경은제공하지않는다.
 
 ACI 입력/계산/게시실패는기본KIM 게시와분리된다(2026-10-09 보강):
 - 입력은 기본 격자를 받은 직후 한 번만 시도하고 기다리지 않는다. 입력·계산이 실패한 시각은 회차 끝에서 한 번 더 시도한다(입력은 23:50 마감 전까지만).

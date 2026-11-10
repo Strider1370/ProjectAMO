@@ -20,7 +20,6 @@ const EXCLUDED_INITIAL_URLS = [
   '/api/notam', '/api/metar-overseas', '/api/taf-overseas', '/api/sigmet-overseas',
   '/api/sigwx-low', '/api/adsb', '/api/typhoon', '/api/weather/flight-category-overlay',
   '/data/navdata/airports-overseas.json', '/data/radar/wissdom/wissdom_meta.json',
-  '/data/radar/qpf/qpf_meta.json', '/data/radar/echotop/echotop_meta.json',
   '/data/radar/rainviewer_meta.json', '/data/radar/echo_meta.json',
   '/data/satellite/convective/convective_meta.json',
 ]

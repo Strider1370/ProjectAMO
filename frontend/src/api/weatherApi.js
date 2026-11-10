@@ -3,7 +3,7 @@ import { ADSB_FETCH_DISABLED } from './adsbApi.js'
 import { versionedAsset } from '../shared/versionedAsset.js'
 import { fetchKimMapBinary, kimMapBinaryName, kimMapBinarySupported, kimMapBinaryUrl } from './kimMapBinary.js'
 
-const KMA_RADAR_GRAPHICS_META = /^\/data\/radar\/(?:hsr\/hsr_meta|hci\/hci_meta|wissdom\/wissdom_meta|qpf\/qpf_meta)\.json$/
+const KMA_RADAR_GRAPHICS_META = /^\/data\/radar\/(?:hsr\/hsr_meta|hci\/hci_meta|wissdom\/wissdom_meta)\.json$/
 
 export const AIRPORT_NAME_KO = {
   RKSI: '인천국제공항',
@@ -137,8 +137,6 @@ export function buildSnapshotMetaFromData(data = {}) {
     hsrMeta: buildGraphicsMetaEntry(data.hsrMeta),
     hciMeta: buildGraphicsMetaEntry(data.hciMeta),
     wissdomMeta: buildGraphicsMetaEntry(data.wissdomMeta),
-    qpfMeta: buildGraphicsMetaEntry(data.qpfMeta),
-    echoTopMeta: data.echoTopMeta?.tm ? { tm: data.echoTopMeta.tm } : null,
     rainviewerMeta: data.rainviewerMeta?.tm ? { tm: data.rainviewerMeta.tm } : null,
     satMeta: data.satMeta?.tm ? { tm: data.satMeta.tm } : null,
     satVisibleMeta: data.satVisibleMeta?.tm ? { tm: data.satVisibleMeta.tm } : null,
@@ -180,7 +178,7 @@ export async function loadWeatherData({ signal } = {}) {
   const [
     airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
-    wissdomMeta, qpfMeta, hsrMeta, hciMeta, echoTopMeta, rainviewerMeta, satMeta, satVisibleMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    wissdomMeta, hsrMeta, hciMeta, rainviewerMeta, satMeta, satVisibleMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -194,10 +192,8 @@ export async function loadWeatherData({ signal } = {}) {
     optionalJson('/api/airmet'),
     optionalJson('/api/lightning'),
     optionalJson('/data/radar/wissdom/wissdom_meta.json'),
-    optionalJson('/data/radar/qpf/qpf_meta.json'),
     optionalJson('/data/radar/hsr/hsr_meta.json'),
     optionalJson('/data/radar/hci/hci_meta.json'),
-    optionalJson('/data/radar/echotop/echotop_meta.json'),
     optionalJson('/data/radar/rainviewer_meta.json'),
     optionalJson('/data/satellite/sat_meta.json'),
     optionalJson('/data/satellite/visible/visible_meta.json'),
@@ -227,10 +223,8 @@ export async function loadWeatherData({ signal } = {}) {
     airmet,
     lightning,
     wissdomMeta,
-    qpfMeta,
     hsrMeta,
     hciMeta,
-    echoTopMeta,
     rainviewerMeta,
     satMeta,
     satVisibleMeta,
@@ -269,11 +263,6 @@ export async function fetchNotam() {
 export async function fetchConvectiveCtpsPoint({ tm, lat, lon, minFl }, { signal } = {}) {
   const params = new URLSearchParams({ tm, lat: String(lat), lon: String(lon), minFl: String(minFl) })
   return fetchJson(`/api/satellite/convective/ctps-point?${params.toString()}`, { signal })
-}
-
-export async function fetchEchoTopPoint({ tm, lat, lon }, { signal } = {}) {
-  const params = new URLSearchParams({ tm, lat: String(lat), lon: String(lon) })
-  return fetchJson(`/api/radar/echo-top-point?${params.toString()}`, { signal })
 }
 
 export async function fetchSnapshotMeta({ signal } = {}) {
@@ -451,10 +440,8 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all', si
   if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(preserveJson('/api/ground-overview')); keys.push('groundOverview') }
   if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(preserveJson('/api/environment')); keys.push('environment') }
   if (changes.wissdomMeta) { fetches.push(preserveJson('/data/radar/wissdom/wissdom_meta.json')); keys.push('wissdomMeta') }
-  if (changes.qpfMeta) { fetches.push(preserveJson('/data/radar/qpf/qpf_meta.json')); keys.push('qpfMeta') }
   if (changes.hsrMeta) { fetches.push(preserveJson('/data/radar/hsr/hsr_meta.json')); keys.push('hsrMeta') }
   if (changes.hciMeta) { fetches.push(preserveJson('/data/radar/hci/hci_meta.json')); keys.push('hciMeta') }
-  if (changes.echoTopMeta) { fetches.push(preserveJson('/data/radar/echotop/echotop_meta.json')); keys.push('echoTopMeta') }
   if (changes.rainviewerMeta) { fetches.push(preserveJson('/data/radar/rainviewer_meta.json')); keys.push('rainviewerMeta') }
   if (changes.satMeta) { fetches.push(preserveJson('/data/satellite/sat_meta.json')); keys.push('satMeta') }
   if (changes.satVisibleMeta) { fetches.push(preserveJson('/data/satellite/visible/visible_meta.json')); keys.push('satVisibleMeta') }
@@ -475,7 +462,7 @@ export function fetchKimAciIndex(options = {}) {
 export async function fetchKimAciField(selection,options = {}) {
   const {domain,tmfc,hf,revision}=selection
   if(revision && kimMapBinarySupported()) {
-    try {return await fetchKimMapBinary(kimMapBinaryUrl({domain,tmfc,hf,level:'column',name:`aci-${revision}-score-v1`}),options)}
+    try {return await fetchKimMapBinary(kimMapBinaryUrl({domain,tmfc,hf,level:'column',name:`aci-${revision}-acim-v4`}),options)}
     catch(error){if(options.signal?.aborted)throw error}
   }
   return fetchJson(`/api/kim/aci/field?${kimFieldParams({domain,tmfc,hf,revision})}`,options)

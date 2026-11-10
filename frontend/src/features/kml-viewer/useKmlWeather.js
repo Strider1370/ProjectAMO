@@ -22,7 +22,7 @@ export const TERRAIN_ALT_ITEMS = terrainHazardAltitudeItems()
 // 모듈과 고도·시각 상태를 들고 있어 MapView 본체를 통째로 가져와야 한다. 이 스파이크의
 // 질문은 "이용자 KML 위에 우리 기상이 겹쳐지는가"이고, 래스터 하나만 겹쳐도 답이 나온다.
 const SUPPORTED = [
-  'radar', 'radarHsr', 'radarHci', 'radarOverseas', 'echoTop',
+  'radar', 'radarHsr', 'radarHci', 'radarOverseas',
   'satellite', 'satelliteVisible', 'ci', 'ctps', 'lightning',
   'sigmet', 'sigmet_intl', 'airmet', 'sigwx',
   'terrainHazard',

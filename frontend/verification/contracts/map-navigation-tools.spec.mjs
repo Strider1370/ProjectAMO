@@ -83,21 +83,21 @@ test('map-navigation-tools: 범례는 좌측 하단에 두고 정보 패널 높�
   expect(panelBox.y + panelBox.height).toBeLessThan(dockBox.y - 118)
 })
 
-test('map-navigation-tools: 지도 모드는 줌 조작 아래에 놓이고 메뉴는 위로 열린다', async ({ page }) => {
+test('map-navigation-tools: 데스크톱은 지도 선택을 오른쪽 위 알약 도구로 두고 메뉴는 아래로 열린다', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', '모바일은 예전 자리를 쓴다')
   await open(page)
-  const mode = page.locator('.basemap-switcher-toggle')
-  const navigation = page.locator('.mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl:has(.mapboxgl-ctrl-zoom-in)')
+  const tools = page.locator('.map-tool-pills')
+  const mode = tools.getByRole('button', { name: /지도 선택$/ })
   await expect(mode).toBeVisible()
-  await expect(navigation).toBeVisible()
+  await expect(page.locator('.mapboxgl-ctrl-compass, .mapboxgl-ctrl-zoom-in')).toHaveCount(0)
   const modeBox = await mode.boundingBox()
-  const navigationBox = await navigation.boundingBox()
-  expect(modeBox.y - (navigationBox.y + navigationBox.height)).toBeGreaterThanOrEqual(6)
-  expect(modeBox.y - (navigationBox.y + navigationBox.height)).toBeLessThanOrEqual(14)
-  expect(Math.abs(modeBox.x + modeBox.width - navigationBox.x - navigationBox.width)).toBeLessThan(2)
+  const mapBox = await page.locator('.map-view-wrapper').boundingBox()
+  expect(mapBox.x + mapBox.width - (modeBox.x + modeBox.width)).toBeLessThan(20)
+  expect(modeBox.y - mapBox.y).toBeLessThan(40)
   await mode.click()
   const menu = page.getByRole('menu', { name: '지도 선택' })
   await expect(menu).toBeVisible()
-  expect((await menu.boundingBox()).y + (await menu.boundingBox()).height).toBeLessThan(modeBox.y)
+  expect((await menu.boundingBox()).y).toBeGreaterThan(modeBox.y + modeBox.height)
 })
 
 test('map-navigation-tools: 좁은 화면에서는 패널을 스크롤하고 범례 자리를 남긴다', async ({ page }, testInfo) => {

@@ -14,10 +14,13 @@ import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { supplementBoundsMatch } from './kim-gktg-processor.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { aciHash, readKimAciField, writeKimAciField, writeKimAciAttempt, publishKimAciRun, ensureAciBinary } from './kim-aci-store.js'
-import { DEFAULTS, ACI_SCORE_VERSION, packAciScore } from '../../../shared/aci.js'
+import { ACIM_SPEC, ACIM_MISSING, acimSeason, calculateAcim, acimTopFl } from '../../../shared/acim.js'
 
 export const ACI_ALGORITHM='kim-aci-sbcape-rk4-20hpa-v2'
-export const ACI_SPEC={version:ACI_SCORE_VERSION,settings:DEFAULTS}
+// 지도·브리핑에 쓰는 점수는 ACIM(OLR+대류성 강수, 계절별 다항식)이다. CAPE는 지점 참고값으로만 계산한다.
+export const ACI_SPEC=ACIM_SPEC
+// precc: KIM 1시간 대류성 강수량(kg/m²). ps·q2m은 CAPE용.
+export const ACI_INPUTS=['ps','q2m','precc','ulwrtoa']
 const levels=KIM_NWP_LEVELS.filter(l=>l.kind==='pressure')
 const cli=fileURLToPath(new URL('../../python/kim_aci/calculate.py',import.meta.url))
 const kernelDir=fileURLToPath(new URL('../../python/aci_experiment/',import.meta.url))
@@ -28,8 +31,8 @@ export function validateAciSupplement(text,{name,tmfc,hf,grid}) {
   if(!text.includes(`.ft${String(hf).padStart(3,'0')}.${tmfc}.nc`)||!new RegExp(`=\\s*${name},\\s*unit`).test(text)||! /level\s*[:=]\s*0(?:\s|,)/.test(text)||!supplementBoundsMatch(text,grid))throw new Error(`ACI input identity mismatch: ${name}`)
   const parsed=parseKimGridText(text,{variable:name,level:0})
   const unit=parsed.unit.replace(/,$/,'').replaceAll('^','').replaceAll('²','2').replace(/[()]/g,'')
-  if(parsed.nx!==grid.nx||parsed.ny!==grid.ny||unit!=={ps:'Pa',q2m:'kg/kg',pr:'kg/m2/s',ulwrtoa:'W/m2'}[name])throw new Error(`ACI input grid/unit mismatch: ${name}`)
-  const ranges={ps:[20000,110000],q2m:[0,.05],pr:[0,1],ulwrtoa:[0,600]};const [lo,hi]=ranges[name]
+  if(parsed.nx!==grid.nx||parsed.ny!==grid.ny||unit!=={ps:'Pa',q2m:'kg/kg',precc:'kg/m2',ulwrtoa:'W/m2'}[name])throw new Error(`ACI input grid/unit mismatch: ${name}`)
+  const ranges={ps:[20000,110000],q2m:[0,.05],precc:[0,500],ulwrtoa:[0,600]};const [lo,hi]=ranges[name]
   const values = Float32Array.from(parsed.values,v=>v==null||!Number.isFinite(v)||v<lo||v>hi?NaN:v)
   if (!values.some(Number.isFinite)) throw new Error(`ACI input has no valid columns: ${name}`)
   return values
@@ -37,7 +40,7 @@ export function validateAciSupplement(text,{name,tmfc,hf,grid}) {
 export async function prefetchAciSupplements({root=config.storage.base_path,domain='ea',tmfc,hf,signal,fetchGrid=fetchKimGrid}) {
   const {grid}=readKimNwpGridVariables({root,domain,model:KIM_NWP_MODEL,tmfc,hf,levelId:levels[0].id,names:[]})
   let requests=0,bytes=0
-  for(const name of ['ps','q2m','pr','ulwrtoa']) {
+  for(const name of ACI_INPUTS) {
     signal?.throwIfAborted();const file=inputPath(root,domain,tmfc,hf,name);let text=readKimRawText(file)
     if(text===null) {
       const credential=selectKimRunCredential({tmfc,...kimBulkCredentialOptions(config,Date.now(),{required:kimDomain(domain).bulkOnly})})
@@ -94,7 +97,7 @@ export async function process({root=config.storage.base_path,domain='ea',tmfc,fo
       const surfaceLayer=readKimNwpGridVariables({root,domain,model:KIM_NWP_MODEL,tmfc,hf,levelId:'10m',names:['T']})
       if(surfaceLayer.tmfc!==tmfc||Number(surfaceLayer.hf)!==hf||!sameGrid(grid,surfaceLayer.grid))throw new Error('Mixed ACI surface grid')
       const t2m=decode(surfaceLayer.variables.T,size,'K'),inputs={}
-      for(const name of ['ps','q2m','pr','ulwrtoa']) {
+      for(const name of ACI_INPUTS) {
         const file=inputPath(root,domain,tmfc,hf,name),text=readKimRawText(file)
         if(text===null)throw new Error(`ACI cached input unavailable: ${name}`)
         inputs[name]=validateAciSupplement(text,{name,tmfc,hf,grid});sources.push(fs.existsSync(file+'.gz')?file+'.gz':file)
@@ -116,14 +119,19 @@ export async function process({root=config.storage.base_path,domain='ea',tmfc,fo
         capeField=writeKimAciField({root,domain,cape:true,field:{type:'kim_aci_cape',grid,time,revision:capeRevision,engineRevision:engine,algorithm:ACI_ALGORITHM,cape:Array.from(r.subarray(0,size),v=>Number.isFinite(v)?v:null),cin:Array.from(r.subarray(size,2*size),v=>Number.isFinite(v)?v:null),status,checks:{fallbacks:result.fallbacks,seconds:result.seconds,maxStepHpa:20,topPressureHpa:150}}});computed=true
       }
       mark=Date.now()
-      const rainRate=Array.from(inputs.pr,v=>Number.isFinite(v)?Math.fround(v*3600):null),olr=Array.from(inputs.ulwrtoa,v=>Number.isFinite(v)?v:null)
-      const revision=aciHash({capeRevision,rainRate,olr,scoreSpec});let field
+      // precc는 kg/m² = mm(1시간). 압축 잡음 처리는 calculateAcim이 한다.
+      const precc=Array.from(inputs.precc,v=>Number.isFinite(v)?v:null),olr=Array.from(inputs.ulwrtoa,v=>Number.isFinite(v)?v:null),season=acimSeason(tmfc)
+      const revision=aciHash({capeRevision,precc,olr,scoreSpec,season});let field
       try{field=readKimAciField({root,domain,tmfc,hf,revision})}catch(error){if(!/ENOENT/.test(error.code||''))throw error}
       if(!field) {
-        const score=[],status=[...capeField.status];let validCount=0
-        for(let i=0;i<size;i++){const value=packAciScore({cape:status[i]===0?capeField.cape[i]:null,rainRate:rainRate[i],olr:olr[i]},scoreSpec.settings);score.push(value);if(value>=0){validCount++}else if(status[i]===0)status[i]=1}
+        const score=[],topFl=[];let validCount=0
+        for(let i=0;i<size;i++){
+          // 운정고도는 양자화 전 값으로 정한다.
+          const aci=calculateAcim(olr[i],precc[i],season)
+          if(aci==null){score.push(ACIM_MISSING);topFl.push(null)}else{score.push(Math.floor(aci*10000));topFl.push(acimTopFl(aci));validCount++}
+        }
         if (!validCount) throw new Error('ACI has no usable columns')
-        field=writeKimAciField({root,domain,field:{type:'kim_nwp_aci',product:'ACI_EXPERIMENT',model:KIM_NWP_MODEL,grid,time,revision,capeRevision,inputRevision:revision,engineRevision:engine,algorithm:ACI_ALGORITHM,scoreSpec,cape:capeField.cape,cin:capeField.cin,status,rainRate,olr,score,validCount,checks:capeField.checks}})
+        field=writeKimAciField({root,domain,field:{type:'kim_nwp_aci',product:'ACIM',model:KIM_NWP_MODEL,grid,time,revision,capeRevision,inputRevision:revision,engineRevision:engine,algorithm:ACI_ALGORITHM,scoreSpec,season,cape:capeField.cape,cin:capeField.cin,status:capeField.status,precc,olr,score,topFl,validCount,checks:capeField.checks}})
       }
       // Input replacement invalidates publication, including supplemental caches.
       if(digestFiles(sources)!==captured || digestFiles(sources.slice(0,levels.length+1))!==baseCaptured)throw new Error('ACI inputs changed during calculation')

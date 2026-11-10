@@ -48,11 +48,11 @@ test('archived NWP frames remain selectable with no observation layer', () => {
   assert.equal(clampMs(domain, archived), archived)
 })
 
-test('buildTimelineDomain includes QPF future ticks without treating them as NWP entries', () => {
+test('buildTimelineDomain includes exact forecast ticks without treating them as NWP entries', () => {
   const domain = buildTimelineDomain({
     pastTicksMs: [NOW - HOUR],
     nwpTimesMs: [NOW + HOUR],
-    qpfTimesMs: [NOW + 20 * 60 * 1000, NOW + 40 * 60 * 1000],
+    forecastTimesMs: [NOW + 20 * 60 * 1000, NOW + 40 * 60 * 1000],
     nowMs: NOW,
   })
   assert.equal(domain.endMs, NOW + HOUR)

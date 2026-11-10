@@ -103,12 +103,17 @@ test('a below-ground cell reads "지면 아래" for that layer only', () => {
 
 
 test('ACI point rows include score and input values with their own time, without a layer altitude', () => {
-  const row = buildAciPointRow({ score: 0.67, cape: 2774, rainRate: 1.04, olr: 162.9 }, { issueLabel: '10/09 09:00 KST', validLabel: '10/09 21:00 KST' })
+  const row = buildAciPointRow({ score: 0.6123, topFl: 250, cape: 2774, precc: 1.04, olr: 162.9 }, { issueLabel: '10/09 09:00 KST', validLabel: '10/09 21:00 KST' })
   assert.equal(row.label, '대류영역')
-  assert.equal(row.value, '점수 0.670')
+  assert.equal(row.value, '운정 FL250')
+  assert.equal(row.color, '#ffe200')
   assert.equal(row.validLabel, '10/09 21:00 KST')
   assert.equal(row.altitude, undefined)
-  assert.match(row.detail, /CAPE 2774 J\/kg · 강수 1.04 mm\/h · OLR 162.9 W\/m²/)
-  assert.equal(buildAciPointRow({ score: 0, cape: 0, rainRate: 0, olr: 250 }).value, '점수 0.000')
+  assert.equal(row.detail, 'ACIM 0.61(FL250) · OLR 163 W/m² · 대류성 강수 1.04 mm/h · CAPE 2774 J/kg(참고)')
+  // FL250 미만: ACIM 운정고도는 아래 줄에 남기고, 지도와 같이 강한 대류로 보이지 않는다.
+  const low = buildAciPointRow({ score: 0.4, topFl: 200, cape: 0, precc: 0.1, olr: 200 })
+  assert.equal(low.value, '강한 대류 없음');assert.match(low.detail, /ACIM 0.40\(FL200\)/);assert.equal(low.color, 'var(--stroke-2)')
+  assert.equal(buildAciPointRow({ score: 0, topFl: 0, cape: null, precc: 0, olr: 250 }).value, '강한 대류 없음')
+  assert.doesNotMatch(buildAciPointRow({ score: 0, topFl: 0, cape: null, precc: 0, olr: 250 }).detail, /CAPE/)
   assert.equal(buildAciPointRow({ score: null }).value, '자료 없음')
 })

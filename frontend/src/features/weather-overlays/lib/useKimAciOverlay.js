@@ -1,28 +1,33 @@
 import { useEffect, useMemo } from 'react'
-import { ACI_BANDS, ACI_MISSING } from '../../../../../shared/aci.js'
+import { ACIM_TOP_BANDS, acimTopBand } from '../../../../../shared/acim.js'
 import { cellCoordinatesForGrid, mercatorSourceRows } from './overlayUtils.js'
 import { ACI_SOURCE, ACI_LAYER, removeAciLayer } from './aciExperimentModel.js'
 import { syncAciRaster } from './aciExperimentRaster.js'
 import { formatSigwxStamp, formatUtcTmfcStamp } from './weatherOverlayModel.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
+const rgb=hex=>[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]
+const BAND_RGB=new Map(ACIM_TOP_BANDS.map(b=>[b,rgb(b.color)]))
+// 표시 운정고도(FL250 이상)를 원본 일기도의 25 단위 색으로 칠한다. FL250 미만·결측은 투명.
 export function aciFieldPixels(field) {
-  const g=field.grid,n=g.nx*g.ny
-  if(field.score?.length!==n||field.scoreScale!==.0001)throw new Error('Invalid ACI map field')
+  const g=field.grid,n=g.nx*g.ny,values=field.displayFl
+  if(field.product!=='ACIM'||values?.length!==n)throw new Error('Invalid ACI map field')
   const rows=mercatorSourceRows(g),pixels=new Uint8ClampedArray(n*4)
-  const colors=ACI_BANDS.map(b=>[parseInt(b.color.slice(1,3),16),parseInt(b.color.slice(3,5),16),parseInt(b.color.slice(5,7),16)])
   for(let y=0;y<g.ny;y++)for(let x=0;x<g.nx;x++) {
-    const raw=field.score[rows[y]*g.nx+x]
-    if(raw==null||raw===ACI_MISSING||raw<2500)continue
-    const b=raw>=7500?3:raw>=5000?2:1,i=(y*g.nx+x)*4
-    pixels.set(colors[b],i);pixels[i+3]=166
+    const band=acimTopBand(values[rows[y]*g.nx+x])
+    if(!band)continue
+    const i=(y*g.nx+x)*4
+    pixels.set(BAND_RGB.get(band),i);pixels[i+3]=Math.round(MAP_LAYER_OPACITY.acim*255)
   }
   return pixels
 }
 export function useKimAciOverlay({mapRef,isStyleReady,styleRevision,aci,tz}) {
   const raster=useMemo(()=>{
     if(!aci.field)return null
+    let pixels
+    try{pixels=aciFieldPixels(aci.field)}catch{return null}
     const canvas=document.createElement('canvas');canvas.width=aci.field.grid.nx;canvas.height=aci.field.grid.ny
-    canvas.getContext('2d').putImageData(new ImageData(aciFieldPixels(aci.field),canvas.width,canvas.height),0,0)
+    canvas.getContext('2d').putImageData(new ImageData(pixels,canvas.width,canvas.height),0,0)
     return {url:canvas.toDataURL('image/png'),coordinates:cellCoordinatesForGrid(aci.field.grid)}
   },[aci.field])
   useEffect(()=>{

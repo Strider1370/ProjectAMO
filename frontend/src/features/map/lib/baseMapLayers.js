@@ -281,7 +281,7 @@ export function geoBoundaryPresentation({ basemapId, metVisibility = {}, enableW
   // SIGMET·AIRMET나 점 기호만 있는 낙뢰는 포함하지 않아 초기 지도를 가리지 않는다.
   const areaLayers = [
     'radar', 'radarHsr', 'radarHci', 'radarOverseas', 'satellite', 'satelliteVisible',
-    'echoTop', 'ci', 'ctps', 'aciExperiment', 'visibility', 'ceiling',
+    'ci', 'ctps', 'aciExperiment', 'visibility', 'ceiling',
     'terrainHazard', 'sigwx', 'sigwxHigh', 'typhoon',
   ]
   const nwpLayers = ['wind', 'temp', 'cloudIcing', 'cloud', 'icing', 'surfaceChart', 'turbulence', 'tropopause']

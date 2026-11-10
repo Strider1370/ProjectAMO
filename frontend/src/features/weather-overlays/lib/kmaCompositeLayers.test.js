@@ -62,18 +62,3 @@ test('selects raw KMA tm metadata at the requested frame time', () => {
   assert.equal(calls[0].frame?.path, '/hsr.webp')
   assert.equal(calls[0].visible, true)
 })
-
-test('hides HSR while the selected QPF forecast replaces observed precipitation', () => {
-  const calls = []
-  syncKmaCompositeLayers({}, {
-    hsrMeta: { frames: [{ timeMs: 1, path: '/hsr.webp', bounds: [[30, 120], [40, 130]] }] },
-    qpfFrame: { validTimeMs: 2, path: '/qpf.webp', bounds: [[30, 120], [40, 130]] },
-    selectedMs: 2,
-    visibility: { radarHsr: true },
-  }, {
-    syncRaster: (_map, options) => calls.push(options),
-  })
-
-  assert.equal(calls[0].frame, null)
-  assert.equal(calls[0].visible, false)
-})

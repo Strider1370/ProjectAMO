@@ -1,6 +1,7 @@
 import { syncRasterFrame } from './rasterFrameTransition.js'
 import { normalizeFrame } from './weatherTimeline.js'
 import { SATELLITE_LAYER } from './weatherOverlayLayers.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 // ponytail: 기상청이 그려주는 합성영상을 임시로 붙여 우리 렌더링과 비교한다.
 //   hsr — 강수강도(mm/h). 우리가 직접 그리는 레이더와 같은 물리량이라 나란히 놓고 볼 수 있다.
@@ -41,15 +42,15 @@ export function pickCompositeFrame(meta, selectedMs) {
   return past.length ? past.at(-1) : frames[0]
 }
 
-export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, qpfFrame, selectedMs, visibility = {}, visibleSatelliteVisuals }, { syncRaster = syncRasterFrame } = {}) {
-  const hsrFrame = visibility.radarHsr && !qpfFrame ? pickCompositeFrame(hsrMeta, selectedMs) : null
+export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, selectedMs, visibility = {}, visibleSatelliteVisuals }, { syncRaster = syncRasterFrame } = {}) {
+  const hsrFrame = visibility.radarHsr ? pickCompositeFrame(hsrMeta, selectedMs) : null
   const hciFrame = visibility.radarHci ? pickCompositeFrame(hciMeta, selectedMs) : null
   syncRaster(map, {
-    sourceId: HSR_SOURCE, layerId: HSR_LAYER, frame: hsrFrame, opacity: 0.85,
+    sourceId: HSR_SOURCE, layerId: HSR_LAYER, frame: hsrFrame, opacity: MAP_LAYER_OPACITY.hsr,
     visible: Boolean(hsrFrame), transitionMs: 200,
   })
   syncRaster(map, {
-    sourceId: HCI_SOURCE, layerId: HCI_LAYER, frame: hciFrame, opacity: 0.85,
+    sourceId: HCI_SOURCE, layerId: HCI_LAYER, frame: hciFrame, opacity: MAP_LAYER_OPACITY.hci,
     visible: Boolean(hciFrame), transitionMs: 200,
   })
 

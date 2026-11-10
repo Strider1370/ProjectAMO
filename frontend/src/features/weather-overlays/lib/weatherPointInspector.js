@@ -1,4 +1,4 @@
-import { ACI_BANDS } from '../../../../../shared/aci.js'
+import { acimTopBand, ACIM_DISPLAY_MIN_FL } from '../../../../../shared/acim.js'
 import { gktgBand } from '../../../../../shared/gktg.js'
 import { createCloudPotentialSampler, pickCloudPotentialColor } from './cloudPotentialField.js'
 import { createIcingPotentialSampler, pickIcingColor } from './icingPotentialField.js'
@@ -216,16 +216,22 @@ export function buildWeatherPointRows({
   return rows.filter(Boolean)
 }
 
+// ACIM 예상 운정고도가 먼저, 지수와 입력값은 아래. CAPE는 ACIM 계산에 쓰지 않는 참고값이다.
 export function buildAciPointRow(point, { issueLabel = '-', validLabel = '-' } = {}) {
-  const valid = Number.isFinite(point?.score)
-  const band = valid ? [...ACI_BANDS].reverse().find(b => point.score >= b.min) : null
+  const valid = Number.isFinite(point?.score) && Number.isFinite(point?.topFl)
+  const band = valid ? acimTopBand(point.topFl) : null
+  const fl = valid ? `FL${String(point.topFl).padStart(3, '0')}` : null
+  // 지도와 같은 기준: 운정 FL250 이상만 강한 대류로 크게 보인다. 낮은 값은 아래 줄에 ACIM 값으로 남긴다.
+  const shown = valid && point.topFl >= ACIM_DISPLAY_MIN_FL
+  const top = !valid ? '자료 없음' : shown ? `운정 ${fl}` : '강한 대류 없음'
+  const cape = Number.isFinite(point?.cape) ? ` · CAPE ${fixed(point.cape, 0)} J/kg(참고)` : ''
   return {
     key: 'aci', label: '대류영역',
-    value: valid ? `점수 ${fixed(point.score, 3)}` : '자료 없음',
+    value: top,
     detail: valid
-      ? `CAPE ${fixed(point.cape, 0)} J/kg · 강수 ${fixed(point.rainRate, 2)} mm/h · OLR ${fixed(point.olr, 1)} W/m²`
+      ? `ACIM ${fixed(point.score, 2)}(${fl}) · OLR ${fixed(point.olr, 0)} W/m² · 대류성 강수 ${fixed(point.precc, 2)} mm/h${cape}`
       : '지점 자료를 확인할 수 없습니다',
-    color: band?.color || 'var(--stroke-2)',
+    color: (shown && band?.color) || 'var(--stroke-2)',
     issueLabel, validLabel,
   }
 }

@@ -2,6 +2,8 @@ import { latLonToEN } from './lcc-projection.js'
 
 const DEG2RAD = Math.PI / 180
 
+export const KO_SOURCE_GRID = Object.freeze({ width: 900, height: 900, pixelSize: 2000, ulEasting: -899000, ulNorthing: 899000 })
+
 export const KO_DISPLAY_GRID = Object.freeze({
   west: 114,
   east: 138,

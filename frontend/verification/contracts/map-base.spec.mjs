@@ -275,7 +275,7 @@ test.describe('map-base', () => {
     }
   })
 
-  test('keeps CI and CTPS independent through a basemap replacement', async ({ page }, testInfo) => {
+  test('keeps CTPS through two basemap replacements without CI', async ({ page }, testInfo) => {
     // CTPS의 FL/card 제어와 basemap 교체 조합은 모바일 지도 task에 노출되지 않는다.
     test.skip(testInfo.project.name === 'mobile', 'mobile does not provide the CTPS/basemap control surface')
     // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
@@ -284,17 +284,16 @@ test.describe('map-base', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
     await page.getByRole('button', { name: weatherEntry, exact: true }).click()
-    const ci = page.getByRole('button', { name: '대류 가능성', exact: true })
-    const ctps = page.getByRole('button', { name: '구름 꼭대기', exact: true })
-    await ci.click(); await ctps.click()
-    await expect(ci).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: '대류 가능성', exact: true })).toHaveCount(0)
+    const ctps = page.getByRole('button', { name: '운정고도', exact: true })
+    await ctps.click()
     await expect(ctps).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByText('구름 꼭대기', { exact: true }).last()).toBeVisible()
+    await expect(page.getByRole('slider', { name: '구름 꼭대기 최저고도' })).toBeVisible()
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
-    await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^지형/ }).click()
+    await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^남색/ }).click()
     await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
-    await expect(ci).toHaveAttribute('aria-pressed', 'true')
     await expect(ctps).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => page.evaluate(() => window.__map?.getLayoutProperty('gk2a-ctps-raster', 'visibility'))).toBe('visible')
   })
 
 })

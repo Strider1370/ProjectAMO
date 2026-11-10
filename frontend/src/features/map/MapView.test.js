@@ -30,15 +30,12 @@ test('MapView connects the one-shot notifier to initial style readiness', () => 
   assert.match(source, /setIsStyleReady\(true\)\s*\n\s*notifyInitialStyleReady\(\)/)
 })
 
-test('MapView passes QPF metadata to the overlay model and its ticks to playback separately from KIM', () => {
+test('MapView passes exact forecast ticks to playback separately from KIM', () => {
   const source = readFileSync(join(__dirname, 'MapView.jsx'), 'utf8')
 
-  assert.match(source, /qpfMeta = null/)
-  assert.match(source, /buildWeatherOverlayModel\(\{[\s\S]*?\n\s*qpfMeta,/)
-  assert.match(source, /const \{[\s\S]*?forecastTimelineTicks,[\s\S]*?\} = weatherOverlayModel/)
   // KIM 레이어가 없으면 일기도 시각으로 채운 NWP 시각 목록을 쓴다(timelineNwpTimes).
-  // QPF 예보 시각은 SIGWX HIGH의 앞으로 올 시각과 합쳐(combinedForecastTicks) 재생에 넘긴다.
-  assert.match(source, /const combinedForecastTicks = \[\.\.\.forecastTimelineTicks,/)
-  assert.match(source, /useTimelinePlayback\(\{[\s\S]*?nwpTimes: timelineNwpTimes,[\s\S]*?qpfTimesMs: combinedForecastTicks,/)
+  // SIGWX HIGH의 앞으로 올 시각(combinedForecastTicks)은 따로 재생에 넘긴다.
+  assert.match(source, /const combinedForecastTicks = highTicks\.filter/)
+  assert.match(source, /useTimelinePlayback\(\{[\s\S]*?nwpTimes: timelineNwpTimes,[\s\S]*?forecastTimesMs: combinedForecastTicks,/)
   assert.match(source, /const timelineNwpTimes =[\s\S]*?sliderTimes\.length \? sliderTimes : surfaceChart\.times/)
 })

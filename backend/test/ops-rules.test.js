@@ -42,7 +42,7 @@ test('전부 쉬는 시간이면 판정하지 않는다 — 야간에 매번 울
 
 test('24시간 넘게 멈춘 자료만 요약 대상이다', () => {
   const rows = [
-    { key: 'a', label: '에코탑', status: 'stopped', lastSuccessAt: ago(2 * 86_400_000) },
+    { key: 'a', label: '위성', status: 'stopped', lastSuccessAt: ago(2 * 86_400_000) },
     { key: 'b', label: 'KIM', status: 'stopped', lastSuccessAt: ago(64 * 86_400_000) },
     { key: 'c', label: '레이더', status: 'stopped', lastSuccessAt: ago(3 * 3_600_000) },
     { key: 'd', label: 'METAR', status: 'ok', lastSuccessAt: ago(60_000) },
@@ -68,7 +68,7 @@ test('하루 요약은 대상이 없으면 아무것도 보내지 않는다', ()
 test('하루 요약은 여러 개를 한 통으로 묶는다', () => {
   const rows = [
     { label: 'KIM 격자', stoppedForMs: 64 * 86_400_000 },
-    { label: '에코탑', stoppedForMs: 2 * 86_400_000 },
+    { label: '위성', stoppedForMs: 2 * 86_400_000 },
     { label: 'A', stoppedForMs: 86_400_000 },
     { label: 'B', stoppedForMs: 86_400_000 },
   ]
@@ -123,18 +123,18 @@ test('유효한 TLS 뒤의 공개 health 오류는 별도 사건으로 알린다
   assert.deepEqual(warnings.map((warning) => warning.kind), ['site_health'])
 })
 
-// 일부러 꺼둔 자료(에코탑을 플래그로 끈 것 등)는 멈춘 것이 아니다.
-// 이 구분이 없으면 "에코탑 24시간째 멈춤"이 손쓸 일도 없이 매일 온다.
+// 일부러 꺼둔 자료(플래그로 끈 수집 등)는 멈춘 것이 아니다.
+// 이 구분이 없으면 "24시간째 멈춤"이 손쓸 일도 없이 매일 온다.
 test('꺼둔 자료는 하루 요약에 올라가지 않는다', () => {
   const rows = [
-    { key: 'echo_top', label: '에코탑', status: 'disabled', lastSuccessAt: ago(30 * 86_400_000) },
+    { key: 'kim_surface_chart', label: 'KIM 일기도', status: 'disabled', lastSuccessAt: ago(30 * 86_400_000) },
     { key: 'kim', label: 'KIM 격자', status: 'stopped', lastSuccessAt: ago(64 * 86_400_000) },
   ]
   assert.deepEqual(longStopped({ rows }, NOW).map((r) => r.key), ['kim'])
 })
 
 test('꺼둔 자료는 대규모 장애 분모에서 빠진다', () => {
-  // 에코탑만 꺼져 있고 나머지가 멀쩡하면 장애가 아니다.
+  // 하나만 꺼져 있고 나머지가 멀쩡하면 장애가 아니다.
   const h1 = health(['disabled', 'ok'])
   assert.deepEqual(sourceOutages(h1), [])
   // 꺼진 것을 빼면 나머지가 전부 멈춤 → 진짜 장애다.

@@ -12,10 +12,12 @@ test('ACI alone follows absolute time; combined layers require matching run/doma
  assert.equal(pickAciTime(index,{...selection,hf:1},{commonActive:true}),null)
  assert.equal(aciSelectionKey(selection),aciSelectionKey({...selection,level:'300hPa'}))
 })
-test('score boundary colours preserve yellow/orange/red and missing transparency',()=>{
- const field={grid:{nx:2,ny:2,lonMin:90,lonMax:91,latMin:6,latMax:7},scoreScale:.0001,score:[-32768,2499,5000,7500]}
+test('ACIM FL250+ cloud tops use the original chart colours; hidden (0) and missing stay transparent',()=>{
+ // 소스 행 0이 남쪽이라 화면 첫 행(북쪽)은 소스 행 1(값 250, 350)이다.
+ const field={product:'ACIM',grid:{nx:2,ny:2,lonMin:90,lonMax:91,latMin:6,latMax:7},displayFl:[null,0,250,350]}
  const pixels=aciFieldPixels(field)
- assert.deepEqual([...pixels.slice(0,4)],[251,146,60,166])
- assert.deepEqual([...pixels.slice(4,8)],[239,68,68,166])
+ assert.deepEqual([...pixels.slice(0,4)],[255,226,0,179])
+ assert.deepEqual([...pixels.slice(4,8)],[153,0,191,179])
  assert.equal(pixels[11],0);assert.equal(pixels[15],0)
+ assert.throws(()=>aciFieldPixels({...field,product:'ACI_EXPERIMENT'}),/Invalid/)
 })

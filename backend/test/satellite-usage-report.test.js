@@ -53,7 +53,7 @@ test('usage-meter: apihub 호출만 재고 나머지는 그대로 흘려보낸�
   let time = 100
   const meter = createUsageMeter({ fetchImpl, now: () => time++ })
 
-  await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
+  await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l1b&chn=ir105&area=ko&tm=202611100300&authKey=K')
   await meter.fetch('https://example.com/other')
 
   assert.equal(calls.length, 2, '두 호출 모두 실제로 나간다')
@@ -63,22 +63,22 @@ test('usage-meter: apihub 호출만 재고 나머지는 그대로 흘려보낸�
 test('usage-meter: 가시 채널과 안개는 따로 센다', async () => {
   const fetchImpl = async () => new Response(new ArrayBuffer(8), { status: 200 })
   const meter = createUsageMeter({ fetchImpl, now: () => 1 })
-  await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/VI006/KO/data?date=1&authKey=K')
-  await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE2/FOG/KO/data?date=1&authKey=K')
+  await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l1b&chn=vi006&area=ko&tm=202611100300&authKey=K')
+  await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l2&data=fog&area=ko&tm=202611100300&authKey=K')
   assert.deepEqual(meter.take().map((u) => u.endpoint), ['satellite_visible', 'satellite_fog'])
 })
 
 test('usage-meter: 실패한 호출도 센다 — 바이트는 이미 나갔다', async () => {
   const fetchImpl = async () => new Response(new ArrayBuffer(16), { status: 500 })
   const meter = createUsageMeter({ fetchImpl, now: () => 1 })
-  await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
+  await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l1b&chn=ir105&area=ko&tm=202611100300&authKey=K')
   assert.deepEqual(meter.take(), [{ endpoint: 'satellite_ir', bytes: 16, status: 500, durationMs: 0 }])
 })
 
 test('usage-meter: take()는 비우고 준다 — 같은 사용량을 두 번 세면 예산이 부풀려진다', async () => {
   const fetchImpl = async () => new Response(new ArrayBuffer(4), { status: 200 })
   const meter = createUsageMeter({ fetchImpl, now: () => 1 })
-  await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
+  await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l1b&chn=ir105&area=ko&tm=202611100300&authKey=K')
   assert.equal(meter.take().length, 1)
   assert.deepEqual(meter.take(), [])
 })
@@ -86,7 +86,7 @@ test('usage-meter: take()는 비우고 준다 — 같은 사용량을 두 번 �
 test('usage-meter: 응답 본문은 그대로 읽을 수 있어야 한다 — 재느라 소비하면 수집이 깨진다', async () => {
   const fetchImpl = async () => new Response(new TextEncoder().encode('hello'), { status: 200 })
   const meter = createUsageMeter({ fetchImpl, now: () => 1 })
-  const res = await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
+  const res = await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat_file_nc_down.php?lvl=l1b&chn=ir105&area=ko&tm=202611100300&authKey=K')
   assert.equal(await res.text(), 'hello')
 })
 

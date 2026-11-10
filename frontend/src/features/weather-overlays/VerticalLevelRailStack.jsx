@@ -25,7 +25,8 @@ export default function VerticalLevelRailStack({ children }) {
       const rects = sliders.filter(node => getComputedStyle(node).visibility !== 'hidden')
         .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
       const mapRect = map.getBoundingClientRect()
-      const controls = [...map.querySelectorAll('.basemap-switcher-toggle, .mapboxgl-ctrl-geolocate, .mapboxgl-ctrl-zoom-in, .timeline-rail__viewport')]
+      // 의견 보내기 입구는 지도 밖(앱)에 떠 있지만 오른쪽 아래를 차지하므로 함께 피한다.
+      const controls = [...map.querySelectorAll('.basemap-switcher-toggle, .mapboxgl-ctrl-geolocate, .mapboxgl-ctrl-zoom-in, .timeline-rail__viewport'), ...document.querySelectorAll('.feedback-launcher')]
         .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
       const layout = sigwxRailLayout({ mapRect, cardRect: card?.getBoundingClientRect(), sliderRects: rects,
         lowerTop: Math.min(mapRect.bottom - 100, ...controls.map(rect => rect.top)) })

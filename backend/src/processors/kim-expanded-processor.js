@@ -8,7 +8,8 @@
 // - 06 UTC는 정해진 시각을 기다리지 않는다. 5분마다 +0h가 기상청에 올라왔는지 확인하고 올라왔으면 바로 시작한다
 //   (start_without_check_kst까지 확인이 안 되면 확인 없이 시작). 시작한 회차가 덜 끝났으면 retry_gap_minutes 뒤에 다시 시도한다.
 // - 06 UTC는 +0~12h가 모이면 한반도 회차를 잘라 게시한다(21:30 KST까지 안 되면 한반도 수집기가 일반 키로 받는다).
-//   그 시각들의 GKTG 계산이 끝나면 한반도 GKTG도 잘라 게시한다. 못 하면 onKoreaGktgFallback(예전처럼 한반도에서 계산)을 부른다.
+//   그 시각들의 GKTG 계산이 끝나면 한반도 GKTG도 잘라 게시한다. 추가 API를 쓰는 권계면·GKTG 대체 계산은
+//   확대회차 수집·계산·게시가 끝난 뒤 scheduler의 잠금·취소·통계를 유지하며 별도로 실행한다.
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -178,6 +179,7 @@ export async function processExpandedCycle({
   let korea = null
   let koreaGktg = null
   let gktgResults = null
+  let koreaGktgFallbackNeeded = false
   // 한반도 회차를 잘라 게시했고 그 시각들의 GKTG 계산이 모두 끝났으면 한반도 GKTG를 잘라 게시한다(한 번만).
   const tryKoreaGktg = async () => {
     if (cycle !== '06' || !koreaGktgEnabled || !korea?.saved || koreaGktg || !gktgResults || !koreaHours.every(hf => gktgResults.has(hf))) return
@@ -189,7 +191,7 @@ export async function processExpandedCycle({
     } catch (error) {
       koreaGktg = { saved: false }
       appendKimRunEvent(runDir, { type: 'expanded_korea_gktg_failed', error: String(error.code || error.message).slice(0, 200) })
-      await onKoreaGktgFallback({ tmfc })
+      koreaGktgFallbackNeeded = true
     }
   }
   const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: 'ea' })
@@ -214,7 +216,6 @@ export async function processExpandedCycle({
         korea = cropKorea({ root, tmfc, hours: koreaHours })
         appendKimRunEvent(runDir, { type: 'expanded_korea_crop', ...korea })
         if (korea?.saved) {
-          await onKoreaPublished({ tmfc })
           await tryKoreaGktg()
         }
       },
@@ -233,11 +234,37 @@ export async function processExpandedCycle({
   // 회차가 끝나도 한반도 GKTG를 못 잘랐으면(그 시각 계산 실패·중단 등) 예전처럼 한반도에서 계산한다.
   if (cycle === '06' && koreaGktgEnabled && korea?.saved && !koreaGktg) {
     appendKimRunEvent(runDir, { type: 'expanded_korea_gktg_missing' })
-    await onKoreaGktgFallback({ tmfc })
+    koreaGktgFallbackNeeded = true
   }
   if (result.stopReason === 'credential_rejected') markExpandedDisabled({ root, reason: 'kim_bulk_credential_rejected', now: now() })
   const outcome = result.published ? (result.publishedHours === hours.length ? 'complete' : 'partial') : 'failed'
   const data = outcome === 'failed' ? null : { publishedHours: result.publishedHours, planned: result.planned }
+  // 한반도 보충 계산은 확대 수집·계산·게시가 끝난 뒤에만 시작한다. 같은 derived job gate를
+  // 쓰므로 수집 중에 단순히 await만 제거하면 다음 확대 시각이 그 작업 뒤에서 다시 기다린다.
+  // 콜백은 scheduler의 runWithLock을 통해 중복 방지·취소·성공/실패 통계를 유지한다.
+  if (!signal?.aborted && korea?.saved) {
+    const recordFollowUp = event => {
+      // 예전 회차가 정리됐으면 늦게 끝난 후속 작업이 폴더를 다시 만들지 않는다.
+      if (fs.existsSync(runDir)) appendKimRunEvent(runDir, event)
+    }
+    const followUps = [
+      ['tropopause', onKoreaPublished],
+      ...(koreaGktgFallbackNeeded ? [['gktg_fallback', onKoreaGktgFallback]] : []),
+    ]
+    for (const [job, run] of followUps) {
+      recordFollowUp({ type: 'expanded_korea_followup_started', job })
+      // 모든 후속 작업을 즉시 등록한다. scheduler가 각 작업의 AbortController를 소유하므로
+      // 데이터 전환 시 대기열에 있는 작업까지 함께 취소된다.
+      Promise.resolve().then(() => {
+        if (signal?.aborted) return
+        return run({ tmfc })
+      }).then(() => {
+        recordFollowUp({ type: 'expanded_korea_followup_finished', job })
+      }).catch(error => {
+        recordFollowUp({ type: 'expanded_korea_followup_failed', job, error: String(error.code || error.message).slice(0, 200) })
+      })
+    }
+  }
   return { ...result, korea, collection: collectionResult(outcome, data,
     outcome === 'complete' ? {} : { reason: result.published ? 'kim_expanded_partial' : result.stopReason || 'kim_expanded_not_published' }) }
 }

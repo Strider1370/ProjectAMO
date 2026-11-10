@@ -2,6 +2,7 @@
 import { addOrUpdateImageOverlay } from '../../map/imageOverlay.js'
 import { addOrUpdateGeoJsonSource, setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
 import { OUTLINE_BASEMAP_PALETTES } from '../../map/lib/outlineBasemapStyle.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 export const SURFACE_CHART_PRECIP_SOURCE = 'kim-surface-chart-precip'
 export const SURFACE_CHART_PRECIP_LAYER = 'kim-surface-chart-precip'
@@ -132,7 +133,7 @@ export function syncSurfaceChartLayers(map, model) {
         sourceId: SURFACE_CHART_PRECIP_SOURCE,
         layerId: SURFACE_CHART_PRECIP_LAYER,
         frame: { path: frame.precipUrl, bounds: [[frame.view.latMin, frame.view.lonMin], [frame.view.latMax, frame.view.lonMax]] },
-        opacity: 0.9,
+        opacity: MAP_LAYER_OPACITY.surfaceChartPrecip,
       })
     }
   }

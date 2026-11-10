@@ -32,6 +32,7 @@ Vite + React aviation weather dashboard with a Node/Express backend.
 
 ## Working preferences
 
+- Use Ego Lite through the `ego-browser` skill for browser interaction, including navigation, clicks, form input, page inspection, and manual UI verification. In WSL, invoke the Windows CLI as `ego-browser.exe`; this setup has been verified to control the Windows browser. Read `ego-browser.exe skill` before browser tasks. Keep the existing automated browser contract tests and Linux screenshot baseline workflow.
 - Carry implementation and fix requests through to completion and relevant verification within the authorized scope.
 - Make reasonable assumptions for routine, reversible decisions; ask when missing information materially affects correctness, scope, or authorization.
 - Follow existing project patterns and keep changes focused on the request.

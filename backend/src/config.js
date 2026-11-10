@@ -1,8 +1,9 @@
+import { SATELLITE_NC_URL } from './lib/satellite-api.js'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
-import { KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL, KMA_GRAPHIC_QPF_LEAD_MINUTES, KMA_GRAPHIC_WISSDOM_HEIGHTS_M } from './lib/kma-radar-graphics.js'
+import { KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL, KMA_GRAPHIC_WISSDOM_HEIGHTS_M } from './lib/kma-radar-graphics.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -204,33 +205,10 @@ export const radar_echo = {
 export const radar_graphics = {
   wissdom_heights_m: KMA_GRAPHIC_WISSDOM_HEIGHTS_M,
   initial_wissdom_height_m: 1524,
-  qpf_lead_minutes: KMA_GRAPHIC_QPF_LEAD_MINUTES,
-  // QPF(초단기 강수예측)는 쓰지 않아 기본 꺼짐. =1일 때만 수집한다.
-  qpf_enabled: process.env.RADAR_QPF_ENABLED === '1',
   image_zoom_level: KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL,
   frame_step_minutes: 5,
   delay_minutes: 10,
   max_frames: 36,
-}
-
-// 레이더 사이트 QCD 원자료 기반 재산출 Echo Top(18 dBZ, MSL).
-// KMA 공식 ETOP이 아니라 ProjectAMO가 원자료로 계산한 참고 산출물이다.
-export const radar_echo_top = {
-  url: process.env.RADAR_QCD_API_URL || 'https://apihub.kma.go.kr/api/typ04/url/rdr_site_file.php',
-  // Task 1 실측으로 확정한 목록. 빈 값이면 프로세서가 명시적으로 실패한다.
-  sites: (process.env.RADAR_QCD_SITES || '').split(',').map((s) => s.trim()).filter(Boolean),
-  threshold_dbz: 18,
-  // 합성 격자 해상도는 lib/echo-top-grid.js의 ECHO_TOP_GRID가 정한다(설정값 아님).
-  concurrency: 4,     // 한 프레임에서 동시에 받는 사이트 수.
-  timeout_ms: 45000,
-  retry: 1,
-  // 레이더(radar_echo)와 반드시 같아야 한다. 에코탑은 선택 시각과 tm이 정확히 일치할 때만
-  // 표시하므로(FR-002/FR-005), 지연이 다르면 실시간 보기에서 레이더 최신 시각에 에코탑
-  // 프레임이 없어 레이어가 늘 숨는다. 실측 결과 QCD는 5분 지연으로도 전부 내려온다(여유 5분).
-  delay_minutes: 10,
-  max_frames: 36,     // 3시간 보존 — 레이더(radar_echo.max_images)와 같은 시간 범위.
-  // 사용하지 않는 기능. 켜면 시작 시 3시간치 원자료(GB 단위)를 받으므로 =1일 때만 켠다.
-  enabled: process.env.RADAR_ECHO_TOP_ENABLED === '1',
 }
 
 // 해외 레이더 — RainViewer 메타(목차) JSON만 수집. 타일은 브라우저가 CDN에서 직접 받는다(프록시 금지).
@@ -240,11 +218,9 @@ export const rainviewer = {
 }
 
 export const satellite = {
-  url: process.env.SATELLITE_API_URL || 'https://apihub.kma.go.kr/api/typ05/api/GK2A/LE1B',
-  fog_url: process.env.SATELLITE_FOG_API_URL || 'https://apihub.kma.go.kr/api/typ05/api/GK2A/LE2',
+  nc_url: process.env.SATELLITE_NC_API_URL || SATELLITE_NC_URL,
   channel: (process.env.SATELLITE_CHANNEL || 'IR105').toUpperCase(),
   fog_product: 'FOG',
-  ci_product: 'CI',
   convective_enabled: process.env.SATELLITE_CONVECTIVE_ENABLED !== '0',
   convective_max_frames: Number(process.env.SATELLITE_CONVECTIVE_MAX_FRAMES || 19),
   region: (process.env.SATELLITE_REGION || 'KO').toUpperCase(),
@@ -257,8 +233,6 @@ export const satellite = {
 export const flight_category = {
   sfc_vis_url: process.env.SFC_VIS_URL ||
     'https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-sfc_obs_nc_api',
-  ctps_url: process.env.CTPS_URL ||
-    'https://apihub.kma.go.kr/api/typ05/api/GK2A/LE2/CTPS/KO/data',
   timeout_ms: 30000,
   simplify_tolerance: 0.01,
   // 정상 사용량 1.92GB/일(20분 주기) 대비 여유를 둔 backstop.
@@ -483,7 +457,6 @@ export const schedule = {
   amos_interval: '*/5 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
-  echo_top_interval: '*/5 * * * *',
   // ponytail: 10분 — RainViewer 원본 갱신 주기가 10분이라 5분 cron은 같은 데이터를 두 번 받는 낭비.
   rainviewer_interval: '*/10 * * * *',
   // 5분 — 관측 간격은 10분 그대로지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않고 줍는다.
@@ -679,7 +652,6 @@ export default {
   amos,
   radar_echo,
   radar_graphics,
-  radar_echo_top,
   rainviewer,
   satellite,
   adsb,

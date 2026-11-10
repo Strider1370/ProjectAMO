@@ -41,8 +41,6 @@ export function detectSnapshotChanges(prev, next) {
     hsrMeta: graphicsMetaDiffer(prev?.hsrMeta || prev?.hsr, next?.hsrMeta || next?.hsr),
     hciMeta: graphicsMetaDiffer(prev?.hciMeta || prev?.hci, next?.hciMeta || next?.hci),
     wissdomMeta: graphicsMetaDiffer(prev?.wissdomMeta || prev?.wissdom, next?.wissdomMeta || next?.wissdom),
-    qpfMeta: graphicsMetaDiffer(prev?.qpfMeta || prev?.qpf, next?.qpfMeta || next?.qpf),
-    echoTopMeta: framesDiffer(prev?.echoTopMeta, next?.echoTopMeta),
     rainviewerMeta: framesDiffer(prev?.rainviewerMeta || prev?.rainviewer, next?.rainviewerMeta || next?.rainviewer),
     satMeta: framesDiffer(prev?.satMeta, next?.satMeta),
     satVisibleMeta: framesDiffer(prev?.satVisibleMeta, next?.satVisibleMeta),

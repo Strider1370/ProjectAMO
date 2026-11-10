@@ -10,6 +10,7 @@ import { cropGridDocument, publishKoreaFromExpanded } from '../src/processors/ki
 import { expandedAvailability, expandedRunElsewhere, expandedStartBlocked, koreaSixFromExpanded, markExpandedDisabled, processExpandedCycle } from '../src/processors/kim-expanded-processor.js'
 import { kstCutoffMs } from '../src/processors/kim-expanded-collector.js'
 import { startExpandedMonitor } from '../src/processors/kim-expanded-monitor.js'
+import { readKimRunEvents } from '../src/processors/kim-run-events.js'
 
 const temporary = t => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-expanded-proc-')); t.after(() => fs.rmSync(root, { recursive: true, force: true })); return root }
 const KST = (date, hhmm) => kstCutoffMs(`${date.replaceAll('-', '')}00`, hhmm)
@@ -153,6 +154,75 @@ test('06 UTC crops Korea GKTG once both the Korea crop and its hours\' GKTG are 
   assert.deepEqual(await run({ computeFirst: true }), { crop: 1, fallback: 0, hours: koreaHours })
   assert.deepEqual(await run({ crop: async () => { throw new Error('boom') } }), { crop: 1, fallback: 1, hours: koreaHours })
   assert.deepEqual(await run({ compute: false }), { crop: 0, fallback: 1, hours: null })
+})
+
+test('Korea follow-ups start after expanded publication and do not delay its completion', { timeout: 5000 }, async t => {
+  const root = temporary(t)
+  const order = []
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  t.after(async () => { release(); await new Promise(resolve => setImmediate(resolve)) })
+  const followUp = name => async () => { order.push(name); await pending }
+  const result = await processExpandedCycle({
+    cycle: '06', root, now: () => KST('2026-10-09', '20:15'), diskFree: () => 1e12,
+    cropKorea: () => ({ saved: true }),
+    onKoreaPublished: followUp('tropopause'), onKoreaGktgFallback: followUp('gktg'),
+    collect: async ({ onHourDownloaded, hours }) => {
+      await onHourDownloaded({ downloaded: config.kim_nwp.forecast_hours })
+      order.push('next-expanded-hour')
+      assert.deepEqual(order, ['next-expanded-hour'])
+      order.push('expanded-published')
+      return { published: true, publishedHours: hours.length, planned: hours.length }
+    },
+  })
+  // Neither follow-up promise has resolved, but the expanded result is available.
+  assert.equal(result.collection.outcome, 'complete')
+  assert.deepEqual(order, ['next-expanded-hour', 'expanded-published', 'tropopause', 'gktg'])
+  assert.equal(fs.existsSync(path.join(root, 'kim_nwp_ea/run-06.lock')), false)
+  release()
+  await new Promise(resolve => setImmediate(resolve))
+})
+
+test('a failed GKTG crop defers its fallback and failed follow-ups cannot fail expanded publication', async t => {
+  const root = temporary(t)
+  const order = []
+  const result = await processExpandedCycle({
+    cycle: '06', root, now: () => KST('2026-10-09', '20:15'), diskFree: () => 1e12,
+    cropKorea: () => ({ saved: true }),
+    cropKoreaGktg: async () => { throw new Error('crop failed') },
+    onKoreaPublished: async () => { throw new Error('tropopause timeout') },
+    onKoreaGktgFallback: async () => { order.push('fallback'); throw new Error('gktg timeout') },
+    collect: async ({ onHourDownloaded, onGktgComputed, hours }) => {
+      await onHourDownloaded({ downloaded: config.kim_nwp.forecast_hours })
+      await onGktgComputed({ results: new Map(config.kim_nwp.forecast_hours.map(hf => [hf, { hf }])) })
+      assert.deepEqual(order, [])
+      order.push('expanded-published')
+      return { published: true, publishedHours: hours.length, planned: hours.length }
+    },
+  })
+  assert.equal(result.collection.outcome, 'complete')
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(order, ['expanded-published', 'fallback'])
+  const events = readKimRunEvents(path.join(root, 'kim_nwp_ea/runs/KIMG_NE57_2026100906'))
+  assert.deepEqual(events.filter(e => e.type === 'expanded_korea_followup_failed').map(e => e.job).sort(), ['gktg_fallback', 'tropopause'])
+})
+
+test('a cancelled expanded cycle does not launch Korea follow-ups', async t => {
+  const root = temporary(t), controller = new AbortController()
+  await processExpandedCycle({
+    cycle: '06', root, signal: controller.signal, now: () => KST('2026-10-09', '20:15'), diskFree: () => 1e12,
+    cropKorea: () => ({ saved: true }),
+    onKoreaPublished: () => assert.fail('cancelled follow-up'),
+    onKoreaGktgFallback: () => assert.fail('cancelled fallback'),
+    collect: async ({ onHourDownloaded, hours }) => {
+      await onHourDownloaded({ downloaded: config.kim_nwp.forecast_hours })
+      controller.abort(new Error('data transition'))
+      return { published: false, planned: hours.length, stopReason: 'cancelled' }
+    },
+  })
+  await new Promise(resolve => setImmediate(resolve))
+  const events = readKimRunEvents(path.join(root, 'kim_nwp_ea/runs/KIMG_NE57_2026100906'))
+  assert.equal(events.some(e => e.type === 'expanded_korea_followup_started'), false)
 })
 
 test('the memory monitor logs samples and stops new hours after three low readings in a row', async t => {

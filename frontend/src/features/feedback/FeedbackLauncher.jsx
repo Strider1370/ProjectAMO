@@ -2,7 +2,7 @@ import { MessageSquare } from 'lucide-react'
 
 import './feedback.css'
 
-// 지도 오른쪽 위의 의견 보내기 입구(데스크톱). 휴대폰은 더보기 메뉴에서 연다.
+// 지도 오른쪽 맨 아래(타임라인 위)의 의견 보내기 입구(데스크톱·태블릿). 휴대폰은 더보기 메뉴에서 연다.
 export default function FeedbackLauncher({ onOpen }) {
   return (
     <button type="button" className="feedback-launcher" onClick={onOpen}>

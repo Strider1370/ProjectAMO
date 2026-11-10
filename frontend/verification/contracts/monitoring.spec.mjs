@@ -112,8 +112,7 @@ test.describe('monitoring', () => {
     for (const path of [
       '/api/notam', '/api/metar-overseas', '/api/taf-overseas', '/api/sigmet-overseas', '/api/typhoon',
       '/api/weather/flight-category-overlay',
-      '/data/radar/wissdom/wissdom_meta.json', '/data/radar/qpf/qpf_meta.json',
-      '/data/radar/echotop/echotop_meta.json', '/data/radar/rainviewer_meta.json',
+      '/data/radar/wissdom/wissdom_meta.json', '/data/radar/rainviewer_meta.json',
       '/data/satellite/convective/convective_meta.json',
     ]) {
       expect(requested).not.toContain(path)

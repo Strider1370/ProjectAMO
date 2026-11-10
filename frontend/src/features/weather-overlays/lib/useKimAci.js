@@ -34,10 +34,12 @@ export function useKimAci(enabled,selection,{commonActive=false,selectedMs=null,
     fetchKimAciField(time,{signal:controller.signal}).then(value=>{
       if(controller.signal.aborted)return
       if(aciSelectionKey({domain:value.domain,...value.time,revision:value.revision})!==key)throw new Error('ACI 선택과 응답이 다릅니다')
+      // 경계에서 거른다: ACIM 이전 형식(배포 직후 예전 회차 등)은 그리지 않고 대기 안내만 낸다.
+      if(value?.product!=='ACIM'||value.displayFl?.length!==value.grid?.nx*value.grid?.ny){setField(null);setProblem('ACIM 계산 대기 중(다음 KIM 회차부터 표시)');return}
       cache.set(key,value);setField(value);setProblem(null)
     }).catch(error=>{if(!controller.signal.aborted)setProblem('해당 시각 ACI 자료를 불러오지 못했습니다')})
     return ()=>controller.abort()
   },[key])
   const current=field&&aciSelectionKey({domain:field.domain,...field.time,revision:field.revision})===key?field:null
-  return {enabled,index,time,field:current,times:enabled&&!pinned?index?.times||[]:[],problem:pinned?'고정 브리핑에는 ACI가 포함되지 않았습니다':problem||(!picked&&index?'해당 시각 ACI 자료 준비 중':!current?'불러오는 중':null)}
+  return {enabled,index,time,field:current,times:enabled&&!pinned?index?.times||[]:[],problem:pinned?'고정 브리핑에는 ACI가 포함되지 않았습니다':problem||(index?.reason==='acim_pending'?'ACIM 계산 대기 중(다음 KIM 회차부터 표시)':!picked&&index?'해당 시각 ACI 자료 준비 중':!current?'불러오는 중':null)}
 }

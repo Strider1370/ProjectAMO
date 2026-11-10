@@ -660,7 +660,7 @@ export default function IntroPage() {
             <table className="src-table">
               <tbody>
                 <tr><th>레이더, 낙뢰, 지상 관측, KIM 수치예보</th><td>기상청</td></tr>
-                <tr><th>위성 영상, 대류 가능성, 운정고도</th><td>천리안위성 2A호 (국가기상위성센터)</td></tr>
+                <tr><th>위성 영상, 운정고도</th><td>천리안위성 2A호 (국가기상위성센터)</td></tr>
                 <tr><th>METAR, TAF, SIGMET, AIRMET, SIGWX, AMOS</th><td>항공기상청</td></tr>
                 <tr><th>해외 모델 비교</th><td>ECMWF, NOAA GFS, DWD ICON</td></tr>
                 <tr><th>해외 레이더</th><td>RainViewer</td></tr>

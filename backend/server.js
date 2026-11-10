@@ -95,8 +95,6 @@ import { buildRouteExposure } from './src/briefing/route-exposure.js'
 import { executeAltitudeComparison } from './src/briefing/altitude-service.js'
 import { ctpsIndexForLatLon } from './src/lib/ctps-grid.js'
 import { decodeCtpsRecord } from './src/processors/convective-satellite-model.js'
-import { echoTopIndexForLatLon } from './src/lib/echo-top-grid.js'
-import { decodeEchoTopRecord } from './src/processors/echo-top-model.js'
 import { createAiRouter } from './src/ai/router.js'
 import { createWorkerExecutor } from './src/ai/worker-executor.js'
 import { createAiAccess } from './src/ai/access.js'
@@ -187,12 +185,7 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
-  if (/^radar\/echotop\/echotop_\d{12}\.webp$/i.test(relPath)) {
-    res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
-    return
-  }
-
-  if (/^radar\/(?:wissdom\/wissdom_\d+_\d{12}|qpf\/qpf_\d{12}_p\d+)(?:_legend)?\.webp$/i.test(relPath)) {
+  if (/^radar\/wissdom\/wissdom_\d+_\d{12}(?:_legend)?\.webp$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
   }
@@ -231,11 +224,9 @@ function setGeneratedDataCacheHeaders(res, filePath) {
 
   if (
     relPath === 'radar/echo_meta.json'
-    || relPath === 'radar/echotop/echotop_meta.json'
     || relPath === 'radar/hsr/hsr_meta.json'
     || relPath === 'radar/hci/hci_meta.json'
     || relPath === 'radar/wissdom/wissdom_meta.json'
-    || relPath === 'radar/qpf/qpf_meta.json'
     || relPath === 'satellite/sat_meta.json'
     || relPath === 'satellite/convective/convective_meta.json'
     || relPath === 'sigwx_high/latest.json'
@@ -250,8 +241,6 @@ function setGeneratedDataCacheHeaders(res, filePath) {
 
 app.use('/data', (req, res, next) => {
   if (/^\/satellite\/convective\/ctps_\d{12}\.bin$/i.test(req.path)) return res.status(404).end()
-  // 사이트별 원시 gate 배열이 담긴 합성 바이너리는 브라우저에 절대 노출하지 않는다(FR-009).
-  if (/^\/radar\/echotop\/echotop_\d{12}\.bin$/i.test(req.path)) return res.status(404).end()
   next()
 })
 app.use('/data', publicDataGuard, express.static(DATA_ROOT, { setHeaders: setGeneratedDataCacheHeaders }))
@@ -292,7 +281,7 @@ function isRevalidatedApiRequest(req) {
     || /^\/(?:metar|taf|sigmet)-overseas$/i.test(req.path)
     || /^\/sigwx-low-history$/i.test(req.path)
     || /^\/radar\/echo-meta$/i.test(req.path)
-    || /^\/radar\/(?:wissdom|qpf)-meta$/i.test(req.path)
+    || /^\/radar\/wissdom-meta$/i.test(req.path)
     || /^\/kim\/surface-chart$/i.test(req.path)
     || /^\/satellite\/meta$/i.test(req.path)
     || /^\/sigwx-(?:front|cloud)-meta$/i.test(req.path)
@@ -626,8 +615,6 @@ const SNAPSHOT_SOURCES = [
   { keys: ['hsrMeta', 'hsr'], files: [snapshotMetaFile('radar', 'hsr', 'hsr_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'hsr', 'hsr_meta.json'))) },
   { keys: ['hciMeta', 'hci'], files: [snapshotMetaFile('radar', 'hci', 'hci_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'hci', 'hci_meta.json'))) },
   { keys: ['wissdomMeta', 'wissdom'], files: [snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json'))) },
-  { keys: ['qpfMeta', 'qpf'], files: [snapshotMetaFile('radar', 'qpf', 'qpf_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'qpf', 'qpf_meta.json'))) },
-  { keys: ['echoTopMeta'], files: [snapshotMetaFile('radar', 'echotop', 'echotop_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echotop', 'echotop_meta.json')) },
   { keys: ['satMeta', 'satellite'], files: [snapshotMetaFile('satellite', 'sat_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'sat_meta.json')) },
   { keys: ['satVisibleMeta'], files: [snapshotMetaFile('satellite', 'visible', 'visible_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'visible', 'visible_meta.json')) },
   { keys: ['convectiveMeta'], files: [snapshotMetaFile('satellite', 'convective', 'convective_meta.json')], build: buildConvectiveSnapshotEntry },
@@ -1199,10 +1186,6 @@ app.get('/api/radar/echo-meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'echo_meta.json')),
 )
 
-app.get('/api/radar/echo-top-meta', (_req, res) =>
-  sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'echotop', 'echotop_meta.json')),
-)
-
 // KIM 지상 일기도 최신 런 목록. 시각별 파일은 /data/kim_surface_chart/runs/<runId>/ 아래(런마다 바뀌지 않음).
 app.get('/api/kim/surface-chart', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'kim_surface_chart', 'latest.json')),
@@ -1210,10 +1193,6 @@ app.get('/api/kim/surface-chart', (_req, res) =>
 
 app.get('/api/radar/wissdom-meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'wissdom', 'wissdom_meta.json')),
-)
-
-app.get('/api/radar/qpf-meta', (_req, res) =>
-  sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'qpf', 'qpf_meta.json')),
 )
 
 app.get('/api/satellite/meta', (_req, res) =>
@@ -1237,44 +1216,6 @@ app.get('/api/satellite/convective/ctps-point', (req, res) => {
     const request = frame.request_tm_utc
     const observedAt = request ? new Date(Date.UTC(Number(request.slice(0, 4)), Number(request.slice(4, 6)) - 1, Number(request.slice(6, 8)), Number(request.slice(8, 10)), Number(request.slice(10, 12)))).toISOString() : null
     sendImmutableJson(res, { tm, observedAt, heightFt: point.heightFt, fl: Math.round(point.heightFt / 100), temperatureC: point.temperatureC, qualityCode: 0, quality: 'normal' }, `ctps-point:${tm}:${latitude}:${longitude}:${minFl}`)
-  } catch {
-    res.status(503).json({ error: 'data_unavailable' })
-  }
-})
-
-app.get('/api/radar/echo-top-point', (req, res) => {
-  const { tm, lat, lon } = req.query
-  const latitude = Number(lat)
-  const longitude = Number(lon)
-  if (typeof tm !== 'string' || !/^\d{12}$/.test(tm)
-    || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
-    || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-    return res.status(400).json({ error: 'invalid_query' })
-  }
-
-  const meta = readJsonFileSafe(path.join(DATA_ROOT, 'radar', 'echotop', 'echotop_meta.json'))
-  const frame = meta?.frames?.find((item) => item.tm === tm)
-  if (!frame) return res.status(404).json({ error: 'frame_not_found' })
-
-  const index = echoTopIndexForLatLon(latitude, longitude)
-  if (index === null) return res.status(404).json({ error: 'point_unavailable' })
-
-  try {
-    const binary = fs.readFileSync(path.join(DATA_ROOT, 'radar', 'echotop', `echotop_${tm}.bin`))
-    const point = decodeEchoTopRecord(binary, index)
-    if (!point) return res.status(404).json({ error: 'point_unavailable' })
-    sendImmutableJson(res, {
-      tm,
-      observedAt: frame.observedAt ?? null,
-      heightM: point.heightM,
-      ft: point.ft,
-      fl: point.fl,
-      quality: point.quality,
-      qualityCode: point.qualityCode,
-      threshold_dbz: 18,
-      reference: 'MSL',
-      site: frame.sites?.[point.siteIndex]?.stn ?? null,
-    }, `echo-top-point:${tm}:${latitude}:${longitude}`)
   } catch {
     res.status(503).json({ error: 'data_unavailable' })
   }

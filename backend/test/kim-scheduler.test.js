@@ -62,21 +62,10 @@ test('initial collection can omit KIM NWP for low-resource startup', () => {
   )
 })
 
-test('initial collection can omit Echo Top when its source is disabled', () => {
-  assert.equal(
-    buildInitialCollectionJobs({ includeEchoTop: false }).some(([type]) => type === 'echo_top'),
-    false,
-  )
-  assert.equal(
-    buildInitialCollectionJobs({ includeEchoTop: true }).some(([type]) => type === 'echo_top'),
-    true,
-  )
-})
-
 test('initial collection omits every radar and satellite key consumer when that key is disabled', () => {
   const types = buildInitialCollectionJobs({ includeRadarSatellite: false }).map(([type]) => type)
 
-  for (const type of ['radar_echo', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible']) {
+  for (const type of ['radar_echo', 'wissdom', 'hsr', 'hci', 'satellite', 'satellite_visible']) {
     assert.equal(types.includes(type), false, type)
   }
 })

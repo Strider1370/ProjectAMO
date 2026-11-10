@@ -3,6 +3,7 @@ import { setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
 import { toStationFeatures } from './flightCategoryStations.js'
 import { formatPointLines, formatStationLines } from './flightCategoryPopup.js'
 import { escapeHtml } from '../../../shared/ui/escapeHtml.js'
+import { MAP_LAYER_OPACITY } from './mapLayerOpacity.js'
 
 export const FC_VIS_SOURCE = 'flight-category-vis-source'
 export const FC_CEIL_SOURCE = 'flight-category-ceil-source'
@@ -44,7 +45,7 @@ function ensure(map, beforeLayerId) {
   // 시정은 면을 채운다.
   add({ id: FC_VIS_LAYER, type: 'fill', source: FC_VIS_SOURCE,
     layout: { visibility: 'none' },
-    paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.35 } })
+    paint: { 'fill-color': ['get', 'color'], 'fill-opacity': MAP_LAYER_OPACITY.visibility } })
   // 운고는 시정과 같은 빨강·주황을 쓴다. 겹쳐 켜면 구분이 안 되므로 색을 바꾸지 않고
   // 그리는 방식을 달리한다 — 안쪽은 아주 옅게, 경계는 굵게.
   add({ id: FC_CEIL_FILL_LAYER, type: 'fill', source: FC_CEIL_SOURCE,

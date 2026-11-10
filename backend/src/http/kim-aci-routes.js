@@ -1,5 +1,5 @@
 import { readKimAciIndex, readKimAciField, aciMapField } from '../processors/kim-aci-store.js'
-import { calculateScore, ACI_SCORE_SCALE, ACI_MISSING } from '../../../shared/aci.js'
+import { ACIM_SCORE_SCALE, ACIM_MISSING, ACIM_DISPLAY_MIN_FL } from '../../../shared/acim.js'
 
 export function registerKimAciRoutes(app,{root,resolveDomain,sendIndex,sendField}) {
   app.get('/api/kim/aci/index',(req,res)=>{
@@ -21,8 +21,9 @@ export function registerKimAciRoutes(app,{root,resolveDomain,sendIndex,sendField
         const dx=(g.lonMax-g.lonMin)/(g.nx-1),dy=(g.latMax-g.latMin)/(g.ny-1)
         const x=Math.round((lon-g.lonMin)/dx),y=Math.round((lat-g.latMin)/dy)
         if(x<0||x>=g.nx||y<0||y>=g.ny)return res.status(404).json({error:'ACI 영역 밖입니다'})
-        const i=y*g.nx+x,input={cape:stored.cape[i],rainRate:stored.rainRate[i],olr:stored.olr[i]},result=stored.score[i]===ACI_MISSING?null:calculateScore(input,stored.scoreSpec.settings)
-        payload={...input,lon:g.lonMin+x*dx,lat:g.latMin+y*dy,score:result?stored.score[i]*ACI_SCORE_SCALE:null,status:stored.status[i],contributions:result?.contributions??null,domain,time:stored.time,revision:stored.revision};suffix=`:${x}:${y}`
+        const i=y*g.nx+x,missing=stored.score[i]===ACIM_MISSING
+        // 지도와 같은 저장값. CAPE는 ACIM 계산에 쓰지 않는 참고값이다.
+        payload={olr:stored.olr[i],precc:stored.precc[i],cape:stored.status[i]===0?stored.cape[i]:null,lon:g.lonMin+x*dx,lat:g.latMin+y*dy,score:missing?null:stored.score[i]*ACIM_SCORE_SCALE,topFl:missing?null:stored.topFl[i],shown:missing?null:stored.topFl[i]>=ACIM_DISPLAY_MIN_FL,season:stored.season,status:stored.status[i],domain,time:stored.time,revision:stored.revision};suffix=`:${x}:${y}`
       }
       sendField(res,payload,`aci:${kind}:${domain}:${stored.time.tmfc}:${stored.time.hf}:${stored.revision}${suffix}`)
     }catch(error){res.setHeader('Cache-Control','no-store');res.status(error.code==='ENOENT'?404:400).json({error:error.message})}

@@ -10,6 +10,8 @@ function savedChildren(prev) {
 }
 export function createInitialMetVisibility(layerIds, overrides = {}) {
   overrides ??= {}
+  overrides = { ...overrides }
+  delete overrides.ci
   const visibility = { ...Object.fromEntries(layerIds.map(id => [id, id === 'sigmet' || id === 'airmet'])), radarHsr: true, windFlow: true, windSpeed: true, surfaceChartWind: 'barbs', ...overrides }
   // 기존에 둘 중 하나만 켜둔 지도도 시정·운고 통합 보기로 복원한다.
   if (layerIds.includes('visibility') || layerIds.includes('ceiling')) {
@@ -32,6 +34,7 @@ function clearVerticalSliderGroup(prev) {
 }
 
 export function getNextMetVisibility(prev, id, { lowPower = false } = {}) {
+  if (id === 'ci') return prev
   // ceiling은 저장된 액션·외부 호출의 호환 ID이며 같은 통합 보기를 제어한다.
   if (id === 'visibility' || id === 'ceiling') {
     const active = !(prev.visibility || prev.ceiling)

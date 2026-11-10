@@ -45,6 +45,22 @@ describe('GK2A product parsers', () => {
     await assert.rejects(parseCiNC(HDF5, runtimeFor({ CI1_prob: { value: new Uint8Array(4), attrs: { _FillValue: 255 } } })), /DQF_CI1/)
   })
 
+  it('validates GEOS navigation and resamples CTPS to the existing KO grid', async () => {
+    const datasets = {
+      CTH: { shape: [1200, 1900], value: new Uint16Array(1200 * 1900).fill(1200), attrs: { scale_factor: 0.01, add_offset: 0, _FillValue: 65535 } },
+      CTT: { value: new Uint16Array(1200 * 1900).fill(25000), attrs: { scale_factor: 0.01, add_offset: 0, _FillValue: 65535 } },
+      CTPS_flag: { value: new Uint8Array(1200 * 1900), attrs: { _FillValue: 255 } },
+      gk2a_imager_projection: { attrs: { grid_mapping_name: 'geostationary', longitude_of_projection_origin: 128.2, perspective_point_height: 35785864, semi_major_axis: 6378137, semi_minor_axis: 6356752.5, column_scale_factor: 20425338, line_scale_factor: 20425338, column_offset: 1125.5, line_offset: 2337.5 } },
+    }
+    const parsed = await parseCtpsNC(HDF5, runtimeFor(datasets))
+    assert.equal(parsed.cth.length, 810000)
+    assert.equal(parsed.attrs.width, 900)
+    assert.equal(parsed.attrs.ulEasting, -899000)
+    assert.equal(parsed.cth[405450], 1200)
+    delete datasets.gk2a_imager_projection.attrs.column_offset
+    await assert.rejects(parseCtpsNC(HDF5, runtimeFor(datasets)), /column_offset/)
+  })
+
   it('uses unique temporary names for concurrent reads and cleans them all', async () => {
     const runtime = runtimeFor({
       CI1_prob: { value: new Uint8Array(4), attrs: { _FillValue: 255 } },

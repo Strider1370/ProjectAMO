@@ -1,8 +1,8 @@
 .wafs-chart-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .weather-point-inspector.sigwx-high-details {
-  right: var(--vertical-rail-clearance, var(--space-m)); left: auto; top: calc(var(--weather-time-card-bottom, 98px) + var(--space-m)); transform: none;
+  right: var(--vertical-rail-clearance, var(--space-m)); left: auto; top: 70px; transform: none;
   width: min(360px, calc(100% - var(--vertical-rail-clearance, 12px) - var(--space-m)));
-  max-height: calc(100% - var(--weather-time-card-bottom, 98px) - 122px); overflow: auto;
+  max-height: calc(100% - 70px - 122px); overflow: auto;
   font-size: var(--fs-200); line-height: var(--lh-200);
 }
 .sigwx-high-details pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
@@ -32,19 +32,14 @@
   padding-top: var(--space-xs); border-top: 1px solid var(--stroke-1);
   font-size: var(--fs-100); line-height: var(--lh-100); color: var(--text-2);
 }
-.sigwx-high-legend__title { font-size: var(--fs-100); color: var(--accent); }
-.sigwx-high-legend__row { display: grid; grid-template-columns: 32px 1fr 1fr; gap: var(--space-s); align-items: center; }
-.sigwx-high-legend__name { font-weight: var(--fw-semibold); }
-.sigwx-high-legend__item { display: flex; align-items: center; gap: var(--space-xs); white-space: nowrap; }
-.sigwx-high-legend__item i { display: block; flex: 0 0 32px; height: 16px; border-radius: var(--radius-sm); overflow: hidden; outline: 1px solid var(--stroke-1); }
-.sigwx-high-legend__item b { display: block; width: 100%; height: 100%; }
-.sigwx-high-legend__note { font-size: var(--fs-100); }
+.sigwx-high-legend__swatch { overflow: hidden; }
+.sigwx-high-legend__swatch b { display: block; width: 100%; height: 100%; }
 .sigwx-high-legend[data-palette='dark'] {
   padding: var(--space-s); border: 0; border-radius: var(--radius-md);
   background: var(--sigwx-legend-background); color: var(--sigwx-legend-ink);
 }
-.sigwx-high-legend[data-palette='dark'] .sigwx-high-legend__title { color: inherit; }
-.sigwx-high-legend[data-palette='dark'] .sigwx-high-legend__item i { outline-color: color-mix(in srgb, var(--sigwx-legend-ink) 30%, transparent); }
+.sigwx-high-legend[data-palette='dark'] :is(.hlegend-title, .hlegend-keys, .hlegend-keys__name, .hlegend-note) { color: inherit; }
+.sigwx-high-legend[data-palette='dark'] .sigwx-high-legend__swatch { border-color: color-mix(in srgb, var(--sigwx-legend-ink) 30%, transparent); }
 .weather-time-card:has(.sigwx-high-legend) .weather-time-card__times { flex-wrap: wrap; row-gap: var(--space-xxs); }
 
 .sigwx-high-facts { display: grid; gap: var(--space-s); padding: var(--space-m) 0 var(--space-xs); }
@@ -57,10 +52,11 @@
 .sigwx-high-altitudes dt { color: var(--text-3); font-size: var(--fs-200); }
 .sigwx-high-altitudes dd { margin: var(--space-xs) 0 0; font-size: var(--fs-400); line-height: var(--lh-400); font-weight: var(--fw-semibold); }
 
-/* The HIGH key changes height with filters, source selection and wrapping. */
+/* 자료 시각 카드가 범례를 품으면 높이가 레이어마다 달라진다. 연직 레일은 카드 아래에서 시작하고
+   남는 높이만큼만 늘어난다(VerticalLevelRailStack이 잰 값). */
 @media (min-width: 720px) {
-  .app .map-view-wrapper:has(.sigwx-high-legend) .vertical-level-rail-stack { top: var(--sigwx-rail-top, 180px); }
-  .app .map-view-wrapper:has(.sigwx-high-legend) .vertical-level-rail-stack .pressure-level-slider__track {
+  .app .map-view-wrapper:is(:has(.sigwx-high-legend), :has(.weather-time-card__legend)) .vertical-level-rail-stack { top: var(--sigwx-rail-top, 180px); }
+  .app .map-view-wrapper:is(:has(.sigwx-high-legend), :has(.weather-time-card__legend)) .vertical-level-rail-stack .pressure-level-slider__track {
     height: var(--sigwx-rail-track-height, 320px); min-height: 0;
   }
 }

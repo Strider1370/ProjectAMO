@@ -91,11 +91,13 @@ async function capture(page, testInfo, name) {
   await testInfo.attach(name, { path: file, contentType: 'image/png' })
 }
 
-// 공용 고도 레일에서 기준 고도를 맨 위(8,000ft — 한라산 6,388ft + 여유)로 올린다.
+// 지형 근접 범례의 기준 고도 선택 상자에서 맨 위(8,000ft — 한라산 6,388ft + 여유)를 고른다.
+// 데스크톱은 왼쪽 아래 자료 상자에 지형 근접을 고른 뒤, 모바일은 범례 시트를 연 뒤 보인다.
 async function raiseAltitudeToTop(page) {
-  const rail = page.getByRole('slider', { name: '지형 근접 기준 고도' })
-  await rail.focus()
-  for (let i = 0; i < 15; i += 1) await rail.press('ArrowUp')
+  const layer = page.getByRole('combobox', { name: '기상 레이어 선택' })
+  if (await layer.count()) await layer.selectOption({ label: '지형 근접' })
+  else await page.getByRole('button', { name: '범례', exact: true }).click()
+  await page.getByRole('combobox', { name: '지형 근접 기준 고도' }).selectOption('8000')
   await page.waitForFunction(() => {
     const color = window.__map.getPaintProperty('terrain-hazard-shade', 'raster-color')
     return color?.some?.((part) => Math.abs(part - (8000 * 0.3048 - 100 * 0.3048)) < 0.01)

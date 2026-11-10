@@ -226,7 +226,7 @@ export function hazardLineColor(rowKey, level) {
   return null
 }
 
-const MODEL_SOURCE = { turbulence: 'KIM GKTG', icing: 'KIM 착빙', convection: 'KIM 대류영역(실험)' }
+const MODEL_SOURCE = { turbulence: 'KIM GKTG', icing: 'KIM 착빙', convection: 'KIM ACIM 대류운' }
 const MODEL_RUN = { turbulence: 'ktg', icing: 'kim', convection: 'aci' }
 
 // "2026102000" → "10/20 00Z"

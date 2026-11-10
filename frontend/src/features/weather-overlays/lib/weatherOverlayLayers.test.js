@@ -6,8 +6,6 @@ import {
   RADAR_RAINRATE_LEGEND,
   SATELLITE_LAYER,
   RADAR_LAYER,
-  QPF_SOURCE,
-  QPF_LAYER,
   WISSDOM_SOURCE,
   WISSDOM_LAYER,
   SIGWX_LAYER,
@@ -144,13 +142,12 @@ test(`three ${kind} images have exclusive zoom ranges, legacy fallback and share
 })
 }
 
-test('routes infrared, WISSDOM, and QPF through the 200ms raster transition', () => {
+test('routes infrared and WISSDOM through the 200ms raster transition', () => {
   const calls = []
   syncRasterAndSigwxLayers(createMockMap(), {
     satelliteFrame: { path: '/ir.webp', bounds: [[30, 120], [40, 130]] },
     radarFrame: null,
     wissdomFrame: { path: '/wissdom.webp', bounds: [[30, 120], [40, 130]] },
-    qpfFrame: { path: '/qpf.webp', bounds: [[30, 120], [40, 130]] },
     selectedSigwxFrontMeta: null,
     selectedSigwxCloudMeta: null,
     sigwxLowMapData: null,
@@ -159,10 +156,9 @@ test('routes infrared, WISSDOM, and QPF through the 200ms raster transition', ()
     syncRaster: (_map, options) => calls.push(options),
   })
 
-  assert.deepEqual(calls.slice(0, 3).map(({ sourceId, transitionMs, visible }) => ({ sourceId, transitionMs, visible })), [
+  assert.deepEqual(calls.slice(0, 2).map(({ sourceId, transitionMs, visible }) => ({ sourceId, transitionMs, visible })), [
     { sourceId: 'kma-satellite-overlay', transitionMs: 200, visible: true },
     { sourceId: 'kma-wissdom-overlay', transitionMs: 200, visible: true },
-    { sourceId: 'kma-qpf-overlay', transitionMs: 200, visible: true },
   ])
   assert.equal(calls[0].opacity, 1)
   // 가시영상이 없을 때 적외영상은 레이더 아래로 들어간다(맨 위에 붙어 레이더를 덮지 않게).
@@ -372,7 +368,7 @@ test('weather overlay ownership exports are unique', () => {
   assert.equal(new Set(WEATHER_OVERLAY_LAYER_IDS).size, WEATHER_OVERLAY_LAYER_IDS.length)
 })
 
-test('weather overlay sync keeps WISSDOM above radar and QPF above WISSDOM', () => {
+test('weather overlay sync keeps WISSDOM above radar', () => {
   const map = createMockMap()
   const bounds = [[30, 120], [40, 130]]
 
@@ -381,7 +377,6 @@ test('weather overlay sync keeps WISSDOM above radar and QPF above WISSDOM', () 
     satelliteFrame: null,
     radarFrame: { path: '/radar.webp', bounds },
     wissdomFrame: { path: '/wissdom.webp', bounds },
-    qpfFrame: { path: '/qpf.webp', bounds },
     selectedSigwxFrontMeta: null,
     selectedSigwxCloudMeta: null,
     sigwxLowMapData: null,
@@ -392,13 +387,11 @@ test('weather overlay sync keeps WISSDOM above radar and QPF above WISSDOM', () 
 
   const layerOrder = [...map.layers.keys()]
   assert.ok(layerOrder.indexOf(RADAR_LAYER) < layerOrder.indexOf(WISSDOM_LAYER))
-  assert.ok(layerOrder.indexOf(WISSDOM_LAYER) < layerOrder.indexOf(QPF_LAYER))
   assert.equal(map.getLayer(WISSDOM_LAYER).slot, 'middle')
-  assert.equal(map.getLayer(QPF_LAYER).slot, 'middle')
   assert.equal(map.getLayer('kma-sigmet-advisories-fill').slot, 'top')
 })
 
-test('weather overlay installation preserves WISSDOM and QPF ownership on a fresh style', () => {
+test('weather overlay installation preserves WISSDOM ownership on a fresh style', () => {
   const map = createMockMap()
   const bounds = [[30, 120], [40, 130]]
 
@@ -407,7 +400,6 @@ test('weather overlay installation preserves WISSDOM and QPF ownership on a fres
     satelliteFrame: null,
     radarFrame: { path: '/radar.webp', bounds },
     wissdomFrame: { path: '/wissdom.webp', bounds },
-    qpfFrame: { path: '/qpf.webp', bounds },
     selectedSigwxFrontMeta: null,
     selectedSigwxCloudMeta: null,
     sigwxLowMapData: null,
@@ -417,11 +409,8 @@ test('weather overlay installation preserves WISSDOM and QPF ownership on a fres
   }, { syncRaster: syncRasterImmediately })
 
   assert.ok(map.getLayer(WISSDOM_LAYER))
-  assert.ok(map.getLayer(QPF_LAYER))
   assert.ok(WEATHER_OVERLAY_SOURCE_IDS.includes(WISSDOM_SOURCE))
-  assert.ok(WEATHER_OVERLAY_SOURCE_IDS.includes(QPF_SOURCE))
   assert.ok(WEATHER_OVERLAY_LAYER_IDS.includes(WISSDOM_LAYER))
-  assert.ok(WEATHER_OVERLAY_LAYER_IDS.includes(QPF_LAYER))
 })
 
 test('installWeatherOverlayLayers can run with empty data', () => {

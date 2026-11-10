@@ -3,7 +3,7 @@ import { loadChangedWeatherData } from '../../../api/weatherApi.js'
 
 // Public map overlays only. Organization flight validation stays on its own API.
 const MAP_LAYERS = Object.fromEntries([
-  'hsrMeta', 'hciMeta', 'wissdomMeta', 'qpfMeta', 'echoTopMeta', 'rainviewerMeta', 'satMeta',
+  'hsrMeta', 'hciMeta', 'wissdomMeta', 'rainviewerMeta', 'satMeta',
   'satVisibleMeta', 'convectiveMeta', 'sigmet', 'sigmetOverseas', 'airmet',
   'lightning', 'sigwxLow', 'notam',
 ].map((key) => [key, true]))

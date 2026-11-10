@@ -30,15 +30,13 @@ const NIGHT = { kind: 'night' }
 const EARLY_MORNING = { kind: 'hours', fromHourKst: 0, toHourKst: 4 }
 
 // 일부러 꺼둔 자료를 가려내는 조건. 꺼둔 것은 멈춘 것이 아니라서 판정도 알림도 하지 않는다 —
-// 안 그러면 "에코탑 24시간째 멈춤" 같은 알림이 손쓸 일도 없이 매일 온다.
+// 안 그러면 "24시간째 멈춤" 같은 알림이 손쓸 일도 없이 매일 온다.
 // 레이더·위성 계열은 열쇠가 없으면 수집기 자체가 등록되지 않으므로(index.js) 그것도 꺼둔 것으로 본다.
 const OFF = {
-  echoTop: (c) => c.radar_echo_top?.enabled === false,
   kimNwp: (c) => c.kim_nwp?.enabled === false,
   kimSurfaceChart: (c) => c.kim_surface_chart?.enabled === false,
   convective: (c) => c.satellite?.convective_enabled === false,
   graphics: (c) => c.radar_graphics?.enabled === false,
-  qpf: (c) => c.radar_graphics?.qpf_enabled !== true,
   radarKey: (c) => !c.api?.radar_satellite_auth_key,
 }
 const anyOf = (...checks) => (c) => checks.some((check) => check(c))
@@ -65,13 +63,11 @@ export const CATALOG = [
   { key: 'asos_ceiling', label: '운고(ASOS)', source: 'kma_aviation', character: 'report', normalMs: h(1), lateMs: h(3), stoppedMs: h(6) },
 
   { key: 'radar', label: '레이더(합성 HSR)', source: 'kma_radar', character: 'observation', statsKey: 'hsr', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hsr/hsr_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
-  { key: 'echo_top', label: '에코탑(재산출)', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echotop/echotop_meta.json', disabledWhen: anyOf(OFF.echoTop, OFF.radarKey),},
   { key: 'hci', label: '합성 HCI', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hci/hci_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
   { key: 'wissdom', label: 'WISSDOM', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/wissdom/wissdom_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
-  { key: 'qpf', label: 'QPF', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/qpf/qpf_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.qpf, OFF.radarKey),},
   { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/sat_meta.json', disabledWhen: OFF.radarKey,},
   { key: 'satellite_visible', label: '위성 가시', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), quiet: NIGHT, meta: 'satellite/visible/visible_meta.json', disabledWhen: OFF.radarKey,},
-  { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', statsKey: 'satellite', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json', disabledWhen: anyOf(OFF.convective, OFF.radarKey),},
+  { key: 'convective', label: '운정고도 CTPS', source: 'kma_radar', character: 'observation', statsKey: 'satellite', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json', disabledWhen: anyOf(OFF.convective, OFF.radarKey),},
   { key: 'flight_category_overlay', label: '비행범주', source: 'kma_radar', character: 'report', statsKey: 'flight_category', normalMs: m(20), lateMs: h(1), stoppedMs: h(2) },
 
   { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', comparisonModel: 'kim', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json', disabledWhen: OFF.kimNwp,},

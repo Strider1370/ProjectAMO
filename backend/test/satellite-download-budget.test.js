@@ -14,7 +14,7 @@ const root = () => fs.mkdtempSync(path.join(os.tmpdir(), 'amo-sat-'))
 function normalConfig(dataRoot, max_frames = 1) {
   return {
     api: { radar_satellite_auth_key: 'test-key' }, storage: { base_path: dataRoot },
-    satellite: { url: 'https://example.invalid', fog_url: 'https://example.invalid', channel: 'IR105', fog_product: 'FOG', region: 'KO', delay_minutes: 0, timeout_ms: 1, max_frames },
+    satellite: { nc_url: 'https://example.invalid/api/typ01/url/sat_file_nc_down.php', channel: 'IR105', fog_product: 'FOG', region: 'KO', delay_minutes: 0, timeout_ms: 1, max_frames },
   }
 }
 
@@ -29,7 +29,7 @@ function depsFor(dataRoot, counter) {
     root: dataRoot,
     config: {
       api: { radar_satellite_auth_key: 'test-key' },
-      satellite: { url: 'https://example.invalid/GK2A/LE1B', delay_minutes: 20, timeout_ms: 1000, max_frames: 4 },
+      satellite: { nc_url: 'https://example.invalid/api/typ01/url/sat_file_nc_down.php', delay_minutes: 20, timeout_ms: 1000, max_frames: 4 },
       storage: { base_path: dataRoot },
     },
     fetchNc: async () => { counter.calls += 1; return Buffer.from('not-really-netcdf') },
@@ -106,7 +106,7 @@ test('a failed current-frame publish leaves the previous WebP and metadata intac
       deps: {
         config: {
           api: { radar_satellite_auth_key: 'test-key' }, storage: { base_path: dataRoot },
-          satellite: { url: 'https://example.invalid', fog_url: 'https://example.invalid', channel: 'IR105', fog_product: 'FOG', region: 'KO', delay_minutes: 0, timeout_ms: 1, max_frames: 1 },
+          satellite: { nc_url: 'https://example.invalid/api/typ01/url/sat_file_nc_down.php', channel: 'IR105', fog_product: 'FOG', region: 'KO', delay_minutes: 0, timeout_ms: 1, max_frames: 1 },
         },
         renderFrame: async () => { throw new Error('forced worker termination during frame publication') },
         collectConvective: false,
@@ -332,7 +332,7 @@ test('a FOG request that stalls still saves the IR frame as a completed IR-only 
     deps: {
       config: normalConfig(dataRoot), collectConvective: false,
       fetchWithTimeout: async (url) => {
-        if (url.includes('/FOG/')) throw new Error('api_operation_timeout')
+        if (new URL(url).searchParams.get('data') === 'fog') throw new Error('api_operation_timeout')
         return { ok: true, arrayBuffer: async () => hdf }
       },
       parseSatelliteNC: async () => ({}),

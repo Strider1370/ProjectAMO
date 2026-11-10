@@ -1,5 +1,4 @@
 import { mergeAdvisoryPayloads } from '../../../api/weatherApi.js'
-import { QPF_ENABLED } from '../../weather-overlays/lib/qpfLayers.js'
 
 export function organizationMapWeatherProps({ bundle, situation, dataMode = 'live', layerWeather } = {}) {
   // A presentation must never borrow a newer observation from the lounge.
@@ -14,8 +13,6 @@ export function organizationMapWeatherProps({ bundle, situation, dataMode = 'liv
     satVisibleMeta: weather.satVisibleMeta || null,
     hciMeta: weather.hciMeta || null,
     wissdomMeta: weather.wissdomMeta || null,
-    qpfMeta: QPF_ENABLED ? weather.qpfMeta || null : null,
-    echoTopMeta: weather.echoTopMeta || null,
     rainviewerMeta: weather.rainviewerMeta || null,
     convectiveMeta: weather.convectiveMeta || null,
     sigmetData: mergeAdvisoryPayloads(weather.sigmet, weather.sigmetOverseas),

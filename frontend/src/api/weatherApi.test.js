@@ -48,19 +48,16 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
 test('loadChangedWeatherData bypasses stale browser entries for all KMA radar graphics metadata', async () => {
   const recorder = installFetchRecorder()
   try {
-    const data = await loadChangedWeatherData({ hsrMeta: true, hciMeta: true, wissdomMeta: true, qpfMeta: true })
+    const data = await loadChangedWeatherData({ hsrMeta: true, hciMeta: true, wissdomMeta: true })
     assert.ok(data.hsrMeta)
     assert.ok(data.hciMeta)
     assert.ok(data.wissdomMeta)
-    assert.ok(data.qpfMeta)
     assert.deepEqual(recorder.calls, [
       '/data/radar/wissdom/wissdom_meta.json',
-      '/data/radar/qpf/qpf_meta.json',
       '/data/radar/hsr/hsr_meta.json',
       '/data/radar/hci/hci_meta.json',
     ])
     assert.deepEqual(recorder.options, [
-      { signal: undefined, cache: 'no-store' },
       { signal: undefined, cache: 'no-store' },
       { signal: undefined, cache: 'no-store' },
       { signal: undefined, cache: 'no-store' },
@@ -73,11 +70,9 @@ test('loadChangedWeatherData bypasses stale browser entries for all KMA radar gr
 test('loadChangedWeatherData refreshes other independently published timeline metadata', async () => {
   const recorder = installFetchRecorder()
   try {
-    const data = await loadChangedWeatherData({ echoTopMeta: true, satVisibleMeta: true })
-    assert.ok(data.echoTopMeta)
+    const data = await loadChangedWeatherData({ satVisibleMeta: true })
     assert.ok(data.satVisibleMeta)
     assert.deepEqual(recorder.calls, [
-      '/data/radar/echotop/echotop_meta.json',
       '/data/satellite/visible/visible_meta.json',
     ])
   } finally {

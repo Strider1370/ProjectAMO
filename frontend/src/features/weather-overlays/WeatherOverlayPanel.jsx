@@ -14,11 +14,9 @@ const WEATHER_TILE_ICON = {
   radarHsr: Radar,
   radarHci: RainSnowIcon,  // 수상체 = 비/눈 등 강수 형태 구분
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
-  echoTop: Mountain,
   satellite: Satellite,
   satelliteVisible: Sun,
   aciExperiment: CloudLightning,
-  ci: CloudLightning,
   ctps: Cloud,
   lightning: Zap,
   surfaceChart: CloudRain,
@@ -69,7 +67,6 @@ function WeatherOverlayPanel({
   const isMobile = useIsMobile()
   // 버튼은 누르면 바뀔 표시를 보여 준다: 바람깃 상태면 '애니메이션', 애니메이션 상태면 '바람깃'.
   const surfaceChartWindActionLabel = visibility.surfaceChartWind === 'flow' ? '바람깃' : '애니메이션'
-  const echoTopEnabled = import.meta.env.VITE_ECHO_TOP_ENABLED === '1'
   const TEMP_HIDDEN_LAYER_IDS = []
   // 순서는 손이 자주 가는 순서 — 이 패널은 경보 표시가 아니라 켬/끔 스위치라, 매번 만지는
   // 관측(레이더·위성)이 먼저다. 위험기상은 한 번 켜두면 유지되는 성격이라 그다음,
@@ -78,7 +75,7 @@ function WeatherOverlayPanel({
     {
       id: 'observation',
       title: '레이더/위성',
-      ids: ['radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
+      ids: ['radarHsr', 'radarHci', 'radarOverseas', 'lightning', 'satellite', 'satelliteVisible', 'ctps'],
     },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'sigwxHigh', 'typhoon'] },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'surfaceChart', 'visibility', 'cloudIcing', 'aciExperiment', 'turbulence', 'tropopause'] : ['aciExperiment'] },
@@ -88,11 +85,9 @@ function WeatherOverlayPanel({
     radarHsr: '레이더',
     radarHci: '강수 형태',
     radarOverseas: '해외 레이더',
-    echoTop: '에코탑(재산출)',
     satellite: '적외영상',
     satelliteVisible: '가시영상',
     aciExperiment: '대류영역',
-    ci: '대류 가능성',
     ctps: '운정고도',
     lightning: '낙뢰',
     surfaceChart: '강수',
@@ -185,7 +180,7 @@ function WeatherOverlayPanel({
           </details>}
           {group.id === 'terrain' && visibility.terrainHazard && (
             <p className="terrain-hazard-note">
-              기준 고도는 오른쪽 고도 레일에서 고릅니다 (지금 <strong>{terrainAltitudeFt.toLocaleString()} ft</strong>).<br />
+              기준 고도는 지도 왼쪽 아래 자료 상자의 지형 근접 범례에서 고릅니다 (지금 <strong>{terrainAltitudeFt.toLocaleString()} ft</strong>).<br />
               <span style={{ color: '#dc2626' }}>■</span> 100ft 이내·위{'  '}
               <span style={{ color: '#eab308' }}>■</span> 1,000ft 이내 — 인천 FIR 안쪽 지형 표고(MSL)
               기준이며, 송전선·철탑 등 장애물은 포함하지 않습니다.
