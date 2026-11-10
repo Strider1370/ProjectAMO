@@ -5,7 +5,8 @@ import './CloudIcingLegend.css'
 
 const minus = value => String(value).replace('-', '−')
 
-const STATUS = { loading: '불러오는 중', refreshing: '갱신 중', error: '자료 오류', unavailable: '자료 없음', unsupported: '고정 자료 없음' }
+// 불러오는 중은 지도 맨 위 진행 막대가 알린다. 여기에는 오래 가는 상태만 적는다.
+const STATUS = { error: '자료 오류', unavailable: '자료 없음', unsupported: '고정 자료 없음' }
 
 // 범례 제목 줄의 켬/끔. 이 범례에서 무엇을 보일지 고르는 것이라 범례 옆에 둔다(데스크톱 자료 시각 카드).
 function SubLayerTitle({ text, id, controls }) {

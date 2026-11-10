@@ -67,7 +67,7 @@
   z-index: 40;
   width: 360px;
   max-width: min(360px, 88vw);
-  height: 320px;
+  height: 440px;
   display: flex;
   background: var(--bg-1);
   border: 1px solid var(--stroke-1);
@@ -86,6 +86,13 @@
 .apf-align-right .apf-pop {
   left: auto;
   right: 0;
+}
+
+/* 패널의 스크롤 영역에 잘리지 않도록 화면 좌표에 표시한다. */
+.apf-pop.apf-pop-portal {
+  position: fixed;
+  z-index: 140;
+  max-width: none;
 }
 
 .apf-regions {

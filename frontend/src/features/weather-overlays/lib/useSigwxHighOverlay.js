@@ -146,15 +146,16 @@ export function useSigwxHighOverlay({ mapRef, isStyleReady, styleRevision, enabl
   const stale = !isSample && index?.frames?.length && nowMs > Date.parse(index.frames.at(-1).validTime)
   const timestamp = enabled ? {
     key: 'sigwxHigh', label: isSample ? 'SIGWX HIGH · 고정 샘플' : 'SIGWX HIGH · WIFS', timeLabel: '발표',
-    issueLabel: picked ? highStamp(picked.frame.issueTime, tz) : '불러오는 중',
+    issueLabel: picked ? highStamp(picked.frame.issueTime, tz) : '-',
     validLabel: picked ? highStamp(picked.frame.validTime, tz) : null,
     validTimeLabel: '유효',
-    note: problem || (!frame ? '자료 불러오는 중' : isSample ? '주의: SIGWX HIGH는 현재 기상 자료가 아닙니다. 고정 샘플을 48시간 주기로 반복 표시합니다.' : index?.previewOnly ? `부분 수집본: F${String(index.frames[0].forecastHour).padStart(2, '0')}~F${String(index.frames.at(-1).forecastHour).padStart(2, '0')}만 표시합니다.` : stale ? '마지막 수집 자료의 예보 유효범위가 지났습니다.' : null),
+    note: problem || (!frame ? null : isSample ? '주의: SIGWX HIGH는 현재 기상 자료가 아닙니다. 고정 샘플을 48시간 주기로 반복 표시합니다.' : index?.previewOnly ? `부분 수집본: F${String(index.frames[0].forecastHour).padStart(2, '0')}~F${String(index.frames.at(-1).forecastHour).padStart(2, '0')}만 표시합니다.` : stale ? '마지막 수집 자료의 예보 유효범위가 지났습니다.' : null),
     noteTone: problem || isSample || index?.previewOnly || stale ? 'warning' : undefined,
     onRetry: problem ? () => setRetry(value => value + 1) : null,
   } : null
   return {
     frame, picked, filter, palette, selection: currentSelection, timestamp, entries, isSample,
+    loading: Boolean(enabled && !frame && !problem),
     isPreview: Boolean(index?.previewOnly), frameCount: index?.frames?.length || 0,
     maxForecastHour: index?.frames?.at(-1)?.forecastHour ?? null,
     count: new Set(data.features.map(feature => feature.properties.objectId)).size,

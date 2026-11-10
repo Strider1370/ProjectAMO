@@ -227,8 +227,7 @@ test.describe('map-base', () => {
   })
 
   test('changes the selected base map', async ({ page }, testInfo) => {
-    // 모바일 지도 task는 간편한 기본 지도와 레이어 진입만 제공한다. 지형 선택기는
-    // 데스크톱/iPad의 지도 선택 surface에만 있으므로 그 지원 범위에서 검증한다.
+    // 데스크톱과 iPad의 지도 선택 화면을 검증한다.
     test.skip(testInfo.project.name === 'mobile', 'mobile does not provide the terrain basemap selector')
     // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
     // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
@@ -241,9 +240,9 @@ test.describe('map-base', () => {
 
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
     await mapChoice.click()
-    const terrain = page.getByRole('menuitemradio', { name: /^지형/ })
-    await terrain.click()
-    await expect(page.getByRole('button', { name: '지형 지도 선택' })).toBeVisible()
+    const navy = page.getByRole('menuitemradio', { name: /^남색/ })
+    await navy.click()
+    await expect(page.getByRole('button', { name: '남색 지도 선택' })).toBeVisible()
   })
 
   test('opens the weather layer panel and toggles radar', async ({ page }, testInfo) => {
@@ -267,7 +266,6 @@ test.describe('map-base', () => {
     await expect(radar).toHaveAttribute('aria-pressed', wasPressed === 'true' ? 'false' : 'true')
 
     if (wasPressed !== 'true') {
-      if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: '범례' }).click()
       const motion = page.getByRole('button', { name: '이동 화살표 표시' })
       await expect(motion).toBeEnabled()
       await motion.click()

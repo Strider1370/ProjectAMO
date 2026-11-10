@@ -9,16 +9,8 @@ test('mobile alternative cards retain their outline', () => {
   assert.match(css, /\.route-check-form\.rb-mobile \.rb-alternative-card\s*\{[^}]*border:\s*1px solid var\(--stroke-1\)/s)
 })
 
-test('mobile alternative selection and creation reveal the map with a peek sheet', () => {
-  assert.match(panel, /const revealAlternativeOnMap = \(action\) =>[\s\S]*?setSheetDetent\('peek'\)/)
-  assert.match(panel, /onSelect=\{revealAlternativeOnMap\(selectRouteDesign\)\}/)
-  assert.match(panel, /onDuplicate=\{revealAlternativeOnMap\(duplicateSelectedRouteDesign\)\}/)
-})
-
-test('initial route-panel content does not get a separate step-transition attribute', () => {
-  assert.match(panel, /const stepMotion = hasWorkflowStepTransition \? stepDirection : undefined/)
-  assert.doesNotMatch(panel, /data-step-dir=\{stepDirection\}/)
-  assert.match(panel, /data-step-dir=\{stepMotion\}/)
+test('mobile route map editing collapses the sheet so the map is usable', () => {
+  assert.match(panel, /if \(isMobile && next\) \{ setDetentTouched\(true\); setSheetDetent\('peek'\) \}/)
 })
 
 test('alternative routes expose NAVDATA and airway toggles without a collapsed disclosure', () => {

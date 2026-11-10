@@ -8,7 +8,7 @@ test('desktop and mobile share one token field', () => {
   assert.match(jsx, /import RouteTokenField/)
   // 두 화면이 같은 덩이를 쓴다 — 두 번 쓰면 한쪽만 고쳐지는 일이 생긴다.
   const uses = jsx.match(/\{routeTokenField\}/g) ?? []
-  assert.equal(uses.length, 2, '데스크톱과 모바일 두 곳에서 써야 한다')
+  assert.equal(uses.length, 1, '데스크톱과 모바일이 같은 단계 본문을 사용한다')
   assert.equal((jsx.match(/<RouteTokenField/g) ?? []).length, 1, '부품은 한 번만 짜야 한다')
 })
 

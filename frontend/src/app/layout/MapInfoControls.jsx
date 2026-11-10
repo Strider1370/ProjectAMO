@@ -1,4 +1,5 @@
-import { Layers, Cloud, ChartSpline, FileText } from 'lucide-react'
+import { Layers, Cloud, FileText } from 'lucide-react'
+import FlightProfileIcon from '../../shared/ui/FlightProfileIcon.jsx'
 
 // 지도 위 정보·단면도 진입점. 데스크톱과 모바일에서 같은 순서로 표시한다.
 // 이 버튼들이 여는 레이어 패널은 버튼 아래에 붙는다. 그 밖의 패널(비행 전 브리핑·내 지도·NOTAM·ADS-B 등)은
@@ -53,7 +54,7 @@ export default function MapInfoControls({ activePanel, onToggle, aviationCount =
             onClick={() => onToggle('map-profile')}
             aria-label="연직단면도"
           >
-            <ChartSpline size={20} strokeWidth={2} />
+            <FlightProfileIcon size={24} />
             <span>연직단면도</span>
           </button>
         )}

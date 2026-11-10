@@ -33,6 +33,10 @@ export default function VerticalLevelRailStack({ children }) {
       map.style.setProperty('--vertical-rail-clearance', `${layout.clearance}px`)
       map.style.setProperty('--sigwx-rail-top', `${layout.top}px`)
       map.style.setProperty('--sigwx-rail-track-height', `${layout.trackHeight}px`)
+      // 휴대폰: 고도 알약은 오른쪽 아래 지도 도구 줄(GPS·지도) 바로 위에 붙는다.
+      const phoneTools = [...map.querySelectorAll('.mapboxgl-ctrl-geolocate, .map-tool-pills')]
+        .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
+      if (phoneTools.length) map.style.setProperty('--mobile-rail-bottom', `${Math.round(mapRect.bottom - Math.min(...phoneTools.map(rect => rect.top)) + 8)}px`)
     }
     const mutation = new MutationObserver(schedule)
     mutation.observe(map, { childList: true, subtree: true, characterData: true })
@@ -42,7 +46,7 @@ export default function VerticalLevelRailStack({ children }) {
       cancelAnimationFrame(pending)
       resize.disconnect(); mutation.disconnect()
       window.removeEventListener('resize', schedule)
-      for (const name of ['--vertical-rail-clearance', '--sigwx-rail-top', '--sigwx-rail-track-height']) map.style.removeProperty(name)
+      for (const name of ['--vertical-rail-clearance', '--sigwx-rail-top', '--sigwx-rail-track-height', '--mobile-rail-bottom']) map.style.removeProperty(name)
     }
   }, [])
   return <div ref={ref} className="vertical-level-rail-stack">{children}</div>

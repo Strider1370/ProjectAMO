@@ -38,7 +38,7 @@ fast 실행의 `CONTRACT_DATA_PATH`는 재사용할 backend의 `DATA_PATH`와 �
 - 설정은 모바일 `더보기 → 설정`, 접힌 데스크톱은 설정 유틸리티 메뉴를 연 뒤 그 안의 `설정`으로 들어간다. 같은 접근성 이름의 첫 버튼을 곧바로 모달 진입점이라고 가정하지 않는다.
 - `CHANGELOG[0]`과 `CURRENT_VERSION`으로 새 릴리스 모달을 확인한다. 특정 과거 버전 문자열을 최신 릴리스의 대용으로 쓰지 않는다.
 - `/monitoring`은 벽걸이 전용이며 모바일 폭에서는 메인으로 redirect한다. monitoring visual 계약의 mobile 프로젝트는 이 제품 정책을 명시적으로 skip한다.
-- 모바일은 토큰/알약 route 입력 표면을 제공하지 않는다. `route-token-input`의 mobile 프로젝트는 skip하고, 제공되는 단계형 브리핑 흐름은 `route-workflow`에서 검증한다.
+- 모바일은 토큰/알약 route 입력 표면을 제공하지 않는다. `route-token-input`의 mobile 프로젝트는 skip하고, 제공되는 단계형 브리핑 흐름은 `briefing-simple-flow`에서 검증한다.
 - reduced-motion은 전환을 사실상 0초로 줄이되 정보 회전 자체를 멈추게 하는 계약이 아니다. 엔진별 `0s`/미세 시간 직렬화 차이는 수치 범위로 비교한다.
 
 ### 사파리 엔진(`ipad-safari`)
@@ -83,7 +83,7 @@ WebKit 실행에는 시스템 라이브러리가 필요하다(`sudo npx playwrig
 | `airport-model-comparison` | 공항 패널 → 상세 예보 분석, 공통 시각·기온/RH·모델 운고·부분/빈자료·갱신 실패·셀 펼침·호버 툴팁·그래프 클릭 무변경 | desktop, iPad landscape, mobile | `model-comparison-fixture.mjs`: 고정 now, RKPU09Z 실자료 값 + 명시적 synthetic 13시간. Mobile verifies the analysis body; KIM 연직 참고 rail의 무안 이미지 탭은 desktop/iPad surface only | `frontend/verification/contracts/airport-model-comparison.spec.mjs` | backend + frontend | active — 2026-09-07: 전체 관련51/51, 사용자 피드백 반영 후 분석 화면33/33 통과 |
 | `notam-and-settings` | `NotamPanel.jsx`, `SettingsModal.jsx` | desktop, iPad landscape, mobile | local app state only; mobile has settings but no NOTAM entry | `frontend/verification/contracts/notam-and-settings.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-import` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed `rksi-rkpk-multi.gpx` fixture; local airport/navdata | `frontend/verification/contracts/route-import.spec.mjs` | frontend | active — passed 2026-07-19 |
-| `route-workflow` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs` intercepts exposure, altitude, profile, cross-section, briefing APIs | `frontend/verification/contracts/route-workflow.spec.mjs` | frontend | active — passed 2026-08-15 (토큰 입력으로 전환 후 재확인) |
+| `briefing-simple-flow` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | IFR·VFR 공항 → 경로 → 시간·고도 → 브리핑; 상단 요약 수정 복귀와 실제 요청 고도 확인 | `frontend/verification/contracts/briefing-simple-flow.spec.mjs` | frontend | active |
 | `route-token-input` | 경로 토큰(알약) 입력칸; `RouteTokenField.jsx`, `lib/routeTokens.js`, `useRouteBriefing.js` | desktop, iPad landscape, mobile, **ipad-safari** | committed navdata; `route-fixture.mjs`. 알약 요소는 `.rtf-pill`, 입력칸은 `.rtf-input` — 이름으로 찾지 않는다 | `frontend/verification/contracts/route-token-input.spec.mjs` | frontend | active — passed 2026-08-15 (iPad 가로 7건, 사파리 엔진 7건) |
 | `route-editing` | 경로 생성 단계 입력 바꾸기(공항 변경·확인창·맞바꾸기·교체공항·초기화·알약 삭제·저장 경로); `useRouteBriefing.js`, `RouteBriefingPanel.jsx` | desktop | committed navdata; `route-fixture.mjs`. 시나리오 표는 `docs/design/proposals/2026-10-23-route-input-rework.md` 5절. 알려진 버그는 `test.fail`로 둔다 | `frontend/verification/contracts/route-editing.spec.mjs` | frontend | active — passed 2026-10-24 (15건 통과, FIR 1건 건너뜀 — 선택 창에서 숨김) |
 | `route-touch-draw` | `routePreview.js` `bindIfrClickInteraction` 그리기 모드 | iPad landscape (휴대폰 레이아웃에는 '그리기' 버튼이 없음) | committed navdata; `route-fixture.mjs`; CDP `Input.dispatchTouchEvent`로 실제 터치 제스처 발생 | `frontend/verification/contracts/route-touch-draw.spec.mjs` | frontend | active — passed 2026-08-05 |

@@ -3,7 +3,6 @@ import {
   altitudePositionPct,
   formatPressureFlightLevel,
   isMajorPressureLevel,
-  standardAltitudeFtForPressure,
 } from './lib/pressureLevelModel.js'
 import { AltitudeMarksContext } from './lib/altitudeMarksContext.js'
 import LevelSliderPanel from './LevelSliderPanel.jsx'
@@ -26,7 +25,7 @@ export default function PressureLevelSlider({ levels = [], activeValue, onSelect
       major: isMajorPressureLevel(level),
     })
 
-  // 지도형 브리핑: 축 위에 위험 고도(실제 고도 위치)·비행 범위, 위에 "전 고도" 위험, 손잡이 옆에 순항 대비 지도 고도와 그 고도의 위험.
+  // 지도형 브리핑: 축 위에 위험 고도와 비행 범위, 위에 "전 고도" 위험을 표시한다.
   const marks = useContext(AltitudeMarksContext)
   const overlay = useMemo(() => {
     if (!marks) return null
@@ -49,11 +48,6 @@ export default function PressureLevelSlider({ levels = [], activeValue, onSelect
     }
     return { decorations, header: marks.allAltitude }
   }, [marks, orderedLevels])
-  const activeLevel = orderedLevels.find((level) => level.id === activeValue)
-  const note = marks && activeLevel?.kind === 'pressure'
-    ? marks.noteFor(standardAltitudeFtForPressure(activeLevel.value), formatPressureFlightLevel(activeLevel.value))
-    : null
-
   return <LevelSliderPanel items={items} activeValue={activeValue} onSelect={onSelect} ariaLabel="KIM 고도"
-    decorations={overlay?.decorations} header={overlay?.header} valueNote={note} />
+    decorations={overlay?.decorations} header={overlay?.header} />
 }

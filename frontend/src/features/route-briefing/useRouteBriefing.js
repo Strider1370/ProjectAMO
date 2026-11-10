@@ -1230,7 +1230,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setSelectedRouteDesignId(base.id)
       setRouteResult(base.routeResult)
       setRouteExposure(base.routeExposure)
-      setWorkflowStep('compare')
+      setWorkflowStep('settings')
       return result
     }
 
@@ -1255,7 +1255,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setSelectedRouteDesignId(base.id)
       setRouteResult(base.routeResult)
       setRouteExposure(base.routeExposure)
-      setWorkflowStep('compare')
+      setWorkflowStep('settings')
     } catch (err) {
       if (requestId !== routeExposureRequestRef.current) return result
       const base = createRouteDesign({
@@ -1269,7 +1269,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setSelectedRouteDesignId(base.id)
       setRouteResult(base.routeResult)
       setRouteExposure(base.routeExposure)
-      setWorkflowStep('compare')
+      setWorkflowStep('settings')
     }
     return result
   }
@@ -2734,9 +2734,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     })
   }
 
-  async function handleGenerateBriefing() {
+  async function handleGenerateBriefing(options = {}) {
+    const requestedAltitude = Number(options.cruiseAltitudeFt ?? cruiseAltitudeFt)
+    if (!Number.isFinite(requestedAltitude) || requestedAltitude < 500 || requestedAltitude > 60000) { setBriefingError('계획 순항고도를 500~60,000 ft로 입력하세요.'); return }
+    if (options.cruiseAltitudeFt != null) { updateCruiseAltitudeFt(requestedAltitude); setAltitudeDraftFt(requestedAltitude) }
     if (briefingContextRef.current?.kind === 'organization') {
-      return loadOrganizationBundle({ etd, cruiseAltitudeFt: Number(cruiseAltitudeFt), nwpTimeSelection })
+      return loadOrganizationBundle({ etd, cruiseAltitudeFt: requestedAltitude, nwpTimeSelection })
     }
     const contextVersion = routeResetVersionRef.current
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
@@ -2753,7 +2756,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       const profileRequest = buildVerticalProfileRequest({
         routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap,
         vfrWaypoints: appliedVfrWaypoints,
-        plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
+        plannedCruiseAltitudeFt: requestedAltitude,
       })
       const bundle = await createBriefingProvider(null).load({
         request: { ...profileRequest, departureAirport: routeForm.departureAirport,

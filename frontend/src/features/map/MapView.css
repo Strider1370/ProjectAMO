@@ -89,7 +89,7 @@
 .map-tool-pill.is-active, .map-tool-pill[aria-pressed='true'] { background: #1e293b; color: #ffffff; }
 .map-tool-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-tool-pill__thumb { width: 24px; height: 24px; border-radius: 12px; object-fit: cover; border: 1px solid var(--stroke-2); }
-.basemap-switcher.is-pill { position: relative; top: auto; right: auto; z-index: auto; }
+.map-tool-pills > .basemap-switcher { position: relative; top: auto; right: auto; z-index: auto; }
 .basemap-switcher.is-pill .basemap-switcher-menu { top: calc(100% + 6px); right: 0; left: auto; z-index: 8; }
 
 /* 모바일은 같은 우측 여백을 사용한다. */
@@ -2331,15 +2331,17 @@
 }
 
 @media (max-width: 719px) {
+  /* 휴대폰: 데스크톱과 같은 상자를 재생 버튼 줄 위에 두고, 오른쪽 56px은 도구 버튼 칸으로 비워 둔다. */
   .weather-time-card {
     top: auto;
-    right: auto;
-    bottom: calc(100px + var(--legend-popover-height, 0px));
-    left: 14px;
-    width: max-content;
-    max-width: min(300px, calc(100% - 88px));
+    right: 64px;
+    bottom: 92px;
+    left: 12px;
+    width: auto;
+    max-width: none;
     transform: none;
   }
+  .weather-time-card__legend { max-height: min(26vh, 170px); }
   .weather-time-card__times strong { font-size: 11px; }
   .weather-time-card .layer-timestamp-layer-arrow,
   .weather-time-card .layer-timestamp-history-arrow { min-width: var(--touch-min); min-height: var(--touch-min); }
@@ -2811,6 +2813,8 @@
      44px 폭이면 그 구역을 뺀 실사용 폭이 32px밖에 남지 않아 폭을 조금 넓혔다. */
   .pressure-level-slider__track { width: 56px; height: 100%; min-height: 0; margin: 0; }
   .pressure-level-slider__tick span { display: none; }
+  /* 휴대폰은 막대가 짧아 잔눈금이 사다리처럼 촘촘해 보인다 — 주요 고도 눈금만 남긴다. */
+  .pressure-level-slider__tick:not(.is-major) { display: none; }
   .pressure-level-slider__value { right: calc(50% + 14px); font-size: var(--fs-200); }
   .pressure-level-slider__value small { font-size: var(--fs-100); }
 
@@ -2909,9 +2913,9 @@
   }
 }
 
-/* 연직 고도 막대(데스크톱·태블릿): 배경 판 없이 얇은 막대 하나와 손잡이 말풍선만 둔다(항공 앱 방식).
+/* 연직 고도 막대: 배경 판 없이 얇은 막대 하나와 손잡이 말풍선만 둔다(항공 앱 방식). 휴대폰도 같은 모양이다.
    막대·눈금·글자는 흰 테두리를 둘러 밝은 지도·어두운 지도 어디서나 읽힌다. 눈금에는 FL만, hPa는 말풍선에만 적는다. */
-@media (min-width: 720px) {
+@media all {
   .app .map-view-wrapper .pressure-level-slider,
   .app .map-view-wrapper .pressure-level-slider:hover,
   .app .map-view-wrapper .pressure-level-slider:has(.pressure-level-slider__track:focus-visible) {
@@ -2944,4 +2948,108 @@
     padding: 0; border-radius: 0; background: transparent; color: #0f172a; font-size: 11px;
     text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
   }
+}
+
+/* 기상 자료를 불러오는 동안 지도 맨 위를 가로지르는 얇은 진행 막대. 지도를 가리지 않고 범례 높이도 바꾸지 않는다. */
+.map-loading-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 9; height: 3px; overflow: hidden; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.map-loading-bar::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
+  background: var(--accent); border-radius: 2px;
+  animation: map-loading-slide 1.1s ease-in-out infinite;
+}
+@keyframes map-loading-slide { from { left: -40%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .map-loading-bar::after { left: 0; width: 100%; opacity: 0.6; animation: none; }
+}
+
+/* 휴대폰: 재생 버튼 줄에 왼쪽 '범례' 버튼, 오른쪽 GPS·지도 아이콘을 둔다(타임라인 바로 위, 빈틈 없이).
+   GPS·지도는 재생 버튼처럼 흰 판 없이 아이콘에 흰 테두리 그림자만 둘러 가볍게 보이게 한다. */
+.weather-time-card__tool {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 26px; padding: 0 9px;
+  border: 1px solid var(--stroke-2); border-radius: 999px; background: var(--bg-1); color: var(--text-1);
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.weather-time-card__tool[aria-pressed='true'] { border-color: #1e293b; background: #1e293b; color: #ffffff; }
+.weather-time-card__tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mobile-legend-button { position: absolute; left: 12px; bottom: 40px; z-index: 7; }
+@media (max-width: 719px) {
+  .map-tool-pills { top: auto; right: 8px; bottom: 40px; flex-direction: row; gap: 4px; }
+  .map-tool-pill {
+    width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 22px;
+    background: transparent; box-shadow: none;
+    filter: drop-shadow(0 1px 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1px rgba(15, 23, 42, 0.45));
+  }
+  .map-tool-pill:hover { background: transparent; }
+  .map-tool-pill > span:not(.map-tool-pill__thumb) {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .map-tool-pill__thumb { width: 28px; height: 28px; border-radius: 14px; border: 2px solid #ffffff; }
+  .basemap-switcher.is-pill .basemap-switcher-menu { top: auto; bottom: calc(100% + 6px); right: 0; }
+  /* GPS는 지도 아이콘 바로 위에 둔다(같은 세로줄). */
+  .map-view-wrapper .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl:has(.mapboxgl-ctrl-geolocate) {
+    transform: var(--mobile-gps-transform, translate(4px, -52px));
+    background: transparent; box-shadow: none; border-radius: 0;
+  }
+  .map-view-wrapper .mapboxgl-ctrl-group button.mapboxgl-ctrl-geolocate {
+    width: 44px; height: 44px; background-color: transparent;
+    filter: drop-shadow(0 1px 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1px rgba(15, 23, 42, 0.45));
+  }
+}
+
+/* 휴대폰 고도 고르기: 막대 대신 오른쪽 아래 지도 도구 줄(GPS·지도) 바로 위에 지금 고도 알약을 두고,
+   누르면 위쪽으로 고도 목록을 펼친다. 폭은 도구 줄과 맞춰 펼친 범례 상자(right 64px)와 겹치지 않게 한다. */
+@media (max-width: 719px) {
+  .map-view-wrapper .vertical-level-rail-stack,
+  .map-view-wrapper .vertical-level-rail-stack:has(> .vertical-level-rail-item:nth-child(2)) {
+    top: auto; bottom: var(--mobile-rail-bottom, 150px); right: 12px; height: auto;
+    flex-direction: column; align-items: flex-end; gap: 6px;
+  }
+  .map-view-wrapper .vertical-level-rail-stack .vertical-level-rail-item,
+  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .vertical-level-rail-stack .vertical-level-rail-item {
+    width: auto; height: auto; align-items: flex-end; gap: 4px;
+  }
+  .map-view-wrapper .vertical-level-rail-stack .vertical-level-rail-item > select { max-width: 150px; }
+  .mobile-level-picker { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: auto; }
+  .mobile-level-picker__header { display: flex; gap: 4px; }
+  .mobile-level-picker__header span {
+    padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.92);
+    color: var(--chip-color, var(--text-2)); font-size: 10px; font-weight: 700;
+  }
+  .mobile-level-picker__chip {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 52px; min-height: 44px; padding: 3px 0 2px; box-sizing: border-box; border: 0; border-radius: 12px;
+    background: #1e293b; color: #ffffff; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.3);
+    font: inherit; line-height: 1.1; cursor: pointer; white-space: nowrap;
+  }
+  .mobile-level-picker__chip strong { font-size: 13px; font-weight: 700; }
+  .mobile-level-picker__chip small { color: #cbd5e1; font-size: 9px; font-weight: 600; }
+  .mobile-level-picker__caret { position: absolute; top: 1px; right: 4px; color: #94a3b8; font-size: 8px; }
+  .mobile-level-picker__chip:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+  /* 위험 고도 한 줄 메모는 알약 왼쪽에 붙인다(오른쪽 열 폭을 넓히지 않게). */
+  .mobile-level-picker__note {
+    position: absolute; right: calc(100% + 6px); bottom: 4px; max-width: 150px; padding: 1px 6px; border-radius: 6px;
+    background: rgba(255, 255, 255, 0.92); color: var(--text-2); font-size: 10px; font-weight: 700; white-space: nowrap;
+  }
+  .mobile-level-picker__list {
+    position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 12; display: flex; flex-direction: column;
+    min-width: 136px; max-height: min(50vh, 420px); overflow-y: auto; padding: 4px; box-sizing: border-box;
+    border: 1px solid var(--stroke-2, rgba(148, 163, 184, 0.45)); border-radius: 12px;
+    background: var(--bg-1, #ffffff); box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.18);
+  }
+  .mobile-level-picker__list button {
+    position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    min-height: 44px; flex: none; padding: 0 12px; border: 0; border-radius: 8px; background: transparent;
+    color: var(--text-1, #0f172a); font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+  }
+  .mobile-level-picker__list button small { color: var(--text-3, #64748b); font-size: 11px; }
+  .mobile-level-picker__list button.has-mark::before {
+    content: ''; position: absolute; left: 2px; top: 8px; bottom: 8px; width: 4px; border-radius: 2px;
+    background: var(--mark-color, #f59e0b);
+  }
+  .mobile-level-picker__list button[aria-pressed='true'] { background: #1e293b; color: #ffffff; font-weight: 700; }
+  .mobile-level-picker__list button[aria-pressed='true'] small { color: #cbd5e1; }
+  .mobile-level-picker__list button:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: -2px; }
 }

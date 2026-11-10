@@ -115,12 +115,12 @@ export function useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, e
     key: 'tropopauseJet', label: '권계면·제트',
     issueLabel: time ? formatUtcTmfcStamp(time.tmfc, tz) : '-',
     validLabel: time ? formatSigwxStamp(time.validTime, tz) : null,
-    note: problem || (!loaded ? '불러오는 중' : null),
+    note: problem || null,
     noteTone: problem ? 'warning' : undefined,
   } : null, [enabled, time?.tmfc, time?.validTime, tz, problem, loaded])
   const times = useMemo(() => enabled && index ? index.times.map(t => ({ tmfc: index.latestRun, hf: t.hf, validTime: t.validTime })) : [], [enabled, index])
 
-  return { times, timestamp, field: current, model, problem, cases, caseKey: chosenCase ? caseKey : null }
+  return { times, timestamp, field: current, model, problem, cases, caseKey: chosenCase ? caseKey : null, loading: Boolean(enabled && !loaded && !problem) }
 }
 
 export default useTropopauseJetOverlay

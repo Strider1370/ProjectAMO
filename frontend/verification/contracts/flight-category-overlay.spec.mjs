@@ -68,8 +68,7 @@ function panelToggle(page, testInfo) {
 async function revealLegends(page, testInfo) {
   // 패널이 열려 있으면 지도와 범례 버튼을 덮는다 — 먼저 닫는다.
   await panelToggle(page, testInfo).click()
-  // 데스크톱은 범례가 왼쪽 아래 자료 시각 상자에 늘 펼쳐져 있다. 모바일만 범례 시트를 연다.
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: '범례', exact: true }).click()
+  // 범례는 데스크톱·모바일 모두 지도 왼쪽 아래 자료 시각 상자에 늘 펼쳐져 있다.
 }
 
 // 지도 locator의 toHaveScreenshot({clip})은 무시되고 캔버스 전체가 찍힌다 — page 기준
@@ -376,20 +375,12 @@ test.describe('flight-category-overlay', () => {
     if (testInfo.project.name === 'mobile') await revealLegends(page, testInfo)
     else await panelToggle(page, testInfo).click()
 
-    // 데스크톱은 왼쪽 아래 상자에서 레이어를 고르고(선택 상자), 모바일은 범례 시트 안 화살표로 넘긴다.
-    const mobile = testInfo.project.name === 'mobile'
-    const bar = page.getByLabel(mobile ? '기상자료 시각' : '기상자료 시각과 범례', { exact: true })
+    // 데스크톱·모바일 모두 왼쪽 아래 상자의 선택 상자에서 레이어를 고른다.
+    const bar = page.getByLabel('기상자료 시각과 범례', { exact: true })
     const issueCell = bar.locator('.weather-time-card__times > span').first()
     await expect(bar).toBeVisible()
     const select = bar.getByRole('combobox', { name: '기상 레이어 선택' })
-    const header = mobile ? bar.locator('.layer-timestamp-header span').first() : null
-    const pick = async (label) => {
-      if (!mobile) { await select.selectOption({ label }); return }
-      const previous = bar.getByRole('button', { name: '이전 기상 레이어' })
-      for (let i = 0; i < 10 && await previous.isEnabled(); i++) await previous.click()
-      if (label === '운고') await bar.getByRole('button', { name: '다음 기상 레이어' }).click()
-      await expect(header).toHaveText(label)
-    }
+    const pick = async (label) => { await select.selectOption({ label }) }
 
     await pick('시정')
     await expect(issueCell).toContainText('관측')

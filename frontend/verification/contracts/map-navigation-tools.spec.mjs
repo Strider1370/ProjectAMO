@@ -84,7 +84,7 @@ test('map-navigation-tools: 범례는 좌측 하단에 두고 정보 패널 높�
 })
 
 test('map-navigation-tools: 데스크톱은 지도 선택을 오른쪽 위 알약 도구로 두고 메뉴는 아래로 열린다', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile', '모바일은 예전 자리를 쓴다')
+  test.skip(testInfo.project.name === 'mobile', '모바일은 오른쪽 아래 둥근 버튼 칸에 둔다')
   await open(page)
   const tools = page.locator('.map-tool-pills')
   const mode = tools.getByRole('button', { name: /지도 선택$/ })

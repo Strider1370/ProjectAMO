@@ -1,13 +1,11 @@
 import { useKimAciOverlay } from '../weather-overlays/lib/useKimAciOverlay.js'
 import AciExperimentLegend from '../weather-overlays/AciExperimentLegend.jsx'
-import CloudIcingMapControls from '../weather-overlays/CloudIcingMapControls.jsx'
-import WeatherPointInfoControl from '../weather-overlays/WeatherPointInfoControl.jsx'
 import { useWeatherPointInspection } from '../weather-overlays/lib/useWeatherPointInspection.js'
 import OrganizationBriefingStatus from '../route-briefing/OrganizationBriefingStatus.jsx'
 import { createSavedRouteHandoff } from '../copilot/savedRouteHandoff.js'
 import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { Crosshair } from 'lucide-react'
-import { ChartSpline } from 'lucide-react'
+import { MousePointerClick } from 'lucide-react'
+import FlightProfileIcon from '../../shared/ui/FlightProfileIcon.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import useHasHover from '../../shared/ui/useHasHover.js'
@@ -58,7 +56,7 @@ import { MAP_BRIEFING_MIN_WIDTH, readBriefingView, writeBriefingView } from '../
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
 import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
 import { nwpAvailabilityEntries } from '../weather-overlays/lib/timelineRailModel.js'
-import WeatherLegends, { buildMapLegendBlocks } from '../weather-overlays/WeatherLegends.jsx'
+import { buildMapLegendBlocks } from '../weather-overlays/WeatherLegends.jsx'
 import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import useMyMap from '../my-map/useMyMap.js'
@@ -421,8 +419,6 @@ const MapView = forwardRef(function MapView({
 }, ref) {
   const notifyInitialStyleReady = useMemo(() => createOneShotNotifier(onStyleReady), [onStyleReady])
   const isMobile = useIsMobile()
-  // 데스크톱·태블릿은 지점 정보·지도 선택을 오른쪽 위 알약 도구로 둔다. 휴대폰은 예전 자리다.
-  const desktopTools = !isMobile
   // 터치 기기에서는 공항 호버 툴팁을 띄우지 않는다 — 탭하면 공항 패널이 열리는데
   // 그 직전에 가짜 mousemove로 툴팁이 깜빡였다 사라졌다.
   const hasHover = useHasHover()
@@ -458,6 +454,7 @@ const MapView = forwardRef(function MapView({
   const [visibleSatelliteVisuals, setVisibleSatelliteVisuals] = useState({ brightness: 12, contrast: 0 })
   const showFlightCategoryStations = true
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
+  const [mobileLegendOpen, setMobileLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
   useEffect(() => { onWeatherLegendPanelHeightChange?.(weatherLegendPanelHeight) }, [onWeatherLegendPanelHeightChange, weatherLegendPanelHeight])
   const [terrainAltitudeFt, setTerrainAltitudeFt] = useState(3000)
@@ -535,6 +532,17 @@ const MapView = forwardRef(function MapView({
   // 기관 브리핑(고정 자료)과 기상이 결과 화면은 지금처럼 문서형으로 둔다.
   const mapBriefingActive = Boolean(enableRouteBriefing && !isMobile && wideForMapBriefing && briefingView === 'map'
     && routeBriefing.state.briefing && !copilotResult.bundle && routeBriefing.state.briefingContext?.kind !== 'organization')
+  const wasMapBriefingActive = useRef(false)
+  useEffect(() => {
+    const wasActive = wasMapBriefingActive.current
+    wasMapBriefingActive.current = mapBriefingActive
+    if (mapBriefingActive && !wasActive && activePanel === 'route-check') {
+      onClosePanel?.()
+    } else if (wasActive && !mapBriefingActive && routeBriefing.state.briefing && briefingView === 'map' && activePanel == null && (isMobile || !wideForMapBriefing)) {
+      // 작은 화면은 지도형을 지원하지 않으므로 문서형 브리핑을 연다.
+      onOpenRoutePanel?.()
+    }
+  }, [mapBriefingActive, activePanel, briefingView, isMobile, wideForMapBriefing, routeBriefing.state.briefing, onClosePanel, onOpenRoutePanel])
   useEffect(() => { onMapBriefingChange?.(mapBriefingActive) }, [mapBriefingActive, onMapBriefingChange])
   const organizationAuthRef = useRef(authUser?.id ?? null)
   useEffect(() => {
@@ -1094,6 +1102,35 @@ const MapView = forwardRef(function MapView({
   // 개발 서버에서는 저장된 권계면·제트 사례를 범례의 버튼으로 바꿔 볼 수 있다.
   const [tropopauseCaseKey, setTropopauseCaseKey] = useState(null)
   const tropopauseJet = useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, enabled: tropopauseJetEnabled, selectedMs: weatherTimelineSelectedMs, tz, caseKey: tropopauseCaseKey, listCases: import.meta.env.DEV })
+  // 지도 맨 위 진행 막대: 기상 자료를 불러오는 동안만 잠깐 보인다(범례에는 '불러오는 중'을 적지 않는다).
+  // 지도 위 그림·타일(레이더·위성 등)은 지도의 로딩 이벤트로, KIM 같은 격자 자료는 각 훅의 상태로 판단한다.
+  const [mapSourcesBusy, setMapSourcesBusy] = useState(false)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return undefined
+    const isOverlaySource = (id) => typeof id === 'string' && !id.includes(':') && !/mapbox|composite/.test(id)
+    const onLoading = (event) => { if (event.dataType === 'source' && isOverlaySource(event.sourceId)) setMapSourcesBusy(true) }
+    const onIdle = () => setMapSourcesBusy(false)
+    map.on('dataloading', onLoading)
+    map.on('idle', onIdle)
+    return () => { map.off('dataloading', onLoading); map.off('idle', onIdle) }
+  }, [mapRef, isStyleReady, styleRevision])
+  const gridLoading = (status) => status === 'loading' || status === 'refreshing'
+  const overlayDataLoading = mapSourcesBusy
+    || (enableWindOverlay && ((metVisibility.wind && gridLoading(windStatus))
+      || ((metVisibility.temp || metVisibility.cloudIcing) && gridLoading(tempStatus))
+      || (metVisibility.cloud && gridLoading(cloudStatus))
+      || (metVisibility.icing && gridLoading(icingStatus))
+      || (metVisibility.turbulence && gridLoading(turbulenceStatus))
+      || (metVisibility.surfaceChart && surfaceChart.status === 'loading')))
+    || Boolean(aci.loading) || Boolean(sigwxHigh.loading) || Boolean(tropopauseJet.loading)
+  // 0.3초 안에 끝나는 로딩은 띄우지 않는다 — 타임라인을 끌 때마다 막대가 깜빡이지 않게.
+  const [showLoadingBar, setShowLoadingBar] = useState(false)
+  useEffect(() => {
+    if (!overlayDataLoading) { setShowLoadingBar(false); return undefined }
+    const timer = window.setTimeout(() => setShowLoadingBar(true), 300)
+    return () => window.clearTimeout(timer)
+  }, [overlayDataLoading])
   const timelineNwpTimes = sliderTimes.length ? sliderTimes : surfaceChart.times?.length ? surfaceChart.times : tropopauseJet.times
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const timelineAvailableFrameEntries = useMemo(() => [
@@ -1152,7 +1189,7 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'wind', label: '바람', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
     if (enableWindOverlay && (metVisibility.cloudIcing || metVisibility.temp || metVisibility.cloud || metVisibility.icing))
       entries.push({ key: 'cloudIcing', label: '구름·착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel,
-        note: tempStatus === 'error' ? '등온선 자료 오류' : ['unavailable', 'unsupported'].includes(tempStatus) ? (dataMode === 'pinned' ? '등온선 고정 자료 없음' : '등온선 자료 없음') : tempStatus === 'loading' ? '등온선 자료 로딩 중' : null,
+        note: tempStatus === 'error' ? '등온선 자료 오류' : ['unavailable', 'unsupported'].includes(tempStatus) ? (dataMode === 'pinned' ? '등온선 고정 자료 없음' : '등온선 자료 없음') : null,
         noteTone: tempStatus === 'error' ? 'warning' : undefined })
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
@@ -2117,13 +2154,13 @@ const MapView = forwardRef(function MapView({
     radarWindLegendVisible: radarWindEffectiveVisible,
     radarWindObservedAtMs: radarWindEffectiveVisible ? (weatherOverlayModel.wissdomFrame?.timeMs ?? null) : null,
     formatReferenceTimeLabel: (ms) => formatReferenceTimeLabel(ms, tz),
-    // 데스크톱은 구름·착빙 켬/끔을 자료 시각 카드의 구름·착빙 범례 줄에 둔다(모바일은 아래 버튼 그대로).
-    cloudIcingControls: !isMobile && enableWindOverlay && metVisibility.cloudIcing
+    // 구름·착빙 켬/끔은 자료 시각 상자의 구름·착빙 범례 줄에 둔다.
+    cloudIcingControls: enableWindOverlay && metVisibility.cloudIcing
       ? { visibility: metVisibility, onToggle: toggleMet, level: nwpSelection?.level, statuses: { cloud: cloudStatus, icing: icingStatus } }
       : null,
   }
   const formatObservedStamp = (ms) => formatEpochStamp(ms, tz)
-  const cardEntries = isMobile ? [] : (() => {
+  const cardEntries = (() => {
     // 관측 레이어도 자기 관측 시각과 범례를 카드에 둔다. 정해진 순서: 관측 → 위험기상·예보.
     const observationEntries = [
       metVisibility.radarHsr && { key: 'radar', label: '레이더', timeLabel: '관측', issueLabel: formatObservedStamp(weatherOverlayModel.radarFrame?.timeMs) },
@@ -2182,31 +2219,23 @@ const MapView = forwardRef(function MapView({
         </button>
       )}
 
-      {!isMobile && <WeatherLayerTimestampBar entries={cardEntries} />}
+      {showLoadingBar && <div className="map-loading-bar" role="progressbar" aria-label="기상 자료 불러오는 중" />}
+      {/* 휴대폰: 상자는 기본으로 접고, 재생 버튼 줄 맨 왼쪽의 '범례' 버튼으로 연다. 지점 정보 켬/끔은 상자 머리 오른쪽에 둔다. */}
+      {(!isMobile || mobileLegendOpen) && <WeatherLayerTimestampBar entries={cardEntries} headerAction={isMobile && showWeatherLegends && weatherPointInspection.available ? (
+        <button type="button" className="weather-time-card__tool" aria-pressed={weatherPointInspection.enabled} onClick={weatherPointInspection.toggle}
+          title={weatherPointInspection.enabled ? '지도 누르기로 지점 값 조회 · 켜짐' : '지도 누르기로 지점 값 조회 · 꺼짐'}>
+          <MousePointerClick size={14} strokeWidth={2} aria-hidden="true" />지점 정보
+        </button>
+      ) : null} />}
+      {isMobile && cardEntries.some((entry) => (entry.issueLabel && entry.issueLabel !== '-') || entry.legend) && (
+        <button type="button" className={`map-legend-toggle mobile-legend-button${mobileLegendOpen ? ' is-open' : ''}`}
+          aria-expanded={mobileLegendOpen} onClick={() => setMobileLegendOpen((open) => !open)}>
+          범례 <span className="map-legend-toggle-caret" aria-hidden="true">{mobileLegendOpen ? '▾' : '▴'}</span>
+        </button>
+      )}
 
       <div className={`map-bottom-control-dock${weatherLegendOpen ? ' is-legend-open' : ''}`}>
 
-        {showWeatherLegends && isMobile && (
-          <WeatherLegends
-            {...weatherLegendProps}
-            supplementalContent={timestampEntries.some(entry => entry.issueLabel && entry.issueLabel !== '-') ? (
-              <WeatherLayerTimestampBar entries={timestampEntries} embedded>
-                <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
-              </WeatherLayerTimestampBar>
-            ) : null}
-            sampleWarning={!!metVisibility.sigwxHigh && sigwxHigh.isSample}
-            open={weatherLegendOpen}
-            onOpenChange={setWeatherLegendOpen}
-            onOpenPanelHeightChange={setWeatherLegendPanelHeight}
-          />
-        )}
-        {showWeatherLegends && isMobile && enableWindOverlay && metVisibility.cloudIcing && <CloudIcingMapControls
-          visibility={metVisibility} onToggle={toggleMet} level={nwpSelection?.level}
-          statuses={{ cloud: cloudStatus, icing: icingStatus }}
-        />}
-        {showWeatherLegends && !desktopTools && weatherPointInspection.available && <WeatherPointInfoControl
-          enabled={weatherPointInspection.enabled} onToggle={weatherPointInspection.toggle}
-        />}
       </div>
 
       {/* 지도형 브리핑 중에는 SIGMET·AIRMET이 위험 막대에 있으므로 상단 칩을 숨긴다. */}
@@ -2282,7 +2311,7 @@ const MapView = forwardRef(function MapView({
               <button type="button" className="vertical-profile-reopen-button"
                 onClick={() => routeBriefing.actions.setVerticalProfileWindowOpen(true)}
                 aria-label="연직단면도 다시 보기">
-                <ChartSpline size={18} strokeWidth={2} />
+                <FlightProfileIcon size={22} />
                 <span>연직단면도</span>
               </button>
             )}
@@ -2345,27 +2374,18 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      {showBasemapSwitcher && !desktopTools && (
-        <BasemapSwitcher
-          basemapId={basemapId}
-          isOpen={basemapMenuOpen}
-          onOpenChange={setBasemapMenuOpen}
-          onSwitchBasemap={switchBasemap}
-          atRightEdge
-        />
-      )}
-      {desktopTools && ((showWeatherLegends && weatherPointInspection.available) || showBasemapSwitcher) && (
+      {((showWeatherLegends && weatherPointInspection.available) || showBasemapSwitcher) && (
         <div className="map-tool-pills">
-          {showWeatherLegends && weatherPointInspection.available && (
+          {!isMobile && showWeatherLegends && weatherPointInspection.available && (
             <button type="button" className="map-tool-pill weather-point-info-pill"
               aria-pressed={weatherPointInspection.enabled} onClick={weatherPointInspection.toggle}
               title={weatherPointInspection.enabled ? '지도 클릭으로 지점 값 조회 · 켜짐' : '지도 클릭으로 지점 값 조회 · 꺼짐'}>
-              <Crosshair size={18} strokeWidth={2} aria-hidden="true" />
+              <MousePointerClick size={18} strokeWidth={2} aria-hidden="true" />
               <span>지점 정보</span>
             </button>
           )}
           {showBasemapSwitcher && (
-            <BasemapSwitcher basemapId={basemapId} isOpen={basemapMenuOpen} onOpenChange={setBasemapMenuOpen} onSwitchBasemap={switchBasemap} pill />
+            <BasemapSwitcher basemapId={basemapId} isOpen={basemapMenuOpen} onOpenChange={setBasemapMenuOpen} onSwitchBasemap={switchBasemap} pill={isMobile} />
           )}
         </div>
       )}

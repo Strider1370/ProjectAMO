@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import './AirportPickerField.css'
 
 // 출발/도착 공항 피커: 현재 선택(한글명+ICAO)을 보여주고, 열면 버튼 바로 아래에 드롭다운이 뜬다.
@@ -20,6 +21,8 @@ export default function AirportPickerField({ label, value, options, firOption, o
   const [open, setOpen] = useState(false)
   const [activeRegion, setActiveRegion] = useState(null)
   const rootRef = useRef(null)
+  const popRef = useRef(null)
+  const [position, setPosition] = useState(null)
 
   const selected = options.find((o) => o.value === value)
   const isFir = firOption && value === firOption.value
@@ -44,7 +47,7 @@ export default function AirportPickerField({ label, value, options, firOption, o
   useEffect(() => {
     if (!open) return undefined
     function onDocPointer(e) {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+      if (!rootRef.current?.contains(e.target) && !popRef.current?.contains(e.target)) setOpen(false)
     }
     function onKey(e) {
       if (e.key === 'Escape') setOpen(false)
@@ -56,6 +59,33 @@ export default function AirportPickerField({ label, value, options, firOption, o
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return undefined
+    const updatePosition = () => {
+      const rect = rootRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const margin = 8
+      const gap = 6
+      const preferredHeight = 440
+      const width = Math.min(360, window.innerWidth - margin * 2)
+      const below = window.innerHeight - rect.bottom - gap - margin
+      const above = rect.top - gap - margin
+      const showAbove = below < preferredHeight && above > below
+      const height = Math.min(preferredHeight, Math.max(0, window.innerHeight - margin * 2))
+      const preferredTop = showAbove ? rect.top - gap - height : rect.bottom + gap
+      const left = Math.max(margin, Math.min(align === 'right' ? rect.right - width : rect.left, window.innerWidth - width - margin))
+      const top = Math.max(margin, Math.min(preferredTop, window.innerHeight - height - margin))
+      setPosition({ left, top, width, height })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [open, align])
 
   function pick(next) {
     onChange(next)
@@ -78,8 +108,8 @@ export default function AirportPickerField({ label, value, options, firOption, o
         </span>
       </button>
 
-      {open && (
-        <div className="apf-pop">
+      {open && position && createPortal(
+        <div className="apf apf-pop apf-pop-portal" ref={popRef} style={position}>
           <div className="apf-regions">
             {regions.map((r) => (
               <button
@@ -115,7 +145,7 @@ export default function AirportPickerField({ label, value, options, firOption, o
               </button>
             ))}
           </div>
-        </div>
+        </div>, document.body
       )}
     </div>
   )

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 // Show each active layer's actual source time: forecast issue/valid, observation, or model valid time.
 // 데스크톱은 지도 왼쪽 아래(타임라인 위) 상자 하나에 "레이어 고르기 · 시각" 한 줄과 그 레이어의 범례를 함께 둔다.
 // 모바일(embedded)은 범례 시트 안에 시각만 넣고 화살표로 레이어를 넘긴다.
-function WeatherLayerTimestampBar({ entries = [], children, embedded = false }) {
+function WeatherLayerTimestampBar({ entries = [], children, embedded = false, headerAction = null }) {
   const validEntries = entries.filter((e) => (e.issueLabel && e.issueLabel !== '-') || e.legend)
   const [selectedKey, setSelectedKey] = useState(null)
   const previousKeysRef = useRef([])
@@ -65,6 +65,7 @@ function WeatherLayerTimestampBar({ entries = [], children, embedded = false }) 
           </select>
           {validEntries.length > 1 && <small className="weather-time-card__count" aria-hidden="true">{selectedIndex + 1}/{validEntries.length}</small>}
         </label>
+        {headerAction}
         {times}
       </div>
       {note}

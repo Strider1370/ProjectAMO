@@ -41,5 +41,7 @@ export function useKimAci(enabled,selection,{commonActive=false,selectedMs=null,
     return ()=>controller.abort()
   },[key])
   const current=field&&aciSelectionKey({domain:field.domain,...field.time,revision:field.revision})===key?field:null
-  return {enabled,index,time,field:current,times:enabled&&!pinned?index?.times||[]:[],problem:pinned?'고정 브리핑에는 ACI가 포함되지 않았습니다':problem||(index?.reason==='acim_pending'?'ACIM 계산 대기 중(다음 KIM 회차부터 표시)':!picked&&index?'해당 시각 ACI 자료 준비 중':!current?'불러오는 중':null)}
+  return {enabled,index,time,field:current,times:enabled&&!pinned?index?.times||[]:[],problem:pinned?'고정 브리핑에는 ACI가 포함되지 않았습니다':problem||(index?.reason==='acim_pending'?'ACIM 계산 대기 중(다음 KIM 회차부터 표시)':!picked&&index?'이 시각 자료 없음':null),
+    // 불러오는 중은 범례에 적지 않고 지도 맨 위 진행 막대로 알린다.
+    loading:enabled&&!pinned&&!problem&&index?.reason!=='acim_pending'&&(!index||(Boolean(picked)&&!current))}
 }

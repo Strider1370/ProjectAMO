@@ -20,27 +20,14 @@ export async function createBriefing(page, { view = 'document', patchBriefing = 
   const mobileEntry = page.getByRole('navigation', { name: '주요 작업' })
     .getByRole('button', { name: '브리핑', exact: true })
   await desktopEntry.or(mobileEntry).first().click()
-  // 모바일 패널은 라벨이 짧다("출발 선택") — 데스크톱은 "출발 공항 선택".
-  await page.getByRole('button', { name: /^출발(\s공항)?\s선택$/ }).click()
+  await page.getByRole('button', { name: /^출발 공항 선택$/ }).click()
   await page.getByRole('button', { name: /RKSS$/ }).click()
-  await page.getByRole('button', { name: /^도착(\s공항)?\s선택$/ }).click()
+  await page.getByRole('button', { name: /^목적 공항 선택$/ }).click()
   await page.getByRole('button', { name: /RKPK$/ }).click()
-  // 토큰이 확정될 때마다 반영되므로 적용 버튼이 없다.
+  await page.getByRole('button', { name: '다음', exact: true }).click()
   await enterRouteTokens(page, ['SEL'])
-  await page.getByRole('button', { name: '경로비교로', exact: true }).click()
-  await page.getByRole('button', { name: '기본 경로로 고도 비교', exact: true }).click()
-  await page.getByRole('spinbutton', { name: '계획 순항고도 (ft)', exact: true }).fill('9000')
-  await page.getByRole('button', { name: '고도 비교', exact: true }).click()
-  // 고도 비교는 선택 사항이다. 비교 카드가 뜨면 고도를 고르고, 안 뜨면(모바일에서
-  // 관측되는 상태) 그대로 다음 단계로 간다 — 브리핑 생성 자체는 순항고도만 있으면 된다.
-  const flOption = page.getByRole('button', { name: /^FL90/ })
-  const comparisonOptional = page.getByText('고도 비교는 선택 사항입니다.', { exact: false })
-  await flOption.or(comparisonOptional).first().waitFor()
-  if (await flOption.count()) {
-    await flOption.click()
-    await page.getByRole('button', { name: '연직단면도 닫기', exact: true }).click()
-  }
-  await page.getByRole('button', { name: '브리핑 준비로', exact: true }).click()
-  await page.getByRole('button', { name: '브리핑 생성', exact: true }).click()
+  await page.getByRole('button', { name: '다음', exact: true }).click()
+  await page.getByRole('spinbutton', { name: '순항고도 (ft)', exact: true }).fill('9000')
+  await page.getByRole('button', { name: '브리핑 보기', exact: true }).click()
   return requests
 }

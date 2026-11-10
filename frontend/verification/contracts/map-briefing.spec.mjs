@@ -42,11 +42,10 @@ test.describe('map-briefing', () => {
     test.skip(testInfo.project.name !== 'desktop', '지도형은 폭 1024 이상 데스크톱 전용')
   })
 
-  test('opens the map briefing with panel, hazard ribbon and profile dock, and switches to the document view', async ({ page }) => {
+  test('opens the map briefing with a hidden panel, hazard ribbon and profile dock, and switches to the document view', async ({ page }) => {
     await createBriefing(page, { view: 'map' })
     const panel = page.getByRole('complementary', { name: '비행 전 브리핑' })
-    await expect(panel).toBeVisible()
-    await expect(panel.getByText('RKSS → RKPK')).toBeVisible()
+    await expect(panel).toHaveCount(0)
     const ribbon = page.getByRole('group', { name: '경로상 위험 막대' })
     await expect(ribbon).toBeVisible()
     // 픽스처는 모델 단면이 없다: 난류·착빙은 "확인 불가"(짧게 '불가') 줄로 남고, 걸린 것이 없는 대류 줄은 빠진다.
@@ -65,6 +64,9 @@ test.describe('map-briefing', () => {
     // 상단 버튼: 연직단면도 대신 브리핑(패널 켜기/끄기). 패널을 닫아도 독은 남는다.
     await expect(page.getByRole('button', { name: '연직단면도', exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: '브리핑 패널' }).click()
+    await expect(panel).toBeVisible()
+    await expect(panel.getByText('RKSS → RKPK')).toBeVisible()
+    await page.getByRole('button', { name: '브리핑 패널' }).click()
     await expect(panel).toHaveCount(0)
     await expect(ribbon).toBeVisible()
     await page.getByRole('button', { name: '브리핑 패널' }).click()
@@ -80,6 +82,7 @@ test.describe('map-briefing', () => {
     await expect(page.locator('.briefing-view').getByRole('group', { name: '경로상 위험 막대' })).toHaveCount(1)
     await page.getByRole('button', { name: '지도형 보기' }).click()
     await expect(page.getByRole('group', { name: '경로상 위험 막대' })).toBeVisible()
+    await expect(panel).toHaveCount(0)
   })
 
   // 지도형↔문서형 전환, 브리핑 종료 뒤에도 경로가 패널·독에 가리지 않은 지도 영역 안에 다시 맞춰져야 한다.
@@ -101,10 +104,12 @@ test.describe('map-briefing', () => {
       return map.isMoving() ? -1 : inside.length / coords.length
     })
     await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
+    await page.getByRole('button', { name: '브리핑 패널' }).click()
     await page.getByRole('button', { name: '문서형 보기' }).click()
     await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
     await page.getByRole('button', { name: '지도형 보기' }).click()
     await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
+    await page.getByRole('button', { name: '브리핑 패널' }).click()
     await page.getByRole('button', { name: /브리핑 종료/ }).click()
     await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
   })
@@ -189,11 +194,12 @@ test('map-briefing uses the map on iPad landscape and adapts when rotated', asyn
   test.skip(testInfo.project.name !== 'ipad-landscape', '아이패드 가로·세로 전환')
   await createBriefing(page, { view: 'map' })
   const panel = page.getByRole('complementary', { name: '비행 전 브리핑' })
-  await expect(panel).toBeVisible()
+  await expect(panel).toHaveCount(0)
   await expect(page.locator('.mb-dock:not(.is-document)')).toBeVisible()
   await expect(page.locator('.briefing-view')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '기본 지도 보기', exact: true })).toHaveCount(0)
   await page.setViewportSize({ width: 1024, height: 768 })
+  await page.getByRole('button', { name: '브리핑 패널' }).click()
   await expect(panel).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('ipad-landscape-map-briefing.png') })
@@ -202,10 +208,18 @@ test('map-briefing uses the map on iPad landscape and adapts when rotated', asyn
   await expect(page.locator('.briefing-view')).toBeVisible()
   await expect(page.locator('.feedback-launcher')).toBeHidden()
   await page.setViewportSize({ width: 1024, height: 768 })
+  await expect(panel).toHaveCount(0)
+  await page.getByRole('button', { name: '브리핑 패널' }).click()
   await expect(panel).toBeVisible()
   await panel.getByRole('button', { name: '문서형 보기' }).click()
   await expect(page.locator('.briefing-view')).toBeVisible()
   await expect(page.locator('.feedback-launcher')).toBeHidden()
   await page.getByRole('button', { name: '지도형 보기' }).click()
-  await expect(panel).toBeVisible()
+  await expect(panel).toHaveCount(0)
+  // 접힌 상태에서 세로 화면으로 전환해도 브리핑을 잃지 않는다.
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await expect(page.locator('.briefing-view')).toBeVisible()
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await expect(page.locator('.mb-dock:not(.is-document)')).toBeVisible()
+  await expect(panel).toHaveCount(0)
 })
