@@ -201,7 +201,8 @@
    재생 버튼은 숨긴다 — 화면이 스스로 움직이지 않는다(설계 원칙). */
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-controls,
 .map-view-wrapper[data-map-briefing='true'] .active-route-chip,
-.map-view-wrapper[data-map-briefing='true'] .timeline-rail__play { display: none; }
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__play,
+.map-view-wrapper[data-map-briefing='true'] .timeline-rail__step { display: none; }
 .map-view-wrapper[data-map-briefing='true'] .map-bottom-control-dock { bottom: calc(40px + var(--mb-dock-h, 0px) + var(--space-s)); }
 /* 시간 막대 띠를 38 → 28px로(눈금·글자를 위로 당김). */
 .map-view-wrapper[data-map-briefing='true'] .timeline-rail__viewport,

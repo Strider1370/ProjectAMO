@@ -9,13 +9,17 @@ function WeatherLayerTimestampBar({ entries = [], children, embedded = false }) 
   const previousKeysRef = useRef([])
   const cardRef = useRef(null)
 
+  // 새로 켠 레이어를 고른다. 시간을 옮기다 자료가 잠깐 없어졌다 다시 생기는 레이어는 '새로 켠' 것이 아니므로,
+  // 시각·범례 유무로 거른 목록이 아니라 켜져 있는 레이어 전체(entries)로 판단한다.
+  // 고른 레이어가 그 시각에 자료가 없으면 화면에는 다른 레이어를 잠시 보여 주되, 고른 것은 기억해 둔다.
+  const entryKeys = entries.map((entry) => entry.key).join('|')
   useEffect(() => {
-    const keys = validEntries.map((entry) => entry.key)
+    const keys = entryKeys ? entryKeys.split('|') : []
     const added = keys.filter((key) => !previousKeysRef.current.includes(key))
     if (added.length) setSelectedKey(added.at(-1))
     else if (keys.length && !keys.includes(selectedKey)) setSelectedKey(keys[0])
     previousKeysRef.current = keys
-  }, [validEntries, selectedKey])
+  }, [entryKeys, selectedKey])
 
   // 상자 높이를 지도에 알린다 — 왼쪽 레이어 패널이 이 상자 위에서 멈춘다.
   useEffect(() => {

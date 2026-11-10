@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pause, Play, RotateCcw } from 'lucide-react'
+import { Pause, Play, RotateCcw, StepBack, StepForward } from 'lucide-react'
 
 import { formatKstMinute } from './lib/weatherTimeline.js'
 import {
@@ -51,6 +51,9 @@ function TimelineRail({
   const nowMs = Number.isFinite(referenceNowMs) ? referenceNowMs : liveNowMs
   const viewportRef = useRef(null)
   const dragRef = useRef(null)
+  // 끄는 동안 띠는 손가락·마우스를 그대로 따라가고(dragViewMs), 지도 시각은 가장 가까운 자료 시각에 붙는다.
+  // 자료 간격이 1시간 이상이면 띠까지 자료 시각에 묶을 때 수십 px 동안 아무것도 안 움직여 끄는 느낌이 없었다.
+  const [dragViewMs, setDragViewMs] = useState(null)
   const [active, setActive] = useState(false) // scrubbing or focused -> show time readout
   const readoutTimerRef = useRef(null)
   useEffect(() => () => window.clearTimeout(readoutTimerRef.current), [])
@@ -83,12 +86,13 @@ function TimelineRail({
     ? clampMs(domain, selectedMs)
     : (pastTicksMs.length ? pastTicksMs[pastTicksMs.length - 1] : nowMs)
 
-  const pct = (ms) => tapePercent({ ms, selectedMs: selected, visibleSpanMs })
+  const view = Number.isFinite(dragViewMs) ? dragViewMs : selected
+  const pct = (ms) => tapePercent({ ms, selectedMs: view, visibleSpanMs })
   const nowPct = Math.max(0, Math.min(100, pct(nowMs)))
 
   // Fill the whole visible window with tiered ruler ticks so the ruler is never empty.
-  const visibleStart = selected - visibleSpanMs * PLAYHEAD_RATIO
-  const visibleEnd = selected + visibleSpanMs * (1 - PLAYHEAD_RATIO)
+  const visibleStart = view - visibleSpanMs * PLAYHEAD_RATIO
+  const visibleEnd = view + visibleSpanMs * (1 - PLAYHEAD_RATIO)
   const tapeTicks = buildTapeTicks({ startMs: visibleStart, endMs: visibleEnd })
   const availabilitySegments = buildAvailabilitySegments(availableFrameEntries, visibleStart, visibleEnd)
 
@@ -97,29 +101,60 @@ function TimelineRail({
     ? { start: pct(flightWindow.startMs), end: pct(flightWindow.endMs) } : null
 
   const commit = (ms) => onScrub?.(clampMs(domain, ms))
+  // 끌기·터치는 실제 자료가 있는 시각에만 멈춘다. 자료 시각이 없으면(레이어가 모두 꺼짐) 자유롭게 움직인다.
+  const snapToTick = (ms) => {
+    if (!keyboardTicks.length) return ms
+    let best = keyboardTicks[0]
+    for (const tick of keyboardTicks) if (Math.abs(tick - ms) < Math.abs(best - ms)) best = tick
+    return best
+  }
+  const firstTick = keyboardTicks[0]
+  const lastTick = keyboardTicks.at(-1)
+  const step = (direction) => { commit(pickAdjacentTimelineTick(keyboardTicks, selected, direction)); flashReadout() }
 
   const handlePointerDown = (event) => {
     const rect = viewportRef.current?.getBoundingClientRect()
     if (!rect || rect.width === 0) return
-    dragRef.current = { startX: event.clientX, startSelected: selected, width: rect.width }
+    dragRef.current = { startX: event.clientX, startSelected: selected, width: rect.width, committed: selected, raw: null, pending: null, frame: 0, timer: 0 }
     viewportRef.current.setPointerCapture?.(event.pointerId)
     setActive(true)
+  }
+  // 끄는 동안 띠 그리기는 화면 갱신(requestAnimationFrame)에 한 번만, 지도 자료 바꾸기는 120 ms에 한 번만 한다.
+  // 포인터 이벤트마다 지도 전체를 다시 그리면 10분 간격 자료에서 프레임이 떨어진다. 손을 떼면 마지막 값을 바로 반영한다.
+  const scheduleDrag = (raw) => {
+    const drag = dragRef.current
+    if (!drag) return
+    drag.raw = raw
+    if (!drag.frame) drag.frame = window.requestAnimationFrame(() => { drag.frame = 0; setDragViewMs(drag.raw) })
+    const snapped = snapToTick(raw)
+    if (snapped === drag.committed) return
+    drag.pending = snapped
+    if (drag.timer) return
+    drag.timer = window.setTimeout(() => {
+      drag.timer = 0
+      if (Number.isFinite(drag.pending) && drag.pending !== drag.committed) { drag.committed = drag.pending; commit(drag.pending) }
+    }, 120)
   }
   const handlePointerMove = (event) => {
     const drag = dragRef.current
     if (!drag) return
     const dxFraction = (event.clientX - drag.startX) / drag.width
-    commit(drag.startSelected + dragToTimeDelta(dxFraction, visibleSpanMs))
+    scheduleDrag(clampMs(domain, drag.startSelected + dragToTimeDelta(dxFraction, visibleSpanMs)))
   }
   const handlePointerEnd = (event) => {
     setActive(false)
-    if (!dragRef.current) return
+    setDragViewMs(null)
+    const drag = dragRef.current
+    if (!drag) return
+    window.cancelAnimationFrame(drag.frame)
+    window.clearTimeout(drag.timer)
+    if (Number.isFinite(drag.raw)) { const snapped = snapToTick(drag.raw); if (snapped !== drag.committed) commit(snapped) }
     dragRef.current = null
     viewportRef.current?.releasePointerCapture?.(event.pointerId)
   }
   const handleKeyDown = (event) => {
-    if (event.key === 'ArrowLeft') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, -1)); flashReadout(); event.preventDefault() }
-    else if (event.key === 'ArrowRight') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, 1)); flashReadout(); event.preventDefault() }
+    if (event.key === 'ArrowLeft') { step(-1); event.preventDefault() }
+    else if (event.key === 'ArrowRight') { step(1); event.preventDefault() }
   }
 
   return (
@@ -162,10 +197,10 @@ function TimelineRail({
             title={flightWindow.label} aria-hidden="true" />
         )}
         {pastTicksMs.map((ms) => (
-          <span key={`p-${ms}`} className="timeline-rail__frame" style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
+          <span key={`p-${ms}`} className={`timeline-rail__frame${ms === selected ? ' is-selected' : ''}`} style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
         ))}
         {futureMs.map((ms) => (
-          <span key={`f-${ms}`} className="timeline-rail__frame timeline-rail__frame--future" style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
+          <span key={`f-${ms}`} className={`timeline-rail__frame timeline-rail__frame--future${ms === selected ? ' is-selected' : ''}`} style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
         ))}
         {tapeTicks.map(({ ms, tier }) => (
           <div
@@ -180,6 +215,11 @@ function TimelineRail({
         ))}
       </div>
 
+      {/* 재생 양옆: 자료가 있는 이전·다음 시각으로 한 칸씩(화살표키와 같다). */}
+      <button type="button" className="timeline-rail__step is-prev" style={{ left: `${PLAYHEAD_RATIO * 100}%` }}
+        onClick={() => step(-1)} disabled={!keyboardTicks.length || selected <= firstTick} aria-label="이전 자료 시각">
+        <StepBack size={18} />
+      </button>
       <button
         type="button"
         className="timeline-rail__play"
@@ -188,6 +228,10 @@ function TimelineRail({
         aria-label={isPlaying ? '재생 일시정지' : '재생'}
       >
         {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+      </button>
+      <button type="button" className="timeline-rail__step is-next" style={{ left: `${PLAYHEAD_RATIO * 100}%` }}
+        onClick={() => step(1)} disabled={!keyboardTicks.length || selected >= lastTick} aria-label="다음 자료 시각">
+        <StepForward size={18} />
       </button>
 
       {/* ETD·ETA 글은 각 선 바로 위(시간 띠 밖)에 — 띠 안은 눈금 글자와 겹치고, 한쪽에 몰면 어느 선이 무엇인지 읽기 어렵다. */}
