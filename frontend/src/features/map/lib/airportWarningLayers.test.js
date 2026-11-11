@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { airportWarningState } from './airportWarningModel.js'
 import { addAirportWarningLayers, animateAirportWarnings, AIRPORT_WARNING_RING_LAYER, AIRPORT_WARNING_PULSE_LAYER, AIRPORT_WARNING_HALO_LAYER } from './airportWarningLayers.js'
-import { createAirportGeoJSON, addAirportLayers, AIRPORT_SOURCE_ID, AIRPORT_CIRCLE_LAYER, AIRPORT_STATION_CENTER_LAYER, AIRPORT_INTERACTIVE_LAYERS } from './baseMapLayers.js'
+import { createAirportGeoJSON, addAirportLayers, AIRPORT_SOURCE_ID, AIRPORT_CIRCLE_LAYER, AIRPORT_STATION_CENTER_LAYER, AIRPORT_LABEL_LAYER, AIRPORT_INTERACTIVE_LAYERS } from './baseMapLayers.js'
 
 const NOW = Date.parse('2026-10-04T03:00:00Z')
 const payload = (warnings) => ({ airports: { RKSI: { warnings } } })
@@ -95,6 +95,16 @@ test('warning rings share airport coordinates and stay below selection/station s
   const count = layers.size
   addAirportLayers(map, data)
   assert.equal(layers.size, count)
+})
+
+test('airport labels appear at wider zooms while avoiding collisions', () => {
+  const { map } = harness()
+  addAirportLayers(map, createAirportGeoJSON([]))
+  const labels = map.getLayer(AIRPORT_LABEL_LAYER)
+  assert.equal(labels.minzoom, 4)
+  assert.equal(labels.layout['text-allow-overlap'], false)
+  assert.equal(labels.layout['text-ignore-placement'], false)
+  assert.equal(map.getLayer(AIRPORT_STATION_CENTER_LAYER).layout['icon-allow-overlap'], true)
 })
 
 test('outward pulse waits for installation, grows and fades, restarts in 1s, and cleans up', () => {

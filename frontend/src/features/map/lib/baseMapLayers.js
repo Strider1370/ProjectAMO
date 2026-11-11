@@ -160,7 +160,7 @@ export function addAirportLayers(map, data) {
   // }
   if (!map.getLayer(AIRPORT_LABEL_LAYER)) {
     map.addLayer({
-      id: AIRPORT_LABEL_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 6,
+      id: AIRPORT_LABEL_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 4,
       layout: {
         'text-field': ['get', 'icao'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
