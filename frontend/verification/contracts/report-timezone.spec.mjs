@@ -100,10 +100,15 @@ test.describe('report-timezone', () => {
       return route.fulfill({ json: { items } })
     })
     await createBriefing(page, { view: 'map', patchBriefing: briefing => { forecastTime = briefing.meta.eta; return withReportTimes(briefing) } })
+    await page.getByRole('button', { name: '브리핑 패널' }).click()
     await page.getByRole('button', { name: '공항 카드 모두 펼치기', exact: true }).click()
     const card = page.locator('.mb-airport-card').first()
-    const metar = card.getByRole('group', { name: /METAR 표시 시간대/ })
-    const taf = card.getByRole('group', { name: /TAF 표시 시간대/ })
+    await expect(card.locator('dt').first().locator('.mb-ac-current-cat')).toContainText('현재 ')
+    await expect(card.locator('header').getByRole('button', { name: /카드 접기/ })).toBeVisible()
+    await expect(card.locator('.mb-ac-report').nth(1).getByRole('button', { name: /상세/ })).toBeVisible()
+    expect((await card.boundingBox()).width).toBe(350)
+    const metar = card.getByRole('combobox', { name: /METAR 표시 시간대/ })
+    const taf = card.getByRole('combobox', { name: /TAF 표시 시간대/ })
     const metarHistory = card.getByRole('group', { name: 'METAR 관측 회차', exact: true })
     const tafHistory = card.getByRole('group', { name: 'TAF 발표 회차', exact: true })
     await expect(metarHistory.getByRole('button')).toHaveCount(5)
@@ -112,7 +117,7 @@ test.describe('report-timezone', () => {
     await expect(card.locator('dd').first()).toContainText('18005KT')
     await expect(card.locator('dd').nth(1)).toContainText('29015G25KT')
     expect(await card.locator('.mb-ac-tac').first().evaluate(element => getComputedStyle(element).fontFamily)).toContain('monospace')
-    expect((await metar.boundingBox()).height).toBeLessThanOrEqual(32)
+    if (testInfo.project.name === 'ipad-landscape') expect((await metar.boundingBox()).height).toBeGreaterThanOrEqual(44)
     await expect(metarHistory.getByRole('button', { name: /SPECI/ })).toHaveAttribute('aria-pressed', 'true')
     await metarHistory.getByRole('button', { name: /최신/ }).click()
     await expect(card.locator('dd').first()).toContainText('26009KT')
@@ -121,29 +126,28 @@ test.describe('report-timezone', () => {
     await expect(card.locator('dd').nth(1)).toContainText('18005KT')
     await tafHistory.getByRole('button', { name: /최신/ }).click()
     await expect(card.locator('dd').nth(1)).toContainText('29015G25KT')
-    await expect(metar.getByRole('button', { name: 'KST', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(metar).toHaveValue('KST')
     const before = await card.locator('dt').first().innerText()
-    await metar.getByRole('button', { name: 'UTC', exact: true }).click()
+    await metar.selectOption('UTC')
     expect(await card.locator('dt').first().innerText()).not.toBe(before)
-    await expect(taf.getByRole('button', { name: 'KST', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(taf).toHaveValue('KST')
     const tafBefore = await card.locator('dt').nth(1).innerText()
-    await taf.getByRole('button', { name: 'UTC', exact: true }).click()
+    await taf.selectOption('UTC')
     expect(await card.locator('dt').nth(1).innerText()).not.toBe(tafBefore)
-    await expect(page.locator('.mb-airport-card').nth(1).getByRole('group', { name: /METAR 표시 시간대/ }).getByRole('button', { name: 'KST', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('.mb-airport-card').nth(1).getByRole('combobox', { name: /METAR 표시 시간대/ })).toHaveValue('KST')
     expect(await page.evaluate(() => localStorage.getItem('time_zone'))).toBe('KST')
     expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     for (const reportCard of await page.locator('.mb-airport-card').all()) {
-      // Metadata stays together above the full-width report body.
+      // Metadata is beside the report, with no clipped content.
       const rows = await reportCard.locator('.mb-ac-rows').evaluate(el => {
         const labels = [...el.querySelectorAll('dt')]
         return labels.map(label => ({
           fits: label.scrollWidth <= label.clientWidth,
           metadataFits: [...label.querySelectorAll('small')].every(meta => meta.getBoundingClientRect().right <= label.getBoundingClientRect().right + 1),
-          aboveBody: label.getBoundingClientRect().bottom <= label.nextElementSibling.getBoundingClientRect().top + 1,
-          metadataOneLine: [...label.querySelectorAll('small')].every(meta => meta.getBoundingClientRect().height <= 16),
+          besideBody: label.getBoundingClientRect().right <= label.nextElementSibling.getBoundingClientRect().left + 1,
         }))
       })
-      expect(rows).toEqual([{ fits: true, metadataFits: true, aboveBody: true, metadataOneLine: true }, { fits: true, metadataFits: true, aboveBody: true, metadataOneLine: true }])
+      expect(rows).toEqual([{ fits: true, metadataFits: true, besideBody: true }, { fits: true, metadataFits: true, besideBody: true }])
       const rect = await reportCard.boundingBox()
       expect(rect.y).toBeGreaterThanOrEqual(0)
       expect(rect.y + rect.height).toBeLessThanOrEqual(page.viewportSize().height)

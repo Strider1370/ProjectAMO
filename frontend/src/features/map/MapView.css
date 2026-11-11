@@ -2158,6 +2158,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.map-view-wrapper[data-map-briefing='true'] .weather-time-card:not(.weather-time-card--embedded) {
+  bottom: calc(52px + var(--mb-dock-h, 0px));
+}
+
 .weather-time-card__heading,
 .weather-time-card__content {
   display: flex;

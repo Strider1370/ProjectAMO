@@ -53,6 +53,19 @@ test.describe('map-briefing', () => {
     await expect(ribbon.getByText('대류', { exact: true })).toHaveCount(0)
     await expect(ribbon.getByText('불가', { exact: true }).first()).toBeVisible()
     await expect(page.getByRole('group', { name: '연직단면도' })).toBeVisible()
+    // 데이터 없는 픽스처에서도 범례 카드의 지도상 위치를 검사한다.
+    await page.evaluate(() => {
+      if (document.querySelector('.weather-time-card:not(.weather-time-card--embedded)')) return
+      const card = document.createElement('div')
+      card.className = 'weather-time-card'
+      card.textContent = '기상 범례'
+      document.querySelector('.map-view-wrapper').append(card)
+    })
+    const legend = page.locator('.weather-time-card:not(.weather-time-card--embedded)')
+    await expect.poll(async () => {
+      const [card, dock] = await Promise.all([legend.boundingBox(), page.locator('.mb-dock').boundingBox()])
+      return card && dock ? Math.round(card.y + card.height - dock.y) : 1
+    }).toBeLessThanOrEqual(0)
     // 위험 막대 가로축이 아래 단면도 그림의 0NM~끝과 같은 세로선에 온다.
     await expect.poll(() => page.evaluate(() => {
       const track = document.querySelector('.mb-track').getBoundingClientRect()
@@ -164,7 +177,7 @@ test.describe('map-briefing', () => {
     // KIM 레이어가 꺼져 있어도 브리핑 중에는 고도 슬라이더가 뜨고, 비행 범위·발표 고도대가 축에 표시된다.
     await expect(page.locator('.pressure-level-slider__mark.is-flight-range')).toHaveCount(1)
     await expect(page.locator('.pressure-level-slider__mark.is-frame').first()).toBeAttached()
-    await expect(page.locator('.pressure-level-slider__track')).toHaveAttribute('aria-valuetext', /순항 9,000ft/)
+    await expect(page.locator('.pressure-level-slider__track')).not.toHaveAttribute('aria-valuetext', /순항/)
     await expect(page.locator('.timeline-rail__flight-mark.is-etd')).toHaveText(/^ETD \d{2}:\d{2}$/)
     await expect(page.locator('.timeline-rail__flight-mark.is-eta')).toHaveText(/^ETA \d{2}:\d{2}$/)
   })

@@ -18,8 +18,9 @@ export default function VerticalLevelRailStack({ children }) {
     }
     function measure() {
       const card = map.querySelector('.weather-time-card')
+      const dockElement = map.querySelector('.mb-dock')
       const sliders = [...stack.querySelectorAll('.pressure-level-slider, .pressure-level-slider__value')]
-      const nodes = new Set([map, stack, ...(card ? [card] : []), ...sliders])
+      const nodes = new Set([map, stack, ...(card ? [card] : []), ...(dockElement ? [dockElement] : []), ...sliders])
       for (const node of observed) if (!nodes.has(node)) { resize.unobserve(node); observed.delete(node) }
       for (const node of nodes) if (!observed.has(node)) { resize.observe(node); observed.add(node) }
       const rects = sliders.filter(node => getComputedStyle(node).visibility !== 'hidden')
@@ -27,9 +28,10 @@ export default function VerticalLevelRailStack({ children }) {
       const mapRect = map.getBoundingClientRect()
       // 의견 보내기 입구는 지도 밖(앱)에 떠 있지만 오른쪽 아래를 차지하므로 함께 피한다.
       const controls = [...map.querySelectorAll('.basemap-switcher-toggle, .mapboxgl-ctrl-geolocate, .mapboxgl-ctrl-zoom-in, .timeline-rail__viewport'), ...document.querySelectorAll('.feedback-launcher')]
-        .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
+        .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height && rect.top > mapRect.top + 160)
+      const dock = dockElement?.getBoundingClientRect()
       const layout = sigwxRailLayout({ mapRect, cardRect: card?.getBoundingClientRect(), sliderRects: rects,
-        lowerTop: Math.min(mapRect.bottom - 100, ...controls.map(rect => rect.top)) })
+        lowerTop: Math.min(mapRect.bottom - 100, dock?.height ? dock.top : Infinity, ...controls.map(rect => rect.top)) })
       map.style.setProperty('--vertical-rail-clearance', `${layout.clearance}px`)
       map.style.setProperty('--sigwx-rail-top', `${layout.top}px`)
       map.style.setProperty('--sigwx-rail-track-height', `${layout.trackHeight}px`)

@@ -283,21 +283,21 @@
 .mb-airport-card.is-mvfr { --mb-ac-cat: var(--cat-mvfr); }
 .mb-airport-card.is-ifr { --mb-ac-cat: var(--cat-ifr); }
 .mb-airport-card.is-lifr { --mb-ac-cat: var(--cat-lifr); }
-/* 1줄: 역할 · ICAO(가장 크게) · 공항명 · 비행등급(오른쪽) */
+/* 공항명과 접기. 비행등급은 현재 관측 옆에 표시한다. */
 .mb-ac-head { display: flex; align-items: center; gap: var(--space-s); min-width: 0; white-space: nowrap; }
 .mb-ac-head strong { font-size: 18px; font-weight: var(--fw-bold); letter-spacing: 0.01em; }
 .mb-ac-role { padding: 1px 6px; border-radius: var(--radius-sm); background: var(--text-1); color: #fff; font-size: var(--fs-200); font-weight: var(--fw-bold); }
 .mb-ac-role.is-alternate { background: var(--level-amber); }
 .mb-ac-name { overflow: hidden; color: var(--text-2); font-size: var(--fs-300); text-overflow: ellipsis; }
 .mb-ac-cat { margin-left: auto; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--mb-ac-cat); color: #fff; font-size: var(--fs-200); font-weight: var(--fw-bold); }
-/* Each report uses the full card width: metadata above the TAC, with no narrow label column. */
-.mb-ac-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); margin: 0; }
-.mb-ac-rows dt { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-s); min-width: 0; color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-bold); line-height: var(--lh-200); }
-.mb-ac-rows dt small { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-medium); white-space: nowrap; }
-.mb-ac-rows dd + dt { margin-top: var(--space-xs); padding-top: var(--space-s); border-top: 1px solid var(--stroke-2); }
+.mb-ac-rows { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; }
+.mb-ac-report { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: var(--space-s); padding: var(--space-s) 0; border-top: 1px solid var(--stroke-2); }
+.mb-ac-report dt { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xxs); min-width: 0; color: var(--text-2); font-size: var(--fs-200); line-height: var(--lh-200); }
+.mb-ac-report dt small { color: var(--text-3); font-size: var(--fs-100); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+.mb-ac-current-cat { padding: 1px 4px; border-radius: var(--radius-sm); background: var(--mb-ac-cat); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); white-space: nowrap; }
 /* METAR·TAF는 자르지 않고 띄어쓰기 자리에서 줄을 바꾼다(카드가 아래로 늘어남). */
-.mb-ac-rows dd { display: flex; align-items: baseline; gap: var(--space-s); min-width: 0; margin: 0; font-size: var(--fs-300); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; line-height: 1.35; }
-.mb-ac-tac { min-width: 0; font-family: 'Consolas', 'Menlo', monospace; font-size: inherit; font-weight: var(--fw-regular); line-height: var(--lh-300); letter-spacing: 0; word-spacing: 0; white-space: normal; overflow-wrap: normal; }
+.mb-ac-rows dd { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; margin: 0; font-size: var(--fs-200); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; line-height: 1.35; }
+.mb-ac-tac { min-width: 0; font-family: 'Consolas', 'Menlo', monospace; font-size: inherit; font-weight: var(--fw-regular); line-height: var(--lh-300); letter-spacing: 0; word-spacing: 0; white-space: normal; overflow-wrap: anywhere; }
 /* 카드 METAR·TAF 색칠 — 공항 패널 원문(.ap-metar-tac-hl)과 같은 색 */
 .mb-ac-hl { padding: 0 2px; border-radius: 3px; background: none; color: inherit; font-weight: var(--fw-bold); }
 .mb-ac-hl.is-ifr, .mb-ac-hl.is-mvfr { background: var(--level-amber-bg); color: var(--level-amber); }
@@ -305,22 +305,19 @@
 .mb-ac-hl.is-precip { background: rgba(186, 230, 253, 0.72); color: #0c4a6e; } /* color-lint-ignore: 공항 패널 강수 강조와 같은 값 */
 .mb-ac-hl.is-special { background: var(--level-red-bg); color: var(--level-red); outline: 1.5px dashed var(--level-red); outline-offset: -1px; }
 .mb-ac-change-count { flex: none; margin-left: auto; padding: 0 var(--space-snudge); border-radius: var(--radius-circular); background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
-/* The same report controls as the airport panel, wrapping to the card width. */
-.mb-ac-rows dt > span { white-space: nowrap; }
-.mb-ac-rows .ap-history-picker { flex-basis: 100%; align-items: baseline; margin: 0; }
-.mb-ac-rows .ap-history-badges { flex: 1; flex-wrap: wrap; gap: var(--space-xxs); overflow: visible; padding: var(--space-xxs); }
+/* 원문 아래 회차·시간대·상세: 공간이 부족하면 다음 줄로 내려간다. */
+.mb-ac-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-xs); width: 100%; min-width: 0; }
+.mb-ac-rows .ap-history-picker { flex: 1 1 100px; align-items: center; margin: 0; }
+.mb-ac-rows .ap-history-label { display: none; }
+.mb-ac-rows .ap-history-badges { flex: 1; flex-wrap: nowrap; gap: var(--space-xxs); overflow-x: auto; padding: var(--space-xxs); }
 .mb-ac-rows .ap-history-badge { padding-inline: var(--space-xs); }
-.mb-ac-rows .report-timezone-toggle button { position: relative; min-height: var(--space-xxl); min-width: 0; padding: var(--space-xxs) var(--space-snudge); line-height: var(--lh-200); }
+.mb-ac-controls .report-timezone { max-width: 74px; font-size: var(--fs-100); }
 @media (pointer: coarse) {
-  /* A compact visible control inside a separate 44px touch row. */
-  .mb-ac-rows dt > span:has(.report-timezone-toggle) { min-height: var(--touch-min); }
-  .mb-ac-rows .report-timezone-toggle button { min-width: var(--touch-min); }
-  .mb-ac-rows .report-timezone-toggle button::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: var(--touch-min); transform: translateY(-50%); }
+  .mb-ac-controls .report-timezone, .mb-ac-controls .mb-ac-more { min-height: var(--touch-min); }
+  .mb-ac-fold { min-width: var(--touch-min); min-height: var(--touch-min); }
 }
-.mb-ac-rows dt.is-past, .mb-ac-rows dd.is-past { background: #fff4e5; }
-.mb-ac-rows dt.is-past { margin-left: -4px; padding-left: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
-.mb-ac-rows dd.is-past { margin-right: -4px; padding-right: 4px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-.mb-ac-rows dt.is-past small { color: #b45309; }
+.mb-ac-report.is-past { background: #fff4e5; }
+.mb-ac-report.is-past dt small { color: #b45309; }
 
 /* 맨 아래: 깃발 + 상세 */
 .mb-ac-foot { display: flex; align-items: center; gap: var(--space-xs); margin-top: auto; }
@@ -331,7 +328,7 @@
 .mb-ac-more:disabled { color: var(--text-3); cursor: default; }
 
 /* 카드 접기 버튼(머리 오른쪽 끝)과 접은 칩: 같은 자리·같은 지시선 끝에 색 띠·ICAO·비행등급·경보 점·⌃ — 카드가 줄어든 것으로 보이게. */
-.mb-ac-fold { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-right: -6px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2); cursor: pointer; }
+.mb-ac-fold { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; padding: 0; border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text-2); cursor: pointer; }
 .mb-ac-fold:hover { background: var(--bg-3); color: var(--text-1); }
 .mb-airport-chip {
   --mb-ac-cat: var(--text-3);

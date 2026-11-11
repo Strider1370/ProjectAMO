@@ -60,6 +60,8 @@ test.describe('briefing-simple-flow', () => {
     await expect(page.getByRole('button', { name: '다음', exact: true })).toBeEnabled({ timeout: 20000 })
     await page.getByRole('button', { name: '다음', exact: true }).click()
     const altitude = page.getByRole('spinbutton', { name: '순항고도 (ft)' })
+    await expect(page.getByRole('spinbutton', { name: '순항속도 (TAS, kt)' })).toHaveCount(1)
+    await expect(page.locator('summary').filter({ hasText: '예상 도착시각' })).toHaveCount(0)
     await altitude.fill('9000')
     await page.getByRole('button', { name: '공항 설정 수정' }).click()
     await page.getByRole('button', { name: '수정 완료' }).click()

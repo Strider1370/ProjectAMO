@@ -1124,13 +1124,37 @@ const MapView = forwardRef(function MapView({
       || (metVisibility.turbulence && gridLoading(turbulenceStatus))
       || (metVisibility.surfaceChart && surfaceChart.status === 'loading')))
     || Boolean(aci.loading) || Boolean(sigwxHigh.loading) || Boolean(tropopauseJet.loading)
-  // 0.3초 안에 끝나는 로딩은 띄우지 않는다 — 타임라인을 끌 때마다 막대가 깜빡이지 않게.
+  // 사용자가 레이어를 켠 직후의 초기 표시만 안내한다. 지도 이동·시각 갱신은 막대를 다시 열지 않는다.
+  const previousLoadingLayers = useRef(metVisibility)
+  const [loadingActivation, setLoadingActivation] = useState(0)
+  const [activationPending, setActivationPending] = useState(false)
+  useEffect(() => {
+    const previous = previousLoadingLayers.current
+    previousLoadingLayers.current = metVisibility
+    if (Object.keys(metVisibility).some(id => metVisibility[id] === true && previous[id] !== true)) {
+      setActivationPending(true)
+      setLoadingActivation(value => value + 1)
+    }
+  }, [metVisibility])
+  useEffect(() => {
+    if (!activationPending) return undefined
+    // 지도 idle 이벤트가 오지 않는 경우에도 안내가 계속 남지 않도록 한다.
+    const timer = window.setTimeout(() => setActivationPending(false), 15000)
+    return () => window.clearTimeout(timer)
+  }, [activationPending, loadingActivation])
+  useEffect(() => {
+    if (!activationPending || overlayDataLoading) return undefined
+    // 레이어를 켠 렌더 이후 로딩 상태가 시작될 시간을 둔다.
+    const timer = window.setTimeout(() => setActivationPending(false), 800)
+    return () => window.clearTimeout(timer)
+  }, [activationPending, loadingActivation, overlayDataLoading])
+  // 0.3초 안에 끝나는 로딩은 띄우지 않는다.
   const [showLoadingBar, setShowLoadingBar] = useState(false)
   useEffect(() => {
-    if (!overlayDataLoading) { setShowLoadingBar(false); return undefined }
+    if (!activationPending || !overlayDataLoading) { setShowLoadingBar(false); return undefined }
     const timer = window.setTimeout(() => setShowLoadingBar(true), 300)
     return () => window.clearTimeout(timer)
-  }, [overlayDataLoading])
+  }, [activationPending, overlayDataLoading])
   const timelineNwpTimes = sliderTimes.length ? sliderTimes : surfaceChart.times?.length ? surfaceChart.times : tropopauseJet.times
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const timelineAvailableFrameEntries = useMemo(() => [

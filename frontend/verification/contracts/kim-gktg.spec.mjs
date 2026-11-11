@@ -4,6 +4,30 @@ const revision = 'a'.repeat(20)
 const grid = { nx: 4, ny: 4, lonMin: 124, lonMax: 130, latMin: 33, latMax: 40 }
 const levels = [500, 300].map(value => ({ id: `${value}hPa`, value, kind: 'pressure', unit: 'hPa' }))
 const times = [{ hf: 6, validTime: '2026-09-10T12:00:00.000Z' }, { hf: 9, validTime: '2026-09-10T15:00:00.000Z' }]
+test('kim-gktg: loading bar is limited to activating a weather layer', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop map loading indicator')
+  await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+  let release
+  const responseReady = new Promise(resolve => { release = resolve })
+  await page.route('**/api/kim/gktg/**', async route => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/index')) return route.fulfill({ json: { type: 'kim_nwp_gktg_index', product: 'GKTG', latestRun: '2026091006', revision, grid, levels, times,
+      availability: Object.fromEntries(levels.map(level => [level.id, Object.fromEntries(times.map(time => [time.hf, { variables: ['gktg'], hashes: { gktg: revision } }]))])) } })
+    await responseReady
+    await route.fulfill({ json: { type: 'kim_nwp_gktg', product: 'GKTG', revision, grid, level: levels.find(l => l.id === url.searchParams.get('level')), time: { tmfc: '2026091006', hf: Number(url.searchParams.get('hf')), validTime: times.find(t => t.hf === Number(url.searchParams.get('hf'))).validTime }, encoding: 'float32-json-v1', gktg: Array(16).fill(0.2) } })
+  })
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: '기상정보', exact: true }).click()
+  await page.getByRole('button', { name: '난류', exact: true }).click()
+  const loading = page.getByRole('progressbar', { name: '기상 자료 불러오는 중' })
+  await expect(loading).toBeVisible()
+  release()
+  await expect(loading).toHaveCount(0)
+  await page.waitForTimeout(1000)
+  await page.evaluate(() => window.__map.fire('dataloading', { dataType: 'source', sourceId: 'test-weather-source' }))
+  await page.waitForTimeout(500)
+  await expect(loading).toHaveCount(0)
+})
 test('kim-gktg: replaces turbulence, uses shared pressure rail, colours, immutable revision and restores after style reload', async ({ page }, testInfo) => {
   await page.addInitScript(version => {
     localStorage.setItem('amo.tour.v1.done', 'true')
@@ -31,6 +55,7 @@ test('kim-gktg: replaces turbulence, uses shared pressure rail, colours, immutab
   expect(requested[0].revision).toBe(revision)
   const rail = page.getByRole('slider', { name: 'KIM 고도', exact: true })
   await expect(rail).toBeVisible()
+  if (testInfo.project.name !== 'mobile') await expect.poll(async () => (await rail.boundingBox()).height).toBeGreaterThanOrEqual(160)
   await expect(rail).toHaveAttribute('aria-valuetext', /500/)
   await expect.poll(() => page.evaluate(() => window.__map?.getLayoutProperty('kim-gktg-image-layer', 'visibility'))).toBe('visible')
   await rail.focus()

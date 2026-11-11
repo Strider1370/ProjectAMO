@@ -8,7 +8,7 @@ import ReportHistoryBadges from '../../airport-panel/tabs/ReportHistoryBadges.js
 import { airportCards, cardLineSegments, changeLines, chipWidth, hasAlertFlag, metarText, tafTextAt } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
-const CARD_W = 400 // 회차 버튼과 원문을 패널과 같은 글자 크기로 담아 불필요한 줄바꿈을 줄인다.
+const CARD_W = 350 // METAR·TAF를 두 행으로 표시하고 실제 높이는 별도로 측정한다.
 const CARD_H = 140 // 머리 · METAR · TAF · 깃발/상세 네 줄(최소 높이). METAR·TAF가 길면 줄을 바꿔 늘어나고, 자리 계산은 잰 높이를 쓴다.
 const CHIP_H = 28 // 접은 칩
 const LATEST_TAF = {} // TAF 이력 줄의 최신 칸 자리(글은 카드의 ±1시간 한 줄을 쓴다)
@@ -142,28 +142,33 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
         <span className={`mb-ac-role is-${card.role}`}>{card.roleLabel}</span>
         <strong>{card.icao}</strong>
         <span className="mb-ac-name">{card.name}</span>
-        {card.category && <span className="mb-ac-cat">{card.category}</span>}
         <button type="button" className="mb-ac-fold" onClick={() => onToggleCollapse?.(card.role)} title="카드 접기" aria-label={`${card.icao} 카드 접기`} aria-expanded="true">
           <ChevronDown size={16} aria-hidden="true" />
         </button>
       </header>
       <dl className="mb-ac-rows">
-        <dt className={pastMetar ? 'is-past' : undefined}>
-          <span>{metarKind} <small>{pastMetar ? metarTime(pastMetar.time) : (card.metar.time ? metarTime(card.metar.time) : '')}</small> <ReportTimeZone tz={metarTz} onChange={setMetarTz} label={`${card.icao} METAR`} variant="segmented" /></span>
-          <ReportHistoryBadges history={metarHistory} type="metar" tz={metarTz} />
-        </dt>
-        <dd className={pastMetar ? 'is-past' : undefined}><code className="mb-ac-tac" title={metarShown}><TacLine text={metarShown} icao={card.icao} /></code></dd>
-        <dt className={pastTaf ? 'is-past' : undefined} title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}>
-          <span>TAF <small>{pastTaf ? `${tafTime(pastTaf.time)}${['AMD', 'AMENDMENT'].includes(pastTaf.kind) ? ' AMD' : ''}` : `${card.taf.basis}±1h${card.taf.issued ? ` ${tafTime(card.taf.issued)}` : ''}`}</small> <ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} variant="segmented" /></span>
-          {!pastTaf && changes.length > 0 && <span className="mb-ac-change-count">변화 {changes.length}</span>}
-          <ReportHistoryBadges history={tafHistory} type="taf" tz={tafTz} />
-        </dt>
-        <dd className={pastTaf ? 'is-past' : undefined}>
-          <code className="mb-ac-tac" title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></code>
-        </dd>
+        <div className={`mb-ac-report${pastMetar ? ' is-past' : ''}`}>
+          <dt><strong>{metarKind}</strong><small>{pastMetar ? metarTime(pastMetar.time) : (card.metar.time ? metarTime(card.metar.time) : '')} {metarTz}</small>
+            {card.category && <span className="mb-ac-current-cat">현재 {card.category}</span>}
+          </dt>
+          <dd><code className="mb-ac-tac" title={metarShown}><TacLine text={metarShown} icao={card.icao} /></code>
+            <div className="mb-ac-controls"><ReportHistoryBadges history={metarHistory} type="metar" tz={metarTz} /><ReportTimeZone tz={metarTz} onChange={setMetarTz} label={`${card.icao} METAR`} /></div>
+          </dd>
+        </div>
+        <div className={`mb-ac-report${pastTaf ? ' is-past' : ''}`}>
+          <dt title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}><strong>TAF</strong>
+            <small>{pastTaf ? `${tafTime(pastTaf.time)}${['AMD', 'AMENDMENT'].includes(pastTaf.kind) ? ' AMD' : ''}` : (card.taf.issued ? tafTime(card.taf.issued) : '')} {tafTz}</small>
+            {!pastTaf && <small>{card.taf.basis}±1h</small>}
+            {!pastTaf && changes.length > 0 && <span className="mb-ac-change-count">변화 {changes.length}</span>}
+          </dt>
+          <dd><code className="mb-ac-tac" title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></code>
+            <div className="mb-ac-controls"><ReportHistoryBadges history={tafHistory} type="taf" tz={tafTz} /><ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} />
+              <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)} title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>상세<ChevronRight size={15} aria-hidden="true" /></button>
+            </div>
+          </dd>
+        </div>
       </dl>
-      <footer className="mb-ac-foot">
-        {card.warnings.length > 0 && (
+      {card.warnings.length > 0 && <footer className="mb-ac-foot">
           <span className="mb-ac-warn">
             <b>경보</b>
             {card.warnings.map((warning, index) => (
@@ -173,12 +178,7 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
               </span>
             ))}
           </span>
-        )}
-        <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)}
-          title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>
-          상세<ChevronRight size={15} aria-hidden="true" />
-        </button>
-      </footer>
+      </footer>}
     </article>
   )
 }

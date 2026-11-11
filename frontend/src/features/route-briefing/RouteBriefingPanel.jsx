@@ -22,7 +22,7 @@ import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
-import { briefingTimeFields, buildBriefingTimeIso, formatBriefingTime } from './lib/briefingTime.js'
+import { formatBriefingTime } from './lib/briefingTime.js'
 import { buildSavedProfileRequest } from './lib/verticalProfileRequest.js'
 import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
 import { loadNavdata } from './lib/routePlanner.js'
@@ -226,7 +226,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setCruiseAltitudeFt,
     setAlternateAirport,
     setEtd,
-    setEta,
     clearEtaOverride,
     setTasKt,
     setRouteDraftText,
@@ -257,7 +256,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   } = actions
 
   const isIfr = routeForm.flightRule === 'IFR'
-  const [etaEditing, setEtaEditing] = useState(false)
   // VFR 왕복(장주·훈련·유람)은 뜬 곳으로 돌아온다 — 반대편에 같은 공항을 고를 수
   // 있어야 한다. IFR은 같은 공항으로 비행계획을 내는 경우가 사실상 없어 그대로 잠근다.
   const departurePickerLock = isIfr ? routeForm.arrivalAirport : null
@@ -515,63 +513,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const w0 = new Date(etdBaseMs + tzOffsetMs)
   const etdWall = new Date(w0.getUTCFullYear(), w0.getUTCMonth(), w0.getUTCDate(), w0.getUTCHours(), w0.getUTCMinutes())
   const setEtdWall = (y, mo, d, h, mi) => setEtd(new Date(Date.UTC(y, mo, d, h, mi) - tzOffsetMs).toISOString())
-  const etaWall = briefingTimeFields(etaIso, tz)
-  const setEtaWall = (y, mo, d, h, mi) => setEta(buildBriefingTimeIso({ year: y, month: mo + 1, day: d, hour: h, minute: mi }, tz))
-  const resetAutomaticEta = () => {
-    clearEtaOverride() // 고정을 풀어야 이후 ETD·TAS 변경을 다시 따라간다
-    setEtaEditing(false)
-  }
   // 도착이 출발보다 빠르면 뒤집힌 시간창이 서버로 넘어가 NOTAM·SIGMET이 조용히 걸러진다.
   const etaBeforeEtd = Number.isFinite(Date.parse(etd)) && Number.isFinite(Date.parse(etaIso))
     && Date.parse(etaIso) <= Date.parse(etd)
-  // ETD·TAS·ETA 입력. 고도는 고도 비교 단계에서만 선택한다.
-  const perfFields = (
-    <div className={s.performance}>
-      <Field label={`출발일 (${tz})`}>
-        <DatePicker className={s.picker} value={etdWall}
-          formatDate={(d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`}
-          onSelectDate={(date) => date && setEtdWall(date.getFullYear(), date.getMonth(), date.getDate(), etdWall.getHours(), etdWall.getMinutes())} />
-      </Field>
-      <Field label={`출발시간 (${tz})`}>
-        <TimePicker key={etd} className={s.picker} freeform hourCycle="h23" increment={5} dateAnchor={etdWall} defaultSelectedTime={etdWall}
-          defaultValue={`${String(etdWall.getHours()).padStart(2, '0')}:${String(etdWall.getMinutes()).padStart(2, '0')}`}
-          onTimeChange={(_, data) => data.selectedTime && setEtdWall(etdWall.getFullYear(), etdWall.getMonth(), etdWall.getDate(), data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
-      </Field>
-      {etaEditing ? (
-        <>
-          <Field label={`도착예정일 (${tz})`}>
-            <DatePicker aria-label={`도착예정일 (${tz})`} className={s.picker} value={new Date(etaWall.year, etaWall.month - 1, etaWall.day)}
-              formatDate={(d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`}
-              onSelectDate={(date) => date && setEtaWall(date.getFullYear(), date.getMonth(), date.getDate(), etaWall.hour, etaWall.minute)} />
-          </Field>
-          <Field label={`도착예정시간 (${tz})`}>
-            <TimePicker aria-label={`도착예정시간 (${tz})`} key={etaIso} className={s.picker} freeform hourCycle="h23" increment={5} dateAnchor={new Date(etaWall.year, etaWall.month - 1, etaWall.day, etaWall.hour, etaWall.minute)} defaultSelectedTime={new Date(etaWall.year, etaWall.month - 1, etaWall.day, etaWall.hour, etaWall.minute)}
-              defaultValue={`${String(etaWall.hour).padStart(2, '0')}:${String(etaWall.minute).padStart(2, '0')}`}
-              onTimeChange={(_, data) => data.selectedTime && setEtaWall(etaWall.year, etaWall.month - 1, etaWall.day, data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
-          </Field>
-        </>
-      ) : (
-        <Field label={`추정 도착시각 (${tz})`}>
-          <Input className={s.ctrl} value={etaDisplay} placeholder="경로 거리·TAS 기준 추정값" readOnly onClick={() => etaIso && setEtaEditing(true)} onFocus={() => etaIso && setEtaEditing(true)} aria-label={`추정 도착시각 (${tz}) 편집`} />
-        </Field>
-      )}
-      <Field label="추정용 순항속도 (TAS, kt)">
-        <SpinButton className={s.ctrl} value={Number(tasKt) || 0} min={60} max={600} step={5}
-          onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setTasKt(v) }} />
-      </Field>
-      {etaBeforeEtd && (
-        <div className={s.etaReset}>
-          <MessageBar intent="error"><MessageBarBody>도착예정시각이 출발시각보다 빠르거나 같습니다 — 고쳐야 브리핑을 만들 수 있습니다.</MessageBarBody></MessageBar>
-        </div>
-      )}
-      {etaEditing && (
-        <div className={s.etaReset}>
-          <Button appearance="subtle" size="medium" type="button" onClick={resetAutomaticEta} style={{ minHeight: 'var(--touch-min)' }}>자동 계산으로 되돌리기</Button>
-        </div>
-      )}
-    </div>
-  )
-
   function swapAirports() {
     swapRouteAirports()
   }
@@ -720,9 +664,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           <Field label="순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
           <Field label="순항속도 (TAS, kt)"><SpinButton className={s.ctrl} value={Number(tasKt) || 0} min={60} max={600} step={5} onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setTasKt(v) }} /></Field>
         </div>
-        <details className="rb-plan-details"><summary>예상 도착시각 {etaDisplay || '계산 중'}</summary>{perfFields}</details>
+        <p className="rb-plan-hint">예상 도착시각 {etaDisplay || '계산 중'}</p>
         {!altitudeValid && <p role="alert" className="rb-plan-hint">순항고도는 500~60,000 ft로 입력하세요.</p>}
-        {etaBeforeEtd && <p role="alert" className="rb-plan-hint">도착예정시각은 출발시각보다 늦어야 합니다.</p>}
+        {etaBeforeEtd && <div role="alert" className="rb-plan-hint">도착예정시각은 출발시각보다 늦어야 합니다. <Button appearance="subtle" type="button" onClick={() => clearEtaOverride()}>도착시각 자동 계산</Button></div>}
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
       </>}
       {pendingContextChange && <div className="rb-route-edit-confirm" role="alert"><span>적용된 경로를 지우고 {pendingContextChange.label}을 바꿀까요?</span><div><Button size="small" appearance="primary" type="button" onClick={confirmContextChange}>계속</Button><Button size="small" type="button" onClick={() => setPendingContextChange(null)}>취소</Button></div></div>}
