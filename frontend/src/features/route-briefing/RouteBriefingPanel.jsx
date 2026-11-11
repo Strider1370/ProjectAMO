@@ -616,10 +616,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   }
   const routeSummary = routeTokens.map(token => token.text).join(' ')
   const planSummary = (
-    <div className="rb-plan-summary" aria-label="비행계획 요약">
+    <div className={`rb-plan-summary${briefingLoading ? ' is-loading' : ''}`} aria-label="비행계획 요약" aria-busy={briefingLoading}>
       <button type="button" className={`rb-plan-airports${planStep === 0 ? ' is-active' : ''}`} onClick={() => openPlanStep(0)} aria-label="공항 설정 수정">
         <span><strong>{routeForm.departureAirport || '—'}</strong><small>{airportName(routeForm.departureAirport) || '출발 공항'}</small></span>
-        <span className="rb-plan-flight" aria-hidden="true"><span>✈</span></span>
+      <span className="rb-plan-flight" aria-hidden="true"><span className="rb-plan-plane">✈</span></span>
         <span className="rb-plan-arrival"><strong>{routeForm.arrivalAirport || '—'}</strong><small>{airportName(routeForm.arrivalAirport) || '목적 공항'}</small></span>
       </button>
       <div className="rb-plan-meta"><span>{routeForm.flightRule}</span><span>교체 {alternateAirport || '설정 안 함'}</span><button type="button" onClick={() => openPlanStep(2)} aria-label="출발시각 수정">출발 {formatBriefingTime(etd, tz, { withDate: true })} ›</button></div>
@@ -673,6 +673,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     </form>
   )
   const planFooter = <div className="route-check-actions is-step">
+    <span className="rb-plan-loading-status" role="status" aria-live="polite">{briefingLoading ? '브리핑을 준비하고 있습니다. 잠시만 기다려 주세요.' : ''}</span>
     {planStep > 0 ? <button type="button" className="route-check-secondary-button" onClick={() => { setMapInteractionMode(null); setPlanStep(planStep - 1); setReturnStep(null) }}>이전</button> : <button type="button" className="route-check-secondary-button" onClick={armOrReset} disabled={routeLoading}>{resetArmed ? '초기화 확인' : '초기화'}</button>}
     {planStep < 2 || returnStep !== null ? <button type="button" className="route-check-search-button" onClick={planNext} disabled={planStep === 0 ? (!depChosen || !arrChosen || !!pendingContextChange) : planStep === 1 ? !routeValid : (!altitudeValid || !timeValid)}>{returnStep !== null ? '수정 완료' : '다음'}</button> : <button type="button" className="route-check-search-button" onClick={() => handleGenerateBriefing({ cruiseAltitudeFt: altitudeValue })} disabled={!routeValid || !altitudeValid || !timeValid || briefingLoading}>{briefingLoading ? '브리핑 생성 중...' : '브리핑 보기'}</button>}
   </div>
