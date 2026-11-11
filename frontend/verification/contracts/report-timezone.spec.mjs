@@ -113,6 +113,10 @@ test.describe('report-timezone', () => {
     const tafHistory = card.getByRole('group', { name: 'TAF 발표 회차', exact: true })
     await expect(metarHistory.getByRole('button')).toHaveCount(3)
     await expect(tafHistory.getByRole('button')).toHaveCount(3)
+    await expect(metarHistory.getByRole('button').first()).toHaveAttribute('aria-label', /최신/)
+    await expect(tafHistory.getByRole('button').first()).toHaveAttribute('aria-label', /최신/)
+    const [metarBox, tafBox] = await Promise.all([metar.boundingBox(), taf.boundingBox()])
+    expect(Math.abs(metarBox.x - tafBox.x)).toBeLessThanOrEqual(1)
     await expect(metarHistory.getByRole('combobox', { name: 'METAR 관측 회차 이전' }).locator('option')).toHaveCount(3)
     await metarHistory.getByRole('button', { name: /SPECI/ }).click()
     await expect(card.locator('dd').first()).toContainText('18005KT')
@@ -126,7 +130,7 @@ test.describe('report-timezone', () => {
     await metarHistory.getByRole('combobox', { name: 'METAR 관측 회차 이전' }).selectOption({ index: 1 })
     await expect(card.locator('dd').first()).toContainText('18005KT')
     await metarHistory.getByRole('button', { name: /최신/ }).click()
-    await tafHistory.getByRole('button').first().click()
+    await tafHistory.getByRole('button').last().click()
     await expect(card.locator('dd').nth(1)).toContainText('18005KT')
     await tafHistory.getByRole('button', { name: /최신/ }).click()
     await expect(card.locator('dd').nth(1)).toContainText('29015G25KT')
@@ -144,6 +148,8 @@ test.describe('report-timezone', () => {
     expect(await metarHistory.evaluate(el => getComputedStyle(el).overflowX)).not.toBe('auto')
     expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     for (const reportCard of await page.locator('.mb-airport-card').all()) {
+      const clocks = await reportCard.locator('.mb-ac-controls .report-timezone').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().x))
+      expect(Math.abs(clocks[0] - clocks[1])).toBeLessThanOrEqual(1)
       // Metadata is beside the report, with no clipped content.
       const rows = await reportCard.locator('.mb-ac-rows').evaluate(el => {
         const labels = [...el.querySelectorAll('dt')]

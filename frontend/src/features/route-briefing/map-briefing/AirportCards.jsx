@@ -186,7 +186,7 @@ function ReportHistoryButtons({ history, type, tz }) {
   if (!history.entries.length) return null
   const label = type === 'metar' ? 'METAR 관측 회차' : 'TAF 발표 회차'
   const older = history.entries.slice(0, -3)
-  const recent = history.entries.slice(-3)
+  const recent = history.entries.slice(-3).reverse()
   const describe = entry => {
     const kind = entry.kind === 'AMENDMENT' ? 'AMD' : entry.kind
     return [formatBriefingTime(entry.time, tz, { withDate: true }), kind, entry.category, entry.latest ? '최신' : null].filter(Boolean).join(' · ')
