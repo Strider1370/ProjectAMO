@@ -4,7 +4,6 @@ import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 import ReportTimeZone, { useReportTimeZone } from '../../../shared/timezone/ReportTimeZone.jsx'
 import { formatBriefingTime } from '../lib/briefingTime.js'
 import { useAirportHistory } from '../../../shared/weather/useAirportHistory.js'
-import ReportHistoryBadges from '../../airport-panel/tabs/ReportHistoryBadges.jsx'
 import { airportCards, cardLineSegments, changeLines, chipWidth, hasAlertFlag, metarText, tafTextAt } from './airportCardModel.js'
 import { placeAirportCards } from './airportCardPlacement.js'
 
@@ -148,21 +147,23 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
       </header>
       <dl className="mb-ac-rows">
         <div className={`mb-ac-report${pastMetar ? ' is-past' : ''}`}>
-          <dt><strong>{metarKind}</strong><small>{pastMetar ? metarTime(pastMetar.time) : (card.metar.time ? metarTime(card.metar.time) : '')} {metarTz}</small>
+          <dt><strong>{metarKind}</strong><small>{pastMetar ? metarTime(pastMetar.time) : (card.metar.time ? metarTime(card.metar.time) : '')}</small>
+            <ReportTimeZone tz={metarTz} onChange={setMetarTz} label={`${card.icao} METAR`} />
             {card.category && <span className="mb-ac-current-cat">현재 {card.category}</span>}
           </dt>
           <dd><code className="mb-ac-tac" title={metarShown}><TacLine text={metarShown} icao={card.icao} /></code>
-            <div className="mb-ac-controls"><ReportHistoryBadges history={metarHistory} type="metar" tz={metarTz} /><ReportTimeZone tz={metarTz} onChange={setMetarTz} label={`${card.icao} METAR`} /></div>
+            <div className="mb-ac-controls"><ReportHistorySelect history={metarHistory} type="metar" tz={metarTz} /></div>
           </dd>
         </div>
         <div className={`mb-ac-report${pastTaf ? ' is-past' : ''}`}>
           <dt title={!pastTaf && card.taf.previous ? '새 TAF가 아직 발효 전이라 그 시각에 유효한 직전 발표' : undefined}><strong>TAF</strong>
-            <small>{pastTaf ? `${tafTime(pastTaf.time)}${['AMD', 'AMENDMENT'].includes(pastTaf.kind) ? ' AMD' : ''}` : (card.taf.issued ? tafTime(card.taf.issued) : '')} {tafTz}</small>
+            <small>{pastTaf ? `${tafTime(pastTaf.time)}${['AMD', 'AMENDMENT'].includes(pastTaf.kind) ? ' AMD' : ''}` : (card.taf.issued ? tafTime(card.taf.issued) : '')}</small>
+            <ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} />
             {!pastTaf && <small>{card.taf.basis}±1h</small>}
             {!pastTaf && changes.length > 0 && <span className="mb-ac-change-count">변화 {changes.length}</span>}
           </dt>
           <dd><code className="mb-ac-tac" title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></code>
-            <div className="mb-ac-controls"><ReportHistoryBadges history={tafHistory} type="taf" tz={tafTz} /><ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} />
+            <div className="mb-ac-controls"><ReportHistorySelect history={tafHistory} type="taf" tz={tafTz} />
               <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)} title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>상세<ChevronRight size={15} aria-hidden="true" /></button>
             </div>
           </dd>
@@ -180,6 +181,24 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
           </span>
       </footer>}
     </article>
+  )
+}
+
+function ReportHistorySelect({ history, type, tz }) {
+  if (!history.entries.length) return null
+  const label = type === 'metar' ? 'METAR 관측 회차' : 'TAF 발표 회차'
+  return (
+    <label className="mb-ac-history"><span>회차</span>
+      <select aria-label={label} value={history.selected?.key ?? ''}
+        onChange={event => history.select(event.target.value)}
+        onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+        {[...history.entries].reverse().map(entry => {
+          const time = formatBriefingTime(entry.time, tz, { withDate: !entry.latest }).replace(' KST', '')
+          const kind = entry.kind === 'AMENDMENT' ? 'AMD' : entry.kind
+          return <option key={entry.key} value={entry.key}>{[time, kind === 'SPECI' || kind === 'AMD' ? kind : null, entry.latest ? '최신' : entry.category].filter(Boolean).join(' · ')}</option>
+        })}
+      </select>
+    </label>
   )
 }
 
