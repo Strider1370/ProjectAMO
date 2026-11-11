@@ -1102,40 +1102,73 @@ const MapView = forwardRef(function MapView({
   // 개발 서버에서는 저장된 권계면·제트 사례를 범례의 버튼으로 바꿔 볼 수 있다.
   const [tropopauseCaseKey, setTropopauseCaseKey] = useState(null)
   const tropopauseJet = useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, enabled: tropopauseJetEnabled, selectedMs: weatherTimelineSelectedMs, tz, caseKey: tropopauseCaseKey, listCases: import.meta.env.DEV })
-  // 지도 맨 위 진행 막대: 기상 자료를 불러오는 동안만 잠깐 보인다(범례에는 '불러오는 중'을 적지 않는다).
-  // 지도 위 그림·타일(레이더·위성 등)은 지도의 로딩 이벤트로, KIM 같은 격자 자료는 각 훅의 상태로 판단한다.
-  const [mapSourcesBusy, setMapSourcesBusy] = useState(false)
+  // 영상은 최초 프레임 설치 상태를 직접 받는다. 지도 전체 idle이나 공항·항로 등 다른 소스는 기다리지 않는다.
+  const [initialRasterLoading, setInitialRasterLoading] = useState({})
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return undefined
-    const isOverlaySource = (id) => typeof id === 'string' && !id.includes(':') && !/mapbox|composite/.test(id)
-    const onLoading = (event) => { if (event.dataType === 'source' && isOverlaySource(event.sourceId)) setMapSourcesBusy(true) }
-    const onIdle = () => setMapSourcesBusy(false)
-    map.on('dataloading', onLoading)
-    map.on('idle', onIdle)
-    return () => { map.off('dataloading', onLoading); map.off('idle', onIdle) }
+    const onRasterLoading = ({ sourceId, loading }) => setInitialRasterLoading(previous => {
+      if (Boolean(previous[sourceId]) === loading) return previous
+      return { ...previous, [sourceId]: loading }
+    })
+    // 타일 레이더와 운정 영상은 프레임 전환기를 쓰지 않으므로 해당 소스의 완료 이벤트만 추적한다.
+    const trackedSources = new Set(['gk2a-ctps-source', 'rainviewer-radar'])
+    const onSourceLoading = (event) => {
+      if (event.dataType === 'source' && trackedSources.has(event.sourceId)) onRasterLoading({ sourceId: event.sourceId, loading: true })
+    }
+    const onSourceLoaded = (event) => {
+      if (trackedSources.has(event.sourceId) && event.isSourceLoaded) onRasterLoading({ sourceId: event.sourceId, loading: false })
+    }
+    const onSourceError = (event) => {
+      if (trackedSources.has(event.sourceId)) onRasterLoading({ sourceId: event.sourceId, loading: false })
+    }
+    map.on('amo-weather-raster-loading', onRasterLoading)
+    map.on('dataloading', onSourceLoading)
+    map.on('sourcedata', onSourceLoaded)
+    map.on('error', onSourceError)
+    return () => {
+      map.off('amo-weather-raster-loading', onRasterLoading)
+      map.off('dataloading', onSourceLoading)
+      map.off('sourcedata', onSourceLoaded)
+      map.off('error', onSourceError)
+    }
   }, [mapRef, isStyleReady, styleRevision])
   const gridLoading = (status) => status === 'loading' || status === 'refreshing'
-  const overlayDataLoading = mapSourcesBusy
-    || (enableWindOverlay && ((metVisibility.wind && gridLoading(windStatus))
-      || ((metVisibility.temp || metVisibility.cloudIcing) && gridLoading(tempStatus))
-      || (metVisibility.cloud && gridLoading(cloudStatus))
-      || (metVisibility.icing && gridLoading(icingStatus))
-      || (metVisibility.turbulence && gridLoading(turbulenceStatus))
-      || (metVisibility.surfaceChart && surfaceChart.status === 'loading')))
-    || Boolean(aci.loading) || Boolean(sigwxHigh.loading) || Boolean(tropopauseJet.loading)
   // 사용자가 레이어를 켠 직후의 초기 표시만 안내한다. 지도 이동·시각 갱신은 막대를 다시 열지 않는다.
   const previousLoadingLayers = useRef(metVisibility)
   const [loadingActivation, setLoadingActivation] = useState(0)
+  const [activatedLayers, setActivatedLayers] = useState([])
   const [activationPending, setActivationPending] = useState(false)
   useEffect(() => {
     const previous = previousLoadingLayers.current
     previousLoadingLayers.current = metVisibility
-    if (Object.keys(metVisibility).some(id => metVisibility[id] === true && previous[id] !== true)) {
+    const activated = Object.keys(metVisibility).filter(id => metVisibility[id] === true && previous[id] !== true)
+    if (activated.length) {
+      setActivatedLayers(activated)
       setActivationPending(true)
       setLoadingActivation(value => value + 1)
     }
   }, [metVisibility])
+  const loadingForLayer = {
+    radarHsr: initialRasterLoading['kma-hsr-overlay'],
+    radarHci: initialRasterLoading['kma-hci-overlay'],
+    radarOverseas: initialRasterLoading['rainviewer-radar'],
+    satellite: initialRasterLoading['kma-satellite-overlay'],
+    satelliteVisible: initialRasterLoading['gk2a-visible-overlay'],
+    ctps: initialRasterLoading['gk2a-ctps-source'],
+    wind: enableWindOverlay && gridLoading(windStatus) && !windField,
+    temp: enableWindOverlay && gridLoading(tempStatus) && !temperatureField,
+    cloud: enableWindOverlay && gridLoading(cloudStatus) && !cloudField,
+    icing: enableWindOverlay && gridLoading(icingStatus) && !icingField,
+    cloudIcing: enableWindOverlay && ((gridLoading(tempStatus) && !temperatureField)
+      || (gridLoading(cloudStatus) && !cloudField) || (gridLoading(icingStatus) && !icingField)),
+    turbulence: enableWindOverlay && gridLoading(turbulenceStatus) && !ktgGrid,
+    surfaceChart: enableWindOverlay && surfaceChart.status === 'loading',
+    aciExperiment: Boolean(aci.loading && !aci.field),
+    sigwxHigh: Boolean(sigwxHigh.loading && !sigwxHigh.frame),
+    tropopause: Boolean(tropopauseJet.loading && !tropopauseJet.field),
+  }
+  const overlayDataLoading = activatedLayers.some(id => metVisibility[id] && loadingForLayer[id])
   useEffect(() => {
     if (!activationPending) return undefined
     // 지도 idle 이벤트가 오지 않는 경우에도 안내가 계속 남지 않도록 한다.

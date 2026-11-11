@@ -98,6 +98,7 @@ export function createRasterFrameTransition(map, {
   let timer = null
   let pending = null
   let cancelSourceWait = null
+  const reportInitialLoading = (loading) => map.fire?.('amo-weather-raster-loading', { sourceId, loading })
 
   function restoreActive() {
     if (!active) return false
@@ -120,7 +121,10 @@ export function createRasterFrameTransition(map, {
     timer = null
     if (incoming) removeResource(map, incoming.sourceId, incoming.layerId)
     incoming = null
-    if (pending) pending.settle(false)
+    if (pending) {
+      if (pending.initial) reportInitialLoading(false)
+      pending.settle(false)
+    }
     pending = null
   }
 
@@ -147,7 +151,9 @@ export function createRasterFrameTransition(map, {
     const requestGeneration = generation
     let settlePending
     const pendingPromise = new Promise((resolve) => { settlePending = resolve })
-    pending = { key, generation: requestGeneration, promise: pendingPromise, settle: settlePending }
+    pending = { key, generation: requestGeneration, promise: pendingPromise, settle: settlePending,
+      initial: !active || map.getLayoutProperty?.(layerId, 'visibility') === 'none' }
+    if (pending.initial) reportInitialLoading(true)
     let result = false
     try {
       try {
@@ -217,6 +223,7 @@ export function createRasterFrameTransition(map, {
     return result
     } finally {
       if (pending?.generation === requestGeneration) {
+        if (pending.initial) reportInitialLoading(false)
         pending.settle(result)
         pending = null
       }

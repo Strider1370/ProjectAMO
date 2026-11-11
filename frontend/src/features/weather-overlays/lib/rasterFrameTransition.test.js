@@ -52,6 +52,7 @@ function createMap() {
     isSourceLoaded(id) { return loaded.has(id) },
     on(type, listener) { listeners.set(type, [...(listeners.get(type) || []), listener]) },
     off(type, listener) { listeners.set(type, (listeners.get(type) || []).filter((entry) => entry !== listener)) },
+    fire(type, event) { this.emit(type, event) },
     emit(type, event) { (listeners.get(type) || []).forEach((listener) => listener(event)) },
     emitSourceData(id) { loaded.add(id); this.emit('sourcedata', { sourceId: id, isSourceLoaded: true }) },
   }
@@ -59,6 +60,28 @@ function createMap() {
 
 const firstFrame = { path: '/a.webp', bounds: [[30, 120], [40, 130]] }
 const secondFrame = { path: '/b.webp', bounds: [[30, 120], [40, 130]] }
+
+test('reports initial frame loading until it is installed, but not when refreshing a visible frame', async () => {
+  const map = createMap()
+  const events = []
+  map.on('amo-weather-raster-loading', event => events.push([event.sourceId, event.loading]))
+  const transition = createRasterFrameTransition(map, {
+    sourceId: 'radar-source', layerId: 'radar-layer', opacity: 1, transitionMs: 0,
+    preload: async () => undefined,
+  })
+  const first = transition.sync(firstFrame, true)
+  await waitFor(() => map.getSource('radar-source--incoming-1'))
+  assert.deepEqual(events, [['radar-source', true]])
+  map.emitSourceData('radar-source--incoming-1')
+  await first
+  assert.deepEqual(events, [['radar-source', true], ['radar-source', false]])
+  const second = transition.sync(secondFrame, true)
+  await waitFor(() => map.getSource('radar-source--incoming-2'))
+  assert.deepEqual(events, [['radar-source', true], ['radar-source', false]])
+  map.emitSourceData('radar-source--incoming-2')
+  await second
+  assert.deepEqual(events, [['radar-source', true], ['radar-source', false]])
+})
 
 test('keeps the active frame visible until an incoming image and source load', async () => {
   const map = createMap()
