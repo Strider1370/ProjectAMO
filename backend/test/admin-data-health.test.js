@@ -76,6 +76,7 @@ test('쉬는 시간에는 판정하지 않는다 — KST 새벽 2시의 운항�
     getCached: () => null,
     getStats: statsFor({ terminal_flights: { last_success: '2026-08-10T14:00:00Z' } }),
     now: Date.parse('2026-08-10T17:00:00Z'),
+    cfg: { terminal_data: { enabled: true } },
   })
   assert.equal(rows.find((r) => r.key === 'terminal_flights').status, 'quiet')
 })

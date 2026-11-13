@@ -82,11 +82,11 @@ export const CATALOG = [
   { key: 'taf_overseas', label: 'TAF 해외', source: 'noaa', character: 'report', normalMs: m(10), lateMs: m(30), stoppedMs: h(1) },
   { key: 'sigmet_overseas', label: 'SIGMET 해외', source: 'noaa', character: 'hazard', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), eventDriven: true },
 
-  { key: 'terminal_flights', label: '운항편', source: 'kac', character: 'ops', normalMs: m(1), lateMs: m(15), stoppedMs: m(30), quiet: EARLY_MORNING },
+  { key: 'terminal_flights', label: '운항편', source: 'kac', character: 'ops', normalMs: m(1), lateMs: m(15), stoppedMs: m(30), quiet: EARLY_MORNING, disabledWhen: c => c.terminal_data?.enabled !== true },
   { key: 'notam', label: 'NOTAM', source: 'kac', character: 'ops', normalMs: h(6), lateMs: h(9), stoppedMs: h(18) },
 
   { key: 'rainviewer', label: '해외 레이더', source: 'external', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/rainviewer_meta.json' },
-  { key: 'overseas_forecast', label: '해외예보', source: 'external', character: 'general', normalMs: h(1), lateMs: h(3), stoppedMs: h(6), quiet: EARLY_MORNING },
+  { key: 'overseas_forecast', label: '해외예보', source: 'external', character: 'general', normalMs: h(1), lateMs: h(3), stoppedMs: h(6), quiet: EARLY_MORNING, disabledWhen: c => c.terminal_data?.enabled !== true },
 ].map((row) => ({ statsKey: row.key, quiet: null, eventDriven: false, meta: null, disabledWhen: null, comparisonModel: null, ...row }))
 
 const groupBy = (field, dict) => () =>

@@ -103,3 +103,16 @@ test('unallowlisted API responses keep no-store default', async () => {
   assert.match(response.headers.get('cache-control'), /no-store/)
   assert.deepEqual((await response.json()).capabilities, { testMutations: false })
 })
+
+test('disabled terminal feeds do not serve stale flight or passenger forecast snapshots', async (t) => {
+  const baseUrl = await getServerBaseUrl()
+  const { default: config } = await import('../src/config.js')
+  const previous = config.terminal_data.enabled
+  config.terminal_data.enabled = false
+  t.after(() => { config.terminal_data.enabled = previous })
+  for (const endpoint of ['terminal-flights', 'overseas-forecast']) {
+    const response = await fetch(`${baseUrl}/api/${endpoint}`)
+    assert.equal(response.status, 503)
+    assert.equal((await response.json()).error, 'terminal_data_disabled')
+  }
+})

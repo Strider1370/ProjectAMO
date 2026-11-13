@@ -12,6 +12,21 @@ const enabledConfig = {
   api: { ...config.api, radar_satellite_auth_key: 'test-key' },
 }
 
+test('disabled terminal data is absent from startup and periodic jobs', (t) => {
+  const saved = config.terminal_data.enabled
+  config.terminal_data.enabled = false
+  t.after(() => { config.terminal_data.enabled = saved })
+  const startup = buildInitialCollectionJobs().map(([type]) => type)
+  const scheduled = activeCollectorRegistry().map(item => item.type)
+  for (const type of ['terminal_flights', 'overseas_forecast']) {
+    assert.ok(!startup.includes(type))
+    assert.ok(!scheduled.includes(type))
+  }
+  for (const type of ['metar_overseas', 'taf_overseas', 'sigmet_overseas']) {
+    assert.ok(startup.includes(type) && scheduled.includes(type))
+  }
+})
+
 function scheduler() {
   const calls = []
   return {

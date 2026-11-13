@@ -305,8 +305,10 @@ function buildInitialCollectionJobs({
     ["airport_info", airportInfoProcessor.process],
     ["takeoff_fcst", takeoffForecastProcessor.process],
     ['typhoon', typhoonProcessor.process],
-    ['terminal_flights', terminalFlightProcessor.process],
-    ['overseas_forecast', overseasForecastProcessor.process],
+    ...(config.terminal_data?.enabled === true ? [
+      ['terminal_flights', terminalFlightProcessor.process],
+      ['overseas_forecast', overseasForecastProcessor.process],
+    ] : []),
   ]
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
   if (config.kim_gktg?.collect_on_startup !== false) jobs.push(["kim_gktg", kimGktgJob])

@@ -19,12 +19,22 @@ test('active registry resolves partial overrides and exposes watchdog contracts 
   assert.deepEqual(partial.find((collector) => collector.type === 'kim_gktg').schedule, {
     expression: config.schedule.kim_gktg_interval, timezone: 'Etc/UTC', maxIntervalMs: 4 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Etc/UTC', recoverMissedExecutions: true },
   })
-  assert.deepEqual(partial.find((collector) => collector.type === 'terminal_flights').schedule, {
+  const terminal = activeCollectorRegistry({ terminal_data: { enabled: true } }).find((collector) => collector.type === 'terminal_flights')
+  assert.deepEqual(terminal.schedule, {
     expression: '*/1 4-23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 60_000, graceMs: 60_000, quiet: { fromHourKst: 0, toHourKst: 4 }, cronOptions: { timezone: 'Asia/Seoul', recoverMissedExecutions: true },
   })
   assert.equal(partial.find((collector) => collector.type === 'airport_info').schedule.maxIntervalMs, 12.5 * 3600_000)
   assert.deepEqual(resultOutcomesForCollector('metar'), ['complete', 'partial', 'failed'])
   assert.deepEqual(resultOutcomesForCollector('warning'), ['complete', 'partial', 'failed', 'empty'])
+})
+
+test('passenger flights and destination forecasts are off by default while overseas aviation weather remains active', () => {
+  const active = activeCollectorRegistry({ terminal_data: { enabled: false } }).map(item => item.type)
+  assert.ok(!active.includes('terminal_flights'))
+  assert.ok(!active.includes('overseas_forecast'))
+  for (const type of ['metar_overseas', 'taf_overseas', 'sigmet_overseas']) assert.ok(active.includes(type))
+  const enabled = activeCollectorRegistry({ terminal_data: { enabled: true } }).map(item => item.type)
+  assert.ok(enabled.includes('terminal_flights') && enabled.includes('overseas_forecast'))
 })
 
 test('radar graphics follows the scheduler enabled condition as well as the key', () => {

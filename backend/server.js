@@ -1048,8 +1048,8 @@ app.get('/api/ground-forecast', (_, res) => sendLatest(res, 'ground_forecast'))
 app.get('/api/ground-overview', (_, res) => sendLatest(res, 'ground_overview'))
 app.get('/api/environment', (_, res) => sendLatest(res, 'environment'))
 app.get('/api/airport-info', (_, res) => sendLatest(res, 'airport_info'))
-app.get('/api/terminal-flights', (_, res) => sendLatest(res, 'terminal_flights'))
-app.get('/api/overseas-forecast', (_, res) => sendLatest(res, 'overseas_forecast'))
+app.get('/api/terminal-flights', (_, res) => config.terminal_data.enabled ? sendLatest(res, 'terminal_flights') : res.status(503).json({ error: 'terminal_data_disabled' }))
+app.get('/api/overseas-forecast', (_, res) => config.terminal_data.enabled ? sendLatest(res, 'overseas_forecast') : res.status(503).json({ error: 'terminal_data_disabled' }))
 
 // 지도 도구 '고도 확인' — 단일 점 표고(m). 기존 terrainSampler(브리핑용) 재사용.
 app.get('/api/terrain/elevation', (req, res) => {

@@ -631,6 +631,9 @@ export const push = {
   vapid_subject: process.env.VAPID_SUBJECT || 'mailto:admin@projectamo.co.kr',
 }
 
+// 승객용 운항편·목적지 일반예보는 기본 수집하지 않는다. 항공용 해외 METAR/TAF와 별개다.
+export const terminal_data = { enabled: process.env.TERMINAL_DATA_ENABLED === '1' }
+
 export default {
   api,
   airports,
@@ -640,6 +643,7 @@ export default {
   environment,
   ground_forecast,
   met_no,
+  terminal_data,
   terminal_route_durations,
   flight_category,
   asos_ceiling,
