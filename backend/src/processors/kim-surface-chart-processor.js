@@ -1,5 +1,5 @@
 // KIM 지상 일기도 수집기. 최신 KIM 런의 +3·+6·+9·+12시간 해면기압·누적강수·지상바람(16장)을
-// 레이더·위성 키로 받아, 시각마다 등압선·H/L·3시간 강수 그림·바람 격자를 만들어 발행한다.
+// KIM 키로 받아, 시각마다 등압선·H/L·3시간 강수 그림·바람 격자를 만들어 발행한다.
 // 대용량 키를 쓰는 동안은 확대 회차가 만든 런(00·06 UTC, 매시간)이 대신한다(kim-surface-chart-expanded.js).
 // 16장이 모두 검증을 통과한 런만 원자적으로 발행하고, 실패하면 마지막 정상 런을 유지한다.
 import fs from 'node:fs'
@@ -85,7 +85,7 @@ function isFileNotAvailable(error) {
   return error?.code === 'KIM_FILE_NOT_AVAILABLE'
 }
 
-export async function fetchSurfaceChartGrid({ tmfc, hf, name, signal, fetchGrid = fetchKimGrid, settings = config.kim_surface_chart, credential = config.api.radar_satellite_auth_key }) {
+export async function fetchSurfaceChartGrid({ tmfc, hf, name, signal, fetchGrid = fetchKimGrid, settings = config.kim_surface_chart, credential = config.api.kim_nwp_auth_key }) {
   signal?.throwIfAborted()
   const text = await fetchGrid({
     operation: 'kim_grid_chart',
@@ -103,7 +103,7 @@ export async function fetchSurfaceChartGrid({ tmfc, hf, name, signal, fetchGrid 
   return toChartGrid(parseKimGridText(text, { variable: name, level: 0 }), { grid: settings.grid, name })
 }
 
-export async function buildSurfaceChartRun({ tmfc, signal, fetchGrid = fetchKimGrid, settings = config.kim_surface_chart, credential = config.api.radar_satellite_auth_key }) {
+export async function buildSurfaceChartRun({ tmfc, signal, fetchGrid = fetchKimGrid, settings = config.kim_surface_chart, credential = config.api.kim_nwp_auth_key }) {
   const requests = buildSurfaceChartRequests(tmfc, settings.forecast_hours)
   // 아직 공개되지 않은 런에 16장을 다 부르지 않도록 첫 장으로 먼저 확인한다.
   const first = await fetchSurfaceChartGrid({ ...requests[0], signal, fetchGrid, settings, credential })
@@ -195,7 +195,7 @@ export async function process({
   fetchGrid = fetchKimGrid,
   root = config.storage.base_path,
   settings = config.kim_surface_chart,
-  credential = config.api.radar_satellite_auth_key,
+  credential = config.api.kim_nwp_auth_key,
   now = Date.now,
 } = {}) {
   if (!credential) throw new Error('kim_surface_chart_credential_missing')

@@ -4,14 +4,14 @@ import { execFileSync } from 'node:child_process'
 
 import { selectKimRunCredential } from '../src/processors/kim-run-credential.js'
 
-test('selects the KIM credential for 00Z, 06Z and 18Z runs', () => {
-  for (const tmfc of ['2026081800', '2026081806', '2026081818']) {
+test('selects the KIM credential for every run including 12Z', () => {
+  for (const tmfc of ['2026081800', '2026081806', '2026081812', '2026081818']) {
     assert.equal(selectKimRunCredential({ tmfc, kimCredential: 'kim-key', aviationCredential: 'aviation-key' }), 'kim-key')
   }
 })
 
 test('missing or aliased KIM keys never fall back to the aviation key', () => {
-  for (const hour of ['00', '06', '18']) {
+  for (const hour of ['00', '06', '12', '18']) {
     for (const kimCredential of ['', undefined, 'aviation-key']) {
       assert.throws(() => selectKimRunCredential({ tmfc: `20260818${hour}`, kimCredential, aviationCredential: 'aviation-key' }), { code: 'kim_credential_unavailable' })
     }
@@ -20,11 +20,6 @@ test('missing or aliased KIM keys never fall back to the aviation key', () => {
 
 test('an absent aviation key does not block an independent KIM key', () => {
   assert.equal(selectKimRunCredential({ tmfc: '2026081818', kimCredential: 'kim-key' }), 'kim-key')
-})
-
-test('12Z uses only a distinct radar/satellite key', () => {
-  assert.equal(selectKimRunCredential({ tmfc: '2026081812', kimCredential: 'kim', aviationCredential: 'aviation', radarCredential: 'radar' }), 'radar')
-  for (const radarCredential of ['', 'kim', 'aviation']) assert.throws(() => selectKimRunCredential({ tmfc: '2026081812', kimCredential: 'kim', aviationCredential: 'aviation', radarCredential }), { code: 'kim_12z_radar_credential_unavailable' })
 })
 
 test('the bulk key is used for every run only inside its KST window and approval period, never falling back', async () => {

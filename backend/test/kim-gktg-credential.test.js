@@ -38,7 +38,7 @@ function supplementText({ tmfc, hf, name, level }) {
     + Array(grid.ny).fill(Array(grid.nx).fill(value).join(' ')).join('\n') + '\n'
 }
 
-for (const [hour, expectedKey] of [['00', 'kim-key'], ['06', 'kim-key'], ['12', 'radar-key'], ['18', 'kim-key']]) {
+for (const [hour, expectedKey] of [['00', 'kim-key'], ['06', 'kim-key'], ['12', 'kim-key'], ['18', 'kim-key']]) {
   test(`GKTG ${hour}Z supplements use the base run key despite a +12 hour forecast, and reuse cached inputs`, async t => {
     const tmfc = `20990101${hour}`
     const root = setup(t, tmfc, { kim_nwp_auth_key: 'kim-key', auth_key: 'aviation-key', radar_satellite_auth_key: hour === '12' ? 'radar-key' : '' })

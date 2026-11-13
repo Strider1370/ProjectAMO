@@ -64,7 +64,6 @@ export function selectKtgRunCredential(tmfc) {
     tmfc,
     kimCredential: config.api.kim_nwp_auth_key,
     aviationCredential: config.api.auth_key,
-    radarCredential: config.api.radar_satellite_auth_key,
   })
 }
 

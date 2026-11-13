@@ -695,7 +695,6 @@ export async function process({
       tmfc: candidate.tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
-      radarCredential: config.api.radar_satellite_auth_key,
       ...kimBulkCredentialOptions(config, Date.now(), { required: kimDomain(domain).bulkOnly }),
     })
     const candidateHours = requestedHours || (domain === KIM_DEFAULT_DOMAIN ? config.kim_nwp?.forecast_hours || KIM_NWP_FORECAST_HOURS : kimDomain(domain).forecastHours)

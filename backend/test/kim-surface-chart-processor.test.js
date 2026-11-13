@@ -10,6 +10,7 @@ import {
   readSurfaceChartLatest,
 } from '../src/processors/kim-surface-chart-processor.js'
 import { SURFACE_CHART_RULES } from '../src/lib/kim-surface-chart.js'
+import config from '../src/config.js'
 
 const STEP = 1 / 12
 const SETTINGS = Object.freeze({
@@ -22,7 +23,17 @@ const SETTINGS = Object.freeze({
   // 강수 그림은 운영 크기(1400×1000)로 그리면 처리 한 번에 2초 넘게 걸린다. 여기서 보는 규칙과는 무관하다.
   rules: { ...SURFACE_CHART_RULES, precipImageWidth: 140, precipImageHeight: 100 },
 })
-const KEY = 'test-radar-key'
+const KEY = 'test-kim-key'
+
+test('default chart requests use the KIM credential rather than the radar credential', async (t) => {
+  const previous = { kim: config.api.kim_nwp_auth_key, radar: config.api.radar_satellite_auth_key }
+  config.api.kim_nwp_auth_key = KEY
+  config.api.radar_satellite_auth_key = 'radar-key'
+  t.after(() => Object.assign(config.api, { kim_nwp_auth_key: previous.kim, radar_satellite_auth_key: previous.radar }))
+  const { calls, fetchGrid } = fakeFetch()
+  await processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid, root: tempRoot(), settings: SETTINGS })
+  assert.ok(calls.length > 0 && calls.every((call) => call.credential === KEY))
+})
 
 function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'projectamo-kim-chart-'))
@@ -72,7 +83,7 @@ test('a gap in forecast hours adds the accumulated precip needed for the 3 hour 
   assert.deepEqual(requests.filter((request) => request.name === 'prec_acc').map((request) => request.hf).sort(), [3, 6])
 })
 
-test('publishes a complete run with the chart operation, the chart area and the radar/satellite key', async () => {
+test('publishes a complete run with the chart operation, the chart area and the KIM key', async () => {
   const root = tempRoot()
   const { calls, fetchGrid } = fakeFetch()
   const result = await processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid, root, settings: SETTINGS, credential: KEY })
@@ -136,6 +147,6 @@ test('keeps only the newest two runs', async () => {
   assert.deepEqual(fs.readdirSync(path.join(root, 'kim_surface_chart', 'runs')).sort(), ['KIMG_NE57_2026092118', 'KIMG_NE57_2026092200'])
 })
 
-test('refuses to run without the radar/satellite key', async () => {
+test('refuses to run without the KIM key', async () => {
   await assert.rejects(() => processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid: fakeFetch().fetchGrid, root: tempRoot(), settings: SETTINGS, credential: '' }), /credential_missing/)
 })

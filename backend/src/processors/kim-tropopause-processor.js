@@ -49,13 +49,12 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
   const cached = readKimRawText(file)
   let text = cached
   if (cached === null) {
-    // 기본 KIM 격자·GKTG 추가 입력과 같은 키: 발표회차(tmfc)로 고른다(00·06·18 KIM, 12 레이더·위성; 항공 키 제외).
+    // 기본 KIM 격자·GKTG 추가 입력과 같은 KIM 키를 쓴다(항공·레이더 키 제외).
     // 키가 없거나 막혀도 다른 키로 대체하지 않는다.
     const credential = selectKimRunCredential({
       tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
-      radarCredential: config.api.radar_satellite_auth_key,
       ...kimBulkCredentialOptions(config, Date.now(), { required: kimDomain(domain).bulkOnly }),
     })
     if (!credential) throw new Error('tropopause_run_credential_unavailable')

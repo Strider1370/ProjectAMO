@@ -93,7 +93,6 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
       tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
-      radarCredential: config.api.radar_satellite_auth_key,
       ...kimBulkCredentialOptions(config, Date.now(), { required: kimDomain(domain).bulkOnly }),
     })
     if (!credential) throw new Error('gktg_run_credential_unavailable')

@@ -14,7 +14,7 @@ const pathMatchers = {
 }
 
 const health = { metar: ['metar'], taf: ['taf'], warning: ['warning'], sigmet: ['sigmet'], airmet: ['airmet'], airport_info: ['airport_info'], takeoff_fcst: ['takeoff_fcst'], sigwx_low: ['sigwx_low'], amos: ['amos'], special_warning: ['kma_special_warning'], lightning: ['lightning'], typhoon_now: ['typhoon'], typhoon_list: ['typhoon'], ground_forecast: ['ground_forecast'], mid_land: ['ground_forecast'], mid_ta: ['ground_forecast'], asos_ceiling: ['asos_ceiling'], kim_grid: ['kim_nwp', 'kim_gktg', 'kim_tropopause'], kim_grid_gktg: ['kim_gktg'], kim_grid_aci: ['kim_aci'], kim_grid_trop: ['kim_tropopause'], kim_grid_chart: ['kim_surface_chart'], ktg: ['kim_gktg'], radar_wissdom: ['wissdom'], radar_hsr: ['radar'], radar_hci: ['hci'], satellite_ir: ['satellite'], satellite_visible: ['satellite_visible'], satellite_fog: ['satellite'], satellite_ctps: ['convective'], sfc_vis: ['environment'], uv: ['environment'] }
-const category = (id) => ['kim_grid', 'kim_grid_aci', 'ktg'].includes(id) ? 'kim_nwp' : ['kim_grid_chart', 'kim_grid_gktg', 'kim_grid_trop'].includes(id) || id.startsWith('radar_') || id.startsWith('satellite_') ? 'radar_satellite' : 'aviation'
+const category = (id) => id.startsWith('kim_grid') || id === 'ktg' ? 'kim_nwp' : id.startsWith('radar_') || id.startsWith('satellite_') ? 'radar_satellite' : 'aviation'
 // 같은 KIM 격자 주소를 쓰는 지상 일기도 호출은 요청 영역(sub)으로 구분한다.
 // KIM 격자는 대용량 API 호스트로도 받는다(같은 경로, 별도 키). 장부는 키 지문으로 구분된다.
 const KIM_BULK_HOSTNAME = new URL(config.api.kim_grid_bulk_url).hostname
