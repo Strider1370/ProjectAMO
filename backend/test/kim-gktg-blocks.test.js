@@ -14,7 +14,7 @@ const engineDir = fileURLToPath(new URL('../python/kim_turbulence/', import.meta
 const pressures = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
 const grid = { nx: 30, ny: 26, lonMin: 120, lonMax: 120 + 29 / 12, latMin: 30, latMax: 30 + 25 / 12 }
 const size = grid.nx * grid.ny
-const TMFC = '2099010100'
+const TMFC = '2099010118'
 
 function seed(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-gktg-blocks-'))

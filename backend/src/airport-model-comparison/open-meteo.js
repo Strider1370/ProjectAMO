@@ -65,7 +65,8 @@ function buildIconWindowRequest({ airports, window }) {
   })
   return new URL(`https://api.open-meteo.com/v1/forecast?${query}`)
 }
-function metaUrl(model) { return new URL(`https://api.open-meteo.com/data/${META_DIRECTORIES[model]}/static/meta.json`) }
+// Open-Meteo가 공개한 AWS 데이터 저장소의 갱신 메타. 예보는 기존 API에서 계속 받는다.
+function metaUrl(model) { return new URL(`https://openmeteo.s3.amazonaws.com/data/${META_DIRECTORIES[model]}/static/meta.json`) }
 function operation(model, kind) {
   if (kind === 'meta') return `open_meteo_${model}_meta`
   if (kind === 'window') return 'open_meteo_icon_pressure_window'

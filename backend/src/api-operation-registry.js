@@ -64,8 +64,8 @@ export const API_OPERATION_REGISTRY = Object.entries(API_HUB_ENDPOINTS).filter((
     { id: 'wifs_sigwx_metadata', label: 'SIGWX HIGH 목록', provider: 'WIFS', collectorType: 'sigwx_high', dataHealthKeys: ['sigwx_high'], callContract: { kind: 'collector' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://aviationweather.gov/wifs/api/collections/kkci_iwxxm_forecasts?f=json', requestPolicy: { timeoutMs: 60_000, maxAttempts: 1, allowedOverrides: [] }, match: (url) => url.protocol === 'https:' && url.hostname === 'aviationweather.gov' && url.pathname === '/wifs/api/collections/kkci_iwxxm_forecasts' },
     { id: 'wifs_sigwx_forecast', label: 'SIGWX HIGH IWXXM', provider: 'WIFS', collectorType: 'sigwx_high', dataHealthKeys: ['sigwx_high'], callContract: { kind: 'collector' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://aviationweather.gov/wifs/api/collections/kkci_iwxxm_forecasts/locations/GLOBAL?f=iwxxm', requestPolicy: { timeoutMs: 60_000, maxAttempts: 1, allowedOverrides: [] }, match: (url) => url.protocol === 'https:' && url.hostname === 'aviationweather.gov' && url.pathname === '/wifs/api/collections/kkci_iwxxm_forecasts/locations/GLOBAL' },
     ...[
-      ['open_meteo_ecmwf_meta', 'EC 갱신 메타', 'ecmwf', 'https://api.open-meteo.com/data/ecmwf_ifs025/static/meta.json'],
-      ['open_meteo_icon_meta', 'ICON 갱신 메타', 'icon', 'https://api.open-meteo.com/data/dwd_icon/static/meta.json'],
+      ['open_meteo_ecmwf_meta', 'EC 갱신 메타', 'ecmwf', 'https://openmeteo.s3.amazonaws.com/data/ecmwf_ifs025/static/meta.json'],
+      ['open_meteo_icon_meta', 'ICON 갱신 메타', 'icon', 'https://openmeteo.s3.amazonaws.com/data/dwd_icon/static/meta.json'],
       ['open_meteo_ecmwf_single_runs', 'EC 실행 고정 예보', 'ecmwf', 'https://single-runs-api.open-meteo.com/v1/forecast?models=ecmwf_ifs025'],
       ['open_meteo_icon_single_runs', 'ICON 실행 고정 예보', 'icon', 'https://single-runs-api.open-meteo.com/v1/forecast?models=icon_global'],
       ['open_meteo_icon_pressure_window', 'ICON 압력면 시간창', 'icon', 'https://api.open-meteo.com/v1/forecast?models=icon_global'],

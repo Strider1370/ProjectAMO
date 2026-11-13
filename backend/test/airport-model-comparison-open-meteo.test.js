@@ -24,7 +24,10 @@ const window = {
 
 test('first collection and a new provider run do not require an existing model pointer',async t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'amo-first-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}))
-  const request=async({operation})=>new Response(JSON.stringify(operation.endsWith('_meta')?{last_run_initialisation_time:1788652800,last_run_availability_time:1788678540}:read('open-meteo-ecmwf-rksi-f000-f018.json')))
+  const request=async({operation,url})=>{
+    if (operation.endsWith('_meta')) assert.equal(String(url), 'https://openmeteo.s3.amazonaws.com/data/ecmwf_ifs025/static/meta.json')
+    return new Response(JSON.stringify(operation.endsWith('_meta')?{last_run_initialisation_time:1788652800,last_run_availability_time:1788678540}:read('open-meteo-ecmwf-rksi-f000-f018.json')))
+  }
   const result=await collectOpenMeteo({model:'ecmwf',selectedRuns:{RKSI:[{model:'icon',run_at:'2026-09-06T06:00:00Z'}]},root,airports:[airport],nowMs:Date.parse('2026-09-06T08:00:00Z'),request})
   assert.deepEqual(result.publishedAirports,['RKSI']);assert.equal(result.windows.RKSI.forecast_hours[0],6)
 })
@@ -139,7 +142,10 @@ test('publishes a valid ICON airport when a sibling supplement has an invalid un
   const singles = [makePayload(126.75), makePayload(126.5)]
   const generals = [makePayload(126.75, true), makePayload(126.5)]
   const meta = { last_run_initialisation_time: 1788652800, last_run_availability_time: 1788678540 }
-  const request = async ({ operation }) => new Response(JSON.stringify(operation.endsWith('_meta') ? meta : operation.endsWith('pressure_window') ? generals : singles))
+  const request = async ({ operation, url }) => {
+    if (operation.endsWith('_meta')) assert.equal(String(url), 'https://openmeteo.s3.amazonaws.com/data/dwd_icon/static/meta.json')
+    return new Response(JSON.stringify(operation.endsWith('_meta') ? meta : operation.endsWith('pressure_window') ? generals : singles))
+  }
   const runs = Object.fromEntries(['RKSI', 'RKSS'].map(icao => [icao, [{ model: 'icon', run_at }]]))
   const report = await collectOpenMeteo({ model: 'icon', selectedRuns: runs, root, airports: [airport, rkss], nowMs: Date.parse('2026-09-06T08:00:00Z'), request })
   assert.deepEqual(report.publishedAirports, ['RKSI'])
