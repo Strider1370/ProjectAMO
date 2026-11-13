@@ -565,7 +565,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     })
     for (const [field, value] of Object.entries(changes.airports)) updateRouteField(field, value)
     if ('sid' in changes) updateEditorContext({ entryFix: changes.sid?.enrouteFix ?? '' }, { procedures: { sid: changes.sid } })
-    if ('star' in changes) updateEditorContext({ exitFix: changes.star?.startFix ?? '' }, { procedures: changes.star ? { star: changes.star } : { star: null, iapKey: null } })
+    if ('star' in changes) updateEditorContext({ exitFix: changes.star?.startFix ?? '' }, { procedures: { star: changes.star, iapKey: buildIapCandidates(changes.star, iapData, selectedIapKey).selectedIapKey } })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeTokens, routeForm.departureAirport, routeForm.arrivalAirport, sidOptions, starOptions, selectedSid?.id, selectedStar?.id])
 
@@ -652,12 +652,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 절차만 바뀌어도 적용된 경로·거리·브리핑을 새 절차 기준으로 갱신한다.
   useEffect(() => {
     if (!routeResult || !selectedAppliedDesign || !enrouteTokenText || errorCount(routeTokens) > 0) return
+    // STAR와 IAP 상태가 따로 갱신되는 동안 중간 상태로 경로를 확정하지 않는다.
+    if (selectedStar && iapData && buildIapCandidates(selectedStar, iapData, selectedIapKey).selectedIapKey !== selectedIapKey) return
     const applied = selectedAppliedDesign.procedures ?? {}
     if ((applied.sid?.id ?? null) === (selectedSid?.id ?? null)
       && (applied.star?.id ?? null) === (selectedStar?.id ?? null)
       && (applied.iapKey ?? null) === (selectedIapKey ?? null)) return
     applyRouteDraftRef.current?.(enrouteTokenText)
-  }, [selectedSid?.id, selectedStar?.id, selectedIapKey, selectedAppliedDesign, routeResult, enrouteTokenText, routeTokens])
+  }, [selectedSid?.id, selectedStar?.id, selectedIapKey, selectedAppliedDesign, routeResult, enrouteTokenText, routeTokens, iapData])
 
   const seededRef = useRef(false)
   useEffect(() => {
@@ -957,7 +959,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   function handleStarChange(proc) {
     setProcedureToken('arrival', proc)
-    updateEditorContext(proc ? { exitFix: proc.startFix ?? '' } : {}, { procedures: { star: proc } })
+    updateEditorContext(proc ? { exitFix: proc.startFix ?? '' } : {}, { procedures: { star: proc, iapKey: buildIapCandidates(proc, iapData, selectedIapKey).selectedIapKey } })
   }
 
   function handleIapChange(key) {

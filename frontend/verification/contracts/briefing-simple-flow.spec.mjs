@@ -51,6 +51,7 @@ test.describe('briefing-simple-flow', () => {
           await option.click()
         }).toPass({ timeout: 15000 })
       }
+      await expect(page.getByLabel('자동 연결된 대표 접근절차')).toContainText('RWY')
       await expect.poll(() => page.evaluate(() => {
         const source = window.__map?.getSource('procedure-preview')?.serialize?.()?.data
         return (source?.features || []).filter(f => f.geometry.type === 'LineString' && ['sid-line', 'star-line'].includes(f.properties.role)).map(f => f.properties.role).sort()
@@ -66,8 +67,8 @@ test.describe('briefing-simple-flow', () => {
           return start >= 0 && line[start + i]?.[0] === point[0] && line[start + i]?.[1] === point[1]
         })
         const pending = map?.getSource('briefing-route-pending')?.serialize?.()?.data?.features || []
-        return { sid: contained(sequence('sid-line')), star: contained(sequence('star-line')), pending: pending.filter(f => f.geometry.type === 'LineString').length, sidColor: map?.getPaintProperty('procedure-sid-line', 'line-color'), starColor: map?.getPaintProperty('procedure-star-line', 'line-color') }
-      })).toEqual({ sid: true, star: true, pending: 0, sidColor: '#2563eb', starColor: '#7c3aed' })
+        return { sid: contained(sequence('sid-line')), star: contained(sequence('star-line')), iap: contained(sequence('iap-line')), pending: pending.filter(f => f.geometry.type === 'LineString').length, sidColor: map?.getPaintProperty('procedure-sid-line', 'line-color'), starColor: map?.getPaintProperty('procedure-star-line', 'line-color') }
+      })).toEqual({ sid: true, star: true, iap: true, pending: 0, sidColor: '#2563eb', starColor: '#7c3aed' })
       // 선택된 절차가 적용 경로에 반영되기 전에는 다음 단계로 진행할 수 없다.
       await expect(page.getByRole('button', { name: '다음', exact: true })).toBeEnabled({ timeout: 20000 })
     } finally { hold = false; release() }
