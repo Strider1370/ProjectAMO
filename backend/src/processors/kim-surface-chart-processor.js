@@ -212,6 +212,8 @@ export async function process({
   let lastError = null
   // 최신 후보부터 시도한다. 이미 발행한 런에 닿으면 그보다 새 런은 아직 공개 전이므로 기다린다.
   for (const candidate of candidates) {
+    // 00 UTC는 확대 회차 일기도를 기다린다. 일반 키로 별도 수집하지 않는다.
+    if (String(candidate.tmfc).endsWith('00')) continue
     if (published.has(candidate.tmfc)) {
       return { type: TYPE, skipped: true, reason: 'kim_surface_chart_latest_run_published', latestRun: candidate.tmfc }
     }

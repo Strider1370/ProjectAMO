@@ -93,7 +93,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
       tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
-      ...kimBulkCredentialOptions(config, Date.now(), { required: kimDomain(domain).bulkOnly }),
+      ...kimBulkCredentialOptions(config, Date.now(), { required: kimDomain(domain).bulkOnly || String(tmfc).endsWith('00') }),
     })
     if (!credential) throw new Error('gktg_run_credential_unavailable')
     text = await fetchGrid({ data: level ? 'P' : 'U', name, level, tmfc, hf: requestedHf, sub: kimDomainRequest(config, domain).sub, credential, signal })

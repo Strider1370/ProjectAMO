@@ -60,7 +60,7 @@ function safeCollectorLog(type, outcome, fields = {}) {
 }
 
 // 확대 회차(00·06 UTC)가 도는 동안 한반도 기본 수집과 GKTG·권계면 재확인은 쉰다. 한반도가 그 회차 이상을 이미 다
-// 갖췄을 때만이다(00 UTC 한반도는 따로 받으므로 14:12 수집이 덜 끝났으면 15:12·16:12 재시도가 필요하다).
+// 갖췄을 때만이다. 00 UTC와 06 UTC는 확대 영역에서 잘라 게시한다.
 // 쉬지 않으면 확대 계산과 같은 순번을 잡아 계산을 밀고, 2026-10-13 21:12 KST에는 옛 00 UTC를 다시 받아 게시했다.
 // 확대 수집·계산·게시를 마친 뒤 부르는 한반도 후속 작업(kim_korea_from_expanded)은 그대로 돈다.
 const KOREA_KIM_TYPES = ['kim_surface_wind', 'kim_gktg', 'kim_tropopause']

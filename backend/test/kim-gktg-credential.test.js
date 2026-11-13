@@ -16,9 +16,14 @@ const size = grid.nx * grid.ny
 function setup(t, tmfc, keys, hf = 12) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-gktg-key-'))
   const saved = Object.fromEntries(Object.keys(keys).map(key => [key, config.api[key]]))
+  const previousBulk = { key: config.api.kma_bulk_auth_key, ...config.kim_bulk }
+  config.api.kma_bulk_auth_key = 'bulk-key'
+  Object.assign(config.kim_bulk, { valid_until_kst: '2099-12-31', window_start_hour_kst: 0, window_end_hour_kst: 24 })
   Object.assign(config.api, keys)
   t.after(() => {
     Object.assign(config.api, saved)
+    config.api.kma_bulk_auth_key = previousBulk.key
+    Object.assign(config.kim_bulk, previousBulk)
     fs.rmSync(root, { recursive: true, force: true })
   })
   for (const [k, level] of pressures.entries()) {
@@ -38,7 +43,7 @@ function supplementText({ tmfc, hf, name, level }) {
     + Array(grid.ny).fill(Array(grid.nx).fill(value).join(' ')).join('\n') + '\n'
 }
 
-for (const [hour, expectedKey] of [['00', 'kim-key'], ['06', 'kim-key'], ['12', 'kim-key'], ['18', 'kim-key']]) {
+for (const [hour, expectedKey] of [['00', 'bulk-key'], ['06', 'kim-key'], ['12', 'kim-key'], ['18', 'kim-key']]) {
   test(`GKTG ${hour}Z supplements use the base run key despite a +12 hour forecast, and reuse cached inputs`, async t => {
     const tmfc = `20990101${hour}`
     const root = setup(t, tmfc, { kim_nwp_auth_key: 'kim-key', auth_key: 'aviation-key', radar_satellite_auth_key: hour === '12' ? 'radar-key' : '' })
@@ -60,7 +65,7 @@ for (const [hour, expectedKey] of [['00', 'kim-key'], ['06', 'kim-key'], ['12', 
 }
 
 test('GKTG missing run keys and budget blocks preserve the last complete run without switching keys', async t => {
-  const tmfc = '2099010100'
+  const tmfc = '2099010118'
   const root = setup(t, tmfc, { kim_nwp_auth_key: '', auth_key: 'aviation-key', radar_satellite_auth_key: 'radar-key' })
   const previous = seedGktg(root, { tmfc: '2098123112' })
   let calls = 0

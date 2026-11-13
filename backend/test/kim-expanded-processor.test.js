@@ -39,9 +39,29 @@ test('the Korean collector leaves 06 UTC to the expanded crop until 21:30 KST, a
   const root = temporary(t)
   assert.equal(koreaSixFromExpanded({ root, tmfc: '2026100906', now: KST('2026-10-09', '20:12') }), true)
   assert.equal(koreaSixFromExpanded({ root, tmfc: '2026100906', now: KST('2026-10-09', '21:31') }), false)
-  assert.equal(koreaSixFromExpanded({ root, tmfc: '2026100900', now: KST('2026-10-09', '20:12') }), false)
+  assert.equal(koreaSixFromExpanded({ root, tmfc: '2026100900', now: KST('2026-10-09', '20:12') }), true)
   config.kim_expanded.enabled = false
+  assert.equal(koreaSixFromExpanded({ root, tmfc: '2026100900', now: KST('2026-10-09', '23:59') }), true)
   assert.equal(koreaSixFromExpanded({ root, tmfc: '2026100906', now: KST('2026-10-09', '20:12') }), false)
+})
+
+test('00 UTC expanded downloads publish the Korean base and GKTG without a second run', async t => {
+  const root = temporary(t)
+  const koreaHours = config.kim_nwp.forecast_hours
+  const results = new Map(koreaHours.map(hf => [hf, { hf }]))
+  let crops = 0, gktgCrops = 0
+  const result = await processExpandedCycle({ cycle: '00', root, now: () => KST('2026-10-09', '16:00'), diskFree: () => 1e12,
+    cropKorea: () => { crops++; return { saved: true } },
+    cropKoreaGktg: async () => { gktgCrops++; return { revision: 'r', entries: [] } },
+    collect: async ({ onHourDownloaded, onGktgComputed, hours }) => {
+      await onHourDownloaded({ downloaded: koreaHours })
+      await onGktgComputed({ results })
+      return { published: true, publishedHours: hours.length, planned: hours.length }
+    },
+  })
+  assert.equal(result.collection.outcome, 'complete')
+  assert.equal(crops, 1)
+  assert.equal(gktgCrops, 1)
 })
 
 // 확대 영역 격자(1/12°)에 칸마다 고유 값을 두고, 한반도로 잘랐을 때 같은 경위도 칸 값이 오는지 본다.

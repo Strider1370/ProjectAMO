@@ -450,7 +450,7 @@ test('a complete newer run stops the collector from fetching an older candidate'
     writeKimNwpIndex(root, buildKimNwpIndex({ model: 'KIMG/NE57', tmfc, entries: indexEntries(grids) }))
     writeKimNwpLatest(root, { type: 'kim_nwp_latest', model: 'KIMG/NE57', latestRun: tmfc, latestRunId: `KIMG_NE57_${tmfc}` })
 
-    const result = await processKimNwp({ candidates: [{ tmfc: '2026101300', hf: 0 }] })
+    const result = await processKimNwp({ candidates: [{ tmfc: '2026101218', hf: 0 }] })
     assert.equal(result.reason, 'kim_nwp_newer_run_complete')
     assert.equal(result.tmfc, tmfc)
     assert.equal(requests, 0)
@@ -1000,8 +1000,14 @@ test('the Korea collector asks KMA for the last forecast hour first and leaves a
   globalThis.fetch = async () => { throw new Error('no network in tests') }
   t.after(async () => { config.storage.base_path = saved.base; config.api.kim_nwp_auth_key = saved.key; globalThis.fetch = saved.fetch; await rm(root, { recursive: true, force: true }) })
   const checks = []
-  await assert.rejects(processKimSurfaceWind({ candidates: [{ tmfc: '2026101700', hf: 0 }], checkUploaded: async (args) => { checks.push(args); return false } }),
+  await assert.rejects(processKimSurfaceWind({ candidates: [{ tmfc: '2026101618', hf: 0 }], checkUploaded: async (args) => { checks.push(args); return false } }),
     (error) => error.code === 'kim_nwp_not_uploaded')
-  assert.deepEqual(checks.map(({ tmfc, hf, credential }) => ({ tmfc, hf, credential })), [{ tmfc: '2026101700', hf: 12, credential: 'kim-key' }])
+  assert.deepEqual(checks.map(({ tmfc, hf, credential }) => ({ tmfc, hf, credential })), [{ tmfc: '2026101618', hf: 12, credential: 'kim-key' }])
   assert.equal(readKimNwpLatest(root), null)
+})
+
+test('00 UTC Korean base waits for the expanded crop without checking or downloading from the general key', async () => {
+  const result = await processKimSurfaceWind({ candidates: [{ tmfc: '2026101700', hf: 0 }], checkUploaded: () => assert.fail('00 UTC must not be requested') })
+  assert.equal(result.reason, 'kim_00_waiting_for_expanded')
+  assert.equal(result.skipped, true)
 })

@@ -31,8 +31,14 @@ test('default chart requests use the KIM credential rather than the radar creden
   config.api.radar_satellite_auth_key = 'radar-key'
   t.after(() => Object.assign(config.api, { kim_nwp_auth_key: previous.kim, radar_satellite_auth_key: previous.radar }))
   const { calls, fetchGrid } = fakeFetch()
-  await processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid, root: tempRoot(), settings: SETTINGS })
+  await processSurfaceChart({ candidates: candidates('2026092118'), fetchGrid, root: tempRoot(), settings: SETTINGS })
   assert.ok(calls.length > 0 && calls.every((call) => call.credential === KEY))
+})
+
+test('the 00 UTC chart is not downloaded with the regular key while awaiting the expanded run', async () => {
+  const { calls, fetchGrid } = fakeFetch()
+  await processSurfaceChart({ candidates: candidates('2026092200', '2026092118'), fetchGrid, root: tempRoot(), settings: SETTINGS, credential: KEY })
+  assert.ok(calls.length > 0 && calls.every((call) => call.tmfc === '2026092118'))
 })
 
 function tempRoot() {
@@ -73,30 +79,30 @@ function fakeFetch({ unavailable = new Set(), override = {} } = {}) {
 const candidates = (...tmfcs) => tmfcs.map((tmfc) => ({ tmfc, hf: 0 }))
 
 test('each run needs four variables at four forecast hours', () => {
-  const requests = buildSurfaceChartRequests('2026092200', [3, 6, 9, 12])
+  const requests = buildSurfaceChartRequests('2026092118', [3, 6, 9, 12])
   assert.equal(requests.length, 16)
   assert.deepEqual([...new Set(requests.map((request) => request.name))], ['psl', 'prec_acc', 'u10m', 'v10m'])
 })
 
 test('a gap in forecast hours adds the accumulated precip needed for the 3 hour amount', () => {
-  const requests = buildSurfaceChartRequests('2026092200', [6])
+  const requests = buildSurfaceChartRequests('2026092118', [6])
   assert.deepEqual(requests.filter((request) => request.name === 'prec_acc').map((request) => request.hf).sort(), [3, 6])
 })
 
 test('publishes a complete run with the chart operation, the chart area and the KIM key', async () => {
   const root = tempRoot()
   const { calls, fetchGrid } = fakeFetch()
-  const result = await processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid, root, settings: SETTINGS, credential: KEY })
+  const result = await processSurfaceChart({ candidates: candidates('2026092118'), fetchGrid, root, settings: SETTINGS, credential: KEY })
   assert.equal(result.saved, true)
   assert.equal(calls.length, 16)
   assert.ok(calls.every((call) => call.operation === 'kim_grid_chart' && call.sub === SETTINGS.sub && call.credential === KEY && call.map === 'S'))
 
   const latest = readSurfaceChartLatest(root)
-  assert.equal(latest.latestRunId, 'KIMG_NE57_2026092200')
+  assert.equal(latest.latestRunId, 'KIMG_NE57_2026092118')
   const [run] = latest.runs
   assert.deepEqual(run.frames.map((frame) => frame.hf), [3, 6, 9, 12])
-  assert.equal(run.frames[0].validTimeMs, Date.UTC(2026, 8, 22, 3))
-  assert.equal(run.frames[0].precipStartMs, Date.UTC(2026, 8, 22, 0))
+  assert.equal(run.frames[0].validTimeMs, Date.UTC(2026, 8, 21, 21))
+  assert.equal(run.frames[0].precipStartMs, Date.UTC(2026, 8, 21, 18))
   assert.ok(Number.isFinite(run.revision), 'each publication carries a cache-busting revision')
   for (const frame of run.frames) {
     for (const file of Object.values(latest.files)) assert.ok(fs.existsSync(path.join(root, frame.path, file)), `${frame.path}/${file}`)
@@ -113,9 +119,9 @@ test('publishes a complete run with the chart operation, the chart area and the 
 
 test('skips when the newest available run is already published', async () => {
   const root = tempRoot()
-  await processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid: fakeFetch().fetchGrid, root, settings: SETTINGS, credential: KEY })
+  await processSurfaceChart({ candidates: candidates('2026092118'), fetchGrid: fakeFetch().fetchGrid, root, settings: SETTINGS, credential: KEY })
   const { calls, fetchGrid } = fakeFetch({ unavailable: new Set(['2026092206']) })
-  const result = await processSurfaceChart({ candidates: candidates('2026092206', '2026092200'), fetchGrid, root, settings: SETTINGS, credential: KEY })
+  const result = await processSurfaceChart({ candidates: candidates('2026092206', '2026092118'), fetchGrid, root, settings: SETTINGS, credential: KEY })
   assert.equal(result.skipped, true)
   assert.equal(calls.length, 1)
 })
@@ -123,30 +129,30 @@ test('skips when the newest available run is already published', async () => {
 test('falls back to the previous run when the newest one is not released yet', async () => {
   const root = tempRoot()
   const { fetchGrid } = fakeFetch({ unavailable: new Set(['2026092206']) })
-  const result = await processSurfaceChart({ candidates: candidates('2026092206', '2026092200'), fetchGrid, root, settings: SETTINGS, credential: KEY })
-  assert.equal(result.latestRun, '2026092200')
+  const result = await processSurfaceChart({ candidates: candidates('2026092206', '2026092118'), fetchGrid, root, settings: SETTINGS, credential: KEY })
+  assert.equal(result.latestRun, '2026092118')
 })
 
 test('an invalid grid keeps the last good run', async () => {
   const root = tempRoot()
-  await processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid: fakeFetch().fetchGrid, root, settings: SETTINGS, credential: KEY })
+  await processSurfaceChart({ candidates: candidates('2026092118'), fetchGrid: fakeFetch().fetchGrid, root, settings: SETTINGS, credential: KEY })
   const before = readSurfaceChartLatest(root)
   const { fetchGrid } = fakeFetch({ override: { psl: gridText(() => 50_000) } })
   await assert.rejects(() => processSurfaceChart({ candidates: candidates('2026092206'), fetchGrid, root, settings: SETTINGS, credential: KEY }), /psl_range/)
   assert.deepEqual(readSurfaceChartLatest(root), before)
-  assert.deepEqual(fs.readdirSync(path.join(root, 'kim_surface_chart', 'runs')), ['KIMG_NE57_2026092200'])
+  assert.deepEqual(fs.readdirSync(path.join(root, 'kim_surface_chart', 'runs')), ['KIMG_NE57_2026092118'])
 })
 
 test('keeps only the newest two runs', async () => {
   const root = tempRoot()
-  for (const tmfc of ['2026092112', '2026092118', '2026092200']) {
+  for (const tmfc of ['2026092106', '2026092112', '2026092118']) {
     await processSurfaceChart({ candidates: candidates(tmfc), fetchGrid: fakeFetch().fetchGrid, root, settings: SETTINGS, credential: KEY })
   }
   const latest = readSurfaceChartLatest(root)
-  assert.deepEqual(latest.runs.map((run) => run.tmfc), ['2026092200', '2026092118'])
-  assert.deepEqual(fs.readdirSync(path.join(root, 'kim_surface_chart', 'runs')).sort(), ['KIMG_NE57_2026092118', 'KIMG_NE57_2026092200'])
+  assert.deepEqual(latest.runs.map((run) => run.tmfc), ['2026092118', '2026092112'])
+  assert.deepEqual(fs.readdirSync(path.join(root, 'kim_surface_chart', 'runs')).sort(), ['KIMG_NE57_2026092112', 'KIMG_NE57_2026092118'])
 })
 
 test('refuses to run without the KIM key', async () => {
-  await assert.rejects(() => processSurfaceChart({ candidates: candidates('2026092200'), fetchGrid: fakeFetch().fetchGrid, root: tempRoot(), settings: SETTINGS, credential: '' }), /credential_missing/)
+  await assert.rejects(() => processSurfaceChart({ candidates: candidates('2026092118'), fetchGrid: fakeFetch().fetchGrid, root: tempRoot(), settings: SETTINGS, credential: '' }), /credential_missing/)
 })

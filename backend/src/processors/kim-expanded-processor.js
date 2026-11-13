@@ -98,8 +98,9 @@ export function markExpandedDisabled({ root = config.storage.base_path, reason, 
   fs.writeFileSync(disabledFile(root), `${JSON.stringify({ dateKst: kstDate(now), reason, at: new Date(now).toISOString() })}\n`)
 }
 
-// 한반도 06 UTC를 확대 영역에서 잘라 쓰는 중이면 true: 한반도 수집기는 21:30 KST까지 그 회차를 일반 키로 받지 않는다.
+// 00 UTC는 확대 회차만 사용한다. 06 UTC는 기존 21:30 일반 키 대체 정책을 유지한다.
 export function koreaSixFromExpanded({ tmfc, root = config.storage.base_path, now = Date.now() }) {
+  if (String(tmfc).endsWith('00')) return true
   if (String(tmfc).slice(-2) !== '06') return false
   if (!expandedAvailability({ root, now }).available) return false
   return now < kstCutoffMs(tmfc, KOREA_FALLBACK_KST)
@@ -182,7 +183,7 @@ export async function processExpandedCycle({
   let koreaGktgFallbackNeeded = false
   // 한반도 회차를 잘라 게시했고 그 시각들의 GKTG 계산이 모두 끝났으면 한반도 GKTG를 잘라 게시한다(한 번만).
   const tryKoreaGktg = async () => {
-    if (cycle !== '06' || !koreaGktgEnabled || !korea?.saved || koreaGktg || !gktgResults || !koreaHours.every(hf => gktgResults.has(hf))) return
+    if (!koreaGktgEnabled || !korea?.saved || koreaGktg || !gktgResults || !koreaHours.every(hf => gktgResults.has(hf))) return
     koreaGktg = { pending: true }
     try {
       const published = await cropKoreaGktg({ root, tmfc, hours: koreaHours, hourResults: koreaHours.map(hf => gktgResults.get(hf)) })
@@ -212,7 +213,7 @@ export async function processExpandedCycle({
         return monitor.stopReason()
       },
       onHourDownloaded: async ({ downloaded }) => {
-        if (cycle !== '06' || korea || !koreaHours.every(hf => downloaded.includes(hf))) return
+        if (korea || !koreaHours.every(hf => downloaded.includes(hf))) return
         korea = cropKorea({ root, tmfc, hours: koreaHours })
         appendKimRunEvent(runDir, { type: 'expanded_korea_crop', ...korea })
         if (korea?.saved) {
@@ -232,7 +233,7 @@ export async function processExpandedCycle({
   }
   result = { ...result, memory }
   // 회차가 끝나도 한반도 GKTG를 못 잘랐으면(그 시각 계산 실패·중단 등) 예전처럼 한반도에서 계산한다.
-  if (cycle === '06' && koreaGktgEnabled && korea?.saved && !koreaGktg) {
+  if (koreaGktgEnabled && korea?.saved && !koreaGktg) {
     appendKimRunEvent(runDir, { type: 'expanded_korea_gktg_missing' })
     koreaGktgFallbackNeeded = true
   }

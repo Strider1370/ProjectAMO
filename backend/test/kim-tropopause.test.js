@@ -13,7 +13,7 @@ import { resolveApiOperation } from '../src/api-operation-registry.js'
 const temporary = t => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-trop-')); t.after(() => fs.rmSync(root, { recursive: true, force: true })); return root }
 const pressures = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
 const GRID = { nx: 3, ny: 3, lonMin: 124, lonMax: 130, latMin: 33, latMax: 40, dx: 3, dy: 3.5 }
-const TMFC = '2099010100'
+const TMFC = '2099010118'
 // ISA-like temperature (K) and height (m) for a pressure (hPa).
 const isa = p => { const h = p >= 226.32 ? 44330.8 * (1 - (p / 1013.25) ** 0.190263) : 11000 + 6341.6 * Math.log(226.32 / p); return { h, t: h <= 11000 ? 288.15 - 0.0065 * h : 216.65 } }
 

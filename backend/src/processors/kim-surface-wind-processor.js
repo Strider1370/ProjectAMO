@@ -687,10 +687,15 @@ export async function process({
   checkUploaded = kimHourUploaded,
 } = {}) {
   let lastError = null
+  let waitingForExpanded00 = false
 
   for (const candidate of candidates) {
-    // 06 UTC 한반도 회차는 확대 영역에서 잘라 게시한다. 21:30 KST까지 안 되면(또는 확대 수집을 쓸 수 없으면) 여기서 일반 키로 받는다.
-    if (domain === KIM_DEFAULT_DOMAIN && koreaSixFromExpanded({ tmfc: candidate.tmfc })) continue
+    // 00 UTC는 확대 회차에서만 게시한다. 확대가 실패해도 일반 키로 대체하지 않는다.
+    // 06 UTC는 확대 회차를 우선하고 필요하면 기존 일반 키 대체를 유지한다.
+    if (domain === KIM_DEFAULT_DOMAIN && koreaSixFromExpanded({ tmfc: candidate.tmfc })) {
+      if (String(candidate.tmfc).endsWith('00')) waitingForExpanded00 = true
+      continue
+    }
     const credential = selectKimRunCredential({
       tmfc: candidate.tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
@@ -875,6 +880,7 @@ export async function process({
     return { ...store.save(TYPE, field), comparison }
   }
 
+  if (!lastError && waitingForExpanded00) return { type: TYPE, skipped: true, reason: 'kim_00_waiting_for_expanded' }
   throw lastError || new Error('KIM surface wind collection failed')
 }
 
