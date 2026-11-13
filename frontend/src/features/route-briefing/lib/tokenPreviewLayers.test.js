@@ -43,6 +43,14 @@ test('airways and DCT carry no coordinate, so they add no point', () => {
   assert.deepEqual(geometry.points.map((point) => point.text), ['RKSI', 'ANDOL'])
 })
 
+test('selected procedures remove the direct airport legs from the uncalculated token preview', () => {
+  const tokens = classifyTokens(['RKSI', 'ANDOL', 'RKPK'], lookups)
+  const sidOnly = tokenGeometry(tokens, { sid: { id: 'sid' } })
+  assert.deepEqual(sidOnly.points.map(point => point.text), ['RKSI', 'ANDOL', 'RKPK'])
+  assert.deepEqual(sidOnly.line, [[133, 37.666], [128.9382, 35.1795]])
+  assert.deepEqual(tokenGeometry(tokens, { sid: {}, star: {} }).line, [])
+})
+
 test('a typo contributes nothing to the map', () => {
   const geometry = tokenGeometry(classifyTokens(['RKSI', 'GONXA'], lookups))
   assert.equal(geometry.points.length, 1)

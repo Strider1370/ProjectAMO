@@ -510,7 +510,7 @@ const MapView = forwardRef(function MapView({
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
-  // 지도형 브리핑: 폭 1024 이상(아이패드 가로 포함)에서 기본. "문서형 보기"를 고르면 기억해 두고 기존 BriefingView를 연다.
+  // 지도형 브리핑: 폭 1024 이상에서 새 브리핑마다 기본. 열린 뒤에는 문서형으로 전환할 수 있다.
   const wideForMapBriefing = useMinWidth(MAP_BRIEFING_MIN_WIDTH)
   const [briefingView, setBriefingViewState] = useState(readBriefingView)
   const setBriefingView = (view) => { writeBriefingView(view); setBriefingViewState(view) }
@@ -529,6 +529,13 @@ const MapView = forwardRef(function MapView({
     mapEditing: myMapControlRef.current?.mode === 'edit' }) }), [])
   const copilotResult = useCopilotResult({ ownerId: authUser?.id, routeState: routeBriefing.state, activePanel,
     ready: isStyleReady, canOpen: () => myMapControlRef.current?.mode !== 'edit' })
+  const wasBriefingPresent = useRef(false)
+  useEffect(() => {
+    const present = Boolean(routeBriefing.state.briefing)
+    if (present && !wasBriefingPresent.current && !isMobile && wideForMapBriefing
+      && routeBriefing.state.briefingContext?.kind !== 'organization') setBriefingView('map')
+    wasBriefingPresent.current = present
+  }, [routeBriefing.state.briefing, routeBriefing.state.briefingContext?.kind, isMobile, wideForMapBriefing])
   // 기관 브리핑(고정 자료)과 기상이 결과 화면은 지금처럼 문서형으로 둔다.
   const mapBriefingActive = Boolean(enableRouteBriefing && !isMobile && wideForMapBriefing && briefingView === 'map'
     && routeBriefing.state.briefing && !copilotResult.bundle && routeBriefing.state.briefingContext?.kind !== 'organization')

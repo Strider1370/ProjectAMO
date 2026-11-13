@@ -86,14 +86,17 @@ export function classifyToken(text, lookups = {}) {
 // 이 선은 계산된 경로가 아니다. 항공로(Y711 등)는 실제로 꺾여 가는데 여기서는 점과 점을
 // 직선으로 잇는다. 그래서 화면에서 실제 경로와 반드시 다르게 보여야 한다(점선 등) —
 // 곧게 그은 선을 실제 항로로 읽으면 위험하다.
-export function tokenGeometry(tokens = []) {
+export function tokenGeometry(tokens = [], { sid = null, star = null } = {}) {
   const points = tokens
     .filter((token) => token?.coordinate)
     .map((token) => ({ text: token.text, kind: token.kind, ...token.coordinate }))
+  let linePoints = points
+  if (sid && linePoints[0]?.kind === TOKEN_KINDS.AIRPORT) linePoints = linePoints.slice(1)
+  if (star && linePoints.at(-1)?.kind === TOKEN_KINDS.AIRPORT) linePoints = linePoints.slice(0, -1)
   return {
     points,
     // 선은 점이 둘 이상일 때만 뜻이 있다.
-    line: points.length > 1 ? points.map((point) => [point.lon, point.lat]) : [],
+    line: linePoints.length > 1 ? linePoints.map((point) => [point.lon, point.lat]) : [],
   }
 }
 

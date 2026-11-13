@@ -4,6 +4,74 @@ import { installRouteBriefingFixtures } from '../route-fixture.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 test.describe('briefing-simple-flow', () => {
+  test('manual route entry keeps focus during recalculation and applies selected procedures', async ({ page }, testInfo) => {
+    await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await installRouteBriefingFixtures(page)
+    let release
+    const pending = new Promise(resolve => { release = resolve })
+    let hold = true
+    let exposureRequests = 0
+    await page.route('**/api/briefing/route-exposure', async route => {
+      exposureRequests += 1
+      if (hold) await pending
+      await route.fallback()
+    })
+    try {
+      await page.goto('/', { waitUntil: 'domcontentloaded' })
+      await page.getByRole('button', { name: testInfo.project.name === 'mobile' ? '브리핑' : '비행 전 브리핑', exact: true }).click()
+      for (const [label, code] of [['출발 공항', 'RKSS'], ['목적 공항', 'RKPC']]) {
+        await page.locator('.apf').filter({ hasText: label }).first().locator('.apf-row').click()
+        await page.locator('.apf-pop .apf-chip').filter({ hasText: code }).click()
+      }
+      await page.getByRole('button', { name: '다음', exact: true }).click()
+      const input = page.locator('.rtf-input')
+      await input.fill('SEL')
+      await input.press('Enter')
+      await expect(input).toBeFocused()
+      await expect(input).toBeEnabled()
+      await input.fill('GONAX')
+      await input.press('Enter')
+      await expect(input).toBeFocused()
+      await expect.poll(() => exposureRequests).toBeGreaterThan(0)
+      await input.fill('BEDES')
+      await input.press('Enter')
+      await expect(input).toBeFocused()
+      hold = false
+      release()
+      await expect(page.locator('.rtf-status-right')).toContainText('NM', { timeout: 20000 })
+      await expect(page.locator('.rtf-pill').filter({ hasText: 'BEDES' })).toHaveCount(1)
+      if (testInfo.project.name === 'mobile') return
+      await page.getByText('출발·도착 절차 설정', { exact: true }).click()
+      for (const index of [0, 1]) {
+        const box = page.locator('.rb-plan-details').getByRole('combobox').nth(index)
+        await expect(async () => {
+          await box.click()
+          const option = page.getByRole('option').nth(1)
+          if (!await option.isVisible()) { await page.keyboard.press('Escape'); throw new Error('waiting for procedures') }
+          await option.click()
+        }).toPass({ timeout: 15000 })
+      }
+      await expect.poll(() => page.evaluate(() => {
+        const source = window.__map?.getSource('procedure-preview')?.serialize?.()?.data
+        return (source?.features || []).filter(f => f.geometry.type === 'LineString' && ['sid-line', 'star-line'].includes(f.properties.role)).map(f => f.properties.role).sort()
+      })).toEqual(['sid-line', 'star-line'])
+      await expect.poll(() => page.evaluate(() => {
+        const map = window.__map
+        const proc = map?.getSource('procedure-preview')?.serialize?.()?.data?.features || []
+        const applied = map?.getSource('briefing-route-applied')?.serialize?.()?.data?.features || []
+        const line = applied.find(f => f.properties?.role === 'route-preview-line')?.geometry.coordinates || []
+        const sequence = role => proc.find(f => f.properties?.role === role)?.geometry.coordinates || []
+        const contained = coords => coords.length > 1 && coords.every((point, i) => {
+          const start = line.findIndex(p => p[0] === coords[0][0] && p[1] === coords[0][1])
+          return start >= 0 && line[start + i]?.[0] === point[0] && line[start + i]?.[1] === point[1]
+        })
+        const pending = map?.getSource('briefing-route-pending')?.serialize?.()?.data?.features || []
+        return { sid: contained(sequence('sid-line')), star: contained(sequence('star-line')), pending: pending.filter(f => f.geometry.type === 'LineString').length, sidColor: map?.getPaintProperty('procedure-sid-line', 'line-color'), starColor: map?.getPaintProperty('procedure-star-line', 'line-color') }
+      })).toEqual({ sid: true, star: true, pending: 0, sidColor: '#2563eb', starColor: '#7c3aed' })
+      // 선택된 절차가 적용 경로에 반영되기 전에는 다음 단계로 진행할 수 없다.
+      await expect(page.getByRole('button', { name: '다음', exact: true })).toBeEnabled({ timeout: 20000 })
+    } finally { hold = false; release() }
+  })
   test('briefing preparation animates while the request is pending and respects reduced motion', async ({ page }, testInfo) => {
     await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
     await installRouteBriefingFixtures(page)
@@ -70,7 +138,7 @@ test.describe('briefing-simple-flow', () => {
   })
 
   for (const rule of ['IFR', 'VFR']) test(`${rule}: select airports, edit route, and open briefing directly`, async ({ page }, testInfo) => {
-    await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version); localStorage.setItem('projectamo.briefingView', 'document') }, CURRENT_VERSION)
     await installRouteBriefingFixtures(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: testInfo.project.name === 'mobile' ? '브리핑' : '비행 전 브리핑', exact: true }).click()
@@ -114,6 +182,7 @@ test.describe('briefing-simple-flow', () => {
     page.on('request', r => { if (r.method() === 'POST' && r.url().includes('/api/route-briefing')) request = r.postDataJSON() })
     await page.getByRole('button', { name: '브리핑 보기', exact: true }).click()
     await expect.poll(() => request?.plannedCruiseAltitudeFt).toBe(9000)
+    if (testInfo.project.name !== 'mobile') await expect(page.locator('[data-map-briefing="true"]')).toBeVisible()
     await expect(page.getByRole('button', { name: '경로비교로' })).toHaveCount(0)
   })
 })

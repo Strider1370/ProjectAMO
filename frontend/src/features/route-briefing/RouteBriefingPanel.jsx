@@ -295,7 +295,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         placeholder={isIfr ? '예: RKSI BINIL A582 ANDOL RKPC' : '예: RKSI DCT ANDOL DCT RKPC'}
         tokens={routeTokens}
         onChange={setRouteTokenTexts}
-        disabled={routeLoading}
       />
       <div className="rtf-status">
         <span className="rtf-status-left">
@@ -603,7 +602,12 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setReturnStep(null)
     if (isMobile) setSheetDetent('full')
   }
-  const routeValid = Boolean(routeResult && !routeTokenErrors.length && !pendingRouteEdit && !pendingContextChange)
+  const appliedProceduresMatch = !isIfr || !appliedBase || (
+    (appliedBase.procedures?.sid?.id ?? null) === (selectedSid?.id ?? null)
+    && (appliedBase.procedures?.star?.id ?? null) === (selectedStar?.id ?? null)
+    && (appliedBase.procedures?.iapKey ?? null) === (selectedIapKey ?? null)
+  )
+  const routeValid = Boolean(routeResult && appliedProceduresMatch && !routeLoading && !routeTokenErrors.length && !pendingRouteEdit && !pendingContextChange)
   const altitudeValue = Number(altitudeDraftFt)
   const altitudeValid = altitudeDraftFt !== '' && Number.isFinite(altitudeValue) && altitudeValue >= 500 && altitudeValue <= 60000
   const timeValid = Number.isFinite(Date.parse(etd)) && Number.isFinite(Date.parse(etaIso)) && !etaBeforeEtd && Number(tasKt) >= 60 && Number(tasKt) <= 600

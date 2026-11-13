@@ -136,6 +136,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [navpointsById, setNavpointsById] = useState({})
   // 경로의 원본. 이 목록 외에 경로를 담는 곳은 없다.
   const [routeTokenTexts, setRouteTokenTexts] = useState([])
+  const setRouteTokenTextsFromInput = useCallback((next) => {
+    // 새 입력이 오면 이전 경로 계산 결과가 늦게 돌아와 현재 입력을 덮어쓰지 못하게 한다.
+    routeSearchRequestRef.current += 1
+    setRouteLoading(false)
+    setRouteTokenTexts(next)
+  }, [])
   const [tokenLookups, setTokenLookups] = useState({ airports: [], navpoints: {}, routes: {}, procedures: [], userWaypoints: [] })
   const [autoRecommendRequested, setAutoRecommendRequested] = useState(false)
   const [autoApplyPending, setAutoApplyPending] = useState(false) // 자동 생성 → 경로 적용까지 이어서
@@ -257,7 +263,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const appliedProcedures = selectedAppliedDesign?.procedures ?? { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey }
   const appliedIap = iapData?.iapRoutes?.[appliedProcedures.iapKey] ?? null
   const baselinePreview = useMemo(() => {
-    if (routeResult) return null
+    if (routeResult || selectedSid || selectedStar) return null
     const departure = airports.find((airport) => airport.icao === routeForm.departureAirport)
     const arrival = airports.find((airport) => airport.icao === routeForm.arrivalAirport)
     if (!Number.isFinite(departure?.lon) || !Number.isFinite(departure?.lat) || !Number.isFinite(arrival?.lon) || !Number.isFinite(arrival?.lat)) return null
@@ -269,7 +275,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         geometry: { type: 'LineString', coordinates: [[departure.lon, departure.lat], [arrival.lon, arrival.lat]] },
       }],
     }
-  }, [airports, routeDraftResult, routeForm.arrivalAirport, routeForm.departureAirport, routeResult])
+  }, [airports, routeDraftResult, routeForm.arrivalAirport, routeForm.departureAirport, routeResult, selectedSid, selectedStar])
   const appliedVfrWaypoints = useMemo(() => routeResult?.flightRule === 'VFR'
     ? buildVfrWaypointsFromRouteResult(routeResult, airports)
     : [], [airports, routeResult])
@@ -296,9 +302,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     hiddenRouteDesignIds,
     appliedVfrWaypoints,
     draftVfrWaypoints,
-    selectedSid: appliedProcedures.sid,
-    selectedStar: appliedProcedures.star,
-    selectedIap: appliedIap,
+    selectedSid: workflowStep === 'settings' ? selectedSid : appliedProcedures.sid,
+    selectedStar: workflowStep === 'settings' ? selectedStar : appliedProcedures.star,
+    selectedIap: workflowStep === 'settings' ? selectedIap : appliedIap,
     navpointsById,
     baselinePreview,
     // 공항 미확정 상태로 불러온 경로는 아직 routeResult가 없다. 이미 있는 "확정
@@ -307,7 +313,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // 그려지고 경유점 아이콘은 나오지 않는데, 공항 미확정 상태에서는 그게 맞다.
     pendingRouteResult: importedPreview
       ? { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: importedPreview }] } }
-      : routeDraftResult,
+      : routeDraftResult === routeResult ? null : routeDraftResult,
     pendingSid: selectedSid,
     pendingStar: selectedStar,
     pendingIap: selectedIap,
@@ -486,7 +492,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   )
   // 지금까지 확정된 토큰이 지도에서 어디인지. 공항 하나만 쳐도 점이 보이고, 둘 이상이면
   // 그 사이가 이어진다 — 목적지를 정하기 전에도 친 것이 화면에 있어야 한다.
-  const routeTokenGeometry = useMemo(() => tokenGeometry(routeTokens), [routeTokens])
+  const routeTokenGeometry = useMemo(() => tokenGeometry(routeTokens, { sid: selectedSid, star: selectedStar }), [routeTokens, selectedSid, selectedStar])
   // 우회안 초안처럼 이 목록과 별개인 글자를 같은 규칙으로 판정해야 하는 곳이 있다.
   // 판정 자료를 그쪽에 넘기지 않고 함수만 내보낸다 — 자료를 복사하면 두 곳이 어긋난다.
   const classifyRouteTexts = useCallback(
@@ -642,6 +648,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     lastAppliedTokenTextRef.current = enrouteTokenText
     applyRouteDraftRef.current?.(enrouteTokenText)
   }, [enrouteTokenText, routeTokens, routeForm.departureAirport, routeForm.arrivalAirport])
+
+  // 절차만 바뀌어도 적용된 경로·거리·브리핑을 새 절차 기준으로 갱신한다.
+  useEffect(() => {
+    if (!routeResult || !selectedAppliedDesign || !enrouteTokenText || errorCount(routeTokens) > 0) return
+    const applied = selectedAppliedDesign.procedures ?? {}
+    if ((applied.sid?.id ?? null) === (selectedSid?.id ?? null)
+      && (applied.star?.id ?? null) === (selectedStar?.id ?? null)
+      && (applied.iapKey ?? null) === (selectedIapKey ?? null)) return
+    applyRouteDraftRef.current?.(enrouteTokenText)
+  }, [selectedSid?.id, selectedStar?.id, selectedIapKey, selectedAppliedDesign, routeResult, enrouteTokenText, routeTokens])
 
   const seededRef = useRef(false)
   useEffect(() => {
@@ -937,18 +953,15 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   function handleSidChange(proc) {
     setProcedureToken('departure', proc)
     updateEditorContext(proc ? { entryFix: proc.enrouteFix ?? '' } : {}, { procedures: { sid: proc } })
-    if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleStarChange(proc) {
     setProcedureToken('arrival', proc)
     updateEditorContext(proc ? { exitFix: proc.startFix ?? '' } : {}, { procedures: { star: proc } })
-    if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleIapChange(key) {
     updateEditorContext({}, { procedures: { iapKey: key || null } })
-    if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleRouteReset() {
@@ -2918,7 +2931,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setEta,
       clearEtaOverride,
       setRouteDraftText: updateRouteDraftText,
-      setRouteTokenTexts,
+      setRouteTokenTexts: setRouteTokenTextsFromInput,
       applyRouteDraft,
       startAlternativeFrom,
       updateSelectedDesignDraftText,
