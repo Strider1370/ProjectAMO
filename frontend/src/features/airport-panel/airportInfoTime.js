@@ -1,4 +1,15 @@
 // The airport information bulletin gives its publication time as local KST text.
+// Labels belong to the bulletin's season, independent of the display timezone or today's date.
+export function bulletinSeasonLabels(tm) {
+  const match = typeof tm === 'string' && tm.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/)
+  const month = match ? Number(match[2]) : 0
+  if (month < 1 || month > 12) return { feelsLike: '예상 체감온도 (℃)', precipitation: '예상 강수량(mm)', precipitationSummary: '예상 강수량' }
+  const winter = month >= 11 || month <= 4
+  return winter
+    ? { feelsLike: '예상 최저체감온도 (℃)', precipitation: '예상 강수량(mm)/적설(cm)', precipitationSummary: '예상 강수량/적설' }
+    : { feelsLike: '예상 최고체감온도 (℃)', precipitation: '예상 강수량(mm)', precipitationSummary: '예상 강수량' }
+}
+
 export function fmtBulletinTime(tm, tz = 'KST') {
   if (!tm) return '—'
   const match = tm.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/)

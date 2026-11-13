@@ -117,6 +117,25 @@ test.describe('monitoring personal slideshow', () => {
     await expect(page.locator('.monitoring-mapbox-panel canvas').first()).toBeAttached()
   })
 
+  test('winter bulletin shows the original cold-season labels and values', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'slideshow is unavailable on the mobile layout (FR-014)')
+    await page.route('**/api/airport-info', route => route.fulfill({ json: { airports: { RKSI: {
+      icao: 'RKSI', tm: '2026-11-13 17:00:00.0', title: '인천공항 기상정보',
+      sel_val1: '(내일) 11 / 15', sel_val2: '(내일) 11', sel_val3: '(오늘~내일) 5~10 / -',
+    } } } }))
+    await openMonitoringState(page, 'ops')
+    await page.getByLabel('화면 제어').click()
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await page.getByRole('button', { name: '화면 전환', exact: true }).click()
+    await setSlides(page, ['지도', '기상정보'])
+    await page.getByLabel('전환 대상').selectOption('map-panel')
+    await startPreview(page)
+    const slide = page.locator('.monitoring-wxinfo-slide')
+    await expect(slide.getByText('예상 최저체감온도 (℃)')).toBeVisible()
+    await expect(slide.getByText('예상 강수량(mm)/적설(cm)')).toBeVisible()
+    await expect(slide.getByText('(오늘~내일) 5~10 / -')).toBeVisible()
+  })
+
   test('the bulletin is scaled to fit the panel instead of overflowing it', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'slideshow is unavailable on the mobile layout (FR-014)')
 

@@ -4,7 +4,7 @@
 // format only has to be maintained in one place.
 
 import './AirportPanel.css'
-import { fmtBulletinTime } from './airportInfoTime.js'
+import { bulletinSeasonLabels, fmtBulletinTime } from './airportInfoTime.js'
 
 // 원문이 "○ ... ○ ..."를 줄바꿈 없이 이어 붙여 보내는 경우가 있어, ○ 항목 단위로 줄을 분리하고
 // "○ (주제어)" 형식의 괄호 부분(항상 같은 형식)을 굵게 강조한다.
@@ -33,6 +33,7 @@ export default function AirportInfoDocument({ info, tz = 'KST' }) {
   const showSel3 = info.sel_val3 && info.sel_val3.trim()
   const hasWarn = info.warn && info.warn.trim() // ▶경보현황 섹션 표시용(원문 "○ 없음"도 표시)
   const hasForecast = info.forecast && info.forecast.trim()
+  const labels = bulletinSeasonLabels(info.tm)
 
   return (
     <>
@@ -59,8 +60,8 @@ export default function AirportInfoDocument({ info, tz = 'KST' }) {
             <tr>
               {/* 상류(sel_val1~3)는 값만 주고 라벨이 없다. 실제 순서: 기온 → 체감온도 → 강수량 */}
               <th>예상 최저/최고기온 (℃)</th>
-              <th>예상 최고체감온도 (℃)</th>
-              {showSel3 && <th>예상 강수량(mm)</th>}
+              <th>{labels.feelsLike}</th>
+              {showSel3 && <th>{labels.precipitation}</th>}
             </tr>
           </thead>
           <tbody>

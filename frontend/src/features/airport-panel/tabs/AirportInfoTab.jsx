@@ -1,5 +1,5 @@
 import AirportInfoDocument, { BulletText } from '../AirportInfoDocument.jsx'
-import { fmtBulletinTime } from '../airportInfoTime.js'
+import { bulletinSeasonLabels, fmtBulletinTime } from '../airportInfoTime.js'
 import { Spinner } from '../../../shared/ui/fluent.js'
 
 export default function AirportInfoTab({ info, loading = false, tz = 'KST' }) {
@@ -34,7 +34,7 @@ export default function AirportInfoTab({ info, loading = false, tz = 'KST' }) {
           </div>
           {hasForecast && <h3 className="ap-info-section-head">▶ 위험 기상예보</h3>}
           <BulletText text={peekText} className="ap-info-peek-outlook" />
-          {showSel3 && <p className="ap-info-peek-precip">예상 강수량 <strong>{info.sel_val3}</strong></p>}
+          {showSel3 && <p className="ap-info-peek-precip">{bulletinSeasonLabels(info.tm).precipitationSummary} <strong>{info.sel_val3}</strong></p>}
         </div>
       )}
 
