@@ -1,7 +1,8 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { advisorySymbolUrl } from '../../weather-overlays/lib/advisoryLayers.js'
-import { frameAdvisoryId, frameShortTag, frameTag, hazardChipStyle, hazardSwatchStyle, modelChip, pctOf, pickRibbonTarget, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
+import { frameAdvisoryId, frameShortTag, frameTag, hazardChipStyle, hazardSwatchStyle, modelChip, pctOf, pickRibbonTarget, ribbonTargetsAt, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
 
 // 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 연직단면도 범례와 같은 색으로 줄을 칠하고,
 // 예보관 발표 틀(이름표는 틀 안쪽 왼쪽)을 그 위에 덮어 그린다 — 겹친 곳은 배경색으로 모델 위험이 있음을 보인다. 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
@@ -11,6 +12,13 @@ import { frameAdvisoryId, frameShortTag, frameTag, hazardChipStyle, hazardSwatch
 // highlightAdvisoryId: 단면도에서 가리킨 SIGMET과 같은 발표의 틀을 강조한다.
 export default function HazardRibbon({ ribbon, profileRange = null, selectedId = null, onSelect, onHover, highlightAdvisoryId = null, hiddenRows = [], onToggleRow, trackInset = null }) {
   const hoverIdRef = useRef(null)
+  const [choice, setChoice] = useState(null)
+  useEffect(() => {
+    if (!choice) return undefined
+    const close = (event) => { if (event.key === 'Escape') setChoice(null) }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [choice])
   const total = ribbon?.totalDistanceNm || 0
   if (!ribbon || !(total > 0)) return <p className="mb-ribbon-empty">경로상 위험 자료가 없습니다.</p>
   // 걸리는 것이 없는 줄은 서버가 뺀다. 모두 빠지면 한 줄로 알린다.
@@ -49,6 +57,15 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
     onMouseLeave: () => hover(null),
     onClick: (event) => {
       if (event.detail === 0) return
+      const track = event.currentTarget
+      const rect = track.getBoundingClientRect()
+      if (!(rect.width > 0)) return
+      const choices = ribbonTargetsAt(row, ((event.clientX - rect.left) / rect.width) * total)
+      if (choices.length > 1) {
+        setChoice({ row, choices, x: event.clientX, y: event.clientY, track })
+        return
+      }
+      setChoice(null)
       const target = targetAt(row, event)
       const anchor = target && event.currentTarget.querySelector(`[data-ribbon-id="${target.id}"]`)?.getBoundingClientRect()
       if (target) onSelect?.({ ...target, anchor })
@@ -120,6 +137,22 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
         <div className="mb-range-window" aria-hidden="true" style={{ '--mb-range-from': pctOf(rangeStart, total) / 100, '--mb-range-span': (pctOf(rangeEnd, total) - pctOf(rangeStart, total)) / 100 }}>
           <span>{`단면에 보이는 구간 ${Math.round(rangeStart)}–${Math.round(rangeEnd)}NM`}</span>
         </div>
+      )}
+      {choice && createPortal(
+        <div className="mb-choice-backdrop" onClick={() => setChoice(null)}>
+          <div className="mb-choice" role="dialog" aria-label="겹치는 위험 자료 선택" style={{ left: Math.max(8, Math.min(choice.x - 120, window.innerWidth - 288)), top: Math.max(8, Math.min(choice.y - 12, window.innerHeight - 190)) }} onClick={(event) => event.stopPropagation()}>
+            <div className="mb-choice-title">겹치는 위험 자료 선택 <button type="button" aria-label="닫기" onClick={() => setChoice(null)}>×</button></div>
+            {choice.choices.map(({ kind, index }) => {
+              const item = kind === 'model' ? choice.row.model[index] : choice.row.frames[index]
+              const id = `${choice.row.key}:${kind}:${index}`
+              return <button key={id} type="button" className="mb-choice-item" onClick={() => {
+                const anchor = choice.track.querySelector(`[data-ribbon-id="${id}"]`)?.getBoundingClientRect()
+                onSelect?.({ id, row: choice.row, kind, item, anchor })
+                setChoice(null)
+              }}><strong>{kind === 'model' ? `모델 ${choice.row.label} · ${item.level}` : frameTag(item)}</strong><span>{item.startNm}–{item.endNm} NM</span></button>
+            })}
+          </div>
+        </div>, document.body
       )}
     </div>
   )

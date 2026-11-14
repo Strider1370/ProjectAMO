@@ -172,6 +172,13 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, flightPlanPr
     ? { status: 'unavailable', highestGrade: null, exposureNmByGrade: {} }
     : exposureSummary(turbulence?.levels, weatherAxis, selectedCruiseAltitudeFt, turbulence?.product === 'GKTG' ? 'gktg' : 'ktg', weights, (value) => KTG_LEVELS[turbulence.product === 'GKTG' ? gktgIntensity(value) : ktgIntensity(value)], false, flightPlanProfile)
   const legHazards = (hazards ?? []).flatMap((hazard) => {
+    if (hazard.altitudeExposure?.intervals) {
+      const relevant = hazard.altitudeExposure.intervals.filter((interval) => interval.status !== 'clear' && overlapNm(range, interval) > OVERLAP_EPSILON_NM)
+      if (hazard.airportScope || !relevant.length) return []
+      return [{ code: hazard.code ?? hazard.sourceId ?? null, label: hazard.label ?? hazard.code ?? null,
+        routeDistanceNm: relevant.reduce((sum, interval) => sum + overlapNm(range, interval), 0),
+        verticalStatus: relevant.some((interval) => interval.status === 'intersects') ? 'intersects' : 'unknown', timeStatus: hazard.timeStatus ?? 'unavailable' }]
+    }
     const interval = intervalFor(hazard)
     if (hazard.airportScope || hazard.altitudeExposure?.status === 'clear' || overlapNm(range, interval) <= OVERLAP_EPSILON_NM) return []
     return [{ code: hazard.code ?? hazard.sourceId ?? null, label: hazard.label ?? hazard.code ?? null, routeDistanceNm: overlapNm(range, interval), verticalStatus: hazard.altitudeExposure?.status ?? 'unknown', timeStatus: hazard.timeStatus ?? 'unavailable' }]

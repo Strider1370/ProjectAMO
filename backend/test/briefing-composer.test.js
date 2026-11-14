@@ -214,8 +214,10 @@ test('enroute ribbon puts the SIGMET icing frame on the icing row and marks mode
   // 대류 자료 없음 → 줄 없음. 난류·착빙은 자료가 없어도 "확인 불가"로 남는다.
   assert.deepEqual(ribbon.rows.map((row) => row.key), ['turbulence', 'icing'])
   const icing = ribbon.rows.find((row) => row.key === 'icing')
-  assert.equal(icing.frames.length, 1)
-  assert.equal(icing.frames[0].mine, true) // FL060–120 band covers 9000ft
+  assert.deepEqual(icing.frames.map((frame) => frame.verticalStatus), ['intersects', 'clear'])
+  assert.ok(icing.frames[0].endNm < icing.frames.at(-1).endNm) // 강하 중 FL060 아래로 벗어남
+  assert.equal(icing.frames[0].mine, true)
+  assert.equal(icing.frames[1].mine, false)
   assert.ok(ribbon.rows.every((row) => row.status === 'unavailable'))
   assert.equal(ribbon.summary.status, 'hazard')
   assert.equal(ribbon.summary.top.source, 'SIGMET')

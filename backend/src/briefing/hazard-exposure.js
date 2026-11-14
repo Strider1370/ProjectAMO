@@ -46,6 +46,49 @@ export function evaluateAltitudeExposure({ horizontalExposure, bandFt, plannedCr
   }
 }
 
+// 수평으로 영역 안에 있는 구간을 실제 비행 고도선과 발표 고도대의 교차점에서 나눈다.
+export function evaluateProfileAltitudeExposure({ horizontalExposure, bandFt, flightPlanProfile } = {}) {
+  const runs = horizontalExposure?.intervals ?? []
+  const points = flightPlanProfile?.points ?? []
+  const valid = bandFt && Number.isFinite(bandFt.lowFt) && Number.isFinite(bandFt.highFt)
+    && bandFt.lowFt <= bandFt.highFt && points.length >= 2
+    && points.every((p, i) => Number.isFinite(p.distanceNm) && Number.isFinite(p.altitudeFt)
+      && (!i || p.distanceNm > points[i - 1].distanceNm))
+  const intervals = []
+  const add = (startNm, endNm, status, run) => {
+    if (endNm <= startNm) return
+    const last = intervals.at(-1)
+    if (last && last.run === run && last.status === status && Math.abs(last.endNm - startNm) < 1e-7) last.endNm = endNm
+    else intervals.push({ startNm, endNm, status, run })
+  }
+  runs.forEach((run, runIndex) => {
+    if (!valid) { add(run.startNm, run.endNm, ALTITUDE_EXPOSURE.UNKNOWN, runIndex); return }
+    const cuts = [run.startNm, run.endNm]
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1], b = points[i]
+      if (a.distanceNm > run.startNm && a.distanceNm < run.endNm) cuts.push(a.distanceNm)
+      if (b.distanceNm > run.startNm && b.distanceNm < run.endNm) cuts.push(b.distanceNm)
+      if (a.altitudeFt !== b.altitudeFt) for (const altitude of [bandFt.lowFt, bandFt.highFt]) {
+        const ratio = (altitude - a.altitudeFt) / (b.altitudeFt - a.altitudeFt)
+        const distance = a.distanceNm + ratio * (b.distanceNm - a.distanceNm)
+        if (ratio > 0 && ratio < 1 && distance > run.startNm && distance < run.endNm) cuts.push(distance)
+      }
+    }
+    cuts.sort((a, b) => a - b)
+    for (let i = 1; i < cuts.length; i += 1) {
+      const start = cuts[i - 1], end = cuts[i], mid = (start + end) / 2
+      const index = points.findIndex((p, j) => j > 0 && mid >= points[j - 1].distanceNm && mid <= p.distanceNm)
+      if (index < 0) { add(start, end, ALTITUDE_EXPOSURE.UNKNOWN, runIndex); continue }
+      const a = points[index - 1], b = points[index]
+      const altitude = a.altitudeFt + (b.altitudeFt - a.altitudeFt) * (mid - a.distanceNm) / (b.distanceNm - a.distanceNm)
+      add(start, end, altitude >= bandFt.lowFt && altitude <= bandFt.highFt ? ALTITUDE_EXPOSURE.INTERSECTS : ALTITUDE_EXPOSURE.CLEAR, runIndex)
+    }
+  })
+  const status = intervals.some((iv) => iv.status === ALTITUDE_EXPOSURE.INTERSECTS) ? ALTITUDE_EXPOSURE.INTERSECTS
+    : intervals.some((iv) => iv.status === ALTITUDE_EXPOSURE.UNKNOWN) || !intervals.length ? ALTITUDE_EXPOSURE.UNKNOWN : ALTITUDE_EXPOSURE.CLEAR
+  return { status, intervals: intervals.map(({ run, ...iv }) => iv) }
+}
+
 // null means a complete, known time comparison found no overlap; the caller omits that hazard.
 export function evaluateTimeStatus({ etd, eta, validFrom, validTo } = {}) {
   if (!Number.isFinite(Date.parse(etd)) || !Number.isFinite(Date.parse(eta))) return TIME_STATUS.NOT_PROVIDED
@@ -55,7 +98,7 @@ export function evaluateTimeStatus({ etd, eta, validFrom, validTo } = {}) {
 
 export function exposureConfidence({ horizontalExposure, altitudeExposure, timeStatus } = {}) {
   if (horizontalExposure?.status === HORIZONTAL_EXPOSURE.UNAVAILABLE) return CONFIDENCE.UNAVAILABLE
-  return altitudeExposure?.status === ALTITUDE_EXPOSURE.UNKNOWN || timeStatus !== TIME_STATUS.MATCHED
+  return altitudeExposure?.status === ALTITUDE_EXPOSURE.UNKNOWN || altitudeExposure?.intervals?.some((iv) => iv.status === ALTITUDE_EXPOSURE.UNKNOWN) || timeStatus !== TIME_STATUS.MATCHED
     ? CONFIDENCE.PARTIAL
     : CONFIDENCE.AVAILABLE
 }

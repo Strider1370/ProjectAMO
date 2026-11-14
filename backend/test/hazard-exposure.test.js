@@ -1,4 +1,25 @@
 import assert from 'node:assert/strict'
+import { evaluateProfileAltitudeExposure } from '../src/briefing/hazard-exposure.js'
+
+test('SIGMET altitude intersections follow climb and descent, including disconnected horizontal runs', () => {
+  const horizontalExposure = { intervals: [{ startNm: 0, endNm: 100 }, { startNm: 200, endNm: 300 }] }
+  const flightPlanProfile = { points: [{ distanceNm: 0, altitudeFt: 0 }, { distanceNm: 100, altitudeFt: 40000 }, { distanceNm: 200, altitudeFt: 40000 }, { distanceNm: 300, altitudeFt: 0 }] }
+  const result = evaluateProfileAltitudeExposure({ horizontalExposure, flightPlanProfile, bandFt: { lowFt: 15000, highFt: 35000 } })
+  assert.equal(result.status, 'intersects')
+  assert.deepEqual(result.intervals, [
+    { startNm: 0, endNm: 37.5, status: 'clear' }, { startNm: 37.5, endNm: 87.5, status: 'intersects' }, { startNm: 87.5, endNm: 100, status: 'clear' },
+    { startNm: 200, endNm: 212.5, status: 'clear' }, { startNm: 212.5, endNm: 262.5, status: 'intersects' }, { startNm: 262.5, endNm: 300, status: 'clear' },
+  ])
+})
+
+test('missing or incomplete profile does not claim the SIGMET is outside the flight altitude', () => {
+  const horizontalExposure = { intervals: [{ startNm: 0, endNm: 100 }] }
+  const bandFt = { lowFt: 10000, highFt: 20000 }
+  assert.equal(evaluateProfileAltitudeExposure({ horizontalExposure, bandFt }).status, 'unknown')
+  const result = evaluateProfileAltitudeExposure({ horizontalExposure, bandFt, flightPlanProfile: { points: [{ distanceNm: 20, altitudeFt: 30000 }, { distanceNm: 80, altitudeFt: 30000 }] } })
+  assert.deepEqual(result.intervals.map((interval) => interval.status), ['unknown', 'clear', 'unknown'])
+  assert.equal(result.status, 'unknown')
+})
 import test from 'node:test'
 import {
   evaluateAltitudeExposure,

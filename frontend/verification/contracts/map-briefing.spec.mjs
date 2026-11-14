@@ -165,6 +165,21 @@ test.describe('map-briefing', () => {
     await expect(popover).toHaveCount(0)
   })
 
+  test('overlapping model and SIGMET offer both choices at the same location', async ({ page }) => {
+    await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
+    const track = page.locator('.mb-row.is-turbulence .mb-track')
+    const box = await track.boundingBox()
+    await page.mouse.click(box.x + box.width * 0.35, box.y + box.height / 2)
+    const chooser = page.getByRole('dialog', { name: '겹치는 위험 자료 선택' })
+    await expect(chooser).toBeVisible()
+    await chooser.getByRole('button', { name: /모델 난류 · SEV/ }).click()
+    await expect(page.getByRole('dialog', { name: '난류 상세' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.mouse.click(box.x + box.width * 0.35, box.y + box.height / 2)
+    await chooser.getByRole('button', { name: /SIGMET 심한 난기류/ }).click()
+    await expect(page.getByRole('dialog', { name: '심한 난기류 상세' })).toBeVisible()
+  })
+
   test('hovering a SIGMET box in the profile highlights that advisory and dims the others', async ({ page }) => {
     await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
     const ice = page.locator('.mb-profile-body [data-testid="profile-advisory-boundary"][data-advisory-id="contract-ice"]').first()

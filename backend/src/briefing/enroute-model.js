@@ -2,8 +2,6 @@ import { gktgIntensity } from '../../../shared/gktg.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 
-const LEVEL_RANK = { '약': 1, '중': 2, '심': 3 }
-
 function sortedLevels(levels) {
   return [...(levels ?? [])]
     .filter((L) => Number.isFinite(L.altFt) && Array.isArray(L.values))
@@ -90,11 +88,16 @@ function roundInterval(iv) {
 export function thresholdIntervals(series, classify) {
   const intervals = []
   let cur = null
-  for (const p of series) {
+  for (const [index, p] of series.entries()) {
     const lvl = p.value == null ? null : classify(p.value)
+    const previous = series[index - 1]
+    const next = series[index + 1]
+    const start = previous ? (previous.distanceNm + p.distanceNm) / 2 : p.distanceNm
+    const end = next ? (p.distanceNm + next.distanceNm) / 2 : p.distanceNm
     if (lvl) {
-      if (!cur) cur = { startNm: p.distanceNm, endNm: p.distanceNm, level: lvl }
-      else { cur.endNm = p.distanceNm; if (LEVEL_RANK[lvl] > LEVEL_RANK[cur.level]) cur.level = lvl }
+      if (cur && cur.level !== lvl) { intervals.push(roundInterval(cur)); cur = null }
+      if (!cur) cur = { startNm: start, endNm: end, level: lvl }
+      else cur.endNm = end
     } else if (cur) {
       intervals.push(roundInterval(cur)); cur = null
     }

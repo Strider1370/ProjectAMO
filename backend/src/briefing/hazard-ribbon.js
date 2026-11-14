@@ -97,7 +97,7 @@ function modelSegments(ctx, intervals, { altitudeIndependent = false } = {}) {
 
 // 발표 하나가 경로를 여러 번 지나면 지날 때마다 틀 하나(routeRunsNm). 없으면 노출 구간 하나.
 function framesFor(ctx, hazard) {
-  const runs = hazard.routeRunsNm?.length ? hazard.routeRunsNm : [hazard.routeIntervalNm]
+  const runs = hazard.altitudeExposure?.intervals?.length ? hazard.altitudeExposure.intervals : hazard.routeRunsNm?.length ? hazard.routeRunsNm : [hazard.routeIntervalNm]
   return runs.map((interval) => frameFor(ctx, hazard, interval)).filter(Boolean)
 }
 
@@ -110,10 +110,12 @@ function frameFor(ctx, hazard, interval) {
     code: hazard.code ?? null,
     label: hazard.label ?? hazard.code ?? null,
     bandFt: hazard.bandFt ?? null,
-    mine: hazard.encounter === 'on',
+    mine: interval.status ? interval.status === 'intersects' : hazard.encounter === 'on',
+    verticalStatus: interval.status ?? (hazard.verticalKnown === false ? 'unknown' : hazard.encounter === 'on' ? 'intersects' : 'clear'),
+    profileAltitudeFt: altitudeAt(ctx.profile.points, (interval.startNm + interval.endNm) / 2),
     validFrom: hazard.validFrom ?? null,
     validTo: hazard.validTo ?? null,
-    ...placement(ctx, Math.round(interval.startNm), Math.round(interval.endNm)),
+    ...placement(ctx, Number(interval.startNm.toFixed(2)), Number(interval.endNm.toFixed(2))),
   }
 }
 
@@ -131,13 +133,14 @@ function buildSummary(rows) {
   ])
   const unavailable = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.status === 'unavailable').map((row) => row.key)
   const partial = rows.filter((row) => ['turbulence', 'icing'].includes(row.key) && row.missing?.length).map((row) => row.key)
-  if (!candidates.length) return { status: unavailable.length ? 'unknown' : 'clear', top: null, items: [], unavailable, partial }
+  const unknownAdvisories = rows.some((row) => row.frames.some((frame) => frame.verticalStatus === 'unknown'))
+  if (!candidates.length) return { status: unavailable.length || unknownAdvisories ? 'unknown' : 'clear', top: null, items: [], unavailable, partial, unknownAdvisories }
   const top = candidates.reduce((best, item) => {
     const rank = summaryRank(item), bestRank = summaryRank(best)
     return rank > bestRank || (rank === bestRank && item.startNm < best.startNm) ? item : best
   })
   const items = [...candidates].sort((a, b) => a.startNm - b.startNm || summaryRank(b) - summaryRank(a))
-  return { status: 'hazard', top, items, unavailable, partial }
+  return { status: 'hazard', top, items, unavailable, partial, unknownAdvisories }
 }
 
 export function buildHazardRibbon({ enrouteModel = null, convection = null, hazards = [], flightPlanProfile = null, markers = [], cruiseAltitudeFt, totalDistanceNm, etd, eta } = {}) {

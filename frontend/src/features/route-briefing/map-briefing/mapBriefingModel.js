@@ -110,7 +110,7 @@ export function frameTag(frame) {
   const src = frame.source === 'TYPHOON' ? '태풍' : frame.source
   const name = frame.source === 'TYPHOON' ? (frame.label ?? '') : (phenomenonKo(frame.code) ?? frame.label ?? frame.code ?? '')
   const band = frame.source === 'TYPHOON' ? '전 고도' : formatBand(frame.bandFt)
-  return `${src} ${name} · ${band} · ${frame.mine ? '내 고도' : '다른 고도'}`.replace(/\s+/g, ' ').trim()
+  return `${src} ${name} · ${band} · ${frame.verticalStatus === 'unknown' ? '고도 확인 불가' : frame.mine ? '내 고도' : '다른 고도'}`.replace(/\s+/g, ' ').trim()
 }
 
 // 수치예보 막대는 글자 없이 색만 — 강도·구간·고도는 툴팁(그리고 aria-label)으로.
@@ -135,6 +135,9 @@ function minutesBetween(fromIso, toIso) {
 
 // 패널 요약 한 줄. formatTime(iso) → 'HH:mm'.
 export function summaryCallout(summary, formatTime = (iso) => iso) {
+  if (summary?.status === 'unknown' && summary.unknownAdvisories && !summary.unavailable?.length) {
+    return { tone: 'unknown', badge: '?', title: 'SIGMET 고도 확인 불가', detail: '비행 고도 또는 발표 고도 확인 필요' }
+  }
   if (!summary || summary.status === 'unknown') {
     return { tone: 'unknown', badge: '?', title: '난류·착빙 확인 불가', detail: '모델 자료 없음 · SIGMET·AIRMET만 확인' }
   }
@@ -251,6 +254,7 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
     title: kind === 'model' ? row.label : typhoon ? (item.label ?? '태풍') : (phenomenonKo(item.code) ?? item.label ?? row.label),
     sourceChip: kind === 'model' ? `${MODEL_SOURCE[row.key] ?? 'KIM'} 모델` : typhoon ? '태풍 정보' : `${item.source}${item.overseas ? '(해외)' : ''}`,
     mine,
+    altitudeUnknown: kind !== 'model' && item.verticalStatus === 'unknown',
     when: item.passFrom && item.passTo ? `${formatTime(item.passFrom)}–${formatTime(item.passTo)}${tz}${minutes ? ` · ${minutes}분` : ''}` : null,
     route: item.from && item.to ? `${item.from} → ${item.to}` : `${item.startNm}–${item.endNm}NM`,
     altitude: null,
@@ -297,7 +301,8 @@ export function focusTarget(selection, { cruiseAltitudeFt = null } = {}) {
   // 순항 단계 막대는 상승 끝에서 시작해도 순항고도로(가운데 고도로 하면 상승 중 고도가 섞인다).
   if (selection.kind === 'model' && item.altitudeFt) altitudeFt = item.phase === 'cruise' && Number.isFinite(cruiseAltitudeFt) ? cruiseAltitudeFt : (item.altitudeFt.from + item.altitudeFt.to) / 2
   else if (selection.kind === 'frame' && item.source !== 'TYPHOON') {
-    if (item.mine && Number.isFinite(cruiseAltitudeFt)) altitudeFt = cruiseAltitudeFt
+    if (item.mine && Number.isFinite(item.profileAltitudeFt)) altitudeFt = item.profileAltitudeFt
+    else if (item.mine && Number.isFinite(cruiseAltitudeFt)) altitudeFt = cruiseAltitudeFt
     else if (Number.isFinite(item.bandFt?.highFt)) altitudeFt = ((item.bandFt.lowFt ?? 0) + item.bandFt.highFt) / 2
   }
   return { timeMs, altitudeFt: Number.isFinite(altitudeFt) ? Math.round(altitudeFt) : null }
@@ -326,4 +331,14 @@ export function pickRibbonTarget(row, nm, { edge = false, tagFrameIndex = -1 } =
   if (frame >= 0 && (edge || model < 0)) return { kind: 'frame', index: frame }
   if (model >= 0) return { kind: 'model', index: model }
   return null
+}
+
+export function ribbonTargetsAt(row, nm) {
+  const targets = []
+  for (const [kind, items] of [['model', row.model], ['frame', row.frames]]) {
+    items.forEach((item, index) => {
+      if (nm >= item.startNm && nm <= item.endNm) targets.push({ kind, index })
+    })
+  }
+  return targets
 }

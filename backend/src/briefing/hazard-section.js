@@ -1,5 +1,6 @@
 import {
   evaluateAltitudeExposure,
+  evaluateProfileAltitudeExposure,
   evaluateHorizontalExposure,
   evaluateTimeStatus,
   exposureConfidence,
@@ -14,7 +15,9 @@ function matchItems(items, source, ctx) {
     const timeStatus = evaluateTimeStatus({ etd: ctx.etd, eta: ctx.eta, validFrom: it.valid_from, validTo: it.valid_to })
     if (timeStatus == null) continue
     const bandFt = hazardBandFt(it)
-    const altitudeExposure = evaluateAltitudeExposure({ horizontalExposure, bandFt, plannedCruiseAltitudeFt: ctx.cruiseAltitudeFt })
+    const altitudeExposure = source === 'SIGMET' && ctx.flightPlanProfile !== undefined
+      ? evaluateProfileAltitudeExposure({ horizontalExposure, bandFt, flightPlanProfile: ctx.flightPlanProfile })
+      : evaluateAltitudeExposure({ horizontalExposure, bandFt, plannedCruiseAltitudeFt: ctx.cruiseAltitudeFt })
     // 영역을 여러 번 지나면 첫 진입~마지막 이탈(전체 범위). 실제로 안에 있는 구간들은 routeRunsNm.
     const runs = horizontalExposure.intervals
     const routeIntervalNm = { startNm: runs[0].startNm, endNm: runs.at(-1).endNm }
@@ -56,8 +59,8 @@ function severityScore(h) {
 }
 
 // airportWarnings: 이미 hazard 유사 shape로 변환된 공항경보(경로 지오 없음, level 포함).
-export function buildHazardSection({ sigmet, airmet, axis, etd, eta, cruiseAltitudeFt, enRouteRange = null, airportWarnings = [], typhoons = [] }) {
-  const ctx = { axis, etd, eta, cruiseAltitudeFt, enRouteRange }
+export function buildHazardSection({ sigmet, airmet, axis, etd, eta, cruiseAltitudeFt, flightPlanProfile, enRouteRange = null, airportWarnings = [], typhoons = [] }) {
+  const ctx = { axis, etd, eta, cruiseAltitudeFt, flightPlanProfile, enRouteRange }
   const hazards = [
     ...matchItems(sigmet, 'SIGMET', ctx).map((h) => ({ ...h, level: hazardLevel(h) })),
     ...matchItems(airmet, 'AIRMET', ctx).map((h) => ({ ...h, level: hazardLevel(h) })),

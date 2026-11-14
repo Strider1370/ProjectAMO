@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { summarizeEnrouteModel } from '../src/briefing/enroute-model.js'
+import { summarizeEnrouteModel, thresholdIntervals } from '../src/briefing/enroute-model.js'
 
 // 2개 KIM 기압면(8000/10000ft), 거리 0/50/100NM. cruise 9000, total 100 → alt(50)=9000.
 const crossSection = { levels: [
@@ -25,7 +25,7 @@ test('icing interval at moderate+ grade (>=2) only', () => {
   const r = summarizeEnrouteModel(ctx)
   const ice = r.elements.find((e) => e.kind === 'icing')
   assert.ok(ice)
-  assert.deepEqual(ice.intervals, [{ startNm: 50, endNm: 50, level: '중' }])
+  assert.deepEqual(ice.intervals, [{ startNm: 25, endNm: 75, level: '중' }])
 })
 
 test('light icing (grade 1) is NOT shown', () => {
@@ -39,7 +39,7 @@ test('turbulence interval flags severe at cruise', () => {
   const turb = r.elements.find((e) => e.kind === 'turbulence')
   assert.ok(turb)
   assert.equal(turb.intervals[0].level, '심')   // 0.5 EDR → severe
-  assert.equal(turb.intervals[0].startNm, 50)
+  assert.equal(turb.intervals[0].startNm, 25)
 })
 
 test('no wind/temp elements (removed — cross-section carries them)', () => {
@@ -99,8 +99,16 @@ test('icing follows the full climb and descent profile instead of treating every
   })
 
   assert.deepEqual(r.elements.find((element) => element.kind === 'icing')?.intervals, [
-    { startNm: 0, endNm: 0, level: '중' },
-    { startNm: 100, endNm: 100, level: '중' },
+    { startNm: 0, endNm: 25, level: '중' },
+    { startNm: 75, endNm: 100, level: '중' },
+  ])
+})
+
+test('model splits adjacent MOD and SEV samples at their midpoint, including an isolated SEV sample', () => {
+  const series = [2, 2, 3, 2, null, 3].map((value, index) => ({ distanceNm: index * 10, value }))
+  assert.deepEqual(thresholdIntervals(series, (value) => value === 3 ? '심' : value === 2 ? '중' : null), [
+    { startNm: 0, endNm: 15, level: '중' }, { startNm: 15, endNm: 25, level: '심' },
+    { startNm: 25, endNm: 35, level: '중' }, { startNm: 45, endNm: 50, level: '심' },
   ])
 })
 

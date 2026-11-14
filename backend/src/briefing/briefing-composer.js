@@ -123,6 +123,7 @@ export function composeBriefing(request, data) {
     etd: request.etd,
     eta: request.eta,
     cruiseAltitudeFt,
+    flightPlanProfile,
     enRouteRange: request.routeModel?.enRouteRange ?? null,
     airportWarnings: buildAirportWarningHazards(data?.warning, airportRoles(request), request.etd, request.eta),
     typhoons: matchTyphoonHazards({

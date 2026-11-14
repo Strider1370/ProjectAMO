@@ -25,7 +25,7 @@ test('splits ACIM cloud top into MOD (>=FL250) and SEV (>=FL300) intervals at th
   const result = buildEnrouteConvection({ root: '/data', axis, etd: '2026-10-20T02:10:00Z', ...read([150, 250, 300], seen) })
   assert.equal(seen[0].hf, 3)
   assert.equal(result.status, 'found')
-  assert.deepEqual(result.intervals, [{ startNm: 10, endNm: 20, level: '심' }])
+  assert.deepEqual(result.intervals, [{ startNm: 5, endNm: 15, level: '중' }, { startNm: 15, endNm: 20, level: '심' }])
   assert.equal(result.run.validTime, '2026-10-20T03:00:00Z')
 })
 
