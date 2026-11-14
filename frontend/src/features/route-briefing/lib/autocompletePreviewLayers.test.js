@@ -8,6 +8,7 @@ test('waypoint preview uses actual coordinates and does not invent missing data'
   assert.deepEqual(buildAutocompletePreview(item('BEDES'), lookups).coordinates, [[127, 36]])
   assert.deepEqual(buildAutocompletePreview(item('OSPAT'), lookups).coordinates, [[126, 37]])
   assert.deepEqual(buildAutocompletePreview(item('내지점'), lookups).coordinates, [[127.5, 35.5]])
+  assert.deepEqual(buildAutocompletePreview(item('BEDES'), { ...lookups, userWaypoints: [{ name: 'BEDES', lon: 128, lat: 35 }] }).coordinates, [[128, 35]])
   assert.equal(buildAutocompletePreview(item('UNKNOWN'), lookups), null)
   assert.equal(buildAutocompletePreview({ kind: 'AIRWAY', name: 'Y711' }, lookups), null)
 })

@@ -9,9 +9,9 @@ export function buildAutocompletePreview(item, lookups = {}) {
   if (!item) return null
   const { kind, name } = item
   if (kind === 'FIX') {
-    const point = lookups.navpoints?.[name] ?? lookups.fixCoords?.[name] ?? lookups.userWaypoints?.find((value) => value.name === name)
-    const coords = [point?.coordinates?.lon ?? point?.lon, point?.coordinates?.lat ?? point?.lat]
-    return valid(coords) ? { kind, name, coordinates: [coords] } : null
+    const candidates = [lookups.userWaypoints?.find((value) => String(value.name).toUpperCase() === name), lookups.navpoints?.[name], lookups.fixCoords?.[name]]
+    const coords = candidates.map((point) => [point?.coordinates?.lon ?? point?.lon, point?.coordinates?.lat ?? point?.lat]).find(valid)
+    return coords ? { kind, name, coordinates: [coords] } : null
   }
   if (kind === 'SID' || kind === 'STAR') {
     if (!Array.isArray(item.procedure?.geometry?.coordinates) && (item.procedure?.fixes ?? []).some((fix) => !valid([fix.lon, fix.lat]))) return null
