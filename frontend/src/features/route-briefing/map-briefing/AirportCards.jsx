@@ -25,7 +25,9 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
   const [frame, setFrame] = useState(0)
   const [layout, setLayout] = useState([])
   const [heights, setHeights] = useState({}) // 펼친 카드의 실제 높이(ICAO별)
+  const [chipWidths, setChipWidths] = useState({})
   const reportHeight = useCallback((icao, height) => setHeights((prev) => (prev[icao] === height ? prev : { ...prev, [icao]: height })), [])
+  const reportChipWidth = useCallback((icao, width) => setChipWidths((prev) => (prev[icao] === width ? prev : { ...prev, [icao]: width })), [])
   const hhmm = (iso) => formatBriefingTime(iso, tz).replace(` ${tz}`, '').replace('Z', '')
   const cards = useMemo(() => airportCards(briefing, {
     airportList: airports,
@@ -65,16 +67,17 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
       .map((sample) => { const p = map.project([sample.lon, sample.lat]); return [p.x, p.y] })
     const anchors = cards.filter((card) => card.position).map((card) => {
       const p = map.project(card.position)
-      const size = collapsedRoles.includes(card.role) ? { w: chipWidth(card), h: CHIP_H } : { w: CARD_W, h: heights[card.icao] ?? CARD_H }
-      return { key: card.icao, x: p.x, y: p.y, size }
-    })
+      const collapsed = collapsedRoles.includes(card.role)
+      const size = collapsed ? { w: chipWidths[card.icao] ?? chipWidth(card), h: CHIP_H } : { w: CARD_W, h: heights[card.icao] ?? CARD_H }
+      return { key: card.icao, x: p.x, y: p.y, size, collapsed }
+    }).sort((a, b) => Number(a.collapsed) - Number(b.collapsed))
     // Keep the whole card above the bottom dock, including after controls add rows.
     const dockRects = [...wrapper.querySelectorAll('.mb-dock, .mb-dock-tab')]
       .map(element => element.getBoundingClientRect()).filter(rect => rect.height > 0)
     const bottom = Math.min(origin.height - 8, ...dockRects.map(rect => rect.top - origin.top - 8))
     const bounds = { left: 8, top: 8, right: origin.width - 8, bottom }
     setLayout(placeAirportCards(anchors, { size: { w: CARD_W, h: CARD_H }, bounds, obstacles, route }))
-  }, [cards, mapRef, routeSamples, frame, collapsedRoles, heights])
+  }, [cards, mapRef, routeSamples, frame, collapsedRoles, heights, chipWidths])
 
   const byKey = new Map(layout.map((place) => [place.key, place]))
   return (
@@ -93,20 +96,32 @@ export default function AirportCards({ briefing, mapRef, airports = [], routeSam
         const place = byKey.get(card.icao)
         if (!place) return null
         if (collapsedRoles.includes(card.role)) {
-          return (
-            <button key={card.icao} type="button" className={`mb-airport-chip is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, height: CHIP_H }}
-              onClick={() => onToggleCollapse?.(card.role)} title={`${card.roleLabel} ${card.icao} 카드 펼치기`} aria-label={`${card.icao} 카드 펼치기`} aria-expanded="false">
-              <strong>{card.icao}</strong>
-              {card.category && <span className="mb-ac-cat">{card.category}</span>}
-              {hasAlertFlag(card) && <i className="mb-chip-alert" title={`경보: ${card.warnings.map((warning) => warning.label).join(' · ')}`} />}
-              <ChevronUp size={15} aria-hidden="true" />
-            </button>
-          )
+          return <AirportChip key={card.icao} card={card} place={place} onToggleCollapse={onToggleCollapse} onWidth={reportChipWidth} />
         }
         return <AirportCard key={card.icao} card={card} place={place} hhmm={hhmm} onOpenAirport={onOpenAirport} onToggleCollapse={onToggleCollapse} onHeight={reportHeight} />
       })}
     </div>
   )
+}
+
+function AirportChip({ card, place, onToggleCollapse, onWidth }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const report = () => onWidth(card.icao, Math.ceil(el.getBoundingClientRect().width))
+    report()
+    const observer = new ResizeObserver(report)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [card.icao, onWidth])
+  return <button ref={ref} type="button" className={`mb-airport-chip is-${card.categoryLevel}`} style={{ left: place.left, top: place.top, height: CHIP_H }}
+    onClick={() => onToggleCollapse?.(card.role)} title={`${card.roleLabel} ${card.icao} 카드 펼치기`} aria-label={`${card.icao} 카드 펼치기`} aria-expanded="false">
+    <strong>{card.icao}</strong>
+    {card.category && <span className="mb-ac-cat">{card.category}</span>}
+    {hasAlertFlag(card) && <i className="mb-chip-alert" title={`경보: ${card.warnings.map((warning) => warning.label).join(' · ')}`} />}
+    <ChevronUp size={15} aria-hidden="true" />
+  </button>
 }
 
 function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHeight }) {

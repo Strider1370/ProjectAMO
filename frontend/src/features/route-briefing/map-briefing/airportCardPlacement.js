@@ -3,6 +3,7 @@
 // 카드는 지시선으로 공항에 잇는다 — 선은 공항 점에서 카드의 가장 가까운 모서리 점까지.
 
 const GAP = 26 // 공항 점과 카드 사이(지시선 길이)
+const CARD_GAP = 8
 
 function candidates({ x, y }, { w, h }) {
   return [
@@ -53,7 +54,9 @@ export function placeAirportCards(anchors, { size, bounds, obstacles = [], route
   for (const anchor of anchors) {
     const own = anchor.size ?? size
     let best = null
-    for (const [order, candidate] of candidates(anchor, own).entries()) {
+    const blockers = [...obstacles, ...placed.map((p) => p.rect)]
+    const initial = candidates(anchor, own)
+    function consider(candidate, order) {
       // Report time controls can increase the measured height. Keep each candidate
       // inside the viewport before comparing overlaps with panels and other cards.
       const rect = rectOf({
@@ -63,10 +66,22 @@ export function placeAirportCards(anchors, { size, bounds, obstacles = [], route
       }, own)
       const outside = Math.max(0, bounds.left - rect.left) + Math.max(0, rect.right - bounds.right)
         + Math.max(0, bounds.top - rect.top) + Math.max(0, rect.bottom - bounds.bottom)
-      const blocked = [...obstacles, ...placed.map((p) => p.rect)].reduce((sum, other) => sum + overlapArea(rect, other), 0)
-      // 화면 밖·막힌 곳은 크게, 경로를 가리는 것은 그다음, 같으면 먼저 적은 자리(오른쪽 위)를 고른다.
-      const score = outside * 400 + blocked * 4 + routeHits(rect, route) * 3000 + order
-      if (!best || score < best.score) best = { ...candidate, rect, score }
+      const blocked = blockers.reduce((sum, other) => sum + overlapArea(rect, other), 0)
+      // 카드와 UI를 가리는 것보다 경로선 회피를 우선하면 작은 칩이 큰 카드 위에 놓일 수 있다.
+      const distance = Math.hypot(rect.left + own.w / 2 - anchor.x, rect.top + own.h / 2 - anchor.y)
+      const score = outside * 100000 + blocked * 10000 + routeHits(rect, route) * 3000 + (candidate.side === 'nearby' ? distance * 0.1 : 0) + order
+      if (!best || score < best.score) best = { ...candidate, rect, score, blocked }
+    }
+    initial.forEach(consider)
+    // 여섯 기본 자리가 막히면 이미 놓인 카드·패널의 둘레와 화면 가장자리도 탐색한다.
+    if (best?.blocked > 0) {
+      const xs = [bounds.left, bounds.right - own.w, ...initial.map((candidate) => candidate.left)]
+      const ys = [bounds.top, bounds.bottom - own.h, ...initial.map((candidate) => candidate.top)]
+      for (const rect of blockers) {
+        xs.push(rect.left - own.w - CARD_GAP, rect.right + CARD_GAP)
+        ys.push(rect.top - own.h - CARD_GAP, rect.bottom + CARD_GAP)
+      }
+      for (const left of xs) for (const top of ys) consider({ side: 'nearby', left, top }, initial.length)
     }
     const { rect } = best
     // 지시선 끝: 공항 점에서 가장 가까운 카드 테두리 위 점.

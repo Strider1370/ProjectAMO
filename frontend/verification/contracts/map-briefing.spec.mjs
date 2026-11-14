@@ -200,6 +200,39 @@ test.describe('map-briefing', () => {
     await expect(page.locator('.mb-airport-card')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '브리핑 패널' })).toBeVisible()
   })
+
+  test('a folded alternate airport chip does not cover an expanded airport card', async ({ page }) => {
+    await createBriefing(page, { view: 'map', patchBriefing: (briefing) => {
+      const arrival = briefing.sections.current.airports.find((airport) => airport.role === 'arrival')
+      const alternate = { ...structuredClone(arrival), icao: 'RKPK', role: 'alternate', roles: ['alternate'] }
+      arrival.icao = 'RKPC'
+      briefing.sections.current.airports.push(alternate)
+      return briefing
+    } })
+    await page.getByRole('button', { name: 'RKPC 카드 펼치기' }).click()
+    await expect(page.getByRole('article', { name: /도착 RKPC/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'RKPK 카드 펼치기' })).toBeVisible()
+    // 김해 지점을 제주 카드 중앙에 투영해 기존 여섯 후보가 모두 카드에 겹치는 상황을 만든다.
+    await page.evaluate(() => {
+      const map = window.__map
+      const rect = document.querySelector('.mb-airport-card').getBoundingClientRect()
+      const origin = document.querySelector('.mb-airport-layer').getBoundingClientRect()
+      const forced = map.unproject([rect.left + rect.width / 2 - origin.left, rect.top + rect.height / 2 - origin.top])
+      const original = map.project.bind(map)
+      window.__forcedAirportAnchor = original(forced)
+      map.project = (point) => Array.isArray(point) && Math.abs(point[0] - 128.9382) < 0.001 && Math.abs(point[1] - 35.1795) < 0.001 ? original(forced) : original(point)
+      map.fire('move')
+    })
+    await expect.poll(() => page.evaluate(() => {
+      const circle = document.querySelector('.mb-airport-leaders g:last-child circle')
+      const target = window.__forcedAirportAnchor
+      return circle && Math.abs(Number(circle.getAttribute('cx')) - target.x) < 1 && Math.abs(Number(circle.getAttribute('cy')) - target.y) < 1
+    })).toBe(true)
+    await expect.poll(async () => {
+      const [card, chip] = await Promise.all([page.getByRole('article', { name: /도착 RKPC/ }).boundingBox(), page.getByRole('button', { name: 'RKPK 카드 펼치기' }).boundingBox()])
+      return card && chip && chip.x < card.x + card.width && card.x < chip.x + chip.width && chip.y < card.y + card.height && card.y < chip.y + chip.height
+    }).toBe(false)
+  })
 })
 
 

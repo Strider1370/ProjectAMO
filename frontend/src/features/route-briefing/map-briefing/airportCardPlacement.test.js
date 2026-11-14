@@ -49,3 +49,14 @@ test('태블릿: 시간대 선택으로 커진 카드도 화면 위·아래로 �
     assert.ok(card.left + own.w <= viewport.right)
   }
 })
+
+test('접힌 공항 칩의 주변 여섯 자리가 모두 큰 카드에 가려지면 가까운 빈 자리로 옮긴다', () => {
+  const big = { w: 350, h: 240 }, chip = { w: 135, h: 28 }
+  const [card, small] = placeAirportCards([
+    { key: 'RKPC', x: 500, y: 450, size: big },
+    { key: 'RKPK', x: 700, y: 300, size: chip },
+  ], { size: big, bounds: { left: 0, top: 0, right: 1400, bottom: 700 } })
+  assert.ok(card.left + big.w <= small.left || small.left + chip.w <= card.left || card.top + big.h <= small.top || small.top + chip.h <= card.top)
+  assert.equal(small.side, 'nearby')
+  assert.ok(small.left >= 0 && small.left + chip.w <= 1400 && small.top >= 0 && small.top + chip.h <= 700)
+})
