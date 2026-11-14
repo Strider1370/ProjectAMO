@@ -168,11 +168,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     roundTripPending,
     importError,
     navpointsById,
+    tokenLookups,
     routeTokens,
     routeTokenErrors,
     classifyRouteTexts,
     hoveredWpInfo,
     starOptions,
+    sidOptions,
     selectedSid,
     selectedStar,
     iapCandidates,
@@ -294,6 +296,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         hint={isIfr ? null : '지도에서 선을 끌어 지점을 넣으면 경로에 반영됩니다.'}
         placeholder={isIfr ? '예: RKSI BINIL A582 ANDOL RKPC' : '예: RKSI DCT ANDOL DCT RKPC'}
         tokens={routeTokens}
+        autocomplete={{ lookups: tokenLookups, sidOptions, starOptions, flightRule: routeForm.flightRule, departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport }}
         onChange={setRouteTokenTexts}
       />
       <div className="rtf-status">

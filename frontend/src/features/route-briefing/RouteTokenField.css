@@ -97,3 +97,30 @@
 @media (prefers-reduced-motion: reduce) {
   .rtf-caret { animation: none; }
 }
+
+/* 스크롤되는 비행계획 패널 밖에 띄워 후보가 패널 끝에서 잘리지 않는다. */
+.rtf-suggestions {
+  position: fixed;
+  z-index: 12000;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--stroke-1);
+  border-radius: 8px;
+  background: var(--bg-1);
+  color: var(--text-1);
+  box-shadow: 0 8px 20px #19344824;
+  font-size: 12px;
+}
+.rtf-suggest-group { padding: 9px 11px 5px; color: var(--text-3); font-size: 11px; font-weight: 700; }
+.rtf-suggestions [role="group"] + [role="group"] { border-top: 1px solid var(--stroke-2); }
+.rtf-suggest-option { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px; padding: 6px 11px; border: 0; background: transparent; color: var(--text-1); text-align: left; cursor: pointer; }
+.rtf-suggest-option:hover, .rtf-suggest-option[aria-selected="true"] { background: var(--level-gray-bg); }
+.rtf-suggest-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rtf-suggest-name { min-width: 76px; font-weight: 700; }
+.rtf-suggest-match { color: #365d91; }
+.rtf-suggest-kind { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+.rtf-suggest-kind.is-sid, .rtf-suggest-kind.is-star { background: #d7ecd0; color: #2f5d3a; }
+.rtf-suggest-kind.is-fix { background: #dcdcf3; color: #3b3a8c; }
+.rtf-suggest-kind.is-airway { background: #cdeaea; color: #14595c; }
+.rtf-suggest-connection { margin-left: auto; color: #486f56; font-size: 11px; font-weight: 700; }
+.rtf-suggest-help { display: flex; justify-content: space-between; padding: 8px 11px; border-top: 1px solid var(--stroke-2); color: var(--text-3); font-size: 10px; }

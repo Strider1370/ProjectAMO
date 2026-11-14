@@ -48,7 +48,7 @@ export default defineConfig({
     // grep으로 범위를 좁혀, 계약 전부를 두 엔진으로 돌리는 비용은 지지 않는다.
     {
       name: 'ipad-safari',
-      grep: /route-token-input|copilot-chat|copilot-route|copilot-personal/,
+      grep: /route-token-input|route autocomplete connects procedures|route token clicks and arrow keys|copilot-chat|copilot-route|copilot-personal/,
       use: { ...devices['iPad Pro 11 landscape'], browserName: 'webkit' },
     },
   ],

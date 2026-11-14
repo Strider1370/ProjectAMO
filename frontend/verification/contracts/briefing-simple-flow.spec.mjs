@@ -4,6 +4,84 @@ import { installRouteBriefingFixtures } from '../route-fixture.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 test.describe('briefing-simple-flow', () => {
+  test('route token clicks and arrow keys place the caret between waypoints', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', '경로 토큰 입력은 데스크톱과 iPad에서 제공')
+    await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await installRouteBriefingFixtures(page)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()
+    for (const [label, code] of [['출발 공항', 'RKSS'], ['목적 공항', 'RKPC']]) {
+      await page.locator('.apf').filter({ hasText: label }).first().locator('.apf-row').click()
+      await page.locator('.apf-pop .apf-chip').filter({ hasText: code }).click()
+    }
+    await page.getByRole('button', { name: '다음', exact: true }).click()
+    const input = page.locator('.rtf-input')
+    for (const name of ['BULTI', 'GONAX', 'BEDES']) { await input.fill(name); await input.press('Enter') }
+    await expect.poll(() => page.locator('.rtf-pill').count()).toBeGreaterThan(6)
+    await expect(page.getByRole('button', { name: '다음', exact: true })).toBeEnabled({ timeout: 20000 })
+    const gonax = page.locator('.rtf-pill').filter({ hasText: 'GONAX' }).first()
+    const box = await gonax.boundingBox()
+    await page.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2)
+    await expect(input).toBeFocused()
+    const neighbour = (direction) => input.evaluate((el, offset) => {
+      const nodes = [...el.parentElement.children].filter((node) => !node.classList.contains('rtf-caret'))
+      return nodes[nodes.indexOf(el) + offset]?.textContent
+    }, direction)
+    await expect(neighbour(-1)).resolves.toBe('GONAX')
+    await input.press('ArrowLeft')
+    await expect(neighbour(1)).resolves.toBe('GONAX')
+    await input.press('ArrowRight')
+    await expect(neighbour(-1)).resolves.toBe('GONAX')
+    await input.fill('ELPOS')
+    await input.press('Enter')
+    const pills = page.locator('.rtf-pill')
+    await expect.poll(() => pills.allTextContents()).toEqual(expect.arrayContaining(['RKSS', 'BULTI', 'GONAX', 'ELPOS', 'BEDES', 'RKPC']))
+    const bedes = page.locator('.rtf-pill').filter({ hasText: 'BEDES' }).first()
+    const before = await bedes.boundingBox()
+    await page.mouse.click(before.x + before.width * 0.25, before.y + before.height / 2)
+    await expect(neighbour(1)).resolves.toBe('BEDES')
+  })
+  test('route autocomplete connects procedures and preserves manual entry', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', '경로 토큰 입력은 데스크톱과 iPad에서 제공')
+    await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
+    await installRouteBriefingFixtures(page)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()
+    for (const [label, code] of [['출발 공항', 'RKSS'], ['목적 공항', 'RKPC']]) {
+      await page.locator('.apf').filter({ hasText: label }).first().locator('.apf-row').click()
+      await page.locator('.apf-pop .apf-chip').filter({ hasText: code }).click()
+    }
+    await page.getByRole('button', { name: '다음', exact: true }).click()
+    const input = page.locator('.rtf-input')
+    for (const name of ['BULTI', 'DOTOL']) { await input.fill(name); await input.press('Enter') }
+    await expect(page.getByRole('button', { name: '다음', exact: true })).toBeEnabled({ timeout: 20000 })
+    await page.locator('.rtf-pill').filter({ hasText: 'BULTI' }).first().dispatchEvent('mousedown')
+    await input.fill('BUL')
+    const menu = page.getByRole('listbox', { name: '경로 자동완성' })
+    const sid = menu.getByRole('option', { name: /BULTI2U.*SID.*BULTI 연결/ })
+    await expect(sid).toBeVisible({ timeout: 15000 })
+    expect(await menu.evaluate((el) => el.parentElement === document.body)).toBe(true)
+    await sid.click()
+    await expect(input).toBeFocused()
+    await expect(page.locator('.rtf-pill.is-procedure').filter({ hasText: 'BULTI2U' })).toHaveCount(1)
+    await page.locator('.rtf-pill.is-procedure').filter({ hasText: 'BULTI2U' }).first().dispatchEvent('mousedown')
+    await input.fill('BULTI2Z')
+    await menu.getByRole('option', { name: /BULTI2Z.*SID.*BULTI 연결/ }).click()
+    await expect(page.locator('.rtf-pill.is-procedure').filter({ hasText: 'BULTI2Z' })).toHaveCount(1)
+    await expect(page.locator('.rtf-pill.is-procedure').filter({ hasText: 'BULTI2U' })).toHaveCount(0)
+    await page.locator('.rtf-pill').filter({ hasText: 'RKPC' }).first().dispatchEvent('mousedown')
+    await input.fill('DOTO')
+    await expect(menu.getByRole('option', { name: /DOTOL2P.*STAR.*DOTOL 연결/ })).toBeVisible({ timeout: 15000 })
+    await input.press('ArrowDown')
+    await input.press('Enter')
+    await expect(page.locator('.rtf-pill.is-procedure').filter({ hasText: 'DOTOL2P' })).toHaveCount(1)
+    await expect(input).toBeFocused()
+    await input.fill('ANDOL')
+    await input.press('Escape')
+    await expect(menu).toHaveCount(0)
+    await input.press('Enter')
+    await expect(page.locator('.rtf-pill.is-fix').filter({ hasText: 'ANDOL' })).toHaveCount(1)
+  })
   test('manual route entry keeps focus during recalculation and applies selected procedures', async ({ page }, testInfo) => {
     await page.addInitScript(version => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
     await installRouteBriefingFixtures(page)
@@ -36,10 +114,12 @@ test.describe('briefing-simple-flow', () => {
       await input.fill('BEDES')
       await input.press('Enter')
       await expect(input).toBeFocused()
+      await page.locator('.rtf-pill').filter({ hasText: 'GONAX' }).first().dispatchEvent('mousedown')
       hold = false
       release()
       await expect(page.locator('.rtf-status-right')).toContainText('NM', { timeout: 20000 })
       await expect(page.locator('.rtf-pill').filter({ hasText: 'BEDES' })).toHaveCount(1)
+      await expect(input.evaluate((el) => el.nextElementSibling?.textContent)).resolves.toBe('GONAX')
       if (testInfo.project.name === 'mobile') return
       await page.getByText('출발·도착 절차 설정', { exact: true }).click()
       for (const index of [0, 1]) {

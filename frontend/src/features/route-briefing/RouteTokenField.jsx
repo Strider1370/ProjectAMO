@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { TOKEN_COLORS, TOKEN_KINDS } from './lib/routeTokens.js'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { findProcedureByToken, TOKEN_COLORS, TOKEN_KINDS } from './lib/routeTokens.js'
+import { buildRouteSuggestions } from './lib/routeAutocomplete.js'
 import './RouteTokenField.css'
 
 // 알약은 그림이고, 타이핑은 알약 사이를 옮겨다니는 진짜 input 하나가 맡는다.
@@ -8,15 +10,53 @@ import './RouteTokenField.css'
 //
 // 이 부품은 경로를 모른다. 알약을 그리고 글자 목록의 변경을 알릴 뿐이다 — 판정도,
 // 지도도, 서버도 모른다.
-export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false, hint = null }) {
+export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false, hint = null, autocomplete = null }) {
   const inputRef = useRef(null)
   const boxRef = useRef(null)
+  const menuRef = useRef(null)
+  const pointerInMenu = useRef(false)
+  const listId = useId()
   const [draft, setDraft] = useState('')
+  const [focused, setFocused] = useState(false)
+  const [closed, setClosed] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const [position, setPosition] = useState(null)
   // 입력칸이 놓인 자리. tokens.length면 맨 끝이다.
   const [caret, setCaret] = useState(tokens.length)
 
   const texts = tokens.map((token) => token.text)
   const at = Math.min(caret, tokens.length)
+  const groups = useMemo(() => autocomplete ? buildRouteSuggestions({ ...autocomplete, query: draft, tokens, at }) : [], [autocomplete, draft, tokens, at])
+  const items = useMemo(() => groups.flatMap((group) => group.items.slice(0, 40)), [groups])
+  const open = focused && !closed && !!draft.trim() && items.length > 0
+
+  useLayoutEffect(() => {
+    if (!open) return undefined
+    const update = () => {
+      const rect = boxRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const margin = 8, gap = 5, preferred = 280
+      const below = window.innerHeight - rect.bottom - gap - margin
+      const above = rect.top - gap - margin
+      const up = below < preferred && above > below
+      const maxHeight = Math.max(60, Math.min(preferred, up ? above : below))
+      setPosition({ left: Math.max(margin, rect.left), width: Math.min(rect.width, window.innerWidth - margin * 2), ...(up ? { bottom: window.innerHeight - rect.top + gap } : { top: rect.bottom + gap }), maxHeight })
+    }
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', update, true) }
+  }, [open, at, tokens])
+
+  useEffect(() => {
+    if (activeIndex < 0) return
+    const menu = menuRef.current
+    const active = menu?.querySelector('[aria-selected="true"]')
+    if (!menu || !active) return
+    const a = active.getBoundingClientRect(), b = menu.getBoundingClientRect()
+    if (a.bottom > b.bottom) menu.scrollTop += a.bottom - b.bottom
+    else if (a.top < b.top) menu.scrollTop -= b.top - a.top
+  }, [activeIndex, items])
 
   // 목록은 밖에서도 바뀐다(위쪽 선택기, 첫 진입 초기값). 그때 커서가 제자리에 남아 있으면
   // 다음에 치는 토큰이 엉뚱한 자리에 끼워진다 — 공항을 고른 뒤 DCT를 치면 'DCT RKSS RKPK'가
@@ -26,12 +66,24 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   // 그 사이에 들어가야 맞다 — 경로는 출발과 목적지 사이를 채우는 것이기 때문이다.
   // 끝으로 보내면 VFR에서 'RKSS RKPK DCT'처럼 연결어가 목적지 뒤에 붙어 경로가 성립하지 않는다.
   const expectedLengthRef = useRef(tokens.length)
+  const previousTextsRef = useRef(texts)
   useEffect(() => {
+    const previous = previousTextsRef.current
+    previousTextsRef.current = texts
     if (tokens.length === expectedLengthRef.current) return
     expectedLengthRef.current = tokens.length
+    // 서버 계산이 경로 토큰을 펼쳐도 사용자가 보고 있던 지점에 커서를 둔다.
+    if (document.activeElement === inputRef.current && previous.length > 0) {
+      const right = previous[caret]
+      const left = previous[caret - 1]
+      const rightIndex = right ? texts.indexOf(right) : -1
+      if (rightIndex >= 0) { setCaret(rightIndex); return }
+      const leftIndex = left ? texts.lastIndexOf(left) : -1
+      if (leftIndex >= 0) { setCaret(leftIndex + 1); return }
+    }
     const lastIsAirport = tokens.length > 1 && tokens.at(-1)?.kind === TOKEN_KINDS.AIRPORT
     setCaret(lastIsAirport ? tokens.length - 1 : tokens.length)
-  }, [tokens])
+  }, [tokens]) // caret은 토큰이 바뀐 시점의 위치를 읽는다.
 
   // 칸은 높이가 정해져 있고 넘치면 칸 안에서 스크롤된다(RouteTokenField.css). 알약을 치거나 지우면
   // 입력 커서가 있는 줄이 보이도록 칸 안에서만 따라간다 — scrollIntoView는 바깥 패널까지 움직인다.
@@ -45,18 +97,44 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
     else if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = bottom - box.clientHeight + 6
   }, [caret, tokens])
 
-  const commit = (value) => {
+  const commit = (value, kind = null) => {
     const trimmed = value.trim()
     if (!trimmed) return
-    const next = [...texts]
+    let insertAt = at
+    const procedures = kind === 'SID' ? autocomplete?.sidOptions : kind === 'STAR' ? autocomplete?.starOptions : null
+    const next = texts.filter((text, index) => {
+      if (!procedures || !findProcedureByToken(text, procedures)) return true
+      if (index < at) insertAt -= 1
+      return false
+    })
     // 한 번에 여러 토큰을 붙여넣는 경우가 있다 — 공백으로 갈라 각각 토큰으로 넣는다.
     const parts = trimmed.split(/\s+/)
-    next.splice(at, 0, ...parts)
+    next.splice(insertAt, 0, ...parts)
     expectedLengthRef.current = next.length
     onChange?.(next)
-    setCaret(at + parts.length)
+    setCaret(insertAt + parts.length)
     setDraft('')
+    setClosed(false)
+    setActiveIndex(-1)
   }
+
+  useEffect(() => {
+    if (!open) return undefined
+    const release = () => { setTimeout(() => { pointerInMenu.current = false }, 0) }
+    const dismiss = (event) => {
+      if (boxRef.current?.contains(event.target) || menuRef.current?.contains(event.target)) return
+      // 터치로 목록을 스크롤하며 입력 포커스를 잃은 경우에도 바깥을 누르면 확정한다.
+      if (document.activeElement !== inputRef.current) { commit(draft); setFocused(false) }
+    }
+    document.addEventListener('pointerdown', dismiss)
+    document.addEventListener('pointerup', release)
+    document.addEventListener('pointercancel', release)
+    return () => {
+      document.removeEventListener('pointerdown', dismiss)
+      document.removeEventListener('pointerup', release)
+      document.removeEventListener('pointercancel', release)
+    }
+  }, [open, draft, at, tokens])
 
   const removeBefore = () => {
     if (at === 0) return
@@ -68,6 +146,18 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   }
 
   const onKeyDown = (event) => {
+    if (open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      event.preventDefault()
+      setActiveIndex((index) => event.key === 'ArrowDown' ? (index + 1) % items.length : (index < 0 ? items.length - 1 : (index + items.length - 1) % items.length))
+      return
+    }
+    if (open && event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      setClosed(true)
+      setActiveIndex(-1)
+      return
+    }
     if (event.key === 'Enter' || event.key === ' ') {
       if (!draft.trim()) {
         // 빈 칸에서 스페이스로 알약이 생기면 빈 알약이 남는다.
@@ -75,7 +165,8 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
         return
       }
       event.preventDefault()
-      commit(draft)
+      const selected = event.key === 'Enter' && open && activeIndex >= 0 ? items[activeIndex] : null
+      commit(selected?.value ?? draft, selected?.kind)
       return
     }
     if (event.key === 'Backspace' && draft === '') {
@@ -102,16 +193,32 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   const moveCaret = (index) => (event) => {
     event.preventDefault()
     event.stopPropagation()
-    if (draft.trim()) commit(draft)
-    setCaret(index)
+    const pending = draft.trim() ? draft.trim().split(/\s+/).length : 0
+    if (pending) commit(draft)
+    setCaret(index + (pending && index >= at ? pending : 0))
     inputRef.current?.focus()
+  }
+
+  // 토큰 왼쪽/오른쪽 절반을 누른 위치로 커서를 놓는다.
+  const moveCaretAtPill = (index) => (event) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    moveCaret(index + (event.clientX >= rect.left + rect.width / 2 ? 1 : 0))(event)
+  }
+
+  const moveCaretAtSpace = (event) => {
+    const pills = [...(boxRef.current?.querySelectorAll('.rtf-pill, .rtf-dct') ?? [])]
+    const index = pills.findIndex((pill) => {
+      const rect = pill.getBoundingClientRect()
+      return event.clientY < rect.top || (event.clientY <= rect.bottom && event.clientX < rect.left + rect.width / 2)
+    })
+    moveCaret(index < 0 ? pills.length : index)(event)
   }
 
   const renderPill = (token, index) => {
     const color = TOKEN_COLORS[token.kind]
     if (token.kind === TOKEN_KINDS.DCT) {
       return (
-        <span key={`${token.text}-${index}`} className="rtf-dct" onMouseDown={moveCaret(index)}>
+        <span key={`${token.text}-${index}`} className="rtf-dct" onMouseDown={moveCaretAtPill(index)}>
           {token.text}
         </span>
       )
@@ -122,7 +229,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
         className={`rtf-pill is-${token.kind}`}
         style={{ background: color?.bg, color: color?.fg, border: color?.border ?? '1px solid transparent' }}
         title={token.reason ?? undefined}
-        onMouseDown={moveCaret(index)}
+        onMouseDown={moveCaretAtPill(index)}
       >
         {token.text}
       </span>
@@ -137,7 +244,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
           {hint && <span className="rtf-hint">{hint}</span>}
         </span>
       )}
-      <div ref={boxRef} className="rtf-box" onMouseDown={moveCaret(tokens.length)}>
+      <div ref={boxRef} className="rtf-box" onMouseDown={moveCaretAtSpace}>
         {tokens.slice(0, at).map(renderPill)}
         {/* 알약 사이에 커서가 있고 아직 아무것도 치지 않았을 때만 세로선을 보인다.
             치기 시작하면 글자 자체가 자리를 알리므로 선은 사라진다. */}
@@ -153,16 +260,44 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
           spellCheck={false}
           disabled={disabled}
           value={draft}
+          role="combobox"
+          aria-label={label || '경로 입력'}
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-activedescendant={open && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
           placeholder={tokens.length === 0 ? placeholder : ''}
           // 입력칸을 누른 것은 자리를 옮기겠다는 뜻이 아니다. 이 이벤트가 상자로 번지면
           // 상자의 처리기가 커서를 끝으로 끌어가, 목적지 앞에 있던 자리를 잃는다.
           onMouseDown={(event) => event.stopPropagation()}
-          onChange={(event) => setDraft(event.target.value.toUpperCase())}
+          onChange={(event) => { setDraft(event.target.value.toUpperCase()); setClosed(false); setActiveIndex(-1) }}
           onKeyDown={onKeyDown}
-          onBlur={() => commit(draft)}
+          onFocus={() => { setFocused(true); setClosed(false) }}
+          onBlur={() => { if (pointerInMenu.current) return; setFocused(false); commit(draft) }}
         />
         {tokens.slice(at).map((token, index) => renderPill(token, at + index))}
       </div>
+      {open && position && createPortal(
+        <div className="rtf-suggestions" ref={menuRef} id={listId} role="listbox" aria-label="경로 자동완성" style={position} onPointerDown={() => { pointerInMenu.current = true }}>
+          {groups.map((group) => {
+            const groupItems = group.items.slice(0, 40)
+            return <div key={group.label} role="group" aria-label={group.label}>
+              <div className="rtf-suggest-group">{group.label}</div>
+              {groupItems.map((item) => {
+                const index = items.indexOf(item)
+                return <button type="button" role="option" id={`${listId}-${index}`} aria-selected={index === activeIndex} className="rtf-suggest-option" key={item.key}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => { commit(item.value, item.kind); setFocused(true); inputRef.current?.focus() }}>
+                  <span className="rtf-suggest-name"><span className="rtf-suggest-match">{item.name.slice(0, draft.trim().length)}</span>{item.name.slice(draft.trim().length)}</span>
+                  <span className={`rtf-suggest-kind is-${item.kind.toLowerCase()}`}>{({ SID: 'SID', STAR: 'STAR', FIX: '웨이포인트', AIRWAY: '항로' })[item.kind]}</span>
+                  {item.connection && <span className="rtf-suggest-connection">{item.connection} 연결</span>}
+                </button>
+              })}
+            </div>
+          })}
+          <div className="rtf-suggest-help">↑↓ 이동 · Enter 선택 <span>Esc 닫기</span></div>
+        </div>, document.body,
+      )}
     </label>
   )
 }
