@@ -123,7 +123,7 @@ function relativeTime(ts) {
   return new Date(ts).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
 }
 
-export default function RouteBriefingPanel({ state, refs = {}, derived, actions, airports = [], aviationVisibility = {}, onToggleAviation, metVisibility = {}, onToggleMet, onRequestLogin }) {
+export default function RouteBriefingPanel({ state, refs = {}, derived, actions, airports = [], aviationVisibility = {}, onToggleAviation, metVisibility = {}, onToggleMet, onRequestLogin, onAutocompletePreview, onAutocompletePreviewMap }) {
   const isMobile = useIsMobile()
   const s = useStyles()
   const { tz } = useTimeZone()
@@ -284,6 +284,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     Number.isFinite(routeDistanceNm) ? `${Math.round(routeDistanceNm)} NM` : null,
     etaDisplay || null,
   ].filter(Boolean).join(' · ')
+  const autocomplete = useMemo(() => ({ lookups: tokenLookups, sidOptions, starOptions, flightRule: routeForm.flightRule, departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport }), [tokenLookups, sidOptions, starOptions, routeForm.flightRule, routeForm.departureAirport, routeForm.arrivalAirport])
 
   // 데스크톱과 모바일이 같은 입력칸을 쓴다. 구조가 다른 두 화면에 같은 것을 두 번 짜면
   // 한쪽만 고쳐지는 일이 생긴다.
@@ -296,7 +297,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         hint={isIfr ? null : '지도에서 선을 끌어 지점을 넣으면 경로에 반영됩니다.'}
         placeholder={isIfr ? '예: RKSI BINIL A582 ANDOL RKPC' : '예: RKSI DCT ANDOL DCT RKPC'}
         tokens={routeTokens}
-        autocomplete={{ lookups: tokenLookups, sidOptions, starOptions, flightRule: routeForm.flightRule, departure: routeForm.departureAirport, arrival: routeForm.arrivalAirport }}
+        autocomplete={autocomplete}
+        onPreviewChange={onAutocompletePreview}
+        onPreviewMap={onAutocompletePreviewMap}
         onChange={setRouteTokenTexts}
       />
       <div className="rtf-status">

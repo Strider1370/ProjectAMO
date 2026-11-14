@@ -156,6 +156,7 @@ import {
   syncVfrWaypointData,
 } from '../route-briefing/lib/routePreviewSync.js'
 import { syncTokenPreviewLayers } from '../route-briefing/lib/tokenPreviewLayers.js'
+import { syncAutocompletePreview } from '../route-briefing/lib/autocompletePreviewLayers.js'
 import { legHighlightCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
 import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
 import { useCopilotResult } from '../route-briefing/useCopilotResult.js'
@@ -510,6 +511,7 @@ const MapView = forwardRef(function MapView({
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
+  const [autocompletePreview, setAutocompletePreview] = useState(null)
   // 지도형 브리핑: 폭 1024 이상에서 새 브리핑마다 기본. 열린 뒤에는 문서형으로 전환할 수 있다.
   const wideForMapBriefing = useMinWidth(MAP_BRIEFING_MIN_WIDTH)
   const [briefingView, setBriefingViewState] = useState(readBriefingView)
@@ -865,6 +867,12 @@ const MapView = forwardRef(function MapView({
     if (!map || !isStyleReady) return
     syncTokenPreviewLayers(map, routeBriefing.state.routeTokenGeometry, { hasAppliedRoute: !!routeResult })
   }, [routeBriefing.state.routeTokenGeometry, routeResult, isStyleReady, styleRevision])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    syncAutocompletePreview(map, activePanel === 'route-check' ? autocompletePreview : null)
+  }, [autocompletePreview, activePanel, isStyleReady, styleRevision])
 
   useEffect(() => {
     const map = mapRef.current
@@ -2490,6 +2498,12 @@ const MapView = forwardRef(function MapView({
                   metVisibility={metVisibility}
                   onToggleMet={toggleMet}
                   onRequestLogin={onRequestLogin}
+                  onAutocompletePreview={setAutocompletePreview}
+                  onAutocompletePreviewMap={(preview) => {
+                    const map = mapRef.current
+                    if (!map || !preview?.coordinates?.length) return
+                    map.fitBounds(boundsFromCoords(preview.coordinates), { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
+                  }}
                   onClose={onClosePanel}
                 />
               </Suspense>

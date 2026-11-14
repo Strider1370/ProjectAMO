@@ -45,7 +45,7 @@ export function buildRouteSuggestions({ query, tokens = [], at = 0, flightRule, 
   for (const [enabled, kind, options, airport] of [[departureSide, 'SID', sidOptions, departure], [arrivalSide, 'STAR', starOptions, arrival]]) {
     if (!enabled) continue
     const entries = options.filter((proc) => (!proc.airport || proc.airport === airport) && String(proc.name ?? '').toUpperCase().startsWith(q)).map((proc) => ({
-      key: `${kind}:${proc.id}`, name: proc.name, value: proc.name, kind,
+      key: `${kind}:${proc.id}`, name: proc.name, value: proc.name, kind, procedure: proc,
       connection: procedureConnection(proc, kind, tokens, at, routes),
     })).filter((entry) => entry.value)
     const title = kind === 'SID' ? '출발절차' : '도착절차'

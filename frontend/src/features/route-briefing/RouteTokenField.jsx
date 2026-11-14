@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom'
 import { findProcedureByToken, TOKEN_COLORS, TOKEN_KINDS } from './lib/routeTokens.js'
 import { buildRouteSuggestions } from './lib/routeAutocomplete.js'
+import { buildAutocompletePreview } from './lib/autocompletePreviewLayers.js'
 import './RouteTokenField.css'
 
 // 알약은 그림이고, 타이핑은 알약 사이를 옮겨다니는 진짜 input 하나가 맡는다.
@@ -10,7 +11,7 @@ import './RouteTokenField.css'
 //
 // 이 부품은 경로를 모른다. 알약을 그리고 글자 목록의 변경을 알릴 뿐이다 — 판정도,
 // 지도도, 서버도 모른다.
-export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false, hint = null, autocomplete = null }) {
+export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false, hint = null, autocomplete = null, onPreviewChange, onPreviewMap }) {
   const inputRef = useRef(null)
   const boxRef = useRef(null)
   const menuRef = useRef(null)
@@ -20,6 +21,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   const [focused, setFocused] = useState(false)
   const [closed, setClosed] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [hoveredKey, setHoveredKey] = useState(null)
   const [position, setPosition] = useState(null)
   // 입력칸이 놓인 자리. tokens.length면 맨 끝이다.
   const [caret, setCaret] = useState(tokens.length)
@@ -29,6 +31,11 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   const groups = useMemo(() => autocomplete ? buildRouteSuggestions({ ...autocomplete, query: draft, tokens, at }) : [], [autocomplete, draft, tokens, at])
   const items = useMemo(() => groups.flatMap((group) => group.items.slice(0, 40)), [groups])
   const open = focused && !closed && !!draft.trim() && items.length > 0
+  const highlighted = open ? (items.find((item) => item.key === hoveredKey) ?? items[activeIndex] ?? null) : null
+  const preview = useMemo(() => buildAutocompletePreview(highlighted, autocomplete?.lookups), [highlighted, autocomplete?.lookups])
+
+  useEffect(() => { onPreviewChange?.(preview) }, [onPreviewChange, preview])
+  useEffect(() => () => onPreviewChange?.(null), [onPreviewChange])
 
   useLayoutEffect(() => {
     if (!open) return undefined
@@ -148,6 +155,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   const onKeyDown = (event) => {
     if (open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
       event.preventDefault()
+      setHoveredKey(null)
       setActiveIndex((index) => event.key === 'ArrowDown' ? (index + 1) % items.length : (index < 0 ? items.length - 1 : (index + items.length - 1) % items.length))
       return
     }
@@ -155,6 +163,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
       event.preventDefault()
       event.stopPropagation()
       setClosed(true)
+      setHoveredKey(null)
       setActiveIndex(-1)
       return
     }
@@ -187,6 +196,22 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
       event.preventDefault()
       setCaret(event.key === 'Home' ? 0 : tokens.length)
     }
+  }
+
+  const onMenuKeyDown = (event) => {
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    event.stopPropagation()
+    inputRef.current?.focus()
+    setClosed(true)
+    setHoveredKey(null)
+    setActiveIndex(-1)
+  }
+
+  const onMenuBlur = (event) => {
+    if (event.currentTarget.contains(event.relatedTarget) || event.relatedTarget === inputRef.current) return
+    setFocused(false)
+    commit(draft)
   }
 
   // 알약을 눌러도 키보드가 닫히지 않도록 기본 동작을 막고 초점을 입력칸에 유지한다.
@@ -270,15 +295,16 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
           // 입력칸을 누른 것은 자리를 옮기겠다는 뜻이 아니다. 이 이벤트가 상자로 번지면
           // 상자의 처리기가 커서를 끝으로 끌어가, 목적지 앞에 있던 자리를 잃는다.
           onMouseDown={(event) => event.stopPropagation()}
-          onChange={(event) => { setDraft(event.target.value.toUpperCase()); setClosed(false); setActiveIndex(-1) }}
+          onChange={(event) => { setDraft(event.target.value.toUpperCase()); setClosed(false); setActiveIndex(-1); setHoveredKey(null) }}
           onKeyDown={onKeyDown}
           onFocus={() => { setFocused(true); setClosed(false) }}
-          onBlur={() => { if (pointerInMenu.current) return; setFocused(false); commit(draft) }}
+          onBlur={(event) => { if (pointerInMenu.current || menuRef.current?.contains(event.relatedTarget)) return; setFocused(false); commit(draft) }}
         />
         {tokens.slice(at).map((token, index) => renderPill(token, at + index))}
       </div>
       {open && position && createPortal(
-        <div className="rtf-suggestions" ref={menuRef} id={listId} role="listbox" aria-label="경로 자동완성" style={position} onPointerDown={() => { pointerInMenu.current = true }}>
+        <div className="rtf-suggestions" ref={menuRef} style={position} onPointerDown={() => { pointerInMenu.current = true }} onMouseLeave={() => setHoveredKey(null)} onKeyDown={onMenuKeyDown} onBlur={onMenuBlur}>
+          <div id={listId} role="listbox" aria-label="경로 자동완성">
           {groups.map((group) => {
             const groupItems = group.items.slice(0, 40)
             return <div key={group.label} role="group" aria-label={group.label}>
@@ -286,6 +312,8 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
               {groupItems.map((item) => {
                 const index = items.indexOf(item)
                 return <button type="button" role="option" id={`${listId}-${index}`} aria-selected={index === activeIndex} className="rtf-suggest-option" key={item.key}
+                  onMouseMove={() => { setHoveredKey(item.key); setActiveIndex(-1) }}
+                  onFocus={() => setHoveredKey(item.key)}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => { commit(item.value, item.kind); setFocused(true); inputRef.current?.focus() }}>
                   <span className="rtf-suggest-name"><span className="rtf-suggest-match">{item.name.slice(0, draft.trim().length)}</span>{item.name.slice(draft.trim().length)}</span>
@@ -295,7 +323,8 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
               })}
             </div>
           })}
-          <div className="rtf-suggest-help">↑↓ 이동 · Enter 선택 <span>Esc 닫기</span></div>
+          </div>
+          <div className="rtf-suggest-help"><span>↑↓ 이동 · Enter 선택 · Esc 닫기</span>{preview && onPreviewMap && <button type="button" className="rtf-suggest-map" onMouseDown={(event) => event.preventDefault()} onClick={() => { onPreviewMap(preview); inputRef.current?.focus() }}>지도에서 보기</button>}</div>
         </div>, document.body,
       )}
     </label>
