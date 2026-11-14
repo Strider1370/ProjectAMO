@@ -19,9 +19,7 @@ function snapshotSummary(snap) {
 }
 
 function failureText(body, fallback) {
-  if (body?.error === 'snapshot_disk_budget') {
-    return `디스크 부족 — 저장하면 ${fmtGb(body.free - body.bytes)}만 남아 다음 확대 KIM 수집에 필요한 ${fmtGb(body.minFreeAfterBytes)}보다 적습니다. 기존 스냅샷을 지우고 다시 저장하세요.`
-  }
+  if (body?.error === 'snapshot_no_space') return '디스크에 스냅샷을 저장할 공간이 부족합니다.'
   if (body?.error === 'snapshot_in_use') return '시연 중인 스냅샷은 시연을 끝낸 뒤에 지울 수 있습니다.'
   if (body?.error === 'demo_instance_low_memory') return `서버 메모리 부족 — 남은 ${fmtGb(body.available)}, 필요 ${fmtGb(body.required)}. 잠시 뒤 다시 시도하세요.`
   if (body?.error === 'demo_instance_running') return '시연 서버가 이미 켜져 있습니다.'

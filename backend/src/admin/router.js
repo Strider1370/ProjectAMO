@@ -174,8 +174,7 @@ export function createAdminRouter({ db = null, demoInstance = defaultDemoInstanc
       res.json({ ok: true, ...savedSnapshot, inspection: inspectSnapshot(config.storage.base_path, savedSnapshot.name) })
     } catch (error) {
       recordDemoEvent('save-failed', error.message)
-      // 디스크가 모자라면 다음 확대 회차를 시작할 자리를 지키려고 저장하지 않는다(snapshot-store.js saveSnapshot).
-      if (error.code === 'snapshot_disk_budget') return res.status(507).json({ error: 'snapshot_disk_budget', ...error.detail })
+      if (error.code === 'ENOSPC') return res.status(507).json({ error: 'snapshot_no_space' })
       res.status(error.message.startsWith('collection_drain_timeout') ? 503 : 500).json({ error: 'snapshot_save_failed' })
     }
   })

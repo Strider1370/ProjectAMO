@@ -3,10 +3,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import config from '../config.js'
 import { initFromFiles, loadLatest } from '../store.js'
 import { kimDocumentExists } from '../processors/kim-doc-store.js'
-import { EXPANDED_START_FREE_BYTES } from '../processors/kim-expanded-disk.js'
 
 const SNAPSHOT_EXCLUDE = new Set(['snapshots', 'stats']) // 캡처 대상에서 제외(메타/재귀 방지)
 const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫자/-/_ 만 허용
@@ -224,15 +222,6 @@ function copyPlannedFile(file, stageBase) {
   fs.copyFileSync(file.src, dest)
 }
 
-function freeBytes(target) {
-  try {
-    const stat = fs.statfsSync(target)
-    return stat.bavail * stat.bsize
-  } catch {
-    return Number.POSITIVE_INFINITY
-  }
-}
-
 function readSnapshotMeta(basePath, name) {
   const snapshotRoot = existingSnapshotPath(basePath, name)
   if (!snapshotRoot) return { savedAt: null, referenceTime: null, generation: null, revision: null }
@@ -359,13 +348,9 @@ function referenceTimeFor(basePath) {
   return metar?.fetched_at || new Date().toISOString()
 }
 
-// minFreeAfterBytes: 저장한 뒤에도 남아야 하는 디스크 여유. 확대 수집을 쓰면 다음 확대 회차를 시작할 자리(약 8.1 GB)를
-// 남긴다. 모자라면 아무것도 쓰지 않고 snapshot_disk_budget으로 거절한다.
 export function saveSnapshot(basePath, name, {
   beforePublish,
   kimWindow = DEMO_KIM_WINDOW,
-  minFreeAfterBytes = config.kim_expanded?.enabled ? EXPANDED_START_FREE_BYTES : 0,
-  diskFree = freeBytes,
   activePath = path.join(basePath, '.active-data'),
 } = {}) {
   if (!snapshotPath(basePath, name)) throw new Error('invalid_snapshot_name')
@@ -382,14 +367,6 @@ export function saveSnapshot(basePath, name, {
     if (plan.expanded) kimExpanded = plan.expanded
   }
   const bytes = files.reduce((sum, file) => sum + fs.statSync(file.src).size, 0)
-  const free = diskFree(basePath)
-  if (free - bytes < minFreeAfterBytes) {
-    const error = new Error('snapshot_disk_budget')
-    error.code = 'snapshot_disk_budget'
-    error.detail = { bytes, free, minFreeAfterBytes }
-    throw error
-  }
-
   const generation = newGeneration()
   const generationRoot = snapshotGenerationRoot(basePath, name)
   const generationPath = path.join(generationRoot, generation)

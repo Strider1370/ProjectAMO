@@ -353,14 +353,14 @@ test('a snapshot keeps only the expanded KIM hours around its reference time and
   }
 })
 
-test('a snapshot that would leave less than the next expanded run needs is refused before anything is written', () => {
+test('snapshot creation does not impose an expanded-run free-space reserve', () => {
   const root = tempRoot()
   try {
     writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-10-17T09:00:00Z' })
     writeExpandedStore(root)
-    assert.throws(() => saveSnapshot(root, 'demo', { diskFree: () => 1000, minFreeAfterBytes: 900 }), (error) => error.code === 'snapshot_disk_budget' && error.detail.bytes > 100)
-    assert.deepEqual(listSnapshots(root), [])
-    assert.equal(fs.existsSync(path.join(root, 'snapshots')), false)
+    const saved = saveSnapshot(root, 'demo', { diskFree: () => 1000, minFreeAfterBytes: 900 })
+    assert.equal(saved.name, 'demo')
+    assert.equal(listSnapshots(root).length, 1)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
