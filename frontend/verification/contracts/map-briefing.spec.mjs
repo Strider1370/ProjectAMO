@@ -78,6 +78,7 @@ test.describe('map-briefing', () => {
     await expect(page.getByRole('button', { name: '연직단면도', exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: '브리핑 패널' }).click()
     await expect(panel).toBeVisible()
+    await expect(page.getByRole('button', { name: '브리핑 종료하고 지도로' })).toBeVisible()
     await expect(panel.getByText('RKSS → RKPK')).toBeVisible()
     await page.getByRole('button', { name: '브리핑 패널' }).click()
     await expect(panel).toHaveCount(0)
@@ -123,7 +124,7 @@ test.describe('map-briefing', () => {
     await page.getByRole('button', { name: '지도형 보기' }).click()
     await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
     await page.getByRole('button', { name: '브리핑 패널' }).click()
-    await page.getByRole('button', { name: /브리핑 종료/ }).click()
+    await page.getByRole('complementary', { name: '비행 전 브리핑' }).getByRole('button', { name: /브리핑 종료/ }).click()
     await expect.poll(routeShare, { timeout: 10_000 }).toBe(1)
   })
 
@@ -145,6 +146,11 @@ test.describe('map-briefing', () => {
 
   test('pressing a ribbon bar opens its detail and turns on the related layer', async ({ page }) => {
     await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
+    const iceSymbol = page.locator('.mb-frame[data-advisory-id="contract-ice"] .mb-frame-symbol')
+    await expect(iceSymbol).toHaveAttribute('src', /icon_SIGMET\/SEV_ICE\.png$/)
+    await expect.poll(() => iceSymbol.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true)
+    const turbSymbol = page.locator('.mb-frame[data-advisory-id="contract-turb"] .mb-frame-symbol')
+    await expect(turbSymbol).toHaveAttribute('src', /icon_SIGMET\/SEV_TURB\.png$/)
     // 막대 버튼은 마우스를 받지 않는다(줄이 위치로 고름) — 키보드로 누른다.
     const bar = page.locator('[data-ribbon-id="turbulence:model:0"]')
     await bar.focus()
@@ -189,6 +195,8 @@ test.describe('map-briefing', () => {
     await page.getByRole('button', { name: 'RKPK 카드 펼치기' }).click()
     const arrival = page.getByRole('article', { name: /도착 RKPK/ })
     await expect(arrival).toBeVisible()
+    await expect(arrival.locator('.mb-ac-foot').getByRole('button', { name: 'RKPK 상세' })).toBeVisible()
+    await expect(arrival.locator('.mb-ac-controls').getByRole('button', { name: 'RKPK 상세' })).toHaveCount(0)
     // 펼친 카드는 METAR·TAF를 자르지 않는다(글이 칸 안에 다 들어간다).
     expect(await arrival.locator('.mb-ac-tac').evaluateAll((lines) => lines.every((el) => el.scrollWidth <= el.clientWidth + 1))).toBe(true)
     await arrival.getByRole('button', { name: 'RKPK 카드 접기' }).click()
@@ -199,6 +207,32 @@ test.describe('map-briefing', () => {
     // 공항 패널이 열린 동안 카드는 숨고, 위쪽 버튼(브리핑 패널 켜기)은 남는다.
     await expect(page.locator('.mb-airport-card')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '브리핑 패널' })).toBeVisible()
+  })
+
+  test('airport warning and airport detail share the footer without hiding weather controls', async ({ page }) => {
+    await createBriefing(page, { view: 'map', patchBriefing: (briefing) => {
+      briefing.sections.adverse.hazards.push({ airportScope: 'RKPK', code: 'WIND_SHEAR', label: '윈드시어' })
+      return briefing
+    } })
+    await page.getByRole('button', { name: 'RKPK 카드 펼치기' }).click()
+    const card = page.getByRole('article', { name: /도착 RKPK/ })
+    await expect(card.locator('.mb-ac-foot')).toContainText('경보')
+    await expect(card.locator('.mb-ac-foot')).toContainText('윈드시어')
+    await expect(card.locator('.mb-ac-foot').getByRole('button', { name: 'RKPK 상세' })).toBeVisible()
+    await expect(card.locator('.mb-ac-controls .report-timezone')).toHaveCount(2)
+  })
+
+  test('the top exit ends the briefing in one click while retaining the flight plan', async ({ page }) => {
+    await createBriefing(page, { view: 'map' })
+    await expect(page.getByRole('complementary', { name: '비행 전 브리핑' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '브리핑 종료하고 지도로' })).toBeVisible()
+    await page.getByRole('button', { name: '브리핑 종료하고 지도로' }).click()
+    await expect(page.getByRole('region', { name: '경로상 위험과 연직단면도' })).toHaveCount(0)
+    await expect(page.locator('.route-check-panel')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '브리핑 종료하고 지도로' })).toHaveCount(0)
+    await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()
+    await expect(page.getByLabel('비행계획 요약')).toContainText('RKSS')
+    await expect(page.getByLabel('비행계획 요약')).toContainText('RKPK')
   })
 
   test('a folded alternate airport chip does not cover an expanded airport card', async ({ page }) => {

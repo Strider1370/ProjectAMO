@@ -180,7 +180,10 @@
 .mb-frame.is-mine { border-style: solid; border-width: 2px; }
 .mb-frame.is-airmet { border-color: var(--mb-airmet); }
 .mb-frame.is-typhoon { border-color: var(--mb-typhoon); }
-.mb-frame-tag { position: absolute; top: 50%; left: 3px; overflow: hidden; max-width: calc(100% - 6px); padding: 0 4px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.9); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; transform: translateY(-50%); pointer-events: none; }
+.mb-frame-tag { position: absolute; top: 50%; left: 3px; display: flex; align-items: center; gap: 2px; overflow: hidden; max-width: calc(100% - 6px); padding: 0 4px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.9); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; white-space: nowrap; transform: translateY(-50%); pointer-events: none; }
+.mb-frame-tag .is-full, .mb-frame-tag .is-short { overflow: hidden; text-overflow: ellipsis; }
+.mb-frame-symbol { flex: none; width: 14px; height: 14px; object-fit: contain; }
+.mb-frame-symbol[hidden] { display: none; }
 .mb-frame.is-airmet .mb-frame-tag { color: var(--mb-airmet); }
 .mb-frame.is-typhoon .mb-frame-tag { color: var(--mb-typhoon); }
 .mb-range-window {
@@ -305,17 +308,16 @@
 .mb-ac-hl.is-precip { background: rgba(186, 230, 253, 0.72); color: #0c4a6e; } /* color-lint-ignore: 공항 패널 강수 강조와 같은 값 */
 .mb-ac-hl.is-special { background: var(--level-red-bg); color: var(--level-red); outline: 1.5px dashed var(--level-red); outline-offset: -1px; }
 .mb-ac-change-count { flex: none; margin-left: auto; padding: 0 var(--space-snudge); border-radius: var(--radius-circular); background: var(--bg-3); color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
-/* 두 보고서의 시간대를 같은 열에 두고, 상세 버튼 공간도 항상 확보한다. */
-.mb-ac-controls { display: grid; grid-template-columns: minmax(0, 1fr) 50px 44px; align-items: start; gap: var(--space-xxs); width: 100%; min-width: 0; }
+/* 두 보고서의 시간대를 같은 열에 둔다. 공항 상세는 카드 아래에서 연다. */
+.mb-ac-controls { display: grid; grid-template-columns: minmax(0, 1fr) 50px; align-items: start; gap: var(--space-xxs); width: 100%; min-width: 0; }
 .mb-ac-controls .report-timezone { grid-column: 2; width: 100%; min-width: 0; font-size: var(--fs-100); padding: var(--space-xxs); }
-.mb-ac-controls .mb-ac-more { grid-column: 3; justify-self: end; margin: 0; padding: 2px 0; white-space: nowrap; }
 .mb-ac-history { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xxs); min-width: 0; }
 .mb-ac-history button, .mb-ac-history select { min-width: 0; padding: 2px 4px; border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text-2); font: inherit; font-size: var(--fs-100); cursor: pointer; }
 .mb-ac-history select { width: 48px; max-width: 48px; }
 .mb-ac-history button[aria-pressed='true'] { border-color: var(--stroke-strong); background: var(--bg-3); color: var(--text-1); }
 .mb-ac-history :is(button, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (pointer: coarse) {
-  .mb-ac-controls .report-timezone, .mb-ac-controls .mb-ac-more, .mb-ac-history :is(button, select) { min-height: var(--touch-min); min-width: var(--touch-min); }
+  .mb-ac-controls .report-timezone, .mb-ac-foot .mb-ac-more, .mb-ac-history :is(button, select) { min-height: var(--touch-min); min-width: var(--touch-min); }
   .mb-ac-fold { min-width: var(--touch-min); min-height: var(--touch-min); }
 }
 .mb-ac-report.is-past { background: #fff4e5; }
@@ -326,6 +328,7 @@
 .mb-ac-warn { min-width: 0; color: var(--level-red); font-size: var(--fs-200); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
 .mb-ac-warn > b { margin-right: 4px; padding: 0 5px; border-radius: var(--radius-sm); background: var(--level-red); color: #fff; }
 .mb-ac-more { display: inline-flex; align-items: center; margin-left: auto; padding: 2px 4px 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--accent); font: inherit; font-size: var(--fs-300); font-weight: var(--fw-semibold); cursor: pointer; }
+.mb-ac-more { flex: none; white-space: nowrap; }
 .mb-ac-more:hover:not(:disabled) { background: var(--bg-3); }
 .mb-ac-more:disabled { color: var(--text-3); cursor: default; }
 

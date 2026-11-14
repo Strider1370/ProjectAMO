@@ -105,7 +105,7 @@ test.describe('report-timezone', () => {
     const card = page.locator('.mb-airport-card').first()
     await expect(card.locator('dt').first().locator('.mb-ac-current-cat')).toContainText('현재 ')
     await expect(card.locator('header').getByRole('button', { name: /카드 접기/ })).toBeVisible()
-    await expect(card.locator('.mb-ac-report').nth(1).getByRole('button', { name: /상세/ })).toBeVisible()
+    await expect(card.locator('.mb-ac-foot').getByRole('button', { name: /상세/ })).toBeVisible()
     expect((await card.boundingBox()).width).toBe(350)
     const metar = card.getByRole('combobox', { name: /METAR 표시 시간대/ })
     const taf = card.getByRole('combobox', { name: /TAF 표시 시간대/ })
@@ -132,6 +132,10 @@ test.describe('report-timezone', () => {
     await metarHistory.getByRole('button', { name: /최신/ }).click()
     await tafHistory.getByRole('button').last().click()
     await expect(card.locator('dd').nth(1)).toContainText('18005KT')
+    await expect.poll(async () => {
+      const [a, b] = await Promise.all([page.locator('.mb-airport-card').nth(0).boundingBox(), page.locator('.mb-airport-card').nth(1).boundingBox()])
+      return a && b ? a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height : true
+    }).toBe(false)
     await tafHistory.getByRole('button', { name: /최신/ }).click()
     await expect(card.locator('dd').nth(1)).toContainText('29015G25KT')
     await expect(metar).toHaveValue('KST')

@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import { advisorySymbolUrl } from '../../weather-overlays/lib/advisoryLayers.js'
 import { frameAdvisoryId, frameShortTag, frameTag, hazardChipStyle, hazardSwatchStyle, modelChip, pctOf, pickRibbonTarget, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
 
 // 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 연직단면도 범례와 같은 색으로 줄을 칠하고,
@@ -102,11 +103,12 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                 const tag = frameTag(frame)
                 const advisoryId = frameAdvisoryId(frame)
                 const linked = advisoryId && highlightAdvisoryId === advisoryId
+                const symbol = String(frame.source).toUpperCase().startsWith('SIGMET') ? advisorySymbolUrl('sigmet', frame.code) : null
                 return (
                   <button key={id} type="button" className={`mb-frame is-${String(frame.source).toLowerCase()}${frame.mine ? ' is-mine' : ''}${selectedId === id ? ' is-selected' : ''}${linked ? ' is-linked' : ''}`}
                     style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${tag} · ${frame.startNm}–${frame.endNm}NM`} title={tag}
                     data-advisory-id={advisoryId ?? undefined} data-ribbon-id={id} aria-pressed={selectedId === id} {...keyboardProps({ id, row, kind: 'frame', item: frame })}>
-                    <span className="mb-frame-tag" data-frame-index={index}><span className="is-full">{tag}</span><span className="is-short">{frameShortTag(frame)}</span></span>
+                    <span className="mb-frame-tag" data-frame-index={index}>{symbol && <img key={symbol} className="mb-frame-symbol" src={symbol} alt="" aria-hidden="true" onError={(event) => { event.currentTarget.hidden = true }} />}<span className="is-full">{tag}</span><span className="is-short">{frameShortTag(frame)}</span></span>
                   </button>
                 )
               })}

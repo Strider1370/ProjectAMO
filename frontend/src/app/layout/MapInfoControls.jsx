@@ -1,4 +1,4 @@
-import { Layers, Cloud, FileText } from 'lucide-react'
+import { Layers, Cloud, FileText, X } from 'lucide-react'
 import FlightProfileIcon from '../../shared/ui/FlightProfileIcon.jsx'
 
 // 지도 위 정보·단면도 진입점. 데스크톱과 모바일에서 같은 순서로 표시한다.
@@ -9,7 +9,7 @@ const OWN_PANELS = ['aviation', 'met', 'map-profile']
 // 지도형 브리핑 중(mapBriefing)에는 연직단면도 버튼 대신 브리핑 버튼(브리핑 패널 켜기/끄기)을 둔다.
 // 단면도는 지도 아래 독에 이미 있고, 브리핑 패널은 이 버튼들 아래에 열린다.
 // metNewCount: 위험 막대를 눌러 새로 켠 기상 레이어 수 — 기상정보를 열어 볼 때까지 개수 배지를 강조한다.
-export default function MapInfoControls({ activePanel, onToggle, aviationCount = 0, metCount = 0, metNewCount = 0, mobile = false, mapBriefing = false }) {
+export default function MapInfoControls({ activePanel, onToggle, aviationCount = 0, metCount = 0, metNewCount = 0, mobile = false, mapBriefing = false, onEndMapBriefing }) {
   const ownPanels = mapBriefing ? [...OWN_PANELS, 'route-check'] : OWN_PANELS
   return (
     <>
@@ -58,6 +58,10 @@ export default function MapInfoControls({ activePanel, onToggle, aviationCount =
             <span>연직단면도</span>
           </button>
         )}
+        {mapBriefing && <button type="button" className="mobile-map-layer-btn map-briefing-end" onClick={onEndMapBriefing} aria-label="브리핑 종료하고 지도로" title="브리핑 종료하고 지도로">
+          <X size={19} strokeWidth={2} aria-hidden="true" />
+          <span>종료</span>
+        </button>}
       </div>
     </>
   )

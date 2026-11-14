@@ -60,3 +60,16 @@ test('접힌 공항 칩의 주변 여섯 자리가 모두 큰 카드에 가려�
   assert.equal(small.side, 'nearby')
   assert.ok(small.left >= 0 && small.left + chip.w <= 1400 && small.top >= 0 && small.top + chip.h <= 700)
 })
+
+test('큰 카드 두 장은 한쪽 자리를 다시 잡아 패널 밖에 나란히 놓는다', () => {
+  const own = { w: 350, h: 350 }
+  const panel = { left: 20, top: 72, right: 290, bottom: 485 }
+  const [a, b] = placeAirportCards([{ key: 'A', x: 500, y: 80 }, { key: 'B', x: 500, y: 80 }], {
+    size: own, bounds: { left: 8, top: 8, right: 1186, bottom: 670 }, obstacles: [panel],
+  })
+  const rect = (p) => ({ left: p.left, right: p.left + own.w, top: p.top, bottom: p.top + own.h })
+  const intersects = (x, y) => x.left < y.right && y.left < x.right && x.top < y.bottom && y.top < x.bottom
+  assert.equal(intersects(rect(a), rect(b)), false)
+  assert.equal(intersects(rect(a), panel), false)
+  assert.equal(intersects(rect(b), panel), false)
+})

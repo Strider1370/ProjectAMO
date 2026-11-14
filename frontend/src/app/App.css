@@ -109,6 +109,9 @@ optgroup {
   color: #ffffff;
 }
 
+.mobile-map-layer-btn.map-briefing-end { width: 54px; color: var(--text-2); }
+.mobile-map-layer-btn.map-briefing-end:hover { background: var(--bg-3); color: var(--text-1); }
+
 .mobile-map-layer-count {
   position: absolute;
   top: -6px;

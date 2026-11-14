@@ -409,6 +409,7 @@ function MainAppShell({ conceptPreview = false, initialAlertView = null }) {
           metCount={layerCounts.met}
           metNewCount={layerCounts.metNew}
           mapBriefing={mapBriefingActive}
+          onEndMapBriefing={() => { mapRef.current?.endMapBriefing?.(); setSelectedAirport(null) }}
         />
       )}
       {isMobile && mobileTask === 'more' && !selectedAirport && (

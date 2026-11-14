@@ -676,6 +676,11 @@ const MapView = forwardRef(function MapView({
     // 컨테이너 크기가 그대로여도 다시 그려야 할 때가 있다 — 모니터링의 고정 캔버스는 컨테이너를
     // 1920px 좌표계에 붙박아 두고 화면 배율만 바꾸므로 mapbox의 ResizeObserver가 영영 발동하지 않는다.
     resizeMap: () => mapRef.current?.resize(),
+    endMapBriefing: () => {
+      routeBriefing.actions.setBriefing(null)
+      routeBriefing.actions.goToWorkflowStep('settings')
+      onClosePanel?.()
+    },
     loadRouteBriefing: (saved, options) => routeBriefing.actions.openSavedBriefing(saved, options),
     getAppliedCopilotContext: () => copilotResult.getContext() ?? routeBriefing.actions.getAppliedCopilotContext(),
     openCopilotResult: (reference, options) => copilotResult.open(reference, options),

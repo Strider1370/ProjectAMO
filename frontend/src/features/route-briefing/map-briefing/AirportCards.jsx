@@ -176,14 +176,12 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
             {!pastTaf && changes.length > 0 && <span className="mb-ac-change-count">변화 {changes.length}</span>}
           </dt>
           <dd><code className="mb-ac-tac" title={pastTaf ? tafShown : ([card.taf.text, ...changes].filter(Boolean).join('\n') || undefined)}><TacLine text={tafShown} icao={card.icao} /></code>
-            <div className="mb-ac-controls"><ReportHistoryButtons history={tafHistory} type="taf" tz={tafTz} /><ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} />
-              <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)} title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>상세<ChevronRight size={15} aria-hidden="true" /></button>
-            </div>
+            <div className="mb-ac-controls"><ReportHistoryButtons history={tafHistory} type="taf" tz={tafTz} /><ReportTimeZone tz={tafTz} onChange={setTafTz} label={`${card.icao} TAF`} /></div>
           </dd>
         </div>
       </dl>
-      {card.warnings.length > 0 && <footer className="mb-ac-foot">
-          <span className="mb-ac-warn">
+      <footer className="mb-ac-foot">
+          {card.warnings.length > 0 && <span className="mb-ac-warn">
             <b>경보</b>
             {card.warnings.map((warning, index) => (
               <span key={warning.code}
@@ -191,8 +189,9 @@ function AirportCard({ card, place, hhmm, onOpenAirport, onToggleCollapse, onHei
                 {index > 0 && ' · '}{warning.label}
               </span>
             ))}
-          </span>
-      </footer>}
+          </span>}
+          <button type="button" className="mb-ac-more" disabled={!card.canOpenPanel} onClick={() => onOpenAirport?.(card.icao)} title={card.canOpenPanel ? '공항 패널 열기' : '공항 정보 없음'} aria-label={`${card.icao} 상세`}>공항 상세<ChevronRight size={15} aria-hidden="true" /></button>
+      </footer>
     </article>
   )
 }
