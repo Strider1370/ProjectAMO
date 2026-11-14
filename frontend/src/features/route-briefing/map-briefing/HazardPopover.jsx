@@ -47,7 +47,7 @@ export default function HazardPopover({ selection, detail, onClose, onGoTo }) {
         {detail.when && <><dt>통과</dt><dd className="is-when">{detail.when}</dd></>}
         <dt>구간</dt><dd>{detail.route}</dd>
         <dt>고도</dt>
-        <dd>{detail.altitude} <span className={`mb-pop-mine${detail.mine ? ' is-mine' : ''}${detail.mine && detail.level === 'SEV' ? ' is-sev' : ''}`}>{detail.altitudeUnknown ? '고도 확인 불가' : detail.mine ? '내 고도' : '다른 고도'}</span></dd>
+        <dd>{detail.altitude} {!detail.acim && <span className={`mb-pop-mine${detail.mine ? ' is-mine' : ''}${detail.mine && detail.level === 'SEV' ? ' is-sev' : ''}`}>{detail.altitudeUnknown ? '고도 확인 불가' : detail.mine ? '내 고도' : '다른 고도'}</span>}</dd>
       </dl>
       {detail.note && <p className="mb-pop-note">{detail.note}</p>}
       <button type="button" className="mb-pop-go" title="지도를 이 구간으로 옮기고 시간·고도 손잡이를 통과 시각·고도에 맞춥니다" onClick={() => onGoTo(selection)}>지도·고도·시간 맞추기</button>

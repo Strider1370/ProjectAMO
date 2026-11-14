@@ -20,13 +20,18 @@ const read = (scores, seen = []) => ({
   readField: (selection) => { seen.push(selection); return field(scores) },
 })
 
-test('splits ACIM cloud top into MOD (>=FL250) and SEV (>=FL300) intervals at the time nearest ETD', () => {
+test('splits ACIM into actual cloud-top FL bands at the time nearest ETD', () => {
   const seen = []
   const result = buildEnrouteConvection({ root: '/data', axis, etd: '2026-10-20T02:10:00Z', ...read([150, 250, 300], seen) })
   assert.equal(seen[0].hf, 3)
   assert.equal(result.status, 'found')
-  assert.deepEqual(result.intervals, [{ startNm: 5, endNm: 15, level: '중' }, { startNm: 15, endNm: 20, level: '심' }])
+  assert.deepEqual(result.intervals, [{ startNm: 5, endNm: 15, topFl: 250 }, { startNm: 15, endNm: 20, topFl: 300 }])
   assert.equal(result.run.validTime, '2026-10-20T03:00:00Z')
+})
+
+test('preserves FL250 and FL275 as separate bands and never fills missing samples', () => {
+  const result = buildEnrouteConvection({ root: '/data', axis, etd: '2026-10-20T00:00:00Z', ...read([250, null, 275]) })
+  assert.deepEqual(result.intervals, [{ startNm: 0, endNm: 5, topFl: 250 }, { startNm: 15, endNm: 20, topFl: 275 }])
 })
 
 test('none when below threshold, unavailable when missing, outside or unreadable', () => {

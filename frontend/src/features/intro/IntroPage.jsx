@@ -1,6 +1,7 @@
 // 소개 페이지(/, /intro).
 // 스크롤 연출은 외부 라이브러리 없이 고정(sticky) 구간의 진행률로 그린다(lib/scrollTimeline.js).
 import { useEffect, useRef, useState } from 'react'
+import { CHANGELOG } from '../about/changelog.js'
 
 import { buildLiveObservation } from './lib/liveObservation.js'
 import { rememberDashboardEntry } from './introEntry.js'
@@ -683,7 +684,7 @@ export default function IntroPage() {
         <div className="wrap foot-bottom">
           <b className="foot-name">ProjectAMO</b>
           <span>통합형 항공기상정보 브리핑 플랫폼</span>
-          <span>현재 버전 v0.6.0, 2026년 10월 23일 업데이트</span>
+          <span>현재 버전 v{CHANGELOG[0].version}, {CHANGELOG[0].date.split('-').map(Number).map((value, index) => `${value}${['년', '월', '일'][index]}`).join(' ')} 업데이트</span>
         </div>
       </footer>
 

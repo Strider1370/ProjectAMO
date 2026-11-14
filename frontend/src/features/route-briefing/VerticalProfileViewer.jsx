@@ -23,7 +23,8 @@ export default function VerticalProfileViewer(props) {
 function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, allowMissingTerrain = false,
   highlightRangeNm, linkedItems, activeLinkedItemId, onSelectLinkedItem, sourceNote, fillContainer = false, profile, crossSection, onClose, referenceAltitudeFt, advisories = EMPTY, selectedCandidateAltitudeFt,
   candidateAltitudes = EMPTY, onSelectCandidateAltitude, onSelectForecastHour, crossSectionHourLoading = false,
-  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, documentMode = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null, highlightAdvisoryId = null, onHoverAdvisory = null }) {
+  nwpTimeSelection, onSetWaypointNwpOffset, statusMessage, previewLabel = null, retry = null, placement, onRangeChange, compact = false, documentMode = false, compactTitle = null, compactActions = null, compactLegendExtra = null, plotPaddingLeft = null, highlightAdvisoryId = null, onHoverAdvisory = null,
+  acimSegments = EMPTY, acimHighlight = null, showAcim = false, onToggleAcim = null, acimValidTime = null }) {
   const [fullscreen, setFullscreen] = useState(false)
   const [fitDocumentWidth, setFitDocumentWidth] = useState(false)
   const viewerRef = useRef(null)
@@ -182,6 +183,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
             const enabled = key === 'isotachs' ? isotachs : layers[key]
             return <button key={key} className={enabled ? 'is-on' : ''} aria-pressed={!!enabled} onClick={()=>toggle(key)}><span className="vpc-layer-check" style={{'--layer-tone':tone}}>{enabled && <Check size={10}/>}</span>{label}</button>
           })}</div>)}
+          {onToggleAcim && <div className="vpc-layer-group"><label title="전체 경로의 ACIM 예상 운정고도를 단면도에 표시"><input type="checkbox" checked={showAcim} onChange={onToggleAcim} /> ACIM 운정</label></div>}
         </div>
         <details className="vpc-operational-options"><summary>세부 설정</summary><div>
           <label><input type="checkbox" checked={!!layers.cloud} onChange={()=>toggle('cloud')}/>모델 구름량 윤곽</label>
@@ -193,6 +195,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         </div>
   const sourceInfo = <>
         <p>{crossSection?.run?.validTime ? `자료 기준 ${formatBriefingTime(crossSection.run.validTime,tz,{withDate:true})}` : '기상자료 없음'}</p>
+        {acimValidTime && <p>ACIM 유효 {formatBriefingTime(acimValidTime,tz,{withDate:true})} · 출발시각 기준</p>}
         {sourceNote && <p>{sourceNote}</p>}
         <p>{coverageNotes.join(' · ')}</p><p>고도는 원자료 기준입니다. 자료가 없는 영역은 별도로 표시합니다.</p>
       </>
@@ -258,6 +261,7 @@ function ProfileView({ embedded = false, layers: externalLayers, onToggleLayer, 
         nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={crossSectionHourLoading ? undefined : onSetWaypointNwpOffset} allowMissingTerrain={allowMissingTerrain} fitHeight
         highlightRangeNm={highlightRangeNm} linkedItems={linkedItems} activeLinkedItemId={activeLinkedItemId} onSelectLinkedItem={onSelectLinkedItem}
         hideMeta={compact} minimumWidth={documentMode && !fitDocumentWidth ? 720 : 0} plotPaddingRight={padRight} plotPaddingLeft={plotPaddingLeft} compactRail={compact && !documentMode} separateTimeRail={documentMode} highlightAdvisoryId={highlightAdvisoryId} onHoverAdvisory={onHoverAdvisory}
+        acimSegments={acimSegments} acimHighlight={acimHighlight} showAcim={showAcim}
         showComparisonProfiles interactive zoom={zoom} scrollElementRef={scrollRef} selectedMarkerId={selected?.id} onSelectMarker={selectMarker} enableDragScroll />
     </div>
     {!compact && <RouteOverview total={total} range={range} onRange={setRangeFromOverview} waypointCount={markers.length}/>}

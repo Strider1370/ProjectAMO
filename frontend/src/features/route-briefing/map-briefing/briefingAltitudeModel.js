@@ -13,6 +13,7 @@ export function briefingAltitudeMarks(ribbon, { cruiseAltitudeFt = null } = {}) 
   const allAltitude = new Map()
   for (const row of ribbon?.rows ?? []) {
     row.model.forEach((segment, index) => {
+      if (row.key === 'convection' && Number.isFinite(segment.topFl)) return // 운정고도는 전 고도 위험으로 표시하지 않는다.
       if (!segment.altitudeFt) { allAltitude.set(row.key, { key: row.key, text: `${row.label} · 전 고도`, level: segment.level, color: hazardLineColor(row.key, segment.level) }); return }
       const { from, to } = segment.altitudeFt
       bands.push({

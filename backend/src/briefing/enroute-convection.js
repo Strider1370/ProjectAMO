@@ -1,10 +1,10 @@
 import { readKimAciIndex, readKimAciField } from '../processors/kim-aci-store.js'
-import { ACIM_MOD_TOP_FL, ACIM_SEV_TOP_FL, acimDisplayFl } from '../../../shared/acim.js'
+import { ACIM_DISPLAY_MIN_FL, acimDisplayFl } from '../../../shared/acim.js'
 import { missingIntervals, thresholdIntervals } from './enroute-model.js'
 
 // 위험 막대의 대류 줄: KIM ACIM 예상 운정고도(FL)를 경로 축 샘플마다 읽어 구간으로 만든다.
-// 지도와 같은 표시 기준(FL250 이상). 운정 FL250 이상 MOD, FL300 이상 SEV. 순항고도와 관계없이 표시한다.
-function classifyTop(topFl) { return topFl >= ACIM_SEV_TOP_FL ? '심' : topFl >= ACIM_MOD_TOP_FL ? '중' : null }
+// 지도와 같은 운정 FL별로 구간을 나눈다. 운정고도는 난류·착빙의 MOD/SEV 강도가 아니다.
+function classifyTop(topFl) { return topFl >= ACIM_DISPLAY_MIN_FL ? `FL${topFl}` : null }
 
 // ETD에 가장 가까운 유효시각. ETD가 없으면 첫 시각.
 function nearestTime(times, etd) {
@@ -42,7 +42,7 @@ export function buildEnrouteConvection({ root, axis, etd, domain = 'ea', readInd
     const field = readField({ root, domain, tmfc: time.tmfc, hf: time.hf, revision: time.revision })
     const series = axis.samples.map((sample) => ({ distanceNm: sample.distanceNm, value: topAt(field, sample.lon, sample.lat) }))
     if (!series.some((point) => point.value != null)) return UNAVAILABLE
-    const intervals = thresholdIntervals(series, classifyTop)
+    const intervals = thresholdIntervals(series, classifyTop).map(({ level, ...interval }) => ({ ...interval, topFl: Number(level.slice(2)) }))
     return {
       status: intervals.length ? 'found' : 'none',
       intervals,

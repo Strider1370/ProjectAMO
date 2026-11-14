@@ -180,6 +180,68 @@ test.describe('map-briefing', () => {
     await expect(page.getByRole('dialog', { name: '심한 난기류 상세' })).toBeVisible()
   })
 
+  test('one SIGMET crossing keeps one outline and separately selectable altitude segments', async ({ page }) => {
+    const scenario = hazardScenario(page)
+    await createBriefing(page, { view: 'map', patchBriefing: (briefing) => {
+      scenario(briefing)
+      const row = briefing.sections.enroute.ribbon.rows[0]
+      const frame = row.frames[0]
+      const end = frame.endNm
+      row.frames = [
+        { ...frame, startNm: 0, endNm: end * 0.15, mine: false, verticalStatus: 'clear' },
+        { ...frame, startNm: end * 0.15, endNm: end * 0.8, mine: true, verticalStatus: 'intersects' },
+        { ...frame, startNm: end * 0.8, endNm: end, mine: false, verticalStatus: 'clear' },
+      ]
+      return briefing
+    } })
+    const row = page.locator('.mb-row.is-turbulence')
+    await expect(row.locator('.mb-src-chip')).toHaveText('SIGMET')
+    await expect(row.locator('.mb-frame[data-advisory-id="contract-turb"]')).toHaveCount(1)
+    await expect(row.locator('.mb-frame-part')).toHaveCount(3)
+    await expect(row.locator('.mb-frame-tag')).toHaveCount(1)
+    const track = row.locator('.mb-track')
+    const box = await track.boundingBox()
+    await page.mouse.click(box.x + box.width * 0.05, box.y + box.height / 2)
+    const detail = page.getByRole('dialog', { name: '심한 난기류 상세' })
+    await expect(detail.getByText('다른 고도', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.mouse.click(box.x + box.width * 0.35, box.y + box.height / 2)
+    const chooser = page.getByRole('dialog', { name: '겹치는 위험 자료 선택' })
+    await chooser.getByRole('button', { name: /SIGMET 심한 난기류/ }).click()
+    await expect(detail.getByText('내 고도', { exact: true })).toBeVisible()
+  })
+
+  test('ACIM uses cloud-top colors and previews the selected segment with an optional full profile', async ({ page }) => {
+    const scenario = hazardScenario(page)
+    await createBriefing(page, { view: 'map', patchBriefing: (briefing) => {
+      scenario(briefing)
+      const ribbon = briefing.sections.enroute.ribbon
+      const total = ribbon.totalDistanceNm
+      const segment = (level, start, end) => ({ level: `FL${level}`, topFl: level, startNm: total * start, endNm: total * end, altitudeFt: null, phase: null })
+      ribbon.rows.push({ key: 'convection', label: '대류', status: 'found', model: [segment(250, 0.2, 0.4), segment(300, 0.5, 0.7)], missing: [], frames: [] })
+      ribbon.runs.aci = { tmfc: '2026102000', validTime: '2026-10-20T03:00:00Z' }
+      return briefing
+    } })
+    const row = page.locator('.mb-row.is-convection')
+    await expect(row.getByText('ACIM 운정', { exact: true })).toBeVisible()
+    await expect(row.getByText('ACIM', { exact: true })).toBeVisible()
+    await expect(row.locator('.mb-seg').first()).toHaveAttribute('aria-label', /예상 운정 FL250/)
+    await expect(page.getByText(/출발 기준/)).toBeVisible()
+    const checkbox = page.getByRole('checkbox', { name: 'ACIM 운정' })
+    await expect(checkbox).not.toBeChecked()
+    await expect(page.getByTestId('profile-acim-top')).toHaveCount(0)
+    const box = await row.locator('.mb-track').boundingBox()
+    await page.mouse.move(box.x + box.width * 0.3, box.y + box.height / 2)
+    await expect(page.getByTestId('profile-acim-top')).toHaveCount(1)
+    await checkbox.check()
+    await expect(page.getByTestId('profile-acim-top')).toHaveCount(2)
+    await checkbox.uncheck()
+    await expect(page.getByTestId('profile-acim-top')).toHaveCount(0)
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height / 2)
+    await expect(page.getByRole('dialog', { name: '대류 상세' })).toContainText('예상 운정 FL250')
+    await expect(page.getByTestId('profile-acim-top')).toHaveCount(1)
+  })
+
   test('hovering a SIGMET box in the profile highlights that advisory and dims the others', async ({ page }) => {
     await createBriefing(page, { view: 'map', patchBriefing: hazardScenario(page) })
     const ice = page.locator('.mb-profile-body [data-testid="profile-advisory-boundary"][data-advisory-id="contract-ice"]').first()

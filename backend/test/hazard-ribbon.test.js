@@ -44,6 +44,14 @@ test('builds model segments with names, phases and passing times', () => {
   assert.equal(ribbon.windApplied, false)
 })
 
+test('ACIM ribbon carries exact cloud-top FL rather than MOD/SEV intensity', () => {
+  const convection = { status: 'found', intervals: [{ startNm: 10, endNm: 20, topFl: 250 }, { startNm: 20, endNm: 30, topFl: 275 }], run: { validTime: '2026-10-20T00:00:00Z' } }
+  const ribbon = buildHazardRibbon({ ...base, enrouteModel, convection })
+  const row = ribbon.rows.find((item) => item.key === 'convection')
+  assert.deepEqual(row.model.map((item) => [item.level, item.topFl, item.startNm, item.endNm]), [['FL250', 250, 10, 20], ['FL275', 275, 20, 30]])
+  assert.equal(ribbon.runs.aci.validTime, convection.run.validTime)
+})
+
 test('assigns SIGMET/typhoon frames to phenomenon rows and skips AIRMET, airport warnings and VA', () => {
   const hazards = [
     sigmet('SEV_ICE', 100, 200, 'nearby'),

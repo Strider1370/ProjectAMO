@@ -1,4 +1,5 @@
 import { singleRowMarkers } from './lib/profileMarkerLayout.js'
+import { acimTopBand } from '../../../../shared/acim.js'
 import { ICING_PRESENTATION, ICING_OUTLINE_COLOR, ICING_OUTLINE_WIDTH, ICING_BACKGROUND_OPACITY, ICING_DOTS, icingPatternSpacing, BASIC_ISOTHERMS, DETAIL_ISOTHERMS } from '../../shared/weather/cloudIcingPresentation.js'
 import { buildProfileCloudIcing, buildProfileTurbulenceCells } from './lib/cloudIcingProfile.js'
 import ProfileLegend from './ProfileLegend.jsx'
@@ -240,6 +241,7 @@ function ProfileChartContent({
   // SIGMET·AIRMET 상자 강조: 밖(위험 막대 틀)에서 가리킨 발표 id, 상자를 가리키면 onHoverAdvisory(id|null).
   highlightAdvisoryId = null,
   onHoverAdvisory = null,
+  acimSegments = [], acimHighlight = null, showAcim = false,
 }) {
   const [hoveredAdvisoryId, setHoveredAdvisoryId] = useState(null)
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
@@ -701,6 +703,18 @@ function ProfileChartContent({
                 opacity={state === 'dim' ? 0.2 : 1}
               />
             )
+          })}
+          {(showAcim ? acimSegments : acimHighlight ? [acimHighlight] : []).filter((segment) => Number.isFinite(segment.topFl) && Number.isFinite(segment.startNm) && Number.isFinite(segment.endNm)).map((segment, index) => {
+            const highlighted = acimHighlight && segment.startNm === acimHighlight.startNm && segment.endNm === acimHighlight.endNm && segment.topFl === acimHighlight.topFl
+            const above = segment.topFl * 100 > yMax
+            const y = Math.max(padding.top + 3, yFor(segment.topFl * 100))
+            const color = acimTopBand(segment.topFl)?.color ?? '#64748b'
+            return <g key={`acim-${segment.startNm}-${segment.endNm}-${index}`} data-testid="profile-acim-top" data-highlight={highlighted ? 'true' : undefined}>
+              <line x1={xFor(segment.startNm)} x2={xFor(segment.endNm)} y1={y} y2={y} stroke="#fff" strokeWidth={highlighted ? 7 : 5} vectorEffect="non-scaling-stroke" />
+              <line x1={xFor(segment.startNm)} x2={xFor(segment.endNm)} y1={y} y2={y} stroke={color} strokeWidth={highlighted ? 4 : 2.5} strokeDasharray={above ? '4 3' : undefined} vectorEffect="non-scaling-stroke" />
+              {above && highlighted && <text x={xFor(segment.startNm) + 3} y={padding.top + 13} fontSize="10" fontWeight="bold" fill={color} stroke="#fff" strokeWidth="2" paintOrder="stroke">{`FL${segment.topFl} ↑ 상한 위`}</text>}
+              <title>{`ACIM 예상 운정 FL${segment.topFl}${above ? ' · 표시 고도 상한 위' : ''}`}</title>
+            </g>
           })}
         </g>
         {isothermlabels.map(({ level, y, bold }) => (

@@ -3,7 +3,10 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import VerticalProfileViewer from '../VerticalProfileViewer.jsx'
 import { useCrossSectionLayers } from '../crossSectionLayers.jsx'
 import HazardRibbon from './HazardRibbon.jsx'
-import { DOCUMENT_LABEL_WIDTH_PX, RIBBON_LABEL_WIDTH_PX, hazardSwatchStyle, profileHeightPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
+import { ACIM_DISPLAY_BANDS } from '../../../../../shared/acim.js'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
+import { formatBriefingTime } from '../lib/briefingTime.js'
+import { DOCUMENT_LABEL_WIDTH_PX, RIBBON_LABEL_WIDTH_PX, profileHeightPx, profileOpenFor, readDockState, writeDockState } from './mapBriefingModel.js'
 
 // 지도 아래 독: 위험 막대 + 기존 연직단면도(압축 모드). 둘은 따로 접고, 윗변 탭으로 독 전체를 접는다.
 // 독 높이는 내용대로 — 위험 막대를 접으면 독이 줄 뿐 단면도가 커지지 않는다. 접힘·단면 높이는 브라우저에 기억.
@@ -15,6 +18,9 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   selectedId, onSelect, onHover, highlightAdvisoryId = null, onHoverAdvisory, hiddenRows = [], onToggleRow, onHeightChange,
   variant = 'map', highlightRangeNm = null }) {
   const isDocument = variant === 'document'
+  const { tz } = useTimeZone()
+  const [showAcim, setShowAcim] = useState(false)
+  const [acimHover, setAcimHover] = useState(null)
   const [dock, setDock] = useState(() => isDocument ? { collapsed: false, ribbonOpen: true, profileOpen: true } : readDockState())
   const [profileRange, setProfileRange] = useState(null)
   const [trackInset, setTrackInset] = useState(null) // { left, right } px — 위험 막대 가로축이 단면도 그림과 맞도록
@@ -86,9 +92,12 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
   )
   if (dock.collapsed && !isDocument) return collapseTab
   const profileTitle = <h3 className="mb-dock-title">연직단면도</h3>
-  // 대류(실험)는 단면도 범례에 없어 위험 막대에 대류 줄이 있을 때만 같은 범례 줄에 덧붙인다.
-  const legendExtra = ribbon?.rows?.some((row) => row.key === 'convection' && row.model.length)
-    ? <span className="mb-legend-extra" title="KIM ACIM 예상 운정 FL250 이상 MOD, FL300 이상 SEV">대류{['MOD', 'SEV'].map((level) => <b key={level}><i style={hazardSwatchStyle('convection', level)} />{level}</b>)}</span>
+  const acimSegments = ribbon?.rows?.find((row) => row.key === 'convection')?.model?.filter((item) => Number.isFinite(item.topFl)) ?? []
+  const selectedAcim = selectedId?.startsWith('convection:model:') ? ribbon?.rows?.find((row) => row.key === 'convection')?.model?.[Number(selectedId.split(':').at(-1))] : null
+  const acimHighlight = acimHover ?? selectedAcim
+  const acimValid = ribbon?.runs?.aci?.validTime
+  const legendExtra = acimSegments.length
+    ? <span className="mb-legend-extra" title={`ACIM 예상 운정 · FL250 이상 · ${acimValid ? formatBriefingTime(acimValid, tz, { withDate: true }) : '유효시각 미상'} · 출발시각 기준`} >ACIM 운정{ACIM_DISPLAY_BANDS.map((band) => <b key={band.minFl}><i style={{ backgroundColor: band.color }} />{band.minFl}</b>)}{acimValid && <small>출발 기준 {formatBriefingTime(acimValid, tz, { withDate: true })}</small>}</span>
     : null
   const profileFold = fold(profileOpen, () => toggle('profileOpen'), '연직단면도')
 
@@ -105,7 +114,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
         </header>
         {dock.ribbonOpen && (
           <div ref={ribbonRef}>
-            <HazardRibbon ribbon={ribbon} profileRange={profileOpen ? profileRange : null} selectedId={selectedId} onSelect={onSelect} onHover={onHover} trackInset={trackInset}
+            <HazardRibbon ribbon={ribbon} profileRange={profileOpen ? profileRange : null} selectedId={selectedId} onSelect={onSelect} onHover={(target) => { setAcimHover(target?.row?.key === 'convection' && target.kind === 'model' && Number.isFinite(target.item?.topFl) ? target.item : null); onHover?.(target) }} trackInset={trackInset}
               highlightAdvisoryId={highlightAdvisoryId} hiddenRows={hiddenRows} onToggleRow={onToggleRow} />
           </div>
         )}
@@ -115,6 +124,7 @@ export default function BriefingDock({ ribbon, verticalProfile, crossSection, ad
           <div className="mb-profile-body" style={{ height: heightPx }}>
             <VerticalProfileViewer embedded fillContainer compact documentMode={isDocument} compactTitle={profileTitle} compactActions={profileFold} compactLegendExtra={legendExtra} plotPaddingLeft={labelWidth}
               profile={verticalProfile} crossSection={crossSection} layers={layers} onToggleLayer={toggleLayer}
+              acimSegments={acimSegments} acimHighlight={acimHighlight} showAcim={showAcim} onToggleAcim={() => setShowAcim((value) => !value)} acimValidTime={acimValid}
               advisories={advisories} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset}
               onSelectForecastHour={onSelectForecastHour} crossSectionHourLoading={crossSectionHourLoading} onRangeChange={setProfileRange} highlightRangeNm={highlightRangeNm}
               highlightAdvisoryId={highlightAdvisoryId} onHoverAdvisory={onHoverAdvisory} />

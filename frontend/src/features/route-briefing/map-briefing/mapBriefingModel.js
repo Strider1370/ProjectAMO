@@ -4,6 +4,7 @@ import { phenomenonKo } from '../../../shared/weather/phenomenonKo.js'
 import { ICING_PRESENTATION, icingPatternStyle } from '../../../shared/weather/cloudIcingPresentation.js'
 import { GKTG_BANDS } from '../../../../../shared/gktg.js'
 import { ACI_BANDS } from '../../../../../shared/aci.js'
+import { acimTopBand } from '../../../../../shared/acim.js'
 
 export const MAP_BRIEFING_MIN_WIDTH = 1024
 const VIEW_KEY = 'projectamo.briefingView'
@@ -57,7 +58,7 @@ export const DOCUMENT_LABEL_WIDTH_PX = 64
 
 export const LEVEL_KO = { SEV: '심한', MOD: '보통' }
 const PHASE_KO = { climb: '상승', cruise: '순항', descent: '강하' }
-const SOURCE_CHIP = { SIGMET: 'SIG', AIRMET: 'AIR', TYPHOON: 'TC' }
+const SOURCE_CHIP = { SIGMET: 'SIGMET', AIRMET: 'AIR', TYPHOON: 'TC' }
 
 export function pctOf(nm, totalNm) {
   if (!(totalNm > 0) || !Number.isFinite(nm)) return 0
@@ -90,6 +91,7 @@ export function formatBand(bandFt) {
 // 줄 왼쪽 상태 칩: 모델 결과(SEV/MOD/없음/불가). 모델이 없는 줄(태풍·시정/운고)은 null.
 export function modelChip(row) {
   if (row.status == null) return null
+  if (row.key === 'convection' && row.model.length) return { text: 'ACIM', tone: 'acim', title: 'ACIM 예상 운정고도' }
   if (row.status === 'unavailable') return { text: '불가', tone: 'unknown', title: '모델 자료 없음 · 확인 불가' }
   if (row.status === 'none' || !row.model.length) return { text: '없음', tone: 'none', title: '모델 MOD 이상 없음' }
   const level = row.model.some((segment) => segment.level === 'SEV') ? 'SEV' : 'MOD'
@@ -107,14 +109,33 @@ export function sourceChips(row) {
 }
 
 export function frameTag(frame) {
+  return `${frameGroupTag(frame)} · ${frame.verticalStatus === 'unknown' ? '고도 확인 불가' : frame.mine ? '내 고도' : '다른 고도'}`
+}
+
+export function frameGroupTag(frame) {
   const src = frame.source === 'TYPHOON' ? '태풍' : frame.source
   const name = frame.source === 'TYPHOON' ? (frame.label ?? '') : (phenomenonKo(frame.code) ?? frame.label ?? frame.code ?? '')
   const band = frame.source === 'TYPHOON' ? '전 고도' : formatBand(frame.bandFt)
-  return `${src} ${name} · ${band} · ${frame.verticalStatus === 'unknown' ? '고도 확인 불가' : frame.mine ? '내 고도' : '다른 고도'}`.replace(/\s+/g, ' ').trim()
+  return `${src} ${name} · ${band}`.replace(/\s+/g, ' ').trim()
+}
+
+// 같은 발표의 연속된 고도 판정 구간을 하나의 바깥 틀로만 그린다. 원래 구간은 선택·판정에 그대로 쓴다.
+export function groupRibbonFrames(frames) {
+  const groups = []
+  frames.forEach((frame, index) => {
+    const previous = !frame.sourceId ? null : groups.findLast((group) =>
+      group.frame.source === frame.source && group.frame.sourceId === frame.sourceId
+      && group.frame.overseas === frame.overseas && group.frame.code === frame.code
+      && Math.abs(group.endNm - frame.startNm) < 0.02)
+    if (previous) { previous.endNm = frame.endNm; previous.parts.push({ frame, index }) }
+    else groups.push({ frame, startNm: frame.startNm, endNm: frame.endNm, parts: [{ frame, index }] })
+  })
+  return groups
 }
 
 // 수치예보 막대는 글자 없이 색만 — 강도·구간·고도는 툴팁(그리고 aria-label)으로.
 export function segmentTitle(rowLabel, segment) {
+  if (Number.isFinite(segment.topFl)) return `ACIM 예상 운정 FL${segment.topFl} · ${segment.startNm}–${segment.endNm}NM`
   const altitude = segment.altitudeFt
     ? (segment.phase === 'cruise' ? formatAltitudeFt(segment.altitudeFt.to) : `${formatAltitudeFt(segment.altitudeFt.from)}→${formatAltitudeFt(segment.altitudeFt.to)}`)
     : '전 고도'
@@ -156,6 +177,7 @@ function hazardCallout(top, formatTime) {
   const source = top.kind === 'frame' ? `${top.source} ` : ''
   const route = top.from && top.to ? `${top.from}→${top.to}` : `${top.startNm}–${top.endNm}NM`
   const time = top.passFrom && top.passTo ? ` · ${formatTime(top.passFrom)}–${formatTime(top.passTo)}` : ''
+  if (top.row === 'convection' && Number.isFinite(top.topFl)) return { tone: 'mod', badge: 'ACIM', title: `예상 운정 FL${top.topFl}`, detail: `${route}${time}` }
   return {
     tone: top.level === 'SEV' ? 'sev' : 'mod',
     badge: top.level,
@@ -181,6 +203,7 @@ function turbulenceColor(grade, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 export function hazardSwatchStyle(rowKey, level) {
+  if (rowKey === 'convection' && /^FL\d+$/.test(level ?? '')) return { backgroundColor: acimTopBand(Number(level.slice(2)))?.color }
   const grade = LEVEL_GRADE[level]
   if (!grade) return {}
   if (rowKey === 'turbulence') return { backgroundColor: turbulenceColor(grade, TURBULENCE_BAR_OPACITY) }
@@ -203,6 +226,10 @@ function readableTextColor(cssColor) {
 
 // 줄 왼쪽 강도 칩: 막대와 같은 색의 단색 바탕(착빙은 점무늬 없이 바탕색만) + 읽히는 글자색.
 export function hazardChipStyle(rowKey, level) {
+  if (rowKey === 'convection' && /^FL\d+$/.test(level ?? '')) {
+    const backgroundColor = acimTopBand(Number(level.slice(2)))?.color
+    return backgroundColor ? { backgroundColor, color: readableTextColor(backgroundColor) } : {}
+  }
   const grade = LEVEL_GRADE[level]
   if (!grade) return {}
   const backgroundColor = rowKey === 'turbulence' ? turbulenceColor(grade, TURBULENCE_BAR_OPACITY)
@@ -214,13 +241,14 @@ export function hazardChipStyle(rowKey, level) {
 // 틀 이름표 짧은 판: "SIG 차폐뇌우" / "태풍" — 좁은 틀에서 잘리지 않게(전체는 툴팁).
 export function frameShortTag(frame) {
   if (frame.source === 'TYPHOON') return '태풍'
-  return `SIG ${phenomenonKo(frame.code) ?? frame.code ?? ''}`.trim()
+  return `SIGMET ${phenomenonKo(frame.code) ?? frame.code ?? ''}`.trim()
 }
 
 // 지도 경로 위 위험 색 띠 색 = 위험 막대 색(같은 원천). 선이라 무늬 대신 착빙은 바탕색, 태풍은 보라.
 export const TYPHOON_LINE_COLOR = '#6d28d9'
 export function hazardLineColor(rowKey, level) {
   if (rowKey === 'typhoon') return TYPHOON_LINE_COLOR
+  if (rowKey === 'convection' && /^FL\d+$/.test(level ?? '')) return acimTopBand(Number(level.slice(2)))?.color ?? null
   const grade = LEVEL_GRADE[level]
   if (!grade) return null
   if (rowKey === 'turbulence') return turbulenceColor(grade, 1)
@@ -244,6 +272,7 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
   if (!selection?.item) return null
   const { row, kind, item } = selection
   const typhoon = item.source === 'TYPHOON'
+  const acim = kind === 'model' && row.key === 'convection' && Number.isFinite(item.topFl)
   const level = kind === 'model' ? item.level : typhoon ? 'TC' : 'SEV'
   const minutes = minutesBetween(item.passFrom, item.passTo)
   const tz = tzLabel ? ` ${tzLabel}` : ''
@@ -255,6 +284,7 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
     sourceChip: kind === 'model' ? `${MODEL_SOURCE[row.key] ?? 'KIM'} 모델` : typhoon ? '태풍 정보' : `${item.source}${item.overseas ? '(해외)' : ''}`,
     mine,
     altitudeUnknown: kind !== 'model' && item.verticalStatus === 'unknown',
+    acim,
     when: item.passFrom && item.passTo ? `${formatTime(item.passFrom)}–${formatTime(item.passTo)}${tz}${minutes ? ` · ${minutes}분` : ''}` : null,
     route: item.from && item.to ? `${item.from} → ${item.to}` : `${item.startNm}–${item.endNm}NM`,
     altitude: null,
@@ -265,7 +295,7 @@ export function selectionDetail(selection, { runs = {}, formatTime = (iso) => is
   let altitude
   if (kind === 'model') {
     const from = formatAltitudeFt(item.altitudeFt?.from), to = formatAltitudeFt(item.altitudeFt?.to)
-    altitude = !item.altitudeFt ? '전 고도' : item.phase === 'cruise' || from === to ? `${to} 순항` : `${from}→${to} ${PHASE_KO[item.phase] ?? ''}`.trim()
+    altitude = acim ? `예상 운정 FL${item.topFl}` : !item.altitudeFt ? '전 고도' : item.phase === 'cruise' || from === to ? `${to} 순항` : `${from}→${to} ${PHASE_KO[item.phase] ?? ''}`.trim()
     // 상승·강하 중 위험은 순항고도로 그려진 지도 레이어에 안 보일 수 있다. 고도는 바꾸지 않고 안내만.
     if (item.phase && item.phase !== 'cruise' && from && to) {
       const [low, high] = item.altitudeFt.from <= item.altitudeFt.to ? [from, to] : [to, from]

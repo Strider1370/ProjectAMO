@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { advisorySymbolUrl } from '../../weather-overlays/lib/advisoryLayers.js'
-import { frameAdvisoryId, frameShortTag, frameTag, hazardChipStyle, hazardSwatchStyle, modelChip, pctOf, pickRibbonTarget, ribbonTargetsAt, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
+import { frameAdvisoryId, frameGroupTag, frameShortTag, frameTag, groupRibbonFrames, hazardChipStyle, hazardSwatchStyle, modelChip, pctOf, pickRibbonTarget, ribbonTargetsAt, rowEmptyText, segmentTitle, sourceChips } from './mapBriefingModel.js'
 
 // 위험 막대: 현상별 줄(높이 22 고정). 수치예보(내 비행 고도·MOD 이상)는 글자 없이 연직단면도 범례와 같은 색으로 줄을 칠하고,
 // 예보관 발표 틀(이름표는 틀 안쪽 왼쪽)을 그 위에 덮어 그린다 — 겹친 곳은 배경색으로 모델 위험이 있음을 보인다. 가로축은 항상 경로 전체이고, trackInset이 있으면 아래 연직단면도 그림과
@@ -40,9 +40,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
     if (!(rect.width > 0)) return null
     const nm = ((event.clientX - rect.left) / rect.width) * total
     const y = event.clientY - rect.top
-    const tags = [...event.currentTarget.querySelectorAll('.mb-frame-tag')]
-    const tag = tags.find((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom })
-    const picked = pickRibbonTarget(row, nm, { edge: y < 4 || y > rect.height - 4, tagFrameIndex: tag ? Number(tag.dataset.frameIndex) : -1 })
+    const picked = pickRibbonTarget(row, nm, { edge: y < 4 || y > rect.height - 4 })
     if (!picked) return null
     const id = `${row.key}:${picked.kind}:${picked.index}`
     return { id, row, kind: picked.kind, item: picked.kind === 'model' ? row.model[picked.index] : row.frames[picked.index] }
@@ -86,7 +84,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                 {hidden ? <EyeOff size={13} aria-hidden="true" /> : <Eye size={13} aria-hidden="true" />}
               </button>
               <i className="mb-row-dot" aria-hidden="true" />
-              <span className="mb-row-name">{row.label}</span>
+              <span className="mb-row-name">{row.key === 'convection' ? 'ACIM 운정' : row.label}</span>
               <span className="mb-row-chips">
                 {chip && <span className={`mb-chip is-${chip.tone}`} title={chip.title} style={hazardChipStyle(row.key, chip.text)}>{chip.text}</span>}
                 {sourceChips(row).map((source) => (
@@ -113,20 +111,28 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                     data-ribbon-id={id} aria-pressed={selectedId === id} {...keyboardProps({ id, row, kind: 'model', item: segment })} />
                 )
               })}
-              {!hidden && row.frames.map((frame, index) => {
-                const left = pctOf(frame.startNm, total)
-                const width = Math.max(0.6, pctOf(frame.endNm, total) - left)
-                const id = `${row.key}:frame:${index}`
-                const tag = frameTag(frame)
+              {!hidden && groupRibbonFrames(row.frames).map((group) => {
+                const { frame, parts } = group
+                const left = pctOf(group.startNm, total)
+                const width = Math.max(0.6, pctOf(group.endNm, total) - left)
+                const tag = frameGroupTag(frame)
                 const advisoryId = frameAdvisoryId(frame)
                 const linked = advisoryId && highlightAdvisoryId === advisoryId
                 const symbol = String(frame.source).toUpperCase().startsWith('SIGMET') ? advisorySymbolUrl('sigmet', frame.code) : null
                 return (
-                  <button key={id} type="button" className={`mb-frame is-${String(frame.source).toLowerCase()}${frame.mine ? ' is-mine' : ''}${selectedId === id ? ' is-selected' : ''}${linked ? ' is-linked' : ''}`}
-                    style={{ left: `${left}%`, width: `${width}%` }} aria-label={`${tag} · ${frame.startNm}–${frame.endNm}NM`} title={tag}
-                    data-advisory-id={advisoryId ?? undefined} data-ribbon-id={id} aria-pressed={selectedId === id} {...keyboardProps({ id, row, kind: 'frame', item: frame })}>
-                    <span className="mb-frame-tag" data-frame-index={index}>{symbol && <img key={symbol} className="mb-frame-symbol" src={symbol} alt="" aria-hidden="true" onError={(event) => { event.currentTarget.hidden = true }} />}<span className="is-full">{tag}</span><span className="is-short">{frameShortTag(frame)}</span></span>
-                  </button>
+                  <div key={`${row.key}:frame-group:${parts[0].index}`} className={`mb-frame is-${String(frame.source).toLowerCase()}${linked ? ' is-linked' : ''}`}
+                    style={{ left: `${left}%`, width: `${width}%` }} data-advisory-id={advisoryId ?? undefined}>
+                    {parts.map(({ frame: part, index }) => {
+                      const id = `${row.key}:frame:${index}`
+                      const span = group.endNm - group.startNm
+                      const partLeft = span > 0 ? (part.startNm - group.startNm) / span * 100 : 0
+                      const partWidth = span > 0 ? (part.endNm - part.startNm) / span * 100 : 100
+                      return <button key={id} type="button" className={`mb-frame-part${part.mine ? ' is-mine' : ''}${selectedId === id ? ' is-selected' : ''}`}
+                        style={{ left: `${partLeft}%`, width: `${partWidth}%` }} aria-label={`${frameTag(part)} · ${part.startNm}–${part.endNm}NM`}
+                        data-ribbon-id={id} aria-pressed={selectedId === id} {...keyboardProps({ id, row, kind: 'frame', item: part })} />
+                    })}
+                    <span className="mb-frame-tag">{symbol && <img key={symbol} className="mb-frame-symbol" src={symbol} alt="" aria-hidden="true" onError={(event) => { event.currentTarget.hidden = true }} />}<span className="is-full">{tag}</span><span className="is-short">{frameShortTag(frame)}</span></span>
+                  </div>
                 )
               })}
             </div>
@@ -149,7 +155,7 @@ export default function HazardRibbon({ ribbon, profileRange = null, selectedId =
                 const anchor = choice.track.querySelector(`[data-ribbon-id="${id}"]`)?.getBoundingClientRect()
                 onSelect?.({ id, row: choice.row, kind, item, anchor })
                 setChoice(null)
-              }}><strong>{kind === 'model' ? `모델 ${choice.row.label} · ${item.level}` : frameTag(item)}</strong><span>{item.startNm}–{item.endNm} NM</span></button>
+              }}><strong>{kind === 'model' ? Number.isFinite(item.topFl) ? `ACIM 예상 운정 · FL${item.topFl}` : `모델 ${choice.row.label} · ${item.level}` : frameTag(item)}</strong><span>{item.startNm}–{item.endNm} NM</span></button>
             })}
           </div>
         </div>, document.body

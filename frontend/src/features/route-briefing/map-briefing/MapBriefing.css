@@ -178,13 +178,16 @@
 /* 수치예보: 글자 없이 강도 색으로 줄을 칠한다. 예보관 틀이 그 위를 덮는다. */
 .mb-seg { position: absolute; top: 2px; bottom: 2px; z-index: 1; min-width: 4px; padding: 0; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
 /* 마우스는 줄(트랙)이 위치로 대상을 고른다 — 틀이 모델 막대를 덮어도 둘 다 누를 수 있게. 버튼은 키보드 초점용. */
-.mb-seg, .mb-frame { pointer-events: none; }
+.mb-seg, .mb-frame, .mb-frame-part { pointer-events: none; }
 .mb-track:has(.mb-seg, .mb-frame) { cursor: pointer; }
 /* 모델 자료가 없는 구간: 단면도 "자료 없음"과 같은 빗금. */
 .mb-gap { position: absolute; top: 2px; bottom: 2px; z-index: 0; border-radius: var(--radius-sm); background: repeating-linear-gradient(135deg, var(--bg-2) 0 4px, var(--stroke-1) 4px 5px); }
-.mb-seg.is-selected, .mb-frame.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
+.mb-seg.is-selected, .mb-frame-part.is-selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
 .mb-frame { position: absolute; top: 0; bottom: 0; z-index: 2; min-width: 4px; padding: 0; container-type: inline-size; border: 1.5px dashed var(--level-red); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
-.mb-frame.is-mine { border-style: solid; border-width: 2px; }
+.mb-frame-part { position: absolute; top: -1.5px; bottom: -1.5px; padding: 0; border: 0; background: transparent; }
+.mb-frame-part.is-mine { border-top: 2px solid var(--level-red); border-bottom: 2px solid var(--level-red); }
+.mb-frame.is-airmet .mb-frame-part.is-mine { border-color: var(--mb-airmet); }
+.mb-frame.is-typhoon .mb-frame-part.is-mine { border-color: var(--mb-typhoon); }
 .mb-frame.is-airmet { border-color: var(--mb-airmet); }
 .mb-frame.is-typhoon { border-color: var(--mb-typhoon); }
 .mb-frame-tag { position: absolute; top: 50%; left: 3px; display: flex; align-items: center; gap: 2px; overflow: hidden; max-width: calc(100% - 6px); padding: 0 4px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.9); color: var(--level-red); font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 14px; white-space: nowrap; transform: translateY(-50%); pointer-events: none; }

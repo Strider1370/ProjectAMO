@@ -95,6 +95,12 @@ function modelSegments(ctx, intervals, { altitudeIndependent = false } = {}) {
   }))
 }
 
+function convectionSegments(ctx, intervals) {
+  return (intervals ?? []).filter((iv) => Number.isFinite(iv.topFl)).map((iv) => ({
+    level: `FL${iv.topFl}`, topFl: iv.topFl, ...placement(ctx, iv.startNm, iv.endNm), altitudeFt: null, phase: null,
+  }))
+}
+
 // 발표 하나가 경로를 여러 번 지나면 지날 때마다 틀 하나(routeRunsNm). 없으면 노출 구간 하나.
 function framesFor(ctx, hazard) {
   const runs = hazard.altitudeExposure?.intervals?.length ? hazard.altitudeExposure.intervals : hazard.routeRunsNm?.length ? hazard.routeRunsNm : [hazard.routeIntervalNm]
@@ -122,7 +128,7 @@ function frameFor(ctx, hazard, interval) {
 // 가장 심한 것(top) 고르는 순위: 모델 SEV·SIGMET·태풍(내 고도) > 모델 MOD.
 // 패널은 items(내 고도의 위험 전부, 경로 순서)를 차례로 넘겨 보여 준다(2026-10-23) — top은 예전 저장 브리핑 호환용.
 function summaryRank(item) {
-  if (item.kind === 'model') return item.level === 'SEV' ? 3 : 2
+  if (item.kind === 'model') return item.row === 'convection' ? 1 : item.level === 'SEV' ? 3 : 2
   return 3
 }
 
@@ -165,7 +171,7 @@ export function buildHazardRibbon({ enrouteModel = null, convection = null, haza
   const modelByRow = {
     turbulence: { status: enrouteModel?.status?.turbulence ?? 'unavailable', segments: modelSegments(ctx, elements.get('turbulence')?.intervals), missing: enrouteModel?.missing?.turbulence ?? [] },
     icing: { status: enrouteModel?.status?.icing ?? 'unavailable', segments: modelSegments(ctx, elements.get('icing')?.intervals), missing: enrouteModel?.missing?.icing ?? [] },
-    convection: { status: convection?.status ?? 'unavailable', segments: modelSegments(ctx, convection?.intervals, { altitudeIndependent: true }), missing: convection?.missing ?? [] },
+    convection: { status: convection?.status ?? 'unavailable', segments: convectionSegments(ctx, convection?.intervals), missing: convection?.missing ?? [] },
   }
 
   const framesByRow = new Map()

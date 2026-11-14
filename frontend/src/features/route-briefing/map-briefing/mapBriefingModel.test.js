@@ -3,10 +3,11 @@ import assert from 'node:assert/strict'
 import {
   profileHeightPx, profileOpenFor, formatBand, frameTag, modelChip, readBriefingView, readDockState, rowEmptyText,
   segmentTitle, sourceChips, hazardSwatchStyle, hazardChipStyle, frameShortTag, summaryCallout, summaryCallouts, writeBriefingView, writeDockState, DEFAULT_DOCK,
-  hazardLineColor, TYPHOON_LINE_COLOR, selectionDetail, frameAdvisoryId, focusTarget, layerToastText, pickRibbonTarget,
+  hazardLineColor, TYPHOON_LINE_COLOR, selectionDetail, frameAdvisoryId, focusTarget, layerToastText, pickRibbonTarget, groupRibbonFrames,
 } from './mapBriefingModel.js'
 import { GKTG_BANDS } from '../../../../../shared/gktg.js'
 import { ACI_BANDS } from '../../../../../shared/aci.js'
+import { acimTopBand } from '../../../../../shared/acim.js'
 import { ICING_PRESENTATION } from '../../../shared/weather/cloudIcingPresentation.js'
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) } }
@@ -50,7 +51,7 @@ test('model chip shows the strongest model level, none, or short unavailable tex
 
 test('source chips are one per source, solid when any frame is at my altitude', () => {
   const frames = [{ source: 'SIGMET', mine: false }, { source: 'SIGMET', mine: true }, { source: 'AIRMET', mine: false }]
-  assert.deepEqual(sourceChips(row({ frames })), [{ text: 'SIG', mine: true }, { text: 'AIR', mine: false }])
+  assert.deepEqual(sourceChips(row({ frames })), [{ text: 'SIGMET', mine: true }, { text: 'AIR', mine: false }])
 })
 
 test('frame tags and bands read like the mockup', () => {
@@ -90,13 +91,32 @@ test('ribbon swatches reuse the vertical-profile legend colors', () => {
   assert.deepEqual(hazardSwatchStyle('typhoon', 'SEV'), {})
 })
 
+test('ACIM ribbon and detail use cloud-top FL and map colors, without describing a hazard intensity', () => {
+  const item = { level: 'FL275', topFl: 275, startNm: 10, endNm: 20, altitudeFt: null }
+  assert.equal(hazardSwatchStyle('convection', item.level).backgroundColor, acimTopBand(275).color)
+  assert.equal(hazardLineColor('convection', item.level), acimTopBand(275).color)
+  assert.equal(segmentTitle('대류', item), 'ACIM 예상 운정 FL275 · 10–20NM')
+  const detail = selectionDetail({ row: { key: 'convection', label: '대류' }, kind: 'model', item })
+  assert.equal(detail.altitude, '예상 운정 FL275')
+  assert.equal(detail.acim, true)
+})
+
 test('chips use a flat fill with readable text and narrow frames get a short tag', () => {
   const icing = hazardChipStyle('icing', 'SEV')
   assert.equal(icing.backgroundImage, undefined)
   assert.equal(icing.color, '#ffffff')
   assert.equal(hazardChipStyle('turbulence', 'MOD').color, '#1f2937')
-  assert.equal(frameShortTag({ source: 'SIGMET', code: 'EMBD_TS' }), 'SIG 차폐뇌우')
+  assert.equal(frameShortTag({ source: 'SIGMET', code: 'EMBD_TS' }), 'SIGMET 차폐뇌우')
   assert.equal(frameShortTag({ source: 'TYPHOON', code: 'TC' }), '태풍')
+})
+
+test('same advisory has one visible frame per continuous route crossing while altitude parts remain selectable', () => {
+  const frame = (sourceId, startNm, endNm, mine) => ({ source: 'SIGMET', sourceId, code: 'SEV_TURB', startNm, endNm, mine })
+  const frames = [frame('a', 0, 20, false), frame('b', 10, 40, true), frame('a', 20, 80, true), frame('a', 80, 100, false), frame('a', 120, 140, true), frame(null, 140, 150, true), frame(null, 150, 160, false)]
+  const groups = groupRibbonFrames(frames)
+  assert.deepEqual(groups.map((group) => [group.frame.sourceId, group.startNm, group.endNm, group.parts.map((part) => part.index)]), [
+    ['a', 0, 100, [0, 2, 3]], ['b', 10, 40, [1]], ['a', 120, 140, [4]], [null, 140, 150, [5]], [null, 150, 160, [6]],
+  ])
 })
 
 test('summary does not claim no hazard when part of the route has no model data', () => {
