@@ -37,6 +37,8 @@ import videoAirport from './assets/airport.webm'
 import { DISCLAIMER, DISCLAIMER_ACTION } from '../about/disclaimer.js'
 
 const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리핑'], ['custom', '맞춤형'], ['alerts', '알림']]
+const latestUpdate = CHANGELOG[0]
+const latestUpdateDate = latestUpdate.date.split('-').map(Number).map((value, index) => `${value}${['년', '월', '일'][index]}`).join(' ')
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
 const PIN_SCREENS = { gis: 6.4, brief: 4.2, custom: 3, alerts: 3.6 }
 
@@ -464,7 +466,7 @@ export default function IntroPage() {
                 {live.details.map((detail) => <span key={detail}>{detail}</span>)}
               </p>
             )}
-            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.6.0</b>지도 위에서 보는 비행 전 브리핑과 공항 카드가 추가됐어요. 2026년 10월 23일</p>
+            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v{latestUpdate.version}</b>{latestUpdate.title} · {latestUpdateDate}</p>
             </div>
             {/* 첫 화면 오른쪽에 제품 화면을 크게, 기울여 둔다. 스크롤하면 평평하게 펴진다(넓은 화면). */}
             <div className="hero-shot hero-anim" style={{ animationDelay: '.3s' }}>
@@ -684,7 +686,7 @@ export default function IntroPage() {
         <div className="wrap foot-bottom">
           <b className="foot-name">ProjectAMO</b>
           <span>통합형 항공기상정보 브리핑 플랫폼</span>
-          <span>현재 버전 v{CHANGELOG[0].version}, {CHANGELOG[0].date.split('-').map(Number).map((value, index) => `${value}${['년', '월', '일'][index]}`).join(' ')} 업데이트</span>
+          <span>현재 버전 v{latestUpdate.version}, {latestUpdateDate} 업데이트</span>
         </div>
       </footer>
 
