@@ -1,6 +1,4 @@
-/* 야간 지면 조도 섹션.
-   색 규칙: 등급에 유채색을 쓰지 않는다(달빛은 위험도가 아니다 — design-language §2-2).
-   유일한 유채색은 --moon-lit(달 원반·달빛 곡선)이며 "관습 차용"(§4)이다. */
+/* 달의 밝은 면과 밤중 고도. */
 
 .moon-sec {
   display: flex;
@@ -134,7 +132,15 @@
 .moon-band--astro { fill: #d9dee5; }
 .moon-band--dark { fill: #ccd3dc; }
 
-.moon-grid { stroke: #fff; stroke-width: 1; opacity: 0.5; }
+.moon-night-shade { fill: #aebccb; opacity: 0.55; }
+.moon-below-horizon { fill: #d9e1e9; opacity: 0.55; }
+.moon-sun-boundary { stroke: #8497aa; stroke-width: 1; stroke-dasharray: 3 3; }
+.moon-sun-label { font-size: 11px; fill: var(--text-3); }
+.moon-night-key { display: inline-block; width: 10px; height: 10px; margin-right: 5px; background: #aebccb; border-radius: 2px; }
+.moon-phase-label { font-size: 11px; font-weight: var(--fw-semibold); fill: #34465a; paint-order: stroke; stroke: var(--bg-1); stroke-width: 3px; stroke-linejoin: round; }
+.moon-grid { stroke: var(--stroke-2); stroke-width: 1; }
+.moon-horizon { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
+.moon-horizon-label { font-size: 12px; fill: var(--text-3); }
 .moon-axis-line { stroke: #b9c0c9; }
 .moon-axis { font-size: 12px; fill: #9aa0a6; }
 .moon-dark-label { font-size: 12px; fill: var(--text-3); }
@@ -284,6 +290,8 @@
   gap: 3px;
 }
 .moon-cell--dark .moon-cell-day { color: rgb(255 255 255 / 72%); }
+.moon-phase-name { font-size: var(--fs-100); font-weight: var(--fw-semibold); color: var(--text-3); white-space: nowrap; }
+.moon-cell--dark .moon-phase-name { color: #d6dde5; }
 .moon-cell-dot {
   width: 4px;
   height: 4px;
@@ -315,7 +323,7 @@
 .moon-cell--dark .moon-cell-unit { color: rgb(255 255 255 / 60%); }
 .moon-cell-bar {
   display: block;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
   background: var(--bg-4);
   overflow: hidden;
@@ -366,7 +374,7 @@
   border-top: 1px solid var(--bg-3);
 }
 
-/* 모바일: 7열을 유지하되 칸 내용을 줄여 폭에 맞춘다. 조명률은 탭하면 위 요약에서 보인다. */
+/* 모바일에서도 날짜별 비율을 유지한다. */
 @media (width <= 480px) {
   .moon-sec { overflow-x: hidden; } /* 가로 스크롤 금지 (design-language §6) */
   .moon-cal, .moon-dow { gap: 1px; }
