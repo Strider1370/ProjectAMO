@@ -102,28 +102,24 @@ test('a full expanded +0~12h is cropped and published as the Korean run once', t
   assert.equal(publishKoreaFromExpanded({ root, tmfc, hours }).reason, 'kim_korea_run_already_complete')
 })
 
-test('resuming an interrupted cycle needs only the space not yet used by that run', async t => {
+test('a new or resumed cycle can start without reserving its full expected size', async t => {
   const root = temporary(t)
   const now = KST('2026-10-09', '20:15')
   config.kim_expanded.enabled = true
-  // 4.6 GB 남음: 새 회차는 못 시작하지만, 5 GB를 이미 받아 둔 끊긴 회차는 이어서 한다.
-  const fresh = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 4.6e9, runBytes: () => 0 })
-  assert.equal(fresh.reason, 'disk_reserve')
-  const resumed = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 4.6e9,
-    runBytes: () => 5e9, collect: async () => ({ hours: [], failures: [] }) })
+  const collect = async () => ({ hours: [], failures: [] })
+  const fresh = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 4.6e9, collect })
+  assert.notEqual(fresh.reason, 'disk_reserve')
+  const resumed = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 4.6e9, collect })
   assert.notEqual(resumed.reason, 'disk_reserve')
 })
 
-test('a cycle job skips when unusable or short of disk, crops Korea from 06 UTC, and 06 UTC stops a running 00 UTC resume', async t => {
+test('a cycle job skips when unusable, crops Korea from 06 UTC, and 06 UTC stops a running 00 UTC resume', async t => {
   const root = temporary(t)
   let now = KST('2026-10-09', '20:15')
   config.kim_expanded.enabled = false
   const off = await processExpandedCycle({ cycle: '06', root, now: () => now })
   assert.equal(off.collection.outcome, 'empty')
   config.kim_expanded.enabled = true
-  const full = await processExpandedCycle({ cycle: '06', root, now: () => now, diskFree: () => 1e9 })
-  assert.equal(full.reason, 'disk_reserve')
-
   // 00 UTC 이어받기가 도는 중 06 UTC가 시작되면 00 UTC는 다음 시각부터 받지 않는다.
   let releaseZero
   const zeroStops = []
@@ -333,12 +329,14 @@ test('06 UTC starts as soon as +0h is on KMA, starts without checking from 20:15
   assert.equal(await expandedStartBlocked({ root: other, cycle: '00', tmfc: '2026101000', now, checkUploaded }), null)
 })
 
-test('the expanded run keeps a 1.5 GiB disk reserve, leaving room for a demo snapshot', async t => {
+test('the expanded run does not stop because of an artificial disk reserve', async t => {
   const root = temporary(t)
   const now = KST('2026-10-09', '15:00')
-  const collect = async ({ hours }) => ({ published: true, publishedHours: hours.length, planned: hours.length })
-  assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 6.5e9 + 1.5 * 1024 ** 3 - 1, collect })).reason, 'disk_reserve')
-  assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 6.5e9 + 1.5 * 1024 ** 3, collect })).collection.outcome, 'complete')
+  const collect = async ({ hours, beforeHour }) => {
+    assert.equal(beforeHour(), null)
+    return { published: true, publishedHours: hours.length, planned: hours.length }
+  }
+  assert.equal((await processExpandedCycle({ cycle: '00', root, now: () => now, diskFree: () => 0, collect })).collection.outcome, 'complete')
 })
 
 test('expanded runs do not start while paused for the demo instance', async t => {

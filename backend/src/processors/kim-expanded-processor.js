@@ -3,7 +3,7 @@
 // 여기서 정하는 것(운영안 "관리 방법", 2026-10-08):
 // - 쓸 수 있는지: 설정(enabled)·대용량 키·승인 만료일(KST)·오늘 키가 거부됐는지. 안 되면 수집하지 않고, 한반도 06 UTC는
 //   기존처럼 일반 키로 받는다(kim-surface-wind-processor.js가 koreaSixFromExpanded로 판단).
-// - 디스크: 시작 전 여유 ≥ 예상 회차 크기 + 1.5 GiB, 시각마다 1.5 GiB 아래면 멈춘다(EXPANDED_MIN_FREE_BYTES).
+// - 디스크 여유를 미리 예약하지 않는다. 실제 저장 오류는 수집기에서 처리한다.
 // - 06 UTC가 시작되면 아직 이어받던 00 UTC는 새 시각을 받지 않는다.
 // - 06 UTC는 정해진 시각을 기다리지 않는다. 5분마다 +0h가 기상청에 올라왔는지 확인하고 올라왔으면 바로 시작한다
 //   (start_without_check_kst까지 확인이 안 되면 확인 없이 시작). 시작한 회차가 덜 끝났으면 retry_gap_minutes 뒤에 다시 시도한다.
@@ -23,7 +23,6 @@ import { appendKimRunEvent } from './kim-run-events.js'
 import { readKimNwpLatest, readKimNwpManifest, buildKimNwpRunId, resolveKimNwpRoot, resolveKimNwpRunDir } from './kim-nwp-store.js'
 import { KIM_NWP_MODEL } from './kim-nwp-model.js'
 import { kimHourUploaded } from './kim-run-availability.js'
-import { EXPANDED_MIN_FREE_BYTES, EXPECTED_RUN_BYTES } from './kim-expanded-disk.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 
 const KOREA_FALLBACK_KST = '21:30'
@@ -106,30 +105,8 @@ export function koreaSixFromExpanded({ tmfc, root = config.storage.base_path, no
   return now < kstCutoffMs(tmfc, KOREA_FALLBACK_KST)
 }
 
-function freeBytes(root) {
-  try {
-    const stat = fs.statfsSync(root)
-    return stat.bavail * stat.bsize
-  } catch {
-    return Number.POSITIVE_INFINITY
-  }
-}
-
 export function expandedRunTmfc(cycle, now = Date.now()) {
   return `${kstDate(now).replaceAll('-', '')}${cycle}`
-}
-
-// 폴더 안 파일 크기 합(바이트). 없으면 0.
-export function directoryBytes(dir) {
-  let total = 0
-  let entries = []
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return 0 }
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) total += directoryBytes(full)
-    else if (entry.isFile()) { try { total += fs.statSync(full).size } catch { /* 지워진 파일 */ } }
-  }
-  return total
 }
 
 export async function processExpandedCycle({
@@ -143,8 +120,6 @@ export async function processExpandedCycle({
   cropKoreaGktg = publishKoreaGktgFromExpanded,
   onKoreaGktgFallback = async () => {},
   koreaGktgEnabled = config.kim_gktg?.enabled !== false,
-  diskFree = freeBytes,
-  runBytes = directoryBytes,
   startMonitor = startExpandedMonitor,
   checkUploaded = kimHourUploaded,
 } = {}) {
@@ -166,12 +141,6 @@ export async function processExpandedCycle({
   const blocked = await expandedStartBlocked({ root, cycle, tmfc, now: now(), checkUploaded, signal })
   if (blocked) {
     return { type: 'kim_expanded', tmfc, skipped: true, reason: blocked, collection: collectionResult('empty', { tmfc }, { normalEmpty: true, reason: blocked }) }
-  }
-  // 끊긴 회차를 이어서 할 때는 이미 받아 둔 만큼은 새로 쓰지 않는다. 회차 전체 크기를 다시 요구하면
-  // 옛 회차와 끊긴 회차가 함께 있는 동안 절대 이어서 하지 못한다(2026-10-28 06 UTC가 배포 재시작 뒤 그렇게 멈췄다).
-  const existingRunBytes = runBytes(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain: 'ea' }))
-  if (diskFree(root) < Math.max(0, EXPECTED_RUN_BYTES - existingRunBytes) + EXPANDED_MIN_FREE_BYTES) {
-    return { type: 'kim_expanded', tmfc, skipped: true, reason: 'disk_reserve', collection: collectionResult('failed', null, { reason: 'disk_reserve' }) }
   }
   if (cycle === '06') stopRequested['00'] = true
   stopRequested[cycle] = false
@@ -209,7 +178,6 @@ export async function processExpandedCycle({
       beforeHour: () => {
         if (pausedReason) return pausedReason
         if (stopRequested[cycle]) return 'next_cycle_started'
-        if (diskFree(root) < EXPANDED_MIN_FREE_BYTES) return 'disk_reserve'
         return monitor.stopReason()
       },
       onHourDownloaded: async ({ downloaded }) => {
