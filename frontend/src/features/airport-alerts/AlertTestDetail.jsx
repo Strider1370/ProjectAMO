@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import useNotifications from '../notifications/useNotifications.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { warningNameKo } from '../../../../shared/warning-types.js'
+import TafAlertText from './TafAlertText.jsx'
 import './alertTestDetail.css'
 
 const formatTime = (value, tz) => {
@@ -34,7 +35,7 @@ function TestContent({ test, tz, isTest }) {
   if (test.kind === 'taf') return <div className="alert-test-summary">
     <strong>{payload.reportType === 'AMD' ? 'TAF AMD 발표' : '새 TAF 발표'}</strong>
     <span>발표 {formatTime(payload.issuedAt, tz)} · 유효 {formatTime(payload.validFrom, tz)} – {formatTime(payload.validTo, tz)} {tz}</span>
-    <pre className="alert-test-report">{payload.text}</pre>
+    <TafAlertText className="alert-test-report" payload={payload} />
   </div>
   if (test.kind === 'sigmet') return <div className="alert-test-summary">
     <strong>{payload.phenomenon ?? 'SIGMET'}</strong>

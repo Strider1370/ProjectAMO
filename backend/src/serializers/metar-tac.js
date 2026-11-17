@@ -24,7 +24,8 @@ function windShearToken(ws) {
   if (!ws) return ''
   if (typeof ws === 'string') return ws
   if (ws.raw) return ws.raw
-  if (ws.all) return 'WS ALL RWY'
+  if (ws.all_runways || ws.all) return 'WS ALL RWY'
+  if (Array.isArray(ws.runways) && ws.runways.length) return ws.runways.map((runway) => `WS R${runway}`).join(' ')
   if (ws.runway) return `WS R${ws.runway}`
   return ''
 }

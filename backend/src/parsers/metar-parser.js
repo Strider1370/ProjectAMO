@@ -59,7 +59,7 @@ function parseWindShear(obs) {
   const allRunways = String(ws?.['@_allRunways'] || 'false').toLowerCase() === 'true'
   if (allRunways) return { all_runways: true, runways: null }
 
-  const runways = toArray(ws?.['iwxxm:runway']).map((r) => text(r)).filter(Boolean)
+  const runways = [...new Set(toArray(ws?.['iwxxm:runway']).map(extractRunwayDesignator).filter(Boolean))]
   return { all_runways: false, runways: runways.length > 0 ? runways : null }
 }
 

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import airports from '../../../shared/airports.js'
 import { evaluateOrganizationSituation } from '../organizations/situation.js'
 import { METRIC_LABELS } from './rules.js'
+import { buildTafAlertSegments } from './taf-highlights.js'
 import { queueUserAlertDeliveries } from '../user-alerts/delivery.js'
 
 const MAX_METAR_AGE_MS = 120 * 60_000
@@ -119,6 +120,7 @@ export function evaluateAirportWatch(db, watch, weather, nowMs = Date.now()) {
           title: `${airport.nameKo} ${reportType === 'AMD' ? 'TAF AMD' : '새 TAF'}`,
           reportType, issuedAt, validFrom: tafHeader?.valid_start ?? null,
           validTo: tafHeader?.valid_end ?? null, text: tafText,
+          tacSegments: buildTafAlertSegments(tafText, rules),
           textSource: tafHeader?.source?.identifier === 'NOAA' ? 'raw' : 'reconstructed',
           popupEnabled: rules.channels?.popup !== false, pushEnabled: rules.channels?.push !== false,
         }, nowIso))

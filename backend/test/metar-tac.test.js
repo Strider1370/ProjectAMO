@@ -75,6 +75,15 @@ test('presentation assigns roles to whole TAC tokens', () => {
   assert.equal(tokens.find((token) => token.text === 'RA').role, 'weather-precip')
 })
 
+test('KMA parser wind shear fields are retained in reconstructed METAR and supplementary tokens', () => {
+  const metar = { ...rksi, observation: { ...rksi.observation, wind_shear: { all_runways: true, runways: null } } }
+  const presentation = buildMetarTacPresentation(metar)
+  assert.ok(presentation.text.endsWith('WS ALL RWY'))
+  assert.ok(presentation.display_lines[0].tokens.some(token => token.text === 'WS ALL RWY' && token.role === 'supplementary'))
+  metar.observation.wind_shear = { all_runways: false, runways: ['06', '24'] }
+  assert.ok(buildMetarTac(metar).endsWith('WS R06 WS R24'))
+})
+
 test('invalid legacy weather is omitted from reconstructed TAC', () => {
   const tac = buildMetarTac({
     header: { icao: 'RKJB', report_type: 'METAR', observation_time: '2026-07-18T15:00:00Z' },

@@ -1,0 +1,7 @@
+.taf-alert-hit {
+  background: var(--level-red-bg);
+  color: var(--level-red);
+  font-weight: 700;
+  text-decoration: underline dotted;
+  text-underline-offset: .2em;
+}

@@ -1,4 +1,5 @@
 import AlertIcon from './AlertIcon.jsx'
+import TafAlertText from './TafAlertText.jsx'
 import { alertView, metricThresholdText, metricValueText } from './alertModel.js'
 import { relTime } from '../notifications/notificationFormat.js'
 
@@ -45,7 +46,7 @@ export default function AlertCard({ item, tz, onOpen, compact = false }) {
       <div className="aa-cell"><span className="aa-cell-label">겹치는 구간</span><b>{v.segment ?? '확인 중'}</b></div>
       <div className="aa-cell"><span className="aa-cell-label">유효 ({tzLabel})</span><b>{clock(v.validFrom, tz)}–{clock(v.validTo, tz)}</b></div>
     </div>}
-    {v.kind === 'taf' && <pre className="aa-report">{v.text}</pre>}
+    {v.kind === 'taf' && <TafAlertText className="aa-report" payload={item.payload} />}
     {onOpen && <div className="aa-card-foot">
       <span>{item.active === false ? '종료됨' : v.kind === 'metar' ? '기준에서 벗어나면 지난 알림으로 옮겨집니다' : ''}</span>
       <button type="button" className="aa-open" onClick={() => onOpen(item)}>{item.test ? '시험 내용 보기' : OPEN_LABEL[v.kind] ?? '보기'}</button>

@@ -40,12 +40,25 @@ test('각 공항 시나리오는 실제 판정기로 발동하고 저장된 감�
       assert.ok(result.payload.title)
       if (scenario === 'metar') assert.equal(result.payload.metrics.length, 4)
       if (scenario === 'fzra') assert.ok(result.payload.metrics.some((metric) => metric.key === 'fzra'))
-      if (scenario.startsWith('taf_')) assert.match(result.payload.text, /TAF/)
+      if (scenario.startsWith('taf_')) {
+        assert.match(result.payload.text, /TAF/)
+        assert.equal(result.payload.tacSegments.map((segment) => segment.text).join(''), result.payload.text)
+      }
       if (scenario === 'lightning') assert.equal(result.payload.count, 1)
     }
     assert.equal(db.prepare('SELECT COUNT(*) n FROM airport_alert_events').get().n, 0)
     assert.equal(db.prepare('SELECT state FROM airport_alert_watches WHERE user_id=1').get().state, '{}')
   } finally { db.close() }
+})
+
+test('새 TAF·AMD 시험 알림은 저장된 사용자 임계값으로 본문 강조를 판정한다', () => {
+  const rules = { ...DEFAULT_AIRPORT_ALERT_RULES,
+    visibility: { enabled: true, threshold: 5000 }, ceiling: { enabled: true, threshold: 2000 },
+    tafNew: { enabled: true }, tafAmd: { enabled: true } }
+  for (const scenario of ['taf_new', 'taf_amd']) {
+    const { payload } = evaluateAirportTest({ icao: 'RKSS', rules: JSON.stringify(rules) }, scenario, instant)
+    assert.deepEqual(payload.tacSegments.filter((segment) => segment.metrics).map((segment) => segment.text), ['4000', 'BKN015'])
+  }
 })
 
 test('운영 시험은 본인 감시·현재 기기 구독만 사용하고 딥링크가 소유자에게만 열린다', async (t) => {
